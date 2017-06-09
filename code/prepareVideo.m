@@ -1,4 +1,4 @@
-function [grayI] = prepareVideo(params)
+function [grayI, params] = prepareVideo(params)
 
 %  This fuction converts the video to a "gray frames array" that are store
 %  in the memory and ready to be tracked or written to file. As default,
