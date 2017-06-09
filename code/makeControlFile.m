@@ -1,7 +1,8 @@
-function makeControlSheet( params )
+function makeControlFile( params )
 %makeControlSheet: produces .xls and csv files from the cutting params
 %   params are: savepath, trackfile
 
+% testing (remove when done)
 params.trackfile = '~/Desktop/GoodTrack/tfMRI_RETINO_PA_run01_testHC.mat';
 params.runName = 'tfMRI_RETINO_PA_run01';
 params.savePath = '~/Desktop/GoodTrack/';
