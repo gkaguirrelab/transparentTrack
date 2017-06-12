@@ -1,52 +1,85 @@
-function [grayI, params] = prepareVideo(params)
+function [grayI] = prepareVideo(inputVideo, varargin)
 
-%  This fuction converts the video to a "gray frames array" that are store
-%  in the memory and ready to be tracked or written to file. As default,
-%  the routine will crop the video to livetrack size.
+%  This fuction converts the video to a "gray frames array" that is stored
+%  in the memory and ready to be tracked or written to file. With the
+%  default options the routine will scale and crop the video to livetrack
+%  standard size.
 
 % Output : 
-%       grayI = 4D array of cropped and grey scale video frames.
+%       grayI = 3D array of cropped and grey scaled video frames.
 % 
 % Input:
-%       params.inVideo
-%       params.keepOriginalSize
-%       params.imageSize
-%       params.imageCrop
-%       params.forceNumFrames
+%       inputVideo
+% 
+% Options:
+%       numberOfFrames : number of frames to process. If not specified will
+%           process the full video.
+%       resizeVideo : [Y X] desired output video resolution. (recommended: keep default)
+%       cropVideo : [firstX firstY lastX lastY] position of first and last
+%           pixels to include in the crop. (recommended: keep default)
+%       keepOriginalSize : option to skip video resizing.
+% 
+%  NOTE: if processing videos acquired with the LiveTrack+V.TOP hardware
+%  setup, do not alter the default resizing and cropping video options
+% 
+% 
+% Usage examples:
+%  [grayI] = prepareVideo(inputVideo);
+%  [grayI] = prepareVideo(inputVideo, 'numberOfFrames', 1000) % this will
+%       process just the first 1000 frames of the video
 
 
-%% set default params
-if ~isfield (params, 'keepOriginalSize')
-    params.keepOriginalSize = 0;
-end
-if ~isfield(params,'imageSize')
-    params.imageSize = [486 720]/2;
-end
-if ~isfield(params,'imageCrop')
-    params.imageCrop = [1 1 319 239];
-end
+%% parse input and define variables
 
-%% Load video
+p = inputParser;
+% required input
+p.addRequired('inputVideo',@isstr);
+% optional inputs
+defaultResize = [486 720]/2;
+defaultCrop = [1 1 319 239];
+defaultNumFrames = inf;
+defaultKeepOriginalSize = false;
+p.addParameter('resizeVideo', defaultResize, @isnumeric);
+p.addParameter('cropVideo', defaultCrop, @isnumeric);
+p.addParameter('numberOfFrames', defaultNumFrames, @isnumeric);
+p.addParameter('keepOriginalSize', defaultKeepOriginalSize, @islogic);
+%parse
+p.parse(inputVideo,varargin{:})
+
+% define variables
+resizeVideo = p.Results.resizeVideo;
+cropVideo = p.Results.cropVideo;
+numberOfFrames = p.Results.numberOfFrames;
+keepOriginalSize = p.Results.keepOriginalSize;
+
+%% Prepare Video
+
+% load video
 disp('Loading video file...');
-inObj = VideoReader(params.inVideo);
-numFrames = floor(inObj.Duration*inObj.FrameRate);
+inObj = VideoReader(inputVideo);
 
-% option to overwrite numFrames (for processing small sections of video)
-if isfield(params,'forceNumFrames')
-    numFrames = params.forceNumFrames;
+% option to manually set numFrames
+if numberOfFrames ~= Inf
+    numFrames = numberOfFrames;
+else
+    numFrames = floor(inObj.Duration*inObj.FrameRate);
 end
 
-% initialize gray image array
-grayI                   = zeros([240 320 numFrames],'uint8');
+% initialize gray image array for default format (for faster processing)
+if resizeVideo == defaultResize
+    grayI = zeros([240 320 numFrames],'uint8');
+else
+    warning('Using non default resizing option. The gray image array will not be inizialized (converting will take longer)')
+end
 
+% Convert to gray, resize, crop
 disp('Converting video to gray frames array, may take a while...');
-% Convert to gray, resize, crop to livetrack size
 for i = 1:numFrames
     thisFrame           = readFrame(inObj);
     tmp                 = rgb2gray(thisFrame);
-    if params.keepOriginalSize == 0
-        tmp2 = imresize(tmp,params.imageSize);
-        tmp = imcrop(tmp2,params.imageCrop);
+    if keepOriginalSize == 0
+        tmp2 = imresize(tmp,resizeVideo);
+        tmp = imcrop(tmp2,cropVideo);
     end
     grayI(:,:,i) = tmp;
 end
