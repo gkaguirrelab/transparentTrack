@@ -22,7 +22,7 @@ function deinterlaceVideo (params, dropboxDir, bobMode)
 %       deinterlaceVideo (params, dropboxDir, bobMode)
 %
 %   Required inputs:
-%       dbDir
+%    
 %       params.outputDir
 %       params.projectFolder
 %       params.projectSubfolder
@@ -31,7 +31,9 @@ function deinterlaceVideo (params, dropboxDir, bobMode)
 %       params.subjectName
 %       params.sessionDate
 %       params.runName
-%
+% 
+%       dropboxDir
+% 
 % Note that the params field are the same as the metaData fields for a
 % standard pupilResponse struct, so this function can also be used like
 % this:
