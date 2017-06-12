@@ -38,7 +38,7 @@ function [glint, glintTrackingParams] = trackGlint(grayI, glintFile, varargin)
 
 p = inputParser;
 % required input
-p.addRequired('grayI',isa(grayI,'uint8'));
+p.addRequired('grayI');
 p.addRequired('glintFile',@isstr);
 
 % optional inputs
@@ -47,7 +47,7 @@ gammaCorrectionDefault = 1;
 glintCircleThreshDefault =  0.999;
 glintRangeDefault = [10 30];
 glintEllipseThreshDefault = 0.9;
-p.addParameter('displayTracking', displayTrackingDefault, @islogic);
+p.addParameter('displayTracking', displayTrackingDefault, @islogical);
 p.addParameter('gammaCorrection', gammaCorrectionDefault, @isnumeric);
 p.addParameter('glintCircleThresh', glintCircleThreshDefault, @isnumeric);
 p.addParameter('glintRange', glintRangeDefault, @isnumeric);
@@ -104,6 +104,10 @@ glint.ellipseFittingError = nan(numFrames,1);
 pupilRange = [30 90];
 pupilCircleThresh = 0.6;
 
+if displayTracking
+    ih = figure;
+end
+
 %loop through frames
 for i = 1:numFrames 
     % Get the frame
@@ -126,7 +130,6 @@ for i = 1:numFrames
     else % glint was found by circleFit
         % getGlintPerimeter
         [binG] = getGlintPerimeter (I, gCenters, gRadii, glintEllipseThresh);
-        
         % Fit ellipse to glint
         [Xg, Yg] = ind2sub(size(binG),find(binG));
         try
@@ -161,19 +164,24 @@ for i = 1:numFrames
                 glint.circleX(i) = gCenters(1,1);
                 glint.circleY(i) = gCenters(1,2);
             end
+            clear Eg Egi errors
         else
             glint.X(i)= gCenters(1,1);
             glint.Y(i) = gCenters(1,2);
             glint.size(i) = gRadii(1);
             glint.circleStrength(i) = gMetric(1);
         end
-        if displayTracking && ~isnan(glint.X(i))
-            plot(glint.X(i),glint.Y(i),'+b');
-        end
-        clear Eg Egi errors
+    end
+    
+    % plot results
+    if displayTracking && ~isnan(glint.X(i))
+        hold on
+        plot(glint.X(i),glint.Y(i),'+b');
+        hold off
     end
 end
-close I
+
+close all
 
 % store the tracking params
 glintTrackingParams = p.Results;

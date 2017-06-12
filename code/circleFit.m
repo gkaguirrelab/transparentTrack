@@ -87,7 +87,7 @@ warning('on','images:imfindcircles:warnForLargeRadiusRange');
 % Remove glints outside the pupil
 if ~pupilOnly
     if ~isempty(pCenters) && ~isempty(gCenters)
-        dists           = sqrt( (gCenters(:,1) - pCenters(1,1)).^2 + (gCenters(:,2) - pCenters(1,2)).^2 );
+        dists = sqrt( (gCenters(:,1) - pCenters(1,1)).^2 + (gCenters(:,2) - pCenters(1,2)).^2 );
         gCenters(dists>(1 + glintOut)*(pRadii(1)),:) = [];
         gRadii(dists>(1 + glintOut)*(pRadii(1))) = [];
     end
