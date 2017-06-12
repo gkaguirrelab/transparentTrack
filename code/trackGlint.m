@@ -6,7 +6,11 @@ function [glint, glintTrackingParams] = trackGlint(grayI, glintFile, varargin)
 % There usually is no need to change the parameters for glint tracking, as
 % it is pretty consistently tracked with the default settings.
 % 
-
+% 
+% Output
+% ======
+%       glint file, glint variable, glintTrackingParams.
+% 
 % Input params
 % ============
 %       grayI : 3D array of gray frames to track
@@ -24,9 +28,6 @@ function [glint, glintTrackingParams] = trackGlint(grayI, glintFile, varargin)
 %       glintEllipseThresh : threshold value to locate the glint for
 %           ellipse fitting (default 0.9)
 % 
-% Output
-% ======
-%       glint file, glint variable, glintTrackingParams.
 % 
 % Usage example
 % =============

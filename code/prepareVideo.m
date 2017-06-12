@@ -5,13 +5,16 @@ function [grayI] = prepareVideo(inputVideo, varargin)
 %  default options the routine will scale and crop the video to livetrack
 %  standard size.
 
-% Output : 
+% Output
+% ======
 %       grayI = 3D array of cropped and grey scaled video frames.
 % 
-% Input:
+% Input
+% =====
 %       inputVideo
 % 
-% Options:
+% Options
+% =======
 %       numberOfFrames : number of frames to process. If not specified will
 %           process the full video.
 %       resizeVideo : [Y X] desired output video resolution. (recommended: keep default)
@@ -23,7 +26,8 @@ function [grayI] = prepareVideo(inputVideo, varargin)
 %  setup, do not alter the default resizing and cropping video options
 % 
 % 
-% Usage examples:
+% Usage examples
+% ==============
 %  [grayI] = prepareVideo(inputVideo);
 %  [grayI] = prepareVideo(inputVideo, 'numberOfFrames', 1000) % this will
 %       process just the first 1000 frames of the video
