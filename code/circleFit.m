@@ -6,7 +6,7 @@ function [pCenters, pRadii,pMetric, gCenters, gRadii,gMetric, pupilRange, glintR
 %% parse input and define variables
 p = inputParser;
 % required input
-p.addRequired('I',isa(grayI,'uint8'));
+p.addRequired('I');
 p.addRequired('pupilCircleThresh', @isnumeric)
 p.addRequired('glintCircleThresh', @isnumeric)
 p.addRequired('pupilRange',@isnumeric);
@@ -28,7 +28,7 @@ p.addParameter('rangeAdjust', rangeAdjustDefault, @isnumeric);
 %parse
 p.parse(I,pupilCircleThresh,glintCircleThresh,pupilRange,glintRange,varargin{:})
 
-% define optional variables
+% define optional variables values
 pupilOnly = p.Results.pupilOnly;
 glintOut = p.Results.glintOut;
 dilateGlint = p.Results.dilateGlint;

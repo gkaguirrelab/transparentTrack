@@ -1,58 +1,108 @@
-function [glint, params] = trackGlint(grayI, params)
+function [glint, params] = trackGlint(grayI, glintFile, varargin)
 
-% this function tracks the glint using the circle patch + direct ellipse
+% This function tracks the glint using the circle patch + direct ellipse
 % fitting approach.
-
+% 
+% There usually is no need to change the parameters for glint tracking, as
+% it is pretty consistently tracked with the default settings.
+% 
 % Input params
 %       grayI = series of gray frames to track
-%       params.glintFile = name of the matFile in which to save the glint
+%       glintFile = name of the matFile in which to save the glint
 %         results.
 %       
-
+% Options (can be modified if needed)
+%       displayTracking : display online glint tracking in a figure
+%           (default: false)
+%       glintCircleThresh
+%       glintRange
+%       glintOut
+%       glintEllipseThresh
+%       gammaCorrection
+% 
+% Additional options (it is advised not to modify them)
+%       rangeAdjust
+%       sensitivity
+% 
+% 
+% 
 % Output: glint file, glint variable, params for control file.
 
 
-%% set default params
 
-% params for circle patch
-if ~isfield(params,'rangeAdjust')
-    params.rangeAdjust = 0.05;
-end
-if ~isfield(params,'circleThresh')
-    params.circleThresh =  0.999;
-end
-if ~isfield(params,'glintRange')
-    params.glintRange = [10 30];
-end
-if ~isfield(params,'glintOut')
-    params.glintOut = 0.1;
-end
-if ~isfield(params,'sensitivity')
-    params.sensitivity = 0.99;
-end
-if ~isfield(params,'dilateGlint')
-    params.dilateGlint = 5;
-end
+%% parse input and define variables
 
-% params for direct ellipse fitting
-if ~isfield(params,'ellipseThresh')
-    params.ellipseThresh = 0.9;
-end
+p = inputParser;
+% required input
+p.addRequired('grayI',isa(grayI,'uint8'));
+p.addRequired('glintFile',@isstr);
+
+% optional inputs
+displayTrackingDefault = false;
+gammaCorrectionDefault = 1;
+glintCircleThreshDefault =  0.999;
+glintRangeDefault = [10 30];
+glintEllipseThreshDefault = 0.9;
+p.addParameter('displayTracking', displayTrackingDefault, @islogic);
+p.addParameter('gammaCorrection', gammaCorrectionDefault, @isnumeric);
+p.addParameter('glintCircleThresh', glintCircleThreshDefault, @isnumeric);
+p.addParameter('glintRange', glintRangeDefault, @isnumeric);
+p.addParameter('glintEllipseThresh', glintEllipseThreshDefault, @isnumeric);
+
+%parse
+p.parse(grayI, glintFile, varargin{:})
+
+% define optional variables values
+displayTracking = p.Results.displayTracking;
+gammaCorrection = p.Results.gammaCorrection;
+glintCircleThresh =  p.Results.glintCircleThresh;
+glintRange = p.Results.glintRange;
+glintEllipseThresh = p.Results.glintEllipseThresh;
 
 
-% param to display online tracking
-if ~isfield(params,'displayTracking')
-    params.displayTracking = 0;
-end
+
+
+% %% set default params
+% 
+% % params for circle patch
+% if ~isfield(params,'rangeAdjust')
+%     params.rangeAdjust = 0.05;
+% end
+% if ~isfield(params,'circleThresh')
+%     params.glintCircleThresh =  0.999;
+% end
+% if ~isfield(params,'glintRange')
+%     params.glintRange = [10 30];
+% end
+% if ~isfield(params,'glintOut')
+%     params.glintOut = 0.1;
+% end
+% if ~isfield(params,'sensitivity')
+%     params.sensitivity = 0.99;
+% end
+% if ~isfield(params,'dilateGlint')
+%     params.dilateGlint = 5;
+% end
+% 
+% % params for direct ellipse fitting
+% if ~isfield(params,'ellipseThresh')
+%     params.glintEllipseThresh = 0.9;
+% end
+% 
+% 
+% % param to display online tracking
+% if ~isfield(params,'displayTracking')
+%     params.displayTracking = 0;
+% end
 
 %% Initialize glint struct
 
 % display main tracking parameters
 disp('Starting tracking with the following parameters:');
 disp('Circle threshold: ')
-disp(params.circleThresh)
+disp(glintCircleThresh)
 disp('Ellipse threshold: ')
-disp(params.ellipseThresh)
+disp(params.glintEllipseThresh)
 
 % get number of frames from grayI
 numFrames = size(grayI,3);
@@ -68,7 +118,6 @@ glint.explicitEllipseParams= nan(numFrames,5);
 glint.distanceErrorMetric= nan(numFrames,1);
 
 % glint mask params
-glintRange = params.glintRange;
 glint.circleRad = nan(numFrames,1);
 glint.circleX = nan(numFrames,1);
 glint.circleY = nan(numFrames,1);
@@ -78,28 +127,29 @@ glint.circleStrength = nan(numFrames,1);
 glint.ellipseFittingError = nan(numFrames,1);
 
 %% Track the glint
+
 % NOTE: it is necessary to give a starting value for the pupil range,
 % to remove the glint outside the pupil during the circle fitting step.
-% The vaule will be updated during the tracking and pupil track won't
-% be stored.
-
+% The value will be updated during the tracking and pupil results won't
+% be stored at this point.
 pupilRange = [30 90];
-glintRange = params.glintRange;
+pupilCircleThresh = 0.6;
 
-for i = 1:numFrames %loop through frames
+%loop through frames
+for i = 1:numFrames 
     % Get the frame
     I = squeeze(grayI(:,:,i));
     
     % adjust gamma for this frame
-    I = imadjust(I,[],[],params.gammaCorrection);
+    I = imadjust(I,[],[],gammaCorrection);
     
     % Show the frame (optional)
-    if params.displayTracking
+    if displayTracking
         imshow(I);
     end
     
-    % track with circles
-    [~,~,~, gCenters, gRadii,gMetric, pupilRange, glintRange] = circleFit(I,params,pupilRange,glintRange);
+    % track with circles (using the default options)
+    [~,~,~, gCenters, gRadii,gMetric, pupilRange, glintRange] = circleFit(I,pupilCircleThresh,glintCircleThresh,pupilRange,glintRange);
     
     % get a more precise tracking with direct ellipse fitting
     if isempty(gCenters) %no glint was found by circleFit
@@ -157,5 +207,5 @@ end
 close I
 
 %% save out a mat file with the glint tracking data
-save (params.glintFile, 'glint', 'params')
+save (glintFile, 'glint', 'params')
     
