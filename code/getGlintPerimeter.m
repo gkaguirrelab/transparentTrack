@@ -1,4 +1,4 @@
-function [binG] = getGlintPerimeter (I, gCenters, gRadii, params)
+function [binG] = getGlintPerimeter (I, gCenters, gRadii, glintEllipseThresh)
 
 % create a mask from circle fitting parameters (note: glint
 % is already dilated
@@ -14,7 +14,7 @@ gI = uint8(maskedGlint);
 
 % Binarize glint
 binG  = ones(size(gI));
-binG(gI<quantile(double(I(:)),params.ellipseThresh(2))) = 0;
+binG(gI<quantile(double(I(:)),glintEllipseThresh)) = 0;
 
 % get perimeter of glint
 binG = bwperim(binG);

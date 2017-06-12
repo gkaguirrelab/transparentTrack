@@ -1,4 +1,4 @@
-function [glint, params] = trackGlint(grayI, glintFile, varargin)
+function [glint, glintTrackingParams] = trackGlint(grayI, glintFile, varargin)
 
 % This function tracks the glint using the circle patch + direct ellipse
 % fitting approach.
@@ -6,27 +6,31 @@ function [glint, params] = trackGlint(grayI, glintFile, varargin)
 % There usually is no need to change the parameters for glint tracking, as
 % it is pretty consistently tracked with the default settings.
 % 
+
 % Input params
-%       grayI = series of gray frames to track
-%       glintFile = name of the matFile in which to save the glint
+% ============
+%       grayI : 3D array of gray frames to track
+%       glintFile : name of the output matFile in which to save the glint
 %         results.
 %       
-% Options (can be modified if needed)
+% Options
+% =======
 %       displayTracking : display online glint tracking in a figure
 %           (default: false)
-%       glintCircleThresh
-%       glintRange
-%       glintOut
-%       glintEllipseThresh
-%       gammaCorrection
+%       gammaCorrection : gamma correction to be applied in current frame
+%       glintCircleThresh : threshold value to locate the glint for circle
+%           fitting (default 0.999)
+%       glintRange : radius range for cirfle fitting of the glint (default [10 30])
+%       glintEllipseThresh : threshold value to locate the glint for
+%           ellipse fitting (default 0.9)
 % 
-% Additional options (it is advised not to modify them)
-%       rangeAdjust
-%       sensitivity
+% Output
+% ======
+%       glint file, glint variable, glintTrackingParams.
 % 
-% 
-% 
-% Output: glint file, glint variable, params for control file.
+% Usage example
+% =============
+%  [glint, glintTrackingParams] = trackGlint(grayI, glintFile, 'displayTracking', true)
 
 
 
@@ -60,41 +64,6 @@ glintRange = p.Results.glintRange;
 glintEllipseThresh = p.Results.glintEllipseThresh;
 
 
-
-
-% %% set default params
-% 
-% % params for circle patch
-% if ~isfield(params,'rangeAdjust')
-%     params.rangeAdjust = 0.05;
-% end
-% if ~isfield(params,'circleThresh')
-%     params.glintCircleThresh =  0.999;
-% end
-% if ~isfield(params,'glintRange')
-%     params.glintRange = [10 30];
-% end
-% if ~isfield(params,'glintOut')
-%     params.glintOut = 0.1;
-% end
-% if ~isfield(params,'sensitivity')
-%     params.sensitivity = 0.99;
-% end
-% if ~isfield(params,'dilateGlint')
-%     params.dilateGlint = 5;
-% end
-% 
-% % params for direct ellipse fitting
-% if ~isfield(params,'ellipseThresh')
-%     params.glintEllipseThresh = 0.9;
-% end
-% 
-% 
-% % param to display online tracking
-% if ~isfield(params,'displayTracking')
-%     params.displayTracking = 0;
-% end
-
 %% Initialize glint struct
 
 % display main tracking parameters
@@ -102,7 +71,7 @@ disp('Starting tracking with the following parameters:');
 disp('Circle threshold: ')
 disp(glintCircleThresh)
 disp('Ellipse threshold: ')
-disp(params.glintEllipseThresh)
+disp(glintEllipseThresh)
 
 % get number of frames from grayI
 numFrames = size(grayI,3);
@@ -156,7 +125,7 @@ for i = 1:numFrames
         continue
     else % glint was found by circleFit
         % getGlintPerimeter
-        [binG] = getGlintPerimeter (I, gCenters, gRadii, params);
+        [binG] = getGlintPerimeter (I, gCenters, gRadii, glintEllipseThresh);
         
         % Fit ellipse to glint
         [Xg, Yg] = ind2sub(size(binG),find(binG));
@@ -198,7 +167,7 @@ for i = 1:numFrames
             glint.size(i) = gRadii(1);
             glint.circleStrength(i) = gMetric(1);
         end
-        if params.displayTracking && ~isnan(glint.X(i))
+        if displayTracking && ~isnan(glint.X(i))
             plot(glint.X(i),glint.Y(i),'+b');
         end
         clear Eg Egi errors
@@ -206,6 +175,9 @@ for i = 1:numFrames
 end
 close I
 
+% store the tracking params
+glintTrackingParams = p.Results;
+
 %% save out a mat file with the glint tracking data
-save (glintFile, 'glint', 'params')
+save (glintFile, 'glint', 'glintTrackingParams')
     
