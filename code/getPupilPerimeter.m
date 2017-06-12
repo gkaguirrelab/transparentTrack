@@ -18,7 +18,7 @@ maskedPupil = immultiply(cI,pupilMask);
 pI = uint8(maskedPupil);
 % Binarize pupil
 binP = ones(size(pI));
-binP(pI<quantile(double(cI(:)),params.ellipseThresh(1))) = 0;
+binP(pI<quantile(double(cI(:)),params.ellipseThreshPupil)) = 0;
 
 % remove small objects
 binP = bwareaopen(binP, 500);
