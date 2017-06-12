@@ -1,5 +1,25 @@
 function [pCenters, pRadii,pMetric, gCenters, gRadii,gMetric, pupilRange, glintRange] = circleFit(I,params,pupilRange,glintRange)
 
+% this function is used for both glint and pupil circle fitting.
+
+%% set default thresholds for pupil and glint
+% when using the function to find the glint the default pupil threshold
+% will be used with no need to declare it, and viceversa.
+
+if ~isfield(params,'pupilCircleThresh')
+    params.pupilCircleThresh = 0.06;
+end
+
+if ~isfield(params,'glintCircleThresh')
+    params.glintCircleThresh = 0.999;
+end
+
+if ~isfield(params,'glintOut')
+    params.glintOut = 0.1;
+end
+
+%% circle fit
+
 % create blurring filter
 filtSize = round([0.01*min(params.imageSize) 0.01*min(params.imageSize) 0.01*min(params.imageSize)]);
 
@@ -13,11 +33,11 @@ pI = imfilter(padP,h);
 pI = pI(size(I,1)/2+1:size(I,1)/2+size(I,1),size(I,2)/2+1:size(I,2)/2+size(I,2));
 % Binarize pupil
 binP = ones(size(pI));
-binP(pI<quantile(double(pI(:)),params.circleThresh(1))) = 0;
+binP(pI<quantile(double(pI(:)),params.pupilCircleThresh)) = 0;
 
 % Filter for glint
 gI = ones(size(I));
-gI(I<quantile(double(pI(:)),params.circleThresh(2))) = 0;
+gI(I<quantile(double(pI(:)),params.glintCircleThresh)) = 0;
 padG = padarray(gI,[size(I,1)/2 size(I,2)/2], 0);
 h = fspecial('gaussian',[filtSize(1) filtSize(2)],filtSize(3));
 gI = imfilter(padG,h);
