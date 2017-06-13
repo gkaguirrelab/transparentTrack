@@ -57,8 +57,10 @@ inputVideo = fullfile(dropboxDir,params.projectFolder, params.projectSubfolder, 
 disp('Preparing video')
 
 tic
-[grayI] = prepareVideo(inputVideo, 'numberOfFrames',200); %just tracking a small portion for testing
+[grayI] = prepareVideo(inputVideo, 'numberOfFrames',500); %just tracking a small portion for testing
 toc
+
+% EXEC.TIME = 500 frames take approx 9 sec
 
 %% track the glint
 disp('Tracking glint')
@@ -76,6 +78,7 @@ toc
 % fixed source. We might want to exclude samples too far from the mean XY
 % position to get rid of false positive traking results.
 
+% EXEC.TIME = 500 frames take approx 60 sec
 
 %% make pupil perimeter video
 disp('Making pupil perimeter video')
@@ -86,3 +89,30 @@ pupilCircleThresh = 0.06;
 pupilEllipseThresh = 0.96;
 perimeterParams = extractPupilPerimeter(grayI, perimeterVideoPath,'pupilCircleThresh', pupilCircleThresh, 'pupilEllipseThresh', pupilEllipseThresh);
 toc
+
+% EXEC.TIME = 500 frames take approx 165 sec
+
+%% COMMENTS SO FAR
+% 
+%  up to this point the routine produces the following output files,
+%  necessary for the subsequent steps:
+%  1. pupil perimeter video
+%  2. glint tracking file (X,Y position frame by frame)
+% 
+% 
+%  The routine also outputs these structs (currently not saved): 
+%  1. glintTrackingParams 
+%  2. perimeterParams 
+%  They include ALL input necessary
+%  to replicate the analysis exactly how it was performed the first time
+%  around (including the grayI frames that originated from prepareVideo).
+%  This means that parsing the structs as inputs for the function
+%  trackGlint and extractPupilPerimeter respectively will exactly
+%  replicate their outputs.
+%  The advantage compared to the "params" strategy is again the modularity:
+%  only necessary and unambiguous inputs are fed to each step.
+
+
+%% blink detection
+disp('Finding blinks')
+
