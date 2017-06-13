@@ -19,7 +19,7 @@ glintOutDefault = 0.1;
 dilateGlintDefault = 6;
 sensitivityDefault = 0.99;
 rangeAdjustDefault = 0.05;
-p.addParameter('pupilOnly', pupilOnlyDefault, @islogic);
+p.addParameter('pupilOnly', pupilOnlyDefault, @islogical);
 p.addParameter('glintOut', glintOutDefault, @isnumeric);
 p.addParameter('dilateGlint', dilateGlintDefault, @isnumeric);
 p.addParameter('sensitivity', sensitivityDefault, @isnumeric);

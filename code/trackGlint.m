@@ -103,7 +103,7 @@ glint.ellipseFittingError = nan(numFrames,1);
 % The value will be updated during the tracking and pupil results won't
 % be stored at this point.
 pupilRange = [30 90];
-pupilCircleThresh = 0.6;
+pupilCircleThresh = 0.06;
 
 if displayTracking
     ih = figure;

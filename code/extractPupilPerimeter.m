@@ -3,7 +3,7 @@ function perimeterParams = extractPupilPerimeter(grayI, perimeterVideoPath,varar
 % This function thresholds the video to extract the pupil perimeter and
 % saves out a BW video showing the pupil perimeter only.
 % 
-
+% 
 % Input params
 % ============
 %       grayI : 3D array of gray frames to track
@@ -29,7 +29,7 @@ function perimeterParams = extractPupilPerimeter(grayI, perimeterVideoPath,varar
 % Usage examples
 % ==============
 %  define options beforehand:
-
+% 
 %  gammaCorrection = 1.2;
 %  pupilEllipseThresh = 0.93;
 %  perimeterParams = extractPupilPerimeter(grayI, perimeterVideoPath, 'gammaCorrection', gammaCorrection, 'pupilEllipseThresh', pupilEllipseThresh)
@@ -51,7 +51,7 @@ p.addRequired('perimeterVideoPath',@isstr);
 % optional inputs
 frameRateDefault = 60;
 gammaCorrectionDefault = 1;
-pupilCircleThreshDefault =  0.6;
+pupilCircleThreshDefault =  0.06;
 pupilRangeDefault = [30 90];
 pupilEllipseThreshDefault = 0.95;
 p.addParameter('frameRate', frameRateDefault, @isnumeric);
@@ -61,7 +61,7 @@ p.addParameter('pupilRange', pupilRangeDefault, @isnumeric);
 p.addParameter('pupilEllipseThresh', pupilEllipseThreshDefault, @isnumeric);
 
 %parse
-p.parse(grayI, perimeterVideo, varargin{:})
+p.parse(grayI, perimeterVideoPath, varargin{:})
 
 % define optional variables values
 frameRate = p.Results.frameRate;
@@ -106,7 +106,7 @@ for i = 1:numFrames
     glintCircleThresh = 0.999;
     glintRange = [10 30];
     
-    [pCenters, pRadii,pMetric,~,~,~, pupilRange, ~] = circleFit(I,pupilCircleThresh,glintCircleThresh,pupilRange,glintRange,'pupilOnly', true);
+    [pCenters, pRadii,pMetric,~,~,~, pupilRange, ~] = circleFit(I,pupilCircleThresh,glintCircleThresh,pupilRange,glintRange);
     
     if isempty(pCenters) %no pupil circle patch was found
         % just save frame
