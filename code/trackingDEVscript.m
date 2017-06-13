@@ -29,7 +29,7 @@ clc
 % identical also for MRI analysis for code homogeneity.
 
 dropboxDir = '/Volumes/Bay_2_data/giulia/Dropbox-Aguirre-Brainard-Lab/';
-params.params.projectFolder = 'TOME_processing';
+params.projectFolder = 'TOME_processing';
 params.projectSubfolder = 'session2_spatialStimuli';
 params.eyeTrackingDir = 'EyeTracking';
 
@@ -77,4 +77,12 @@ toc
 % position to get rid of false positive traking results.
 
 
-%% threshold pupil video
+%% make pupil perimeter video
+disp('Making pupil perimeter video')
+
+tic
+perimeterVideoPath = '/Users/giulia/Desktop/TEST/perimeterTEST.avi';
+pupilCircleThresh = 0.06; 
+pupilEllipseThresh = 0.96;
+perimeterParams = extractPupilPerimeter(grayI, perimeterVideoPath,'pupilCircleThresh', pupilCircleThresh, 'pupilEllipseThresh', pupilEllipseThresh);
+toc
