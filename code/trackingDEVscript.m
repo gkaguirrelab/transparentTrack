@@ -116,3 +116,12 @@ toc
 %% blink detection
 disp('Finding blinks')
 
+tic
+% find the blinks
+blinkFrames = findBlinks(glintFile);
+toc
+% show them on the tracked video (this function is for display only)
+showBlinks(blinkFrames,grayI)
+
+
+
