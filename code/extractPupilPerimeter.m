@@ -99,8 +99,8 @@ for i = 1:numFrames
     I = imadjust(I,[],[],gammaCorrection);
     
     % Show the frame
-    imshow(I);
-    
+    imshow(I, 'Border', 'tight');
+
     % track with circles 
     % feed default values for glint (glint data won't be stored now)
     glintCircleThresh = 0.999;
@@ -119,9 +119,13 @@ for i = 1:numFrames
         % get pupil perimeter
         [binP] = getPupilPerimeter(I,pCenters,pRadii, pupilEllipseThresh);
         
-        % show the thresholded frame
-        imshow(binP)
+        % convert BW frame
+        I = im2uint8(binP);
         
+        % Show the frame
+        imshow(I, 'Border', 'tight');
+
+
         % write frame to thresholded video
         frame   = getframe(ih);
         writeVideo(outObj,frame);

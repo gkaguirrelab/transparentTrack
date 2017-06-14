@@ -119,7 +119,7 @@ for i = 1:numFrames
     
     % Show the frame (optional)
     if displayTracking
-        imshow(I);
+            imshow(I, 'Border', 'tight')
     end
     
     % track with circles (using the default options)
