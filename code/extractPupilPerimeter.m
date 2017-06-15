@@ -137,7 +137,7 @@ end % loop through gray frames
 
 %% close video
 close(ih);
-clear(outObj);
+clear outObj
 
 %% export perimeter params
 perimeterParams = p.Results;
