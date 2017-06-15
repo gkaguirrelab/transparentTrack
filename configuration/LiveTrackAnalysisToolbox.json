@@ -13,18 +13,6 @@
 		"update": "",
 		"url": ""
 	},
-        {
-		"flavor": "",
-		"hook": "",
-		"localHookTemplate": "",
-		"name": "BrainardLabToolbox",
-		"pathPlacement": "append",
-		"toolboxRoot": "",
-		"type": "include",
-		"update": "",
-		"url": "",
-                "subfolder": ""
-	},
  	{
 		"flavor": "",
 		"hook": "",

@@ -1,4 +1,4 @@
-function LiveTrackfMRIToolboxLocalHook
+function LiveTrackAnalysisIToolboxLocalHook
 % LiveTrackfMRIToolboxLocalHook
 %
 % For use with the ToolboxToolbox.  Copy this into your
@@ -13,7 +13,7 @@ function LiveTrackfMRIToolboxLocalHook
 % to match what is true on your computer.
 
 %% Say hello
-fprintf('* Running LiveTrackfMRIToolboxLocalHook...');
+fprintf('* Running LiveTrackAnalysisIToolboxLocalHook...');
 
 %% Set preferences
 
