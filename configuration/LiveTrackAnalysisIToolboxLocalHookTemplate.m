@@ -1,4 +1,4 @@
-function LiveTrackAnalysisIToolboxLocalHookTemplate
+function LiveTrackAnalysisIToolboxLocalHook
 % LiveTrackfMRIToolboxLocalHook
 %
 % For use with the ToolboxToolbox.  Copy this into your

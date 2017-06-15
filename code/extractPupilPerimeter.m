@@ -1,4 +1,4 @@
-function perimeterParams = extractPupilPerimeter(grayI, perimeterVideoPath,varargin)
+function perimeterParams = extractPupilPerimeter(grayI, perimeterVideo,varargin)
 
 % This function thresholds the video to extract the pupil perimeter and
 % saves out a BW video showing the pupil perimeter only.
@@ -46,7 +46,7 @@ function perimeterParams = extractPupilPerimeter(grayI, perimeterVideoPath,varar
 p = inputParser;
 % required input
 p.addRequired('grayI');
-p.addRequired('perimeterVideoPath',@isstr);
+p.addRequired('perimeterVideo',@isstr);
 
 % optional inputs
 frameRateDefault = 60;
@@ -61,7 +61,7 @@ p.addParameter('pupilRange', pupilRangeDefault, @isnumeric);
 p.addParameter('pupilEllipseThresh', pupilEllipseThreshDefault, @isnumeric);
 
 %parse
-p.parse(grayI, perimeterVideoPath, varargin{:})
+p.parse(grayI, perimeterVideo, varargin{:})
 
 % define optional variables values
 frameRate = p.Results.frameRate;
@@ -73,7 +73,7 @@ pupilEllipseThresh = p.Results.pupilEllipseThresh;
 
 %% initiate output video object
 
-outObj              = VideoWriter(perimeterVideoPath);
+outObj              = VideoWriter(perimeterVideo);
 outObj.FrameRate    = frameRate;
 open(outObj);
 
@@ -137,7 +137,7 @@ end % loop through gray frames
 
 %% close video
 close(ih);
-close(outObj);
+clear(outObj);
 
 %% export perimeter params
 perimeterParams = p.Results;
