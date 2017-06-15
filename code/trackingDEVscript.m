@@ -129,7 +129,7 @@ showBlinks(blinkFrames,grayI)
 %% guess pupil cuts
 disp('Computing pupil cuts')
 
-framesToCut = guessPupilCuts(perimeterVideo,glintFile);
+framesToCut = guessPupilCuts(perimeterVideo,glintFile,blinkFrames);
 
 
 
