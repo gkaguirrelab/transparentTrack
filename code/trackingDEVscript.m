@@ -84,10 +84,10 @@ toc
 disp('Making pupil perimeter video')
 
 tic
-perimeterVideoPath = '/Users/giulia/Desktop/TEST/perimeterTEST.avi';
+perimeterVideo = '/Users/giulia/Desktop/TEST/perimeterTEST.avi';
 pupilCircleThresh = 0.06; 
 pupilEllipseThresh = 0.96;
-perimeterParams = extractPupilPerimeter(grayI, perimeterVideoPath,'pupilCircleThresh', pupilCircleThresh, 'pupilEllipseThresh', pupilEllipseThresh);
+perimeterParams = extractPupilPerimeter(grayI, perimeterVideo,'pupilCircleThresh', pupilCircleThresh, 'pupilEllipseThresh', pupilEllipseThresh);
 toc
 
 % EXEC.TIME = 500 frames take approx 165 sec
@@ -105,7 +105,7 @@ toc
 %  2. perimeterParams 
 %  They include ALL input necessary
 %  to replicate the analysis exactly how it was performed the first time
-%  around (including the grayI frames that originated from prepareVideo).
+%  around (including the grayI frameseries that originated from prepareVideo).
 %  This means that parsing the structs as inputs for the function
 %  trackGlint and extractPupilPerimeter respectively will exactly
 %  replicate their outputs.
@@ -120,8 +120,16 @@ tic
 % find the blinks
 blinkFrames = findBlinks(glintFile);
 toc
+
 % show them on the tracked video (this function is for display only)
 showBlinks(blinkFrames,grayI)
+
+% note: blinkFrames is an array containing the index of the frames marked as
+% blinks.
+%% guess pupil cuts
+disp('Computing pupil cuts')
+
+framesToCut = guessPupilCuts(perimeterVideo,glintFile);
 
 
 

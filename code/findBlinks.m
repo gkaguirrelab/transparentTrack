@@ -1,6 +1,6 @@
 function blinkFrames = findBlinks(glintFile, varargin)
 
-% this function flag the blinks based on the glint location and pupil
+% this function flags the blinks based on the glint location and pupil
 % perimeter extraction. User can specify the amount of frames around the
 % actual blink to be flagged as a blink as well (i.e. the blink window).
 % 
@@ -43,7 +43,6 @@ p.parse(glintFile, varargin{:})
 % define optional variables values
 extendBlinkWindow = p.Results.extendBlinkWindow;
 
-
 %% load data
 
 % glint
@@ -78,10 +77,4 @@ blinkFrames = union(blinks, farGlints);
 % 
 % for bb = 1:length(blinks)
 %     
-% 
-
-
-
-
-
-
+%
