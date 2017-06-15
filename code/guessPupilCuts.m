@@ -15,7 +15,7 @@ function framesToCut = guessPupilCuts(perimeterVideo,glintFile,blinkFrames,varar
 %
 % Output
 % ======
-%       framesToCut = [frameNumber originalError suggestedCut newError]
+%       framesToCut = [frameNumber originalError Ucut Rcut newError]
 %
 % Input params
 % ============
@@ -75,7 +75,7 @@ numFrames = floor(inObj.Duration*inObj.FrameRate);
 % number of frames. Before saving out the output, we will trim the unused row
 % out.
 
-framesToCut = nan(numFrames, 4);
+framesToCut = nan(numFrames, 5);
 
 %% guess the cuts
 
@@ -90,32 +90,78 @@ for ii = 1:numFrames
     thisFrame = read(inObj,ii);
     % NOTE: in fugure releases this will need to be replaced. However,
     % readFrame currently only reads frames progressively, so we keep using
-    % read instead to skip the frames we don't care about).
+    % read instead to skip the frames we don't care about.
     
     % convert frame to binary image and index the perimeter points
     thisFrame = rgb2gray (thisFrame);
     binP = imbinarize(thisFrame);
-    [Xp, Yp] = ind2sub(size(binP),find(binP));
+    [Yp, Xp] = ind2sub(size(binP),find(binP));
     
     % fit an ellipse to the full perimeter using the quadFit toolbox
     try
         Epi = ellipsefit_direct(Xp,Yp);
-        Ep = ellipse_im2ex(Epi);
         [~,d,~,~] = ellipse_distance(Xp, Yp, Epi);
-        fittingError = nanmedian(sqrt(sum(d.^2)));
+        originalFittingError = nanmedian(sqrt(sum(d.^2)));
     catch ME
     end
     if  exist ('ME', 'var')
-        framesToCut(ii,:) = [ii 0 0 0];
+        framesToCut(ii,:) = [ii 0 0 0 0];  % the all zero output means: fitting error.
         clear ME
         continue
     end
     
     % check the fitting error
-    if fittingError <= errorThreshold
+    if originalFittingError <= errorThreshold
         continue
     else
-        framesToCut (ii,:) = [ii fittingError 0 0];
+        % try cuts in a prioritized order until you find the best one
+        % (prioritize cutting the least amount of pixels).
+        
+        % get glint position for this frame
+        Xg = glint.X(ii);
+        Yg = glint.Y(ii);
+        
+        % define vertical cuts
+        U = flip(0:1:round(Yg - (min(Yp)+1)));
+        R = Inf;
+        
+        % initialize for while loop
+        cc = 1;
+        newFittingError = errorThreshold;
+        while newFittingError >= errorThreshold && cc <= length(U)
+            [binPcut] = cutPupil (binP,U(cc),R,Xg,Yg);
+            [Yc, Xc] = ind2sub(size(binPcut),find(binPcut));
+            
+            try
+                Epi = ellipsefit_direct(Xc,Yc);
+                [~,d,~,~] = ellipse_distance(Xc, Yc, Epi);
+                newFittingError = nanmedian(sqrt(sum(d.^2)));
+            catch ME
+            end
+            if  exist ('ME', 'var')
+                framesToCut(ii,:) = [ii originalFittingError 0 0 0];  % the all zero output means: fitting error.
+                clear ME
+                continue
+            end
+            allErrors(cc) = newFittingError;
+            cc = cc+1;
+        end
+        if cc == length(U) + 1
+            % take best cut
+            try
+                [bestError, beIdx] = min(allErrors);
+                framesToCut(ii,:) = [ii originalFittingError U(beIdx) R bestError];
+            catch ME
+            end
+            if  exist ('ME', 'var')
+                framesToCut(ii,:) = [ii originalFittingError 0 0 0];  % the all zero output means: fitting error.
+                clear ME
+                continue
+            end
+        else
+            framesToCut(ii,:) = [ii originalFittingError U(cc) R newFittingError];
+        end
+        
     end
     
 end
@@ -123,8 +169,8 @@ end
 % remove NaN rows
 framesToCut(any(isnan(framesToCut),2),:) = [];
 
-    
-    
-    
-    
-    
+
+
+
+
+
