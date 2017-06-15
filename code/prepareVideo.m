@@ -79,8 +79,8 @@ end
 % Convert to gray, resize, crop
 disp('Converting video to gray frames array, may take a while...');
 for i = 1:numFrames
-    thisFrame           = readFrame(inObj);
-    tmp                 = rgb2gray(thisFrame);
+    thisFrame = readFrame(inObj);
+    tmp = rgb2gray(thisFrame);
     if keepOriginalSize == 0
         tmp2 = imresize(tmp,resizeVideo);
         tmp = imcrop(tmp2,cropVideo);
