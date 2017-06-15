@@ -77,7 +77,8 @@ numFrames = floor(inObj.Duration*inObj.FrameRate);
 
 framesToCut = nan(numFrames, 5);
 
-%% guess the cuts
+
+%% loop through all frames the first time. Try to apply a vertical cut.
 
 for ii = 1:numFrames
     
@@ -121,6 +122,7 @@ for ii = 1:numFrames
         Xg = glint.X(ii);
         Yg = glint.Y(ii);
         
+        % FIRST WE TRY VERTICAL CUTS (most common occurrence)
         % define vertical cuts
         U = flip(0:1:round(Yg - (min(Yp)+1)));
         R = Inf;
@@ -161,13 +163,98 @@ for ii = 1:numFrames
         else
             framesToCut(ii,:) = [ii originalFittingError U(cc) R newFittingError];
         end
-        
     end
     
-end
+end % loop through all frames
 
 % remove NaN rows
 framesToCut(any(isnan(framesToCut),2),:) = [];
+
+%% NOW WE TRY HORIZONTAL CUTS
+
+%%%% NEED TO DEBUG FROM HERE ON
+
+
+% we just look of what is still bad after the vertical cuts
+highErrorIdx = find(framesToCut(:,5)> errorThreshold);
+
+if ~isempty(highErrorIdx)
+    
+    highErrorFrames = framesToCut(highErrorIdx,1);
+    
+    % loop in highErrorFrames and do vertical cuts
+    for ee = 1: length(highErrorFrames)
+        
+        % read the frame
+        thisFrame = read(inObj,highErrorFrames(ee));
+        % convert frame to binary image and index the perimeter points
+        thisFrame = rgb2gray (thisFrame);
+        binP = imbinarize(thisFrame);
+        [Yp, Xp] = ind2sub(size(binP),find(binP));
+        
+        % get glint position for this frame
+        Xg = glint.X(highErrorFrames(ee));
+        Yg = glint.Y(highErrorFrames(ee));
+        
+        
+        % define horizontal cuts
+        R = flip(0:1:round(Xg - (max(Xp)-1)));
+        U = Inf;
+        
+        % initialize for while loop
+        cc = 1;
+        newFittingError = errorThreshold;
+        
+        while newFittingError >= errorThreshold && cc <= length(R)
+            [binPcut] = cutPupil (binP,U,R(cc),Xg,Yg);
+            [Yc, Xc] = ind2sub(size(binPcut),find(binPcut));
+            
+            try
+                Epi = ellipsefit_direct(Xc,Yc);
+                [~,d,~,~] = ellipse_distance(Xc, Yc, Epi);
+                newFittingError = nanmedian(sqrt(sum(d.^2)));
+            catch ME
+            end
+            if  exist ('ME', 'var')
+                newframesToCut(ee,:) = [highErrorFrames(ee) originalFittingError 0 0 0];  % the all zero output means: fitting error.
+                clear ME
+                continue
+            end
+            allErrors(cc) = newFittingError;
+            cc = cc+1;
+        end
+        if cc == length(R) + 1
+            % take best cut
+            try
+                [bestError, beIdx] = min(allErrors);
+                newframesToCut(ee,:) = [highErrorFrames(ee) originalFittingError U R(beIdx) bestError];
+            catch ME
+            end
+            if  exist ('ME', 'var')
+                newframesToCut(ee,:) = [highErrorFrames(ee) originalFittingError 0 0 0];  % the all zero output means: fitting error.
+                clear ME
+                continue
+            end
+        else
+            newframesToCut(ee,:) = [highErrorFrames(ee) originalFittingError U R(cc) newFittingError];
+        end
+    end
+end
+
+
+end
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
