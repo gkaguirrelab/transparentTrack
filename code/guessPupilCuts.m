@@ -78,7 +78,7 @@ numFrames = floor(inObj.Duration*inObj.FrameRate);
 framesToCut = nan(numFrames, 5);
 
 
-%% loop through all frames the first time. Try to apply a vertical cut.
+%% loop through all frames the first time. Try to apply a horizontal cut for high error frames.
 
 for ii = 1:numFrames
     
@@ -122,14 +122,16 @@ for ii = 1:numFrames
         Xg = glint.X(ii);
         Yg = glint.Y(ii);
         
-        % FIRST WE TRY VERTICAL CUTS (most common occurrence)
+        % FIRST WE TRY HORIZONTAL CUTS (most common occurrence)
         % define vertical cuts
         U = flip(0:1:round(Yg - (min(Yp)+1)));
         R = Inf;
         
-        % initialize for while loop
+        % initialize values for while loop
         cc = 1;
         newFittingError = errorThreshold;
+        
+        % while loop to find the best cut
         while newFittingError >= errorThreshold && cc <= length(U)
             [binPcut] = cutPupil (binP,U(cc),R,Xg,Yg);
             [Yc, Xc] = ind2sub(size(binPcut),find(binPcut));
@@ -247,28 +249,12 @@ if ~isempty(highErrorIdx)
             framesToCut(highErrorIdx(kk),4) = newFramesToCut(kk,3);
             framesToCut(highErrorIdx(kk),5) = newFramesToCut(kk,4);
         end
-    end
-    
-    
+    end     
 end
 
-
-end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+%% At this point: 
+% all that's left is to find the frames that still have a high error or had
+% a fitting error (all zero in the control file). We can either apply a
+% diagonal cut with an iterative procedure, or have a human select
+% appropriate diagonal cut for them.
 
