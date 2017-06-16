@@ -172,9 +172,6 @@ framesToCut(any(isnan(framesToCut),2),:) = [];
 
 %% NOW WE TRY HORIZONTAL CUTS
 
-%%%% NEED TO DEBUG FROM HERE ON
-
-
 % we just look of what is still bad after the vertical cuts
 highErrorIdx = find(framesToCut(:,5)> errorThreshold);
 
@@ -198,7 +195,7 @@ if ~isempty(highErrorIdx)
         
         
         % define horizontal cuts
-        R = flip(0:1:round(Xg - (max(Xp)-1)));
+        R = flip(0:1:round((max(Xp)-1) - Xg ));
         U = Inf;
         
         % initialize for while loop
@@ -216,7 +213,7 @@ if ~isempty(highErrorIdx)
             catch ME
             end
             if  exist ('ME', 'var')
-                newframesToCut(ee,:) = [highErrorFrames(ee) originalFittingError 0 0 0];  % the all zero output means: fitting error.
+                newFramesToCut(ee,:) = [highErrorFrames(ee) 0 0 0];  % the all zero output means: fitting error.
                 clear ME
                 continue
             end
@@ -227,18 +224,32 @@ if ~isempty(highErrorIdx)
             % take best cut
             try
                 [bestError, beIdx] = min(allErrors);
-                newframesToCut(ee,:) = [highErrorFrames(ee) originalFittingError U R(beIdx) bestError];
+                newFramesToCut(ee,:) = [highErrorFrames(ee) U R(beIdx) bestError];
             catch ME
             end
             if  exist ('ME', 'var')
-                newframesToCut(ee,:) = [highErrorFrames(ee) originalFittingError 0 0 0];  % the all zero output means: fitting error.
+                newFramesToCut(ee,:) = [highErrorFrames(ee) 0 0 0];  % the all zero output means: fitting error.
                 clear ME
                 continue
             end
         else
-            newframesToCut(ee,:) = [highErrorFrames(ee) originalFittingError U R(cc) newFittingError];
+            newFramesToCut(ee,:) = [highErrorFrames(ee) U R(cc) newFittingError];
+        end
+        
+    end
+    
+    % now compare the error from the horizontal cut to this one. If
+    % this one is better,take this cut instead.
+    
+    for kk = 1:length(newFramesToCut)
+        if framesToCut(highErrorIdx(kk),5) > newFramesToCut(kk,4) && newFramesToCut(kk,4) ~= 0
+            framesToCut(highErrorIdx(kk),3) = newFramesToCut(kk,2);
+            framesToCut(highErrorIdx(kk),4) = newFramesToCut(kk,3);
+            framesToCut(highErrorIdx(kk),5) = newFramesToCut(kk,4);
         end
     end
+    
+    
 end
 
 
