@@ -129,7 +129,12 @@ showBlinks(blinkFrames,grayI)
 %% guess pupil cuts
 disp('Computing pupil cuts')
 
+tic
 framesToCut = guessPupilCuts(perimeterVideo,glintFile,blinkFrames);
+toc
 
 
+%% make control file
+controlFileName = '/Users/giulia/Desktop/TEST/controlFileTEST';
 
+makeControlFile(controlFileName, framesToCut, blinkFrames )
