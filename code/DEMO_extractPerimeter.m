@@ -79,14 +79,14 @@ grayI                   = zeros([240 320 numFrames],'uint8');
 
 disp('Converting video to standard format, may take a while...');
 % Convert to gray, resize, crop to livetrack size
-for i = 1:numFrames
+for ii = 1:numFrames
     thisFrame           = readFrame(inObj);
     tmp                 = rgb2gray(thisFrame);
     if params.keepOriginalSize == 0
         tmp2 = imresize(tmp,params.imageSize);
         tmp = imcrop(tmp2,params.imageCrop);
     end
-    grayI(:,:,i) = tmp;
+    grayI(:,:,ii) = tmp;
 end
 
 if isfield(params,'outVideo')
@@ -117,7 +117,6 @@ clear RGB inObj
 %   eccentricity = axes2ecc(semimajor, semiminor)
 % If we wish to prevent ellipses with an aspect ratio greater than 1.2 : 1,
 % this gives us an eccentricity threshold of ~0.55.
-
 lb = [0,  0,  1000,   0,  -0.5*pi];
 ub = [240,320,10000,0.55, 0.5*pi];
 
@@ -126,19 +125,24 @@ ub = [240,320,10000,0.55, 0.5*pi];
 pPriorMeanTransparent = [120,120,6000,0,0];
 pPriorSDTransparent = [50,50,50,50,50];
 
-% Define a prior window in units of samples
-window=70;
+% Define tau prior values for each parameter
+exponentialTauParams = [1, 1, 20, 5, 5];
+window=max(exponentialTauParams)*4;
 windowSupport=1:1:window;
-exponentialTauParam = round(window/4);
 
 % Define a decaying exponential function that will be used to weight the
 % contribution of prior values to the creation of the prior distribution
-exponentialWeights=fliplr(exp(-1/exponentialTauParam*windowSupport));
+for jj=1:length(exponentialTauParams)
+    baseExpFunc=exp(-1/exponentialTauParams(jj)*windowSupport);
+    exponentialWeights(jj,:)=[fliplr(baseExpFunc) NaN baseExpFunc];
+end
 
-% extract perimeter
-for i = 1:numFrames
+% extract the likelihood values for the pupil perimeter
+for ii = 1:numFrames
+    
+    ii
     % Get the frame
-    I = squeeze(grayI(:,:,i));
+    I = squeeze(grayI(:,:,ii));
     
     % adjust gamma for this frame
     I = imadjust(I,[],[],params.gammaCorrection);
@@ -146,16 +150,48 @@ for i = 1:numFrames
     % track with circles
     pupilRange = params.pupilRange;
     glintRange = params.glintRange;
-    [pCenters, pRadii,pMetric, gCenters, gRadii,gMetric, pupilRange, glintRange] = circleFit(I,params,pupilRange,glintRange);
-
+    [pCenters, pRadii,pMetric, gCenters, gRadii,gMetric, pupilRange, glintRange] = circleFit(I,params.circleThresh(1),params.circleThresh(2),pupilRange,glintRange);
+    
     % get pupil perimeter
-    [binP] = getPupilPerimeter(I,pCenters,pRadii, sep, params);
+    [binP] = getPupilPerimeter(I,pCenters,pRadii, params.ellipseThresh(1),'maskBox',params.maskBox);
+    
+    % get the boundary points
+    [Xc, Yc] = ind2sub(size(binP),find(binP));
+    
+    % fit an ellipse to the boundaary
+    [pInitialFitTransparent, pFitSD, ~] = calcPupilLikelihood(Xc,Yc, lb, ub);
+    
+    % store results
+    pupil.pInitialFitTransparent(ii,:) = pInitialFitTransparent';
+    pupil.pInitialFitSD(ii,:) = pFitSD';
+    
+end
 
+% calculate the posterior using a non-causal Bayesian estimation (akin to a
+% Kalman filter)
+for ii = 1:numFrames
+
+    ii
+    % Get the frame
+    I = squeeze(grayI(:,:,ii));
+    
+    % adjust gamma for this frame
+    I = imadjust(I,[],[],params.gammaCorrection);
+    
+    % track with circles
+    pupilRange = params.pupilRange;
+    glintRange = params.glintRange;
+    [pCenters, pRadii,pMetric, gCenters, gRadii,gMetric, pupilRange, glintRange] = circleFit(I,params.circleThresh(1),params.circleThresh(2),pupilRange,glintRange);
+    
+    % get pupil perimeter
+    [binP] = getPupilPerimeter(I,pCenters,pRadii, params.ellipseThresh(1),'maskBox',params.maskBox);
+    
     % get the boundary points
     [Xc, Yc] = ind2sub(size(binP),find(binP));
 
-    % fit an ellipse to the boundaary
-    [pInitialFitTransparent, pFitSD, ~] = calcPupilLikelihood(Xc,Yc, lb, ub);
+    % Obtain the initialFit for this frame
+    pInitialFitTransparent = pupil.pInitialFitTransparent(ii,:);
+    pFitSD = pupil.pInitialFitSD(ii,:);
     
     % calculate the posterior values for the pupil fits, given the current
     % measurement and the priors
@@ -165,30 +201,29 @@ for i = 1:numFrames
     % re-calculate the fit, fixing the pupil size from the posterior
     lb_pinArea = lb; lb_pinArea(3) = pPosteriorTransparent(3);
     ub_pinArea = ub; ub_pinArea(3) = pPosteriorTransparent(3);
-    [pFinalFitTransparent, pFitSD, fitError] = calcPupilLikelihood(Xc,Yc, lb_pinArea, ub_pinArea);
+    [pFinalFitTransparent, ~, fitError] = calcPupilLikelihood(Xc,Yc, lb_pinArea, ub_pinArea);
     
     % store results
-    pupil.pInitialFitTransparent(i,:) = pInitialFitTransparent';
-    pupil.pFinalFitTransparent(i,:) = pFinalFitTransparent';
-    pupil.pFitSD(i,:) = pFitSD';
-    pupil.fitError(i) = fitError;
+    pupil.pFinalFitTransparent(ii,:) = pFinalFitTransparent';
+    pupil.FinalFitError(ii) = fitError;
     
     % Update the prior, which is the mean of the previous fit
     % values, weighted by a decaying exponential in time
-    if i > exponentialTauParam
-        range=min([window,i-1]);
-        for jj=1:5
-            dataVector=squeeze(pupil.pInitialFitTransparent(:,jj))';
-            pPriorMeanTransparent(jj) = nansum(exponentialWeights(end-range+1:end).*dataVector(i-range:i-1),2)./nansum(exponentialWeights(end-range+1:end),2);
-            pPriorSDTransparent(jj) = nanstd(dataVector(i-range:i-1),exponentialWeights(end-range+1:end));
-        end
+    rangeLowSignal=max([ii-window,1]);
+    rangeHiSignal=min([ii+window,numFrames]);
+    restrictLowWindow= max([(ii-window-1)*-1,0]);
+    restrictHiWindow = max([(numFrames-ii-window)*-1,0]);
+    for jj=1:5
+        dataVector=squeeze(pupil.pInitialFitTransparent(:,jj))';
+        dataVector=dataVector(rangeLowSignal:rangeHiSignal);
+        weightFunction=exponentialWeights(jj,1+restrictLowWindow:end-restrictHiWindow);
+        pPriorMeanTransparent(jj) = nansum(weightFunction.*dataVector,2)./nansum(weightFunction,2);
+        pPriorSDTransparent(jj) = nanstd(dataVector,weightFunction);
     end
     
-    % plot
-
     % Plot the pupil boundary data points
     imshow(binP)
-
+    
     pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(pFinalFitTransparent));
     a = num2str(pFitImplicit(1));
     b = num2str(pFitImplicit(2));
@@ -213,7 +248,8 @@ for i = 1:numFrames
         writeVideo(outObj,frame);
     end
     
-end
+end % loop over frames to calculate the posterior
+
 
 
 
