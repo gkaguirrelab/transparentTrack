@@ -138,3 +138,9 @@ toc
 controlFileName = '/Users/giulia/Desktop/TEST/controlFileTEST';
 
 makeControlFile(controlFileName, framesToCut, blinkFrames )
+
+%% main fitting routine
+
+controlFile = [controlFileName '.mat'];
+mainPupilTrack(controlFile,glintFile);
+
