@@ -7,7 +7,7 @@ function perimeterParams = extractPupilPerimeter(grayI, perimeterVideo,varargin)
 % Input params
 % ============
 %       grayI : 3D array of gray frames to track
-%       perimeterVideoPath : name of the output avi in which to save the output.
+%       perimeterVideo : name of the output avi in which to save the output.
 %       
 % Options
 % =======
