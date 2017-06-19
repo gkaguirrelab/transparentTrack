@@ -167,23 +167,31 @@ for ff = 1:numFrames
             
         end % read all instuction lines
         
+        % index perimeter points
         [Yp, Xp] = ind2sub(size(binP),find(binP));
         
     end % extract valid perimeter pixels
     
-                     %%%%%%%%%%%%%%%%%%%%%%%%%%%
-                     %                         %
-                     %   PLUG BAYES FIT HERE   %
-                     %                         %
-                     %%%%%%%%%%%%%%%%%%%%%%%%%%%
-                     
+    
+    
+%%%%%%%%%%%%%%%%% PLUG BAYES FIT HERE LIKE:%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    [explicitEllipseParams, bayesOutputParams] = pupilBayesFit(Xp,Yp,otherNecessaryParams);
+    
+
+% note: since this is on a frame level, otherNecessaryParams will need to
+% include information about the previous frames, which are stored in the
+% pupil struct.
+    
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
     % store fitting params
     
-    pupil.explicitEllipseParams(ff)= bayesOutput ; % DEFINE BAYES OUTPUT PROPERLY
-    pupil.X(ff) = bayesOutput; % DEFINE BAYES OUTPUT PROPERLY
-    pupil.Y(ff) = bayesOutput; % DEFINE BAYES OUTPUT PROPERLY
-    pupil.majorAx(ff) = bayesOutput; % DEFINE BAYES OUTPUT PROPERLY
-    pupil.minorAx(ff) = bayesOutput; % DEFINE BAYES OUTPUT PROPERLY
+    pupil.explicitEllipseParams(ff)= explicitEllipseParams;
+    pupil.X(ff) = explicitEllipseParams(1);
+    pupil.Y(ff) = explicitEllipseParams(2);
+    pupil.majorAx(ff) = explicitEllipseParams(3);
+    pupil.minorAx(ff) = explicitEllipseParams(4);
     
 end % loop through frames
 
@@ -192,18 +200,10 @@ clear inObj
 
 %% also output a trackingParams variable
 
-pupilTrackingParams = p.Results;
+pupilTrackingParams = [p.Results bayesOutputParams];
+
 % NOTE: this can be useful to store bayes params as well
 
 %% save tracking data in the specified file
 
 save(pupilFile,'pupil')
-
-
-                     
-     
-                
-                
-                
-                
-                
