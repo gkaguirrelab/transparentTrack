@@ -80,10 +80,14 @@ framesToCut = nan(numFrames, 5);
 
 %% loop through all frames the first time. Try to apply a horizontal cut for high error frames.
 
+% initialize progress bar
+progBar = ProgressBar(numFrames,'Guessing pupil cuts 1/2...');
+
 for ii = 1:numFrames
     
     % skip the frames marked as blinks
     if ismember(ii,blinkFrames)
+        if ~mod(ii,10);progBar(ii);end % update progressbar
         continue
     end
     
@@ -108,11 +112,13 @@ for ii = 1:numFrames
     if  exist ('ME', 'var')
         framesToCut(ii,:) = [ii 0 0 0 0];  % the all zero output means: fitting error.
         clear ME
+        if ~mod(ii,10);progBar(ii);end % update progressbar
         continue
     end
     
     % check the fitting error
     if originalFittingError <= errorThreshold
+        if ~mod(ii,10);progBar(ii);end % update progressbar
         continue
     else
         % try cuts in a prioritized order until you find the best one
@@ -166,7 +172,7 @@ for ii = 1:numFrames
             framesToCut(ii,:) = [ii originalFittingError U(cc) R newFittingError];
         end
     end
-    
+    if ~mod(ii,10);progBar(ii);end % update progressbar
 end % loop through all frames
 
 % remove NaN rows
@@ -182,6 +188,9 @@ if ~isempty(highErrorIdx)
     highErrorFrames = framesToCut(highErrorIdx,1);
     
     % loop in highErrorFrames and do vertical cuts
+    
+    progBar = ProgressBar(highErrorFrames,'Guessing pupil cuts 2/2...');
+    
     for ee = 1: length(highErrorFrames)
         
         % read the frame
@@ -194,7 +203,6 @@ if ~isempty(highErrorIdx)
         % get glint position for this frame
         Xg = glint.X(highErrorFrames(ee));
         Yg = glint.Y(highErrorFrames(ee));
-        
         
         % define horizontal cuts
         R = flip(0:1:round((max(Xp)-1) - Xg ));
@@ -217,6 +225,7 @@ if ~isempty(highErrorIdx)
             if  exist ('ME', 'var')
                 newFramesToCut(ee,:) = [highErrorFrames(ee) 0 0 0];  % the all zero output means: fitting error.
                 clear ME
+                 if ~mod(ee,10);progBar(ee);end % update progressbar
                 continue
             end
             allErrors(cc) = newFittingError;
@@ -232,12 +241,13 @@ if ~isempty(highErrorIdx)
             if  exist ('ME', 'var')
                 newFramesToCut(ee,:) = [highErrorFrames(ee) 0 0 0];  % the all zero output means: fitting error.
                 clear ME
+                 if ~mod(ee,10);progBar(ee);end % update progressbar
                 continue
             end
         else
             newFramesToCut(ee,:) = [highErrorFrames(ee) U R(cc) newFittingError];
         end
-        
+       if ~mod(ee,10);progBar(ee);end % update progressbar  
     end
     
     % now compare the error from the horizontal cut to this one. If

@@ -73,8 +73,8 @@ pupilEllipseThresh = p.Results.pupilEllipseThresh;
 
 %% initiate output video object
 
-outObj              = VideoWriter(perimeterVideo);
-outObj.FrameRate    = frameRate;
+outObj = VideoWriter(perimeterVideo);
+outObj.FrameRate = frameRate;
 open(outObj);
 
 %% extract pupil perimeter
@@ -82,18 +82,21 @@ open(outObj);
 % get number of frames from grayI
 numFrames = size(grayI,3);
 
-% TAKING OUT PROGRESS BAR FOR NOW
-% % initiate progress bar 
-% progBar = ProgressBar(numFrames,'tracking pupil...');
+
+% initiate progress bar 
+progBar = ProgressBar(numFrames,'tracking pupil...');
 
 % open a figure
 ih = figure;
 
+% initialize progress bar
+progBar = ProgressBar(numFrames,'Tracking the glint...');
+
 % loop through gray frames
-for i = 1:numFrames
+for ii = 1:numFrames
     
     % Get the frame
-    I = squeeze(grayI(:,:,i));
+    I = squeeze(grayI(:,:,ii));
     
      % adjust gamma for this frame
     I = imadjust(I,[],[],gammaCorrection);
@@ -112,8 +115,8 @@ for i = 1:numFrames
         % just save frame
         frame   = getframe(ih);
         writeVideo(outObj,frame);
-%         % increment progress bar
-%         if ~mod(i,10);progBar(i);end;
+        % increment progress bar
+        if ~mod(ii,10);progBar(ii);end;
         continue
     else
         % get pupil perimeter
@@ -130,8 +133,8 @@ for i = 1:numFrames
         frame   = getframe(ih);
         writeVideo(outObj,frame);
         
-%         % increment progress bar
-%         if ~mod(i,10);progBar(i);end;
+        % increment progress bar
+        if ~mod(ii,10);progBar(ii);end;
     end
 end % loop through gray frames
 

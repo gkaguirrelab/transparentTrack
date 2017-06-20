@@ -109,10 +109,13 @@ if displayTracking
     ih = figure;
 end
 
+% initialize progress bar
+progBar = ProgressBar(numFrames,'Tracking the glint...');
+
 %loop through frames
-for i = 1:numFrames 
+for ii = 1:numFrames 
     % Get the frame
-    I = squeeze(grayI(:,:,i));
+    I = squeeze(grayI(:,:,ii));
     
     % adjust gamma for this frame
     I = imadjust(I,[],[],gammaCorrection);
@@ -127,6 +130,7 @@ for i = 1:numFrames
     
     % get a more precise tracking with direct ellipse fitting
     if isempty(gCenters) %no glint was found by circleFit
+        if ~mod(ii,10);progBar(ii);end % update progressbar
         continue
     else % glint was found by circleFit
         % getGlintPerimeter
@@ -142,42 +146,43 @@ for i = 1:numFrames
         catch ME
         end
         if  exist ('ME', 'var')
-            glint.X(i)= gCenters(1,1);
-            glint.Y(i) = gCenters(1,2);
-            glint.size(i) = gRadii(1);
-            glint.circleStrength(i) = gMetric(1);
-            glint.ellipseFittingError(i) = 1;
+            glint.X(ii)= gCenters(1,1);
+            glint.Y(ii) = gCenters(1,2);
+            glint.size(ii) = gRadii(1);
+            glint.circleStrength(ii) = gMetric(1);
+            glint.ellipseFittingError(ii) = 1;
             clear ME
         end
         
         % store results
         if exist ('Eg','var')
             if ~isempty (Eg) && isreal(Egi)
-                glint.X(i) = Eg(2);
-                glint.Y(i) = Eg(1);
-                glint.circleStrength(i) = gMetric(1);
-                glint.implicitEllipseParams(i,:) = Egi';
-                glint.explicitEllipseParams(i,:) = Eg';
-                glint.distanceErrorMetric(i) = gdistanceErrorMetric;
+                glint.X(ii) = Eg(2);
+                glint.Y(ii) = Eg(1);
+                glint.circleStrength(ii) = gMetric(1);
+                glint.implicitEllipseParams(ii,:) = Egi';
+                glint.explicitEllipseParams(ii,:) = Eg';
+                glint.distanceErrorMetric(ii) = gdistanceErrorMetric;
                 % circle params for glint
-                glint.circleStrength(i) = gMetric(1);
-                glint.circleRad(i) = gRadii(1);
-                glint.circleX(i) = gCenters(1,1);
-                glint.circleY(i) = gCenters(1,2);
+                glint.circleStrength(ii) = gMetric(1);
+                glint.circleRad(ii) = gRadii(1);
+                glint.circleX(ii) = gCenters(1,1);
+                glint.circleY(ii) = gCenters(1,2);
             end
             clear Eg Egi errors
         else
-            glint.X(i)= gCenters(1,1);
-            glint.Y(i) = gCenters(1,2);
-            glint.size(i) = gRadii(1);
-            glint.circleStrength(i) = gMetric(1);
+            glint.X(ii)= gCenters(1,1);
+            glint.Y(ii) = gCenters(1,2);
+            glint.size(ii) = gRadii(1);
+            glint.circleStrength(ii) = gMetric(1);
         end
+        if ~mod(ii,10);progBar(ii);end % update progressbar
     end
     
     % plot results
-    if displayTracking && ~isnan(glint.X(i))
+    if displayTracking && ~isnan(glint.X(ii))
         hold on
-        plot(glint.X(i),glint.Y(i),'+b');
+        plot(glint.X(ii),glint.Y(ii),'+b');
         hold off
     end
 end
