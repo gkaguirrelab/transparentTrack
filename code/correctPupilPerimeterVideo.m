@@ -73,9 +73,9 @@ open(outObj);
 if isempty(ext)
     controlFileName = [controlFileName '.mat'];
     load(controlFileName)
-elseif strcmp(ext,'mat')
+elseif strcmp(ext,'.mat')
     load(controlFileName)
-elseif strcmp(ext,'cvs')
+elseif strcmp(ext,'.csv')
     controlTable  = readtable(controlFileName);
 else
     error (' Only mat or csv estension can be used')
@@ -138,10 +138,20 @@ for ff = 1:numFrames
                 img = zeros(size(img));
                 
                 % get the ellipse params
-                explicitEllipseParams = ...
-                    [controlStruct(instructionLines(il)).ForceEllipse_1 controlStruct(instructionLines(il)).ForceEllipse_2 controlStruct(instructionLines(il)).ForceEllipse_3 controlStruct(instructionLines(il)).ForceEllipse_4 controlStruct(instructionLines(il)).ForceEllipse_5] ;
+                N = 100;
+                cx = controlStruct(instructionLines(il)).ForceEllipse_1;
+                cy = controlStruct(instructionLines(il)).ForceEllipse_2;
+                a = controlStruct(instructionLines(il)).ForceEllipse_3;
+                b = controlStruct(instructionLines(il)).ForceEllipse_4;
+                phi = controlStruct(instructionLines(il)).ForceEllipse_5;
                 
+                % find ellipse points
+                [Xe,Ye] = ellipse(N, cx, cy, a, b, phi);
+                
+                Xe = round(Xe);
+                Ye = round(Ye);
                 % draw ellipse in frame
+                img(sub2ind(size(img),Ye(:),Xe(:))) = 1;
                 
                 % write frame
                 thisFrame = im2uint8(img);
