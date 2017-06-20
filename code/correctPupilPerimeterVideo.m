@@ -121,7 +121,7 @@ for ff = 1:numFrames
         while il <= length(instructionLines)
             
             % check if blink
-            if controlStruct(il).isBlink
+            if controlStruct(instructionLines(il)).isBlink
                 % create a black frame
                 img = zeros(size(img));
                 % write frame
@@ -133,13 +133,13 @@ for ff = 1:numFrames
             end %check if blink
             
             % check if force ellipse
-            if ~isnan (controlStruct(il).ForceEllipse_1)
+            if ~isnan (controlStruct(instructionLines(il)).ForceEllipse_1)
                 % start from back frame
                 img = zeros(size(img));
                 
                 % get the ellipse params
                 explicitEllipseParams = ...
-                    [controlStruct(il).ForceEllipse_1 controlStruct(il).ForceEllipse_2 controlStruct(il).ForceEllipse_3 controlStruct(il).ForceEllipse_4 controlStruct(il).ForceEllipse_5] ;
+                    [controlStruct(instructionLines(il)).ForceEllipse_1 controlStruct(instructionLines(il)).ForceEllipse_2 controlStruct(instructionLines(il)).ForceEllipse_3 controlStruct(instructionLines(il)).ForceEllipse_4 controlStruct(instructionLines(il)).ForceEllipse_5] ;
                 
                 % draw ellipse in frame
                 
@@ -158,12 +158,12 @@ for ff = 1:numFrames
             Yg = glint.Y(ff);
             
             % get cut instructions
-            U = controlStruct(il).U;
-            R = controlStruct(il).R;
+            U = controlStruct(instructionLines(il)).U;
+            R = controlStruct(instructionLines(il)).R;
             
             
             % transform frame in image
-            binP = img;
+            binP = imbinarize(img);
             % cut
             [img] = cutPupil (binP,U,R,Xg,Yg);
             
