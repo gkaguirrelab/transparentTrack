@@ -15,8 +15,8 @@ function [grayI] = prepareVideo(inputVideo, varargin)
 % 
 % Options
 % =======
-%       numberOfFrames : number of frames to process. If not specified will
-%           process the full video.
+%       numberOfFrames : number of frames to process. If not specified or
+%           Inf will process the full video.
 %       resizeVideo : [Y X] desired output video resolution. (recommended: keep default)
 %       cropVideo : [firstX firstY lastX lastY] position of first and last
 %           pixels to include in the crop. (recommended: keep default)
