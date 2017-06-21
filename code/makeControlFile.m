@@ -33,30 +33,23 @@ function makeControlFile(controlFileName, framesToCut, blinkFrames)
 %  controlFileName = fullfile(outputDir,'ControlFile');
 %  makeControlFile(controlFileName, framesToCut, blinkFrames)
 
-%% add 1 to the blinks array
-blinks = padarray(blinkFrames,[0 1], 1,'post');
+%% write instructions for blinks
+fid = fopen(controlFileName,'a');
 
-%% add empty fields for cuts to the blink array
-
-blinks = padarray(blinks,[0 2], nan,'post');
-
-%% merge blink array into control file
-
-cuts = [framesToCut(:,1) zeros(size(framesToCut,1),1) framesToCut(:,3) framesToCut(:,4)];
-
-controlMat = union (cuts, blinks,'rows');
-
-%% add columns for ellipse params
- controlMat = [controlMat nan(length(controlMat),5)];
+for bb = 1 : length(blinkFrames)
+    instruction = [num2str(blinkFrames(bb)) ',' 'blink'];
+    fprintf(fid,'%s\n',instruction);
+    clear instruction
+end
 
 
-%% make control file in a table
 
-controlTable = array2table(controlMat,...
-    'VariableNames',{'Frame' 'isBlink' 'U' 'R' 'ForceEllipse_1' 'ForceEllipse_2' 'ForceEllipse_3' 'ForceEllipse_4' 'ForceEllipse_5'});
-%% save out control file as a table
+%% write instructions for cuts
 
-save([ controlFileName '.mat'], 'controlTable')
+for cc = 1 : size(framesToCut,1)
+    instruction = [num2str(framesToCut(cc,1)) ',' 'cut' ',' num2str(framesToCut(cc,3)) ',' num2str(framesToCut(cc,4))];
+    fprintf(fid,'%s\n',instruction);
+    clear instruction
+end
 
-%% save table as csv
-writetable(controlTable,[ controlFileName '.csv']);
+fclose(fid);
