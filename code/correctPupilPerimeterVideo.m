@@ -136,7 +136,6 @@ for ff = 1:numFrames
             if ~isnan (controlStruct(instructionLines(il)).ForceEllipse_1)
                 % start from back frame
                 img = zeros(size(img));
-                
                 % get the ellipse params
                 N = 100;
                 cx = controlStruct(instructionLines(il)).ForceEllipse_1;
@@ -144,15 +143,12 @@ for ff = 1:numFrames
                 a = controlStruct(instructionLines(il)).ForceEllipse_3;
                 b = controlStruct(instructionLines(il)).ForceEllipse_4;
                 phi = controlStruct(instructionLines(il)).ForceEllipse_5;
-                
                 % find ellipse points
                 [Xe,Ye] = ellipse(N, cx, cy, a, b, phi);
-                
                 Xe = round(Xe);
                 Ye = round(Ye);
                 % draw ellipse in frame
                 img(sub2ind(size(img),Ye(:),Xe(:))) = 1;
-                
                 % write frame
                 thisFrame = im2uint8(img);
                 writeVideo(outObj,thisFrame);
@@ -171,9 +167,9 @@ for ff = 1:numFrames
             U = controlStruct(instructionLines(il)).U;
             R = controlStruct(instructionLines(il)).R;
             
-            
             % transform frame in image
             binP = imbinarize(img);
+            
             % cut
             [img] = cutPupil (binP,U,R,Xg,Yg);
             

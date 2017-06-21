@@ -1,19 +1,26 @@
 function makeControlFile(controlFileName, framesToCut, blinkFrames)
 
-% makeControlFile: produces mat and csv control file
-
-% the mat Control file is table with the following structure
-% [frameNumber isBlink U R ForceEllipse_params]
-% where
-%   isBlink is a flag for blink frames
-%   U,R are params for the cuts as described in cutPupil.m 
-%   Force ellipse: 5 parameters of the manually drawn ellipse on the frame.
-%   If the values are non NaN, they will override the subsequent fitting
-%   steps.
+% makeControlFile: produces a csv control file
+% 
+% Each line of the control file is called "instruction". 
+% Each instruction has this format:
+% FRAME NUMBER, INSTRUCTION TYPE, INSTRUCTION PARAMS
+% 
+% where:
+%   FRAME NUMBER : frame on which to apply the instruction.
+%   INSTRUCTION TYPE : what to do on the frame.
+%   INSTRUCTION PARAMS : variable number of params necessary to execute the
+%       instruction.
+%   
+% Here's the currently available instruction types and their required params:
+% 'blink' - 0 params
+% 'cut' - 2 params (U,R as described in cutPupil.m)
+% 'ellipse' - 5 params (Xe, Ye, a, b, phi)
+% '%' - param is a text string with any kind of comment.
 % 
 % Input params
 % ============
-%    controlFileName : path to the control file WITHOUT FILE EXTENSION
+%    controlFileName : path and name to the control file with csv extension 
 %    framesToCut : array with guesses on how to cut frames, as output
 %        by guessPupilCuts.m
 %     blinkFrames: array with information on the blink frames as output
