@@ -1,4 +1,4 @@
-function [foo] = bayesFitPupilPerimeter(perimeterVideoFileName, varargin)
+function [pupil] = bayesFitPupilPerimeter(perimeterVideoFileName,pupilFileName, varargin)
 % [foo] = bayesFitPupilPerimeter(perimeterVideoFileName, varargin)
 %
 % This routine fits an ellipse to each frame of a video that contains the
@@ -26,7 +26,9 @@ function [foo] = bayesFitPupilPerimeter(perimeterVideoFileName, varargin)
 %   boundary of the pupil should have a value of unity, and the frame
 %   should be otherwise zero filled. A frame that has no information
 %   regarding the pupil (e.g., during a blink) should be zero-filled.
-%
+%   pupilFileName: full path to the .mat file in which to save pupil
+%   tracking information.
+% 
 % Optional key/value pairs
 %  'verbosity' - level of verbosity. [none, full]
 %  'display' - controls a display of the fitting outcome. [none, full]
@@ -55,13 +57,14 @@ function [foo] = bayesFitPupilPerimeter(perimeterVideoFileName, varargin)
 % pairs recognized by the calling routine are not needed here.
 p = inputParser;
 p.addRequired('perimeterVideoFileName',@ischar);
+p.addRequired('pupilFileName',@ischar);
 p.addParameter('verbosity','none',@ischar);
 p.addParameter('display','none',@ischar);
 p.addParameter('forceNumFrames',[],@numeric);
 p.addParameter('ellipseTransparentLB',[0, 0, 1000, 0, -0.5*pi],@isnumeric);
 p.addParameter('ellipseTransparentUB',[240,320,10000,0.55, 0.5*pi],@isnumeric);
 p.addParameter('exponentialTauParams',[1, 1, 20, 5, 5],@isnumeric);
-p.parse(perimeterVideoFileName,varargin{:});
+p.parse(perimeterVideoFileName,pupilFileName,varargin{:});
 
 %% Sanity check the parameters
 
@@ -101,6 +104,16 @@ end
 if strcmp(p.Results.display,'full')
     figure;
 end
+
+% Initialize the pupil struct
+pupil.X = nan(numFrames,1);
+pupil.Y = nan(numFrames,1);
+pupil.area = nan(numFrames,1);
+pupil.pInitialFitTransparent = nan(numFrames,5);
+pupil.pInitialFitSD = nan(numFrames,5);
+pupil.pFinalFitTransparent = nan(numFrames,5);
+pupil.pFitExplicit = nan(numFrames,5);
+pupil.FinalFitError = nan(numFrames,1);
 
 % Loop through the frames
 for ii = 1:numFrames
@@ -217,6 +230,11 @@ for ii = 1:numFrames
     % store results
     pupil.pFinalFitTransparent(ii,:) = pFinalFitTransparent';
     pupil.FinalFitError(ii) = fitError;
+    pFitExplicit = (ellipse_transparent2ex(pFinalFitTransparent))';
+    pupil.pFitExplicit(ii,:)= pFitExplicit;
+    pupil.X(ii) = pFitExplicit(1);
+    pupil.Y(ii) = pFitExplicit(2);
+    pupil.area(ii) = pFinalFitTransparent(3);
     
     % display the fits if requested
     if strcmp(p.Results.display,'full')
@@ -253,6 +271,10 @@ end % loop over frames to calculate the posterior
 
 clear RGB inVideoObj
 close
+
+%% save out pupil data
+save(pupilFileName,'pupil')
+
 %
 %
 % % save video
