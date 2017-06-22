@@ -46,6 +46,16 @@ function makePreliminaryControlFile(controlFileName, framesToCut, blinkFrames)
 % 
 %  controlFileName = fullfile(outputDir,'ControlFile');
 %  makeControlFile(controlFileName, framesToCut, blinkFrames)
+% 
+%% parse input and define variables
+p = inputParser;
+% required input
+p.addRequired('controlFileName',@isstr);
+p.addRequired('framesToCut');
+p.addRequired('blinkFrames');
+
+%parse
+p.parse(controlFileName,framesToCut,blinkFrames)
 
 %% write instructions for blinks
 fid = fopen(controlFileName,'a');
