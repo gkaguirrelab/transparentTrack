@@ -70,19 +70,13 @@ open(outObj);
 
 % check controlFileName format
 [~,~,ext] = fileparts(controlFileName);
-if isempty(ext)
-    controlFileName = [controlFileName '.mat'];
-    load(controlFileName)
-elseif strcmp(ext,'.mat')
-    load(controlFileName)
-elseif strcmp(ext,'.csv')
+if ~strcmp(ext,'.csv')
     controlTable  = readtable(controlFileName);
-else
-    error (' Only mat or csv estension can be used')
+    error (' Only csv estension can be used')
 end
 
 % load control file
-controlStruct = table2struct(controlTable);
+instructions = importControlFile(controlFileName);
 
 % load glint file
 load(glintFileName)
@@ -101,7 +95,7 @@ for ff = 1:numFrames
     % convert to gray
     thisFrame = rgb2gray (thisFrame);
     % chech if any instruction about this frame exists
-    instructionLines = find ([controlStruct.Frame] == ff);
+    instructionLines = find ([instructions.frame] == ff);
     
     if isempty (instructionLines) % check control file
         
@@ -121,7 +115,9 @@ for ff = 1:numFrames
         while il <= length(instructionLines)
             
             % check if blink
-            if controlStruct(instructionLines(il)).isBlink
+            if strcmp(instructions(instructionLines(il)).type, 'blink')
+                % validate the instruction
+                parseInstructionParams(instructions(instructionLines(il)))
                 % create a black frame
                 img = zeros(size(img));
                 % write frame
@@ -133,26 +129,17 @@ for ff = 1:numFrames
             end %check if blink
             
             % check if force ellipse
-            if ~isnan (controlStruct(instructionLines(il)).ForceEllipse_1)
+            if strcmp(instructions(instructionLines(il)).type, 'ellipse')
+                % get the instruction params
+                [cx, cy, a, b, phi] = parseInstructionParams(instructions(instructionLines(il)));
                 % start from back frame
                 img = zeros(size(img));
-                
-                % get the ellipse params
-                N = 100;
-                cx = controlStruct(instructionLines(il)).ForceEllipse_1;
-                cy = controlStruct(instructionLines(il)).ForceEllipse_2;
-                a = controlStruct(instructionLines(il)).ForceEllipse_3;
-                b = controlStruct(instructionLines(il)).ForceEllipse_4;
-                phi = controlStruct(instructionLines(il)).ForceEllipse_5;
-                
                 % find ellipse points
                 [Xe,Ye] = ellipse(N, cx, cy, a, b, phi);
-                
                 Xe = round(Xe);
                 Ye = round(Ye);
                 % draw ellipse in frame
                 img(sub2ind(size(img),Ye(:),Xe(:))) = 1;
-                
                 % write frame
                 thisFrame = im2uint8(img);
                 writeVideo(outObj,thisFrame);
@@ -167,13 +154,12 @@ for ff = 1:numFrames
             Xg = glint.X(ff);
             Yg = glint.Y(ff);
             
-            % get cut instructions
-            U = controlStruct(instructionLines(il)).U;
-            R = controlStruct(instructionLines(il)).R;
-            
+            % get cut params
+            [U,R] = parseInstructionParams(instructions(instructionLines(il)));
             
             % transform frame in image
             binP = imbinarize(img);
+            
             % cut
             [img] = cutPupil (binP,U,R,Xg,Yg);
             
