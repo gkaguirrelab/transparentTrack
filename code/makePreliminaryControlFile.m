@@ -1,10 +1,12 @@
-function makeControlFile(controlFileName, framesToCut, blinkFrames)
+function makePreliminaryControlFile(controlFileName, framesToCut, blinkFrames)
 
-% makeControlFile: produces a csv control file
+% makeControlFile: produces a csv preliminary control file based on the
+% results of the automatic blink and cut detection.
 % 
 % Each line of the control file is called "instruction". 
 % Each instruction has this format:
-% FRAME NUMBER, INSTRUCTION TYPE, INSTRUCTION PARAMS
+% FRAME NUMBER, INSTRUCTION TYPE, INSTRUCTION PARAMS (variable number and
+% type)
 % 
 % where:
 %   FRAME NUMBER : frame on which to apply the instruction.
@@ -12,11 +14,23 @@ function makeControlFile(controlFileName, framesToCut, blinkFrames)
 %   INSTRUCTION PARAMS : variable number of params necessary to execute the
 %       instruction.
 %   
-% Here's the currently available instruction types and their required params:
-% 'blink' - 0 params
-% 'cut' - 2 params (U,R as described in cutPupil.m)
-% 'ellipse' - 5 params (Xe, Ye, a, b, phi)
-% '%' - param is a text string with any kind of comment.
+% Here's the currently available instruction types for the preliminary 
+%  control file and their required params:
+%   'blink' - 0 params
+%   'cut' - 2 params (U,R as described in cutPupil.m)
+% 
+% An instruction line with this format: 
+%       %,%,'end of automatic instructions'
+%  will mark the end of the auto-generated instructions. 
+%
+% 
+% Every subsequent user instruction will be appended after this line. User
+% instructions have the same format of automatic instruction, with the
+% following additional types:
+%   'ellipse' - 5 params (Xe, Ye, a, b, phi)
+%   '%' - param is a text string with any kind of comment.
+%   'reset' - ignore all previous instructions (manual and automatic
+%       assigned to the frame - 0 params.
 % 
 % Input params
 % ============
@@ -52,4 +66,7 @@ for cc = 1 : size(framesToCut,1)
     clear instruction
 end
 
+instruction = ['%' ',' '%' ',' 'end of automatic instructions'];
+fprintf(fid,'%s\n',instruction);
+    
 fclose(fid);
