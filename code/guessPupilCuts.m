@@ -1,4 +1,4 @@
-function framesToCut = guessPupilCuts(perimeterVideo,glintFile,blinkFrames,varargin)
+function framesToCut = guessPupilCuts(perimeterVideoName,glintFileName,blinkFrames,varargin)
 
 % this function makes the best guess on which frames need cutting of part
 % of the pupil perimeter for a better ellipse fit. The guess is based on a
@@ -19,8 +19,8 @@ function framesToCut = guessPupilCuts(perimeterVideo,glintFile,blinkFrames,varar
 %
 % Input params
 % ============
-%       perimeterVideo : path to the perimeter video file to track
-%       glintFile : path to the matFile of glint location.
+%       perimeterVideoName : path to the perimeter video file to track
+%       glintFileName : path to the matFile of glint location.
 %       blinkFrames : index of blink frames
 %
 % Options
@@ -34,7 +34,7 @@ function framesToCut = guessPupilCuts(perimeterVideo,glintFile,blinkFrames,varar
 %
 % Usage example
 % =============
-%  framesToCut = guessPupilCuts(perimeterVideo,glintFile,blinkFrames);
+%  framesToCut = guessPupilCuts(perimeterVideoName,glintFileName,blinkFrames);
 
 
 
@@ -42,8 +42,8 @@ function framesToCut = guessPupilCuts(perimeterVideo,glintFile,blinkFrames,varar
 
 p = inputParser;
 % required input
-p.addRequired('perimeterVideo',@isstr);
-p.addRequired('glintFile',@isstr);
+p.addRequired('perimeterVideoName',@isstr);
+p.addRequired('glintFileName',@isstr);
 p.addRequired('blinkFrames',@isnumeric);
 
 % optional inputs
@@ -51,7 +51,7 @@ errorThresholdDefault = 10;
 p.addParameter('errorThreshold', errorThresholdDefault, @isnumeric);
 
 %parse
-p.parse(perimeterVideo, glintFile, blinkFrames, varargin{:})
+p.parse(perimeterVideoName, glintFileName, blinkFrames, varargin{:})
 
 % define optional variables values
 errorThreshold = p.Results.errorThreshold;
@@ -59,10 +59,10 @@ errorThreshold = p.Results.errorThreshold;
 %% load and prepare data
 
 % load glint
-load(glintFile)
+load(glintFileName)
 
 % pupilPerimeter
-inObj = VideoReader(perimeterVideo);
+inObj = VideoReader(perimeterVideoName);
 
 % get number of frames
 numFrames = floor(inObj.Duration*inObj.FrameRate);
@@ -101,6 +101,12 @@ for ii = 1:numFrames
     thisFrame = rgb2gray (thisFrame);
     binP = imbinarize(thisFrame);
     [Yp, Xp] = ind2sub(size(binP),find(binP));
+    
+    % check that the frame is not empty
+    if isempty (Yp)
+         if ~mod(ii,10);progBar(ii);end % update progressbar
+        continue
+    end
     
     % fit an ellipse to the full perimeter using the quadFit toolbox
     try
@@ -253,7 +259,7 @@ if ~isempty(highErrorIdx)
     % now compare the error from the horizontal cut to this one. If
     % this one is better,take this cut instead.
     
-    for kk = 1:length(newFramesToCut)
+    for kk = 1:size(newFramesToCut,1)
         if framesToCut(highErrorIdx(kk),5) > newFramesToCut(kk,4) && newFramesToCut(kk,4) ~= 0
             framesToCut(highErrorIdx(kk),3) = newFramesToCut(kk,2);
             framesToCut(highErrorIdx(kk),4) = newFramesToCut(kk,3);

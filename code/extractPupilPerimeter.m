@@ -1,4 +1,4 @@
-function perimeterParams = extractPupilPerimeter(grayI, perimeterVideo,varargin)
+function perimeterParams = extractPupilPerimeter(grayI, perimeterVideoName,varargin)
 
 % This function thresholds the video to extract the pupil perimeter and
 % saves out a BW video showing the pupil perimeter only.
@@ -7,7 +7,7 @@ function perimeterParams = extractPupilPerimeter(grayI, perimeterVideo,varargin)
 % Input params
 % ============
 %       grayI : 3D array of gray frames to track
-%       perimeterVideo : name of the output avi in which to save the output.
+%       perimeterVideoName : name of the output avi in which to save the output.
 %       
 % Options
 % =======
@@ -32,13 +32,13 @@ function perimeterParams = extractPupilPerimeter(grayI, perimeterVideo,varargin)
 % 
 %  gammaCorrection = 1.2;
 %  pupilEllipseThresh = 0.93;
-%  perimeterParams = extractPupilPerimeter(grayI, perimeterVideoPath, 'gammaCorrection', gammaCorrection, 'pupilEllipseThresh', pupilEllipseThresh)
+%  perimeterParams = extractPupilPerimeter(grayI, perimeterVideoName, 'gammaCorrection', gammaCorrection, 'pupilEllipseThresh', pupilEllipseThresh)
 % 
 %  OR
 % 
 %  define options directly:
 % 
-%  perimeterParams = extractPupilPerimeter(grayI, perimeterVideoPath, 'gammaCorrection', 1.2, 'pupilEllipseThresh', 0.93)
+%  perimeterParams = extractPupilPerimeter(grayI, perimeterVideoName, 'gammaCorrection', 1.2, 'pupilEllipseThresh', 0.93)
 
 
 %% parse input and define variables
@@ -61,7 +61,7 @@ p.addParameter('pupilRange', pupilRangeDefault, @isnumeric);
 p.addParameter('pupilEllipseThresh', pupilEllipseThreshDefault, @isnumeric);
 
 %parse
-p.parse(grayI, perimeterVideo, varargin{:})
+p.parse(grayI, perimeterVideoName, varargin{:})
 
 % define optional variables values
 frameRate = p.Results.frameRate;
@@ -73,7 +73,7 @@ pupilEllipseThresh = p.Results.pupilEllipseThresh;
 
 %% initiate output video object
 
-outObj = VideoWriter(perimeterVideo);
+outObj = VideoWriter(perimeterVideoName);
 outObj.FrameRate = frameRate;
 open(outObj);
 
@@ -84,13 +84,10 @@ numFrames = size(grayI,3);
 
 
 % initiate progress bar 
-progBar = ProgressBar(numFrames,'tracking pupil...');
+progBar = ProgressBar(numFrames,'Extracting perimeter...');
 
 % open a figure
 ih = figure;
-
-% initialize progress bar
-progBar = ProgressBar(numFrames,'Tracking the glint...');
 
 % loop through gray frames
 for ii = 1:numFrames
@@ -112,7 +109,9 @@ for ii = 1:numFrames
     [pCenters, pRadii,pMetric,~,~,~, pupilRange, ~] = circleFit(I,pupilCircleThresh,glintCircleThresh,pupilRange,glintRange);
     
     if isempty(pCenters) %no pupil circle patch was found
-        % just save frame
+        % make the frame black and save it
+        I = zeros(size(I));
+        imshow(I, 'Border', 'tight');
         frame   = getframe(ih);
         writeVideo(outObj,frame);
         % increment progress bar

@@ -1,4 +1,4 @@
-function [glint, glintTrackingParams] = trackGlint(grayI, glintFile, varargin)
+function [glint, glintTrackingParams] = trackGlint(grayI, glintFileName, varargin)
 
 % This function tracks the glint using the circle patch + direct ellipse
 % fitting approach.
@@ -14,7 +14,7 @@ function [glint, glintTrackingParams] = trackGlint(grayI, glintFile, varargin)
 % Input params
 % ============
 %       grayI : 3D array of gray frames to track
-%       glintFile : name of the output matFile in which to save the glint
+%       glintFileName : name of the output matFile in which to save the glint
 %         results.
 %       
 % Options
@@ -31,7 +31,7 @@ function [glint, glintTrackingParams] = trackGlint(grayI, glintFile, varargin)
 % 
 % Usage example
 % =============
-%  [glint, glintTrackingParams] = trackGlint(grayI, glintFile, 'displayTracking', true)
+%  [glint, glintTrackingParams] = trackGlint(grayI, glintFileName, 'displayTracking', true)
 
 
 
@@ -55,7 +55,7 @@ p.addParameter('glintRange', glintRangeDefault, @isnumeric);
 p.addParameter('glintEllipseThresh', glintEllipseThreshDefault, @isnumeric);
 
 %parse
-p.parse(grayI, glintFile, varargin{:})
+p.parse(grayI, glintFileName, varargin{:})
 
 % define optional variables values
 displayTracking = p.Results.displayTracking;
@@ -193,5 +193,5 @@ close all
 glintTrackingParams = p.Results;
 
 %% save out a mat file with the glint tracking data
-save (glintFile, 'glint', 'glintTrackingParams')
+save (glintFileName, 'glint', 'glintTrackingParams')
     

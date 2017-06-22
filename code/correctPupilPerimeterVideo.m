@@ -1,4 +1,4 @@
-function correctPupilPerimeterVideo(perimeterVideo,controlFileName,glintFile, correctedPerimeterVideo, varargin)
+function correctPupilPerimeterVideo(perimeterVideoName,controlFileName,glintFileName, correctedPerimeterVideoName, varargin)
 
 % correctPupilPerimeterVideo applies the instructions from the control file
 % on the pupil perimeter video. A new corrected perimeter video will be
@@ -31,15 +31,15 @@ function correctPupilPerimeterVideo(perimeterVideo,controlFileName,glintFile, co
 % 
 % Input params
 % ============
-%    perimeterVideo :path to the avi perimeter video.
+%    perimeterVideoName :path to the avi perimeter video.
 %    controlFileName : path to the control file (with/without extestion)
 %    glintFile : path to the glint file
-%    correctedPerimeterVideo : savepath for the pupil file that will be created
+%    correctedPerimeterVideoName : savepath for the pupil file that will be created
 %    
 % Usage example
 % =============
 %
-%  correctPupilPerimeterVideo(perimeterVideo,controlFileName,glintFile, correctedPerimeterVideo)
+%  correctPupilPerimeterVideo(perimeterVideoName,controlFileName,glintFileName, correctedPerimeterVideoName)
 
 %% parse input and define variables
 
@@ -53,18 +53,18 @@ p.addRequired('glintFile',@isstr);
 p.addRequired('correctedPerimeterVideo',@isstr);
 
 %parse
-p.parse(perimeterVideo, controlFileName, glintFile,correctedPerimeterVideo, varargin{:})
+p.parse(perimeterVideoName, controlFileName, glintFileName,correctedPerimeterVideoName, varargin{:})
 
 %% load and prepare data
 
 % load pupilPerimeter
-inObj = VideoReader(perimeterVideo);
+inObj = VideoReader(perimeterVideoName);
 
 % get number of frames
 numFrames = floor(inObj.Duration*inObj.FrameRate);
 
 % set output video object
-outObj = VideoWriter(correctedPerimeterVideo);
+outObj = VideoWriter(correctedPerimeterVideoName);
 outObj.FrameRate = inObj.FrameRate;
 open(outObj);
 
@@ -85,7 +85,7 @@ end
 controlStruct = table2struct(controlTable);
 
 % load glint file
-load(glintFile)
+load(glintFileName)
 
 
 %% do frame by frame tracking following control file instructions
