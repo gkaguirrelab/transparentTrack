@@ -40,12 +40,12 @@ p.addRequired('controlFileName',@isstr);
 p.parse(controlFileName)
 
 %% open the control file
-controlFileName = 'bla.csv';
 controlFile = fopen(controlFileName);
 
 %% import values in a cell with textscan
 instructionCell = textscan(controlFile,'%f%s%[^\n]','Delimiter',',');
 
+fclose(controlFile);
 %% write values to the struct array
 frames = double(instructionCell{1});
 types =  string(instructionCell{2});
