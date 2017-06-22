@@ -109,7 +109,7 @@ for ii = 1:numFrames
     thisFrame = rgb2gray(readFrame(inVideoObj));
     
     % get the boundary points
-    [Xc, Yc] = ind2sub(size(thisFrame),find(thisFrame));
+    [Yc, Xc] = ind2sub(size(thisFrame),find(thisFrame));
     
     % fit an ellipse to the boundaary
     if isempty(Xc) || isempty(Yc)
@@ -140,8 +140,8 @@ for ii = 1:numFrames
             e = num2str(pFitImplicit(5));
             f = num2str(pFitImplicit(6));
             
-            % note that X and Y indices need to be swapped!
-            eqt= ['(',a, ')*y^2 + (',b,')*x*y + (',c,')*x^2 + (',d,')*y+ (',e,')*x + (',f,')'];
+             % ellipse impicit equation
+            eqt= ['(',a, ')*x^2 + (',b,')*x*y + (',c,')*y^2 + (',d,')*x+ (',e,')*y + (',f,')'];
             
             hold on
             h= ezplot(eqt,[1, 240, 1, 320]);
@@ -178,7 +178,7 @@ for ii = 1:numFrames
     thisFrame = rgb2gray(readFrame(inVideoObj));
     
     % get the boundary points
-    [Xc, Yc] = ind2sub(size(thisFrame),find(thisFrame));
+    [Yc, Xc] = ind2sub(size(thisFrame),find(thisFrame));
     
     % if this frame has no data, don't attempt to fit, else fit
     if isempty(Xc) || isempty(Yc)
@@ -233,8 +233,8 @@ for ii = 1:numFrames
             e = num2str(pFitImplicit(5));
             f = num2str(pFitImplicit(6));
             
-            % note that X and Y indices need to be swapped!
-            eqt= ['(',a, ')*y^2 + (',b,')*x*y + (',c,')*x^2 + (',d,')*y+ (',e,')*x + (',f,')'];
+            % ellipse impicit equation
+            eqt= ['(',a, ')*x^2 + (',b,')*x*y + (',c,')*y^2 + (',d,')*x+ (',e,')*y + (',f,')'];
             
             hold on
             h= ezplot(eqt,[1, 240, 1, 320]);
@@ -252,6 +252,7 @@ for ii = 1:numFrames
 end % loop over frames to calculate the posterior
 
 clear RGB inVideoObj
+close
 %
 %
 % % save video
