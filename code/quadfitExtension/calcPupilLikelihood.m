@@ -50,7 +50,34 @@ myFun = @(p) sqrt(nansum(ellipsefit_distance(x,y,ellipse_transparent2ex(p)).^2))
 %  Hessian returned by fmincon is inaccurate for this purpose). We use
 %  this (potentially inaccurate) estimate, multiplied by the sqrt of the
 %  number of data points to esimate the SD of the parameters.
+
+% We check to see if there was a warning regardng an inability to invert
+% the matrix, and if so we used the pseudo-inverse
+
+% save the current warning status
+s = warning;
+
+% turn off display of the anticipated warnings
+warning('off','MATLAB:nearlySingularMatrix');
+warning('off','MATLAB:singularMatrix');
+
+% empty the warning string
+lastwarn('');
+
+% try the inverse
 pSD = (sqrt(diag(inv(Hessian))) .* sqrt(length(x)))';
+
+% get the lastwarn status and used pinv if there was a problem
+[~, msgid] = lastwarn;
+switch msgid
+    case 'MATLAB:nearlySingularMatrix'
+      pSD = (sqrt(diag(pinv(Hessian))) .* sqrt(length(x)))';
+    case 'MATLAB:singularMatrix'
+      pSD = (sqrt(diag(pinv(Hessian))) .* sqrt(length(x)))';
+end
+
+% restore the warning status
+warning(s);
 
 function [d,ddp] = ellipsefit_distance(x,y,p)
 % Distance of points to ellipse defined with explicit parameters (center,
