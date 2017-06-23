@@ -52,6 +52,16 @@ function testGUI_OpeningFcn(hObject, eventdata, handles, varargin)
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to testGUI (see VARARGIN)
 
+
+%% files loading
+controlFileName ='~/Desktop/eyeTrackingDEMO/TOME_processing/session2_spatialStimuli/TOME_3020/050517/EyeTracking/tfMRI_FLASH_AP_run01_controlFile.csv';
+glintFileName ='~/Desktop/eyeTrackingDEMO/TOME_processing/session2_spatialStimuli/TOME_3020/050517/EyeTracking/tfMRI_FLASH_AP_run01_glint.mat';
+% import control file
+handles.instructions = importControlFile(controlFileName);
+
+% import glint file (for cuts)
+handles.glintFile = load(glintFileName);
+
 % load in the videos
 disp('Loading videos...')
 vid1 = VideoReader('~/Desktop/eyeTrackingDEMO/TOME_processing/session2_spatialStimuli/TOME_3020/050517/EyeTracking/tfMRI_FLASH_AP_run01_60Hz.avi');
@@ -77,20 +87,27 @@ clear vid1
 clear vid2
 clear tmp
 
-% Choose default command line output for testGUI
-handles.output = hObject;
+%% first frame properties
+handles.frameNumber = 1;
 
 % set slider properties
 set(handles.slider1,'Value',1,'Min',1,'Max',handles.numFrames, 'SliderStep',[1/handles.numFrames, 10/handles.numFrames])
 
 % set frameNumberTxt Property
-set(handles.frameNumTxt, 'string', (num2str(1)));
+set(handles.frameNumTxt, 'string', (num2str(handles.frameNumber)));
 
 % display first frame
+handles.frameNumber = 1;
 axes(handles.axes3);
-imshow(squeeze(handles.perimVid(:,:,1)));
+imshow(squeeze(handles.perimVid(:,:,handles.frameNumber)));
 axes(handles.axes4);
-imshow(squeeze(handles.origVid(:,:,1)));
+imshow(squeeze(handles.origVid(:,:,handles.frameNumber)));
+
+% display instruction list
+handles = refreshInstructionList(handles);
+
+% Choose default command line output for testGUI
+handles.output = hObject;
 
 % Update handles structure
 guidata(hObject, handles);
@@ -162,14 +179,21 @@ function goToFrameBtn_Callback(hObject, eventdata, handles)
 % hObject    handle to goToFrameBtn (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-    axes(handles.axes3);
-    imshow(squeeze(handles.perimVid(:,:,handles.frameNumber)));
-    axes(handles.axes4);
-    imshow(squeeze(handles.origVid(:,:,handles.frameNumber)));
-    set(handles.slider1,'Value',handles.frameNumber)
-    
-    % Update handles structure
-    guidata(hObject, handles);
+
+% show frames    
+axes(handles.axes3);
+imshow(squeeze(handles.perimVid(:,:,handles.frameNumber)));
+axes(handles.axes4);
+imshow(squeeze(handles.origVid(:,:,handles.frameNumber)));
+
+% refresh slidebar
+set(handles.slider1,'Value',handles.frameNumber)
+
+% refresh instuction list
+handles = refreshInstructionList(handles);
+
+% Update handles structure
+guidata(hObject, handles);
 
 
 % --- Executes on button press in saveInstructionBtn.
@@ -265,13 +289,18 @@ function slider1_Callback(hObject, eventdata, handles)
 frameNumber = get(hObject,'Value');
 handles.frameNumber = round(frameNumber);
 
+% show images
 axes(handles.axes3);
 imshow(squeeze(handles.perimVid(:,:,handles.frameNumber)));
 axes(handles.axes4);
 imshow(squeeze(handles.origVid(:,:,handles.frameNumber)));
 set(handles.slider1,'Value',handles.frameNumber)
 
+% update frame number
 set(handles.frameNumTxt, 'string', (num2str(handles.frameNumber)));
+
+% refresh instuction list
+handles = refreshInstructionList(handles);
 
 % Update handles structure
 guidata(hObject, handles);
@@ -446,6 +475,8 @@ function instrunctionList_Callback(hObject, eventdata, handles)
 %        contents{get(hObject,'Value')} returns selected item from instrunctionList
 
 
+
+
 % --- Executes during object creation, after setting all properties.
 function instrunctionList_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to instrunctionList (see GCBO)
@@ -457,3 +488,16 @@ function instrunctionList_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+
+% I wrote this
+function handles = refreshInstructionList(handles)
+instructionLines = find ([handles.instructions.frame] == handles.frameNumber);
+    
+    if isempty (instructionLines) % check control file
+        ListOfImageNames = {};
+    else
+        ListOfImageNames = 1:1:length(instructionLines);
+    end
+    set(handles.instrunctionList,'string',ListOfImageNames);
+
