@@ -22,7 +22,7 @@ function varargout = testGUI(varargin)
 
 % Edit the above text to modify the response to help testGUI
 
-% Last Modified by GUIDE v2.5 23-Jun-2017 11:40:10
+% Last Modified by GUIDE v2.5 23-Jun-2017 15:20:28
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -56,7 +56,7 @@ function testGUI_OpeningFcn(hObject, eventdata, handles, varargin)
 disp('Loading videos...')
 vid1 = VideoReader('~/Desktop/eyeTrackingDEMO/TOME_processing/session2_spatialStimuli/TOME_3020/050517/EyeTracking/tfMRI_FLASH_AP_run01_60Hz.avi');
 vid2 = VideoReader('~/Desktop/eyeTrackingDEMO/TOME_processing/session2_spatialStimuli/TOME_3020/050517/EyeTracking/tfMRI_FLASH_AP_run01_perimeter.avi');
-handles.numFrames = 100;%floor(vid2.Duration*vid2.FrameRate);
+handles.numFrames = 1000;%floor(vid2.Duration*vid2.FrameRate);
 % inizialize frame array
 handles.origVid = zeros([240 320 handles.numFrames],'uint8');
 handles.perimVid= zeros([240 320 handles.numFrames],'uint8');
@@ -430,6 +430,29 @@ function ellipse3Txt_CreateFcn(hObject, eventdata, handles)
 % handles    empty - handles not created until after all CreateFcns called
 
 % Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
+% --- Executes on selection change in instrunctionList.
+function instrunctionList_Callback(hObject, eventdata, handles)
+% hObject    handle to instrunctionList (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: contents = cellstr(get(hObject,'String')) returns instrunctionList contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from instrunctionList
+
+
+% --- Executes during object creation, after setting all properties.
+function instrunctionList_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to instrunctionList (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: listbox controls usually have a white background on Windows.
 %       See ISPC and COMPUTER.
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
