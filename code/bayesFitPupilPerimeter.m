@@ -322,6 +322,9 @@ end % function
 % as compared to the vertical direction.
 
 function [c, ceq]=restrictEccenByTheta(transparentEllipseParams,constrainEccen_x_Theta)
+
+cardinalTolerance = (2*pi)/180;
+
 if isempty(constrainEccen_x_Theta)
     c=[];
     ceq=[];
@@ -331,9 +334,9 @@ else
     %  - when theta is horizontal (=0), we require that eccen be less than the
     %  more stringent horizontal eccentricity value
     c=[];
-    ceq = mod(transparentEllipseParams(5),(pi/2));
-    if transparentEllipseParams(5) == 0
-        ceq = ceq + max([0,transparentEllipseParams(4)-constrainEccen_x_Theta]);
+    ceq = double(mod(transparentEllipseParams(5),(pi/2)) > cardinalTolerance);
+    if abs(transparentEllipseParams(5)) < cardinalTolerance
+        ceq = double(transparentEllipseParams(4) > constrainEccen_x_Theta);
     end
 end
 
