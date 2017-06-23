@@ -80,6 +80,18 @@ clear tmp
 % Choose default command line output for testGUI
 handles.output = hObject;
 
+% set slider properties
+set(handles.slider1,'Value',1,'Min',1,'Max',handles.numFrames, 'SliderStep',[1/handles.numFrames, 10/handles.numFrames])
+
+% set frameNumberTxt Property
+set(handles.frameNumTxt, 'string', (num2str(1)));
+
+% display first frame
+axes(handles.axes3);
+imshow(squeeze(handles.perimVid(:,:,1)));
+axes(handles.axes4);
+imshow(squeeze(handles.origVid(:,:,1)));
+
 % Update handles structure
 guidata(hObject, handles);
 
@@ -154,6 +166,10 @@ function goToFrameBtn_Callback(hObject, eventdata, handles)
     imshow(squeeze(handles.perimVid(:,:,handles.frameNumber)));
     axes(handles.axes4);
     imshow(squeeze(handles.origVid(:,:,handles.frameNumber)));
+    set(handles.slider1,'Value',handles.frameNumber)
+    
+    % Update handles structure
+    guidata(hObject, handles);
 
 
 % --- Executes on button press in saveInstructionBtn.
@@ -246,6 +262,21 @@ function slider1_Callback(hObject, eventdata, handles)
 
 % Hints: get(hObject,'Value') returns position of slider
 %        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
+frameNumber = get(hObject,'Value');
+handles.frameNumber = round(frameNumber);
+
+axes(handles.axes3);
+imshow(squeeze(handles.perimVid(:,:,handles.frameNumber)));
+axes(handles.axes4);
+imshow(squeeze(handles.origVid(:,:,handles.frameNumber)));
+set(handles.slider1,'Value',handles.frameNumber)
+
+set(handles.frameNumTxt, 'string', (num2str(handles.frameNumber)));
+
+% Update handles structure
+guidata(hObject, handles);
+
+ 
 
 
 % --- Executes during object creation, after setting all properties.
@@ -258,6 +289,9 @@ function slider1_CreateFcn(hObject, eventdata, handles)
 if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor',[.9 .9 .9]);
 end
+
+
+
 
 
 % --- Executes on button press in deleteInstructionBtn.
