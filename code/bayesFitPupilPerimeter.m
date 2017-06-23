@@ -67,6 +67,7 @@ p.addParameter('ellipseTransparentLB',[0, 0, 1000, 0, -0.5*pi],@isnumeric);
 p.addParameter('ellipseTransparentUB',[240,320,10000,0.42, 0.5*pi],@isnumeric);
 p.addParameter('exponentialTauParams',[1, 1, 20, 5, 5],@isnumeric);
 p.addParameter('constrainEccen_x_Theta',0.30,@isnumeric);
+p.addParameter('hessianStanDevExponent',2,@isnumeric);
 p.parse(perimeterVideoFileName,varargin{:});
 
 %% Sanity check the parameters
@@ -249,6 +250,11 @@ for ii = 1:numFrames
         pInitialFitTransparent = ellipseFitData.pInitialFitTransparent(ii,:);
         pFitSD = ellipseFitData.pInitialFitSD(ii,:);
         
+        % Raise the estiate of the SD from the initial fit to an
+        % exponential scalar. This has been empirically determined to
+        % improve the relative weighting of the current fit to the prior
+        pFitSD = pFitSD .^ p.Results.hessianStanDevExponent;
+        
         % calculate the posterior values for the pupil fits, given the current
         % measurement and the priors
         pPosteriorTransparent = pPriorSDTransparent.^2.*pInitialFitTransparent./(pPriorSDTransparent.^2+pFitSD.^2) + ...
@@ -335,7 +341,7 @@ else
     %  more stringent horizontal eccentricity value
     c=[];
     ceq = mod(transparentEllipseParams(5),(pi/2));
-    if transparentEllipseParams(5) == 0
+    if abs(transparentEllipseParams(5)) < 0.0001
         ceq = double(transparentEllipseParams(4) > constrainEccen_x_Theta);
     end
 end
