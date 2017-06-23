@@ -53,19 +53,38 @@ function testGUI_OpeningFcn(hObject, eventdata, handles, varargin)
 % varargin   command line arguments to testGUI (see VARARGIN)
 
 
+%% parse vargin
+if nargin == 5
+    sandboxDir = varargin{1};
+    params = varargin{2};
+end
+%% files naming
+controlFileName = fullfile(sandboxDir,params.outputDir, params.projectSubfolder, ...
+        params.subjectName,params.sessionDate,params.eyeTrackingDir, ...
+        [params.runName '_controlFile.csv']);
+glintFileName = fullfile(sandboxDir,params.outputDir, params.projectSubfolder, ...
+        params.subjectName,params.sessionDate,params.eyeTrackingDir, ...
+        [params.runName '_glint.mat']);
+perimeterVideoName = fullfile(sandboxDir,params.outputDir, params.projectSubfolder, ...
+        params.subjectName,params.sessionDate,params.eyeTrackingDir, ...
+        [params.runName '_perimeter.avi']);
+    
+ inputVideo = fullfile(sandboxDir,params.outputDir, params.projectSubfolder, ...
+        params.subjectName,params.sessionDate,params.eyeTrackingDir, ...
+        [params.runName '_60hz.avi']);
 %% files loading
-controlFileName ='~/Desktop/eyeTrackingDEMO/TOME_processing/session2_spatialStimuli/TOME_3020/050517/EyeTracking/tfMRI_FLASH_AP_run01_controlFile.csv';
-glintFileName ='~/Desktop/eyeTrackingDEMO/TOME_processing/session2_spatialStimuli/TOME_3020/050517/EyeTracking/tfMRI_FLASH_AP_run01_glint.mat';
+disp('Loading Control File')
 % import control file
 handles.instructions = importControlFile(controlFileName);
 
 % import glint file (for cuts)
+disp('Loading Glint File')
 handles.glintFile = load(glintFileName);
 
 % load in the videos
 disp('Loading videos...')
-vid1 = VideoReader('~/Desktop/eyeTrackingDEMO/TOME_processing/session2_spatialStimuli/TOME_3020/050517/EyeTracking/tfMRI_FLASH_AP_run01_60Hz.avi');
-vid2 = VideoReader('~/Desktop/eyeTrackingDEMO/TOME_processing/session2_spatialStimuli/TOME_3020/050517/EyeTracking/tfMRI_FLASH_AP_run01_perimeter.avi');
+vid1 = VideoReader(inputVideo);
+vid2 = VideoReader(perimeterVideoName);
 handles.numFrames = 1000;%floor(vid2.Duration*vid2.FrameRate);
 % inizialize frame array
 handles.origVid = zeros([240 320 handles.numFrames],'uint8');
