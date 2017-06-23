@@ -64,8 +64,9 @@ p.addParameter('finalFitVideoOutFileName',[],@ischar);
 p.addParameter('videoOutFrameRate',30,@isnumeric);
 p.addParameter('forceNumFrames',[],@isnumeric);
 p.addParameter('ellipseTransparentLB',[0, 0, 1000, 0, -0.5*pi],@isnumeric);
-p.addParameter('ellipseTransparentUB',[240,320,10000,0.55, 0.5*pi],@isnumeric);
+p.addParameter('ellipseTransparentUB',[240,320,10000,0.45, 0.5*pi],@isnumeric);
 p.addParameter('exponentialTauParams',[1, 1, 20, 5, 5],@isnumeric);
+p.addParameter('constrainEccen_x_Theta',[0.45,0.25],@isnumeric);
 p.parse(perimeterVideoFileName,varargin{:});
 
 %% Sanity check the parameters
@@ -120,6 +121,14 @@ ellipseFitData.pFinalFitTransparent = nan(numFrames,5);
 ellipseFitData.pFitExplicit = nan(numFrames,5);
 ellipseFitData.FinalFitError = nan(numFrames,1);
 
+% Create a non-linear constraint for the ellipse fit. If no parameters are
+%  given, then this is an identity function that does not provide any
+%  constraint
+if ~isempty(constrainEccen_x_Theta)
+  nonlinconst = @(x) [0,0];
+else
+  nonlinconst = @(x) [0,0];
+end
 % Loop through the frames
 for ii = 1:numFrames
     
@@ -136,7 +145,9 @@ for ii = 1:numFrames
     else
         [pInitialFitTransparent, pFitSD, ~] = ...
             calcPupilLikelihood(Xc, Yc, ...
-            p.Results.ellipseTransparentLB, p.Results.ellipseTransparentUB);
+            p.Results.ellipseTransparentLB, ...
+            p.Results.ellipseTransparentUB, ...
+            nonlinconst);
     end
     
     % store results
@@ -243,7 +254,7 @@ for ii = 1:numFrames
         % re-calculate the fit, fixing the pupil size from the posterior
         lb_pinArea = p.Results.ellipseTransparentLB; lb_pinArea(3) = pPosteriorTransparent(3);
         ub_pinArea = p.Results.ellipseTransparentUB; ub_pinArea(3) = pPosteriorTransparent(3);
-        [pFinalFitTransparent, ~, fitError] = calcPupilLikelihood(Xc,Yc, lb_pinArea, ub_pinArea);
+        [pFinalFitTransparent, ~, fitError] = calcPupilLikelihood(Xc,Yc, lb_pinArea, ub_pinArea, nonlinconst);
     end % check if there are any perimeter points to fit
     
     % store results
