@@ -1,4 +1,4 @@
-function [pupil] = bayesFitPupilPerimeter(perimeterVideoFileName, varargin)
+function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varargin)
 % [foo] = bayesFitPupilPerimeter(perimeterVideoFileName, varargin)
 %
 % This routine fits an ellipse to each frame of a video that contains the
@@ -64,9 +64,9 @@ p.addParameter('finalFitVideoOutFileName',[],@ischar);
 p.addParameter('videoOutFrameRate',30,@isnumeric);
 p.addParameter('forceNumFrames',[],@isnumeric);
 p.addParameter('ellipseTransparentLB',[0, 0, 1000, 0, -0.5*pi],@isnumeric);
-p.addParameter('ellipseTransparentUB',[240,320,10000,0.45, 0.5*pi],@isnumeric);
+p.addParameter('ellipseTransparentUB',[240,320,10000,0.42, 0.5*pi],@isnumeric);
 p.addParameter('exponentialTauParams',[1, 1, 20, 5, 5],@isnumeric);
-p.addParameter('constrainEccen_x_Theta',[0.45,0.25],@isnumeric);
+p.addParameter('constrainEccen_x_Theta',0.30,@isnumeric);
 p.parse(perimeterVideoFileName,varargin{:});
 
 %% Sanity check the parameters
@@ -124,11 +124,14 @@ ellipseFitData.FinalFitError = nan(numFrames,1);
 % Create a non-linear constraint for the ellipse fit. If no parameters are
 %  given, then this is an identity function that does not provide any
 %  constraint
-if ~isempty(constrainEccen_x_Theta)
-  nonlinconst = @(x) [0,0];
+
+if isempty(p.Results.constrainEccen_x_Theta)
+    nonlinconst = [];
 else
-  nonlinconst = @(x) [0,0];
+    parameterfun = @(x) p.Results.constrainEccen_x_Theta;
+    nonlinconst = @(x) restrictEccenByTheta(x,parameterfun());
 end
+
 % Loop through the frames
 for ii = 1:numFrames
     
@@ -311,3 +314,25 @@ if ~isempty(p.Results.ellipseFitDataFileName)
 end
 
 end % function
+
+
+% This function implements the non-linear constraint upon the ellipse fit
+% to the pupil boundary. The goal of the limit is to constrain theta to the
+% cardinal axes, and more severely constrain eccentricity in the horizontal
+% as compared to the vertical direction.
+
+function [c, ceq]=restrictEccenByTheta(transparentEllipseParams,constrainEccen_x_Theta)
+if isempty(constrainEccen_x_Theta)
+    c=[];
+    ceq=[];
+else
+    % We implement two constraints:
+    %  - the theta is on a cardinal axis (i.e., theta is from the set [-pi/2,0,pi/2])
+    %  - when theta is horizontal, we require that eccen be less than the
+    %  more stringent horizontal eccentricity value
+    c=[];
+    ceq = mod(transparentEllipseParams(5),(pi/2));
+    ceq = ceq + max([0,transparentEllipseParams(4)-constrainEccen_x_Theta]);
+end
+
+end
