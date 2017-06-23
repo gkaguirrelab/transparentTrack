@@ -328,11 +328,13 @@ if isempty(constrainEccen_x_Theta)
 else
     % We implement two constraints:
     %  - the theta is on a cardinal axis (i.e., theta is from the set [-pi/2,0,pi/2])
-    %  - when theta is horizontal, we require that eccen be less than the
+    %  - when theta is horizontal (=0), we require that eccen be less than the
     %  more stringent horizontal eccentricity value
     c=[];
     ceq = mod(transparentEllipseParams(5),(pi/2));
-    ceq = ceq + max([0,transparentEllipseParams(4)-constrainEccen_x_Theta]);
+    if transparentEllipseParams(5) == 0
+        ceq = ceq + max([0,transparentEllipseParams(4)-constrainEccen_x_Theta]);
+    end
 end
 
 end
