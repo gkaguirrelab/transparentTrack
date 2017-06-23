@@ -295,8 +295,8 @@ if ~isempty(p.Results.finalFitVideoOutFileName)
 end
 
 % save the ellipse fit results if requested
-if ~isempty(ellipseFitDataFileName)
-    save(ellipseFitDataFileName,'ellipseFitData')
+if ~isempty(p.Results.ellipseFitDataFileName)
+    save(p.Results.ellipseFitDataFileName,'ellipseFitData')
 end
 
 end % function
