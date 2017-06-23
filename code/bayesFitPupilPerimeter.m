@@ -334,8 +334,8 @@ else
     %  - when theta is horizontal (=0), we require that eccen be less than the
     %  more stringent horizontal eccentricity value
     c=[];
-    ceq = double(mod(transparentEllipseParams(5),(pi/2)) > cardinalTolerance);
-    if abs(transparentEllipseParams(5)) < cardinalTolerance
+    ceq = mod(transparentEllipseParams(5),(pi/2));
+    if transparentEllipseParams(5) == 0
         ceq = double(transparentEllipseParams(4) > constrainEccen_x_Theta);
     end
 end
