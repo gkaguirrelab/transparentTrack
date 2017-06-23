@@ -1,4 +1,4 @@
-function [pupil] = bayesFitPupilPerimeter(perimeterVideoFileName, ellipseFitDataFileName, varargin)
+function [pupil] = bayesFitPupilPerimeter(perimeterVideoFileName, varargin)
 % [foo] = bayesFitPupilPerimeter(perimeterVideoFileName, varargin)
 %
 % This routine fits an ellipse to each frame of a video that contains the
@@ -168,7 +168,7 @@ end % loop over frames
 clear RGB inVideoObj
 
 % close the figure
-close frameFig
+close(frameFig)
 
 %% Conduct a Bayesian smoothing operation
 
@@ -278,13 +278,13 @@ for ii = 1:numFrames
     % save frame
     if ~isempty(p.Results.finalFitVideoOutFileName)
         frame   = getframe(frameFig);
-        writeVideo(outVdeoObj,frame);
+        writeVideo(outVideoObj,frame);
     end % check if we are saving an movie out
     
 end % loop over frames to calculate the posterior
 
 % close the figure
-close frameFig
+close(frameFig)
 
 % close the inVideoObj
 clear RGB inVideoObj
