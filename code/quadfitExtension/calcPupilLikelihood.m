@@ -1,4 +1,4 @@
-function [pFitTransparent, pSD, e] = calcPupilLikelihood(x,y, lb, ub)
+function [pFitTransparent, pSD, e] = calcPupilLikelihood(x, y, lb, ub, nonlinconst)
 % This function takes 
 
 % Fit an ellipse to data by minimizing point-to-curve distance.
@@ -22,7 +22,12 @@ function [pFitTransparent, pSD, e] = calcPupilLikelihood(x,y, lb, ub)
 %    upper and lower bounds for the fit search (in ellipse transparent
 %    form)
 %
-
+% nonlinconst:
+%    Function handle to a non-linear constraint function. This function
+%    should take as input the set of ellipse parameters in transparent form
+%    and return [c, ceq], where the optimizer constrains the solution such
+%    that c<=0 and ceq=0. This is an optional input or can be sent as
+%    empty.
 
 % compute a close-enough initial estimate
 pInitImplicit = quad2dfit_taubin(x,y);
@@ -43,7 +48,7 @@ options = optimset('fmincon');
 options = optimset(options,'Diagnostics','off','Display','off','LargeScale','off','Algorithm','interior-point');
         
 myFun = @(p) sqrt(nansum(ellipsefit_distance(x,y,ellipse_transparent2ex(p)).^2));
-[pFitTransparent,e,~,~,~,~,Hessian] = fmincon(myFun, pInitTransparent, [], [], [], [], lb, ub, [], options);
+[pFitTransparent,e,~,~,~,~,Hessian] = fmincon(myFun, pInitTransparent, [], [], [], [], lb, ub, nonlinconst, options);
 
 % The sqrt of the diagonals of the inverse Hessian matrix approxiate the
 %  SEM of the parameter estimates (with multiple caveats regarding how the
