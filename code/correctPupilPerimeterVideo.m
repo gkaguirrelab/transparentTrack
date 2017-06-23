@@ -71,7 +71,6 @@ open(outObj);
 % check controlFileName format
 [~,~,ext] = fileparts(controlFileName);
 if ~strcmp(ext,'.csv')
-    controlTable  = readtable(controlFileName);
     error (' Only csv estension can be used')
 end
 
