@@ -1,10 +1,27 @@
-function [pFitTransparent, pSD, e] = calcPupilLikelihood(x, y, lb, ub, nonlinconst)
-% This function takes 
-
-% Fit an ellipse to data by minimizing point-to-curve distance.
+function [pFitTransparent, pSD, e] = constrainedEllipseFit(x, y, lb, ub, nonlinconst)
+% function [pFitTransparent, pSD, e] = constrainedEllipseFit(x, y, lb, ub, nonlinconst) 
 %
-% This function uses an iterative procedure. For a non-iterative approach, use
-% a direct least squares fit.
+% This routine is a modification of a non-linear ellipse fitting routine
+% that is found within the "quadfit" matlab central toolbox. This routine
+% is dependent upon the quadfit toolbox.
+%
+% The routine fits an ellipse to data by minimizing point-to-curve
+% distance, using an iterative procedure. The fitting approach used here
+% has several customizations designed to assist the fitting of the boundary
+% of the pupil:
+%
+%  - The search is conducted over a parameterization of the ellipse that we
+%  refer to as "transparent" parameters. The transparent parameter set has
+%  explicit value for area and eccentricity (aspect ratio). This allows us
+%  to set boudnaries and non-linear constraints upon these aspects of the
+%  fit.
+%  - A standard deviation of the parameters is estimated from the inverse
+%  of the Hessian matrix. This is a flawed estimate for several reasons
+%  (not least of which is that this is a constrained search). Nonetheless,
+%  this value is found to be useful in subsequent Bayesian smoothing
+%  approaches that take place outside of this routine.
+%  - As the Hessian is sometimes not invertible, the routine detects for a
+%  singular or close to singular matrix and then will use a pseudo-inverse.
 %
 % Output arguments:
 % pFitTransparent:
@@ -50,11 +67,10 @@ options = optimset(options,'Diagnostics','off','Display','off','LargeScale','off
 myFun = @(p) sqrt(nansum(ellipsefit_distance(x,y,ellipse_transparent2ex(p)).^2));
 [pFitTransparent,e,~,~,~,~,Hessian] = fmincon(myFun, pInitTransparent, [], [], [], [], lb, ub, nonlinconst, options);
 
-% The sqrt of the diagonals of the inverse Hessian matrix approxiate the
-%  SEM of the parameter estimates (with multiple caveats regarding how the
-%  Hessian returned by fmincon is inaccurate for this purpose). We use
-%  this (potentially inaccurate) estimate, multiplied by the sqrt of the
-%  number of data points to esimate the SD of the parameters.
+% The sqrt of the diagonals of the inverse Hessian matrix approxiates the
+%  standard deviation of the parameter estimates (with multiple caveats
+%  regarding how the Hessian returned by fmincon is inaccurate for this
+%  purpose).
 
 % We check to see if there was a warning regardng an inability to invert
 % the matrix, and if so we used the pseudo-inverse
@@ -70,15 +86,15 @@ warning('off','MATLAB:singularMatrix');
 lastwarn('');
 
 % try the inverse
-pSD = (sqrt(diag(inv(Hessian))) .* sqrt(length(x)))';
+pSD = sqrt(diag(inv(Hessian)));
 
 % get the lastwarn status and used pinv if there was a problem
 [~, msgid] = lastwarn;
 switch msgid
     case 'MATLAB:nearlySingularMatrix'
-      pSD = (sqrt(diag(pinv(Hessian))) .* sqrt(length(x)))';
+      pSD = sqrt(diag(pinv(Hessian)));
     case 'MATLAB:singularMatrix'
-      pSD = (sqrt(diag(pinv(Hessian))) .* sqrt(length(x)))';
+      pSD = sqrt(diag(pinv(Hessian)));
 end
 
 % restore the warning status
