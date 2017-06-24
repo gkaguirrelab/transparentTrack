@@ -236,7 +236,7 @@ if strcmp(p.Results.verbosity,'full')
     disp('Conducting Bayesian smoothing of fit values');
 end
 
-% Set up the decayng exponential weighting functions
+% Set up the decaying exponential weighting functions
 % Define tau prior values for each parameter
 window=max(p.Results.exponentialTauParams)*4;
 windowSupport=1:1:window;
@@ -294,7 +294,7 @@ for ii = 1:numFrames
         
         % Retrieve the initialFit for this frame
         pInitialFitTransparent = ellipseFitData.pInitialFitTransparent(ii,:);
-        pInitialFitSplitsSD = ellipseFitData.pFitSplitsSD(ii,:);
+        pInitialFitSplitsSD = ellipseFitData.pInitialFitSplitsSD(ii,:);
         
         % Raise the estimate of the SD from the initial fit to an
         % exponential scalar. This has been empirically determined to
