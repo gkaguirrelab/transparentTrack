@@ -64,8 +64,12 @@ binG  = zeros(size(gI));
 binG(gI>0.01) = 1;
 dbinG = imdilate(binG,se);
 
+% store the warning state
+origWarnState = warning;
+
 % Silence the imfindcircles warning regarding circle size
 warning('off','images:imfindcircles:warnForLargeRadiusRange');
+warning('off','images:imfindcircles:warnForSmallRadius');
 
 % Find the pupil
 [pCenters, pRadii,pMetric] = imfindcircles(binP,pupilRange,'ObjectPolarity','dark',...
@@ -82,7 +86,7 @@ else
 end
 
 % Restore the warning state
-warning('on','images:imfindcircles:warnForLargeRadiusRange');
+warning(origWarnState);
 
 % Remove glints outside the pupil
 if ~pupilOnly
