@@ -67,7 +67,9 @@ p.addParameter('ellipseTransparentLB',[0, 0, 1000, 0, -0.5*pi],@isnumeric);
 p.addParameter('ellipseTransparentUB',[240,320,10000,0.42, 0.5*pi],@isnumeric);
 p.addParameter('exponentialTauParams',[1, 1, 20, 5, 5],@isnumeric);
 p.addParameter('constrainEccen_x_Theta',0.30,@isnumeric);
-p.addParameter('hessianStanDevExponent',2,@isnumeric);
+p.addParameter('likelihoodErrorExponent',1,@isnumeric);
+p.addParameter('nBoots',20,@isnumeric);
+p.addParameter('useParallel',true,@islogical);
 p.parse(perimeterVideoFileName,varargin{:});
 
 %% Sanity check the parameters
@@ -125,12 +127,22 @@ ellipseFitData.FinalFitError = nan(numFrames,1);
 % Create a non-linear constraint for the ellipse fit. If no parameters are
 %  given, then this is an identity function that does not provide any
 %  constraint
-
 if isempty(p.Results.constrainEccen_x_Theta)
     nonlinconst = [];
 else
     parameterfun = @(x) p.Results.constrainEccen_x_Theta;
     nonlinconst = @(x) restrictEccenByTheta(x,parameterfun());
+end
+
+% Create an anonymous function for ellipse fitting
+obtainPupilLikelihood = @(x,y) constrainedEllipseFit(x, y, ...
+    p.Results.ellipseTransparentLB, p.Results.ellipseTransparentUB, nonlinconst);
+
+% If parallel computation was requested, start a parpool
+
+if p.Results.useParallel
+    c = parcluster;
+    poolObj = parpool(c);
 end
 
 % Loop through the frames
@@ -145,18 +157,21 @@ for ii = 1:numFrames
     % fit an ellipse to the boundaary
     if isempty(Xc) || isempty(Yc)
         pInitialFitTransparent=[NaN,NaN,NaN,NaN,NaN];
-        pFitSD=[NaN,NaN,NaN,NaN,NaN];
+        pFitBootSD=[NaN,NaN,NaN,NaN,NaN];
     else
-        [pInitialFitTransparent, pFitSD, ~] = ...
-            calcPupilLikelihood(Xc, Yc, ...
-            p.Results.ellipseTransparentLB, ...
-            p.Results.ellipseTransparentUB, ...
-            nonlinconst);
+        % Obtain the fit to the veridical data
+        [pInitialFitTransparent, pFitHessianSD, ~] = ...
+            obtainPupilLikelihood(Xc, Yc);
+        
+        % Obtain the SEM of the parameters through a bootstrap resample
+        bootOptSet = statset('UseParallel',p.Results.useParallel);
+        pFitBootSD = std(bootstrp(p.Results.nBoots,obtainPupilLikelihood,Xc,Yc,'Options',bootOptSet));        
     end
     
     % store results
     ellipseFitData.pInitialFitTransparent(ii,:) = pInitialFitTransparent';
-    ellipseFitData.pInitialFitSD(ii,:) = pFitSD';
+    ellipseFitData.pFitHessianSD(ii,:) = pFitHessianSD';
+    ellipseFitData.pFitBootSD(ii,:) = pFitBootSD';
     
     % Plot the pupil boundary data points
     imshow(thisFrame)
@@ -179,11 +194,17 @@ for ii = 1:numFrames
     
 end % loop over frames
 
+% close the pool object
+delete poolObj
+
 % close the video object
 clear RGB inVideoObj
 
 % close the figure
 close(frameFig)
+
+figure
+plot(ellipseFitData.pFitBootSD(:,3),ellipseFitData.pFitHessianSD(:,3),'.r');
 
 %% Conduct a Bayesian smoothing operation
 
@@ -248,32 +269,28 @@ for ii = 1:numFrames
         
         % Retrieve the initialFit for this frame
         pInitialFitTransparent = ellipseFitData.pInitialFitTransparent(ii,:);
-        pFitSD = ellipseFitData.pInitialFitSD(ii,:);
+        pFitBootSD = ellipseFitData.pFitBootSD(ii,:);
         
-        % Raise the estiate of the SD from the initial fit to an
+        % Raise the estimate of the SD from the initial fit to an
         % exponential scalar. This has been empirically determined to
         % improve the relative weighting of the current fit to the prior
-        pFitSD = pFitSD .^ p.Results.hessianStanDevExponent;
+        pFitBootSD = pFitBootSD .^ p.Results.likelihoodErrorExponent;
         
         % calculate the posterior values for the pupil fits, given the current
         % measurement and the priors
-        pPosteriorTransparent = pPriorSDTransparent.^2.*pInitialFitTransparent./(pPriorSDTransparent.^2+pFitSD.^2) + ...
-            pFitSD.^2.*pPriorMeanTransparent./(pPriorSDTransparent.^2+pFitSD.^2);
+        pPosteriorTransparent = pPriorSDTransparent.^2.*pInitialFitTransparent./(pPriorSDTransparent.^2+pFitBootSD.^2) + ...
+            pFitBootSD.^2.*pPriorMeanTransparent./(pPriorSDTransparent.^2+pFitBootSD.^2);
         
         % re-calculate the fit, fixing the pupil size from the posterior
         lb_pinArea = p.Results.ellipseTransparentLB; lb_pinArea(3) = pPosteriorTransparent(3);
         ub_pinArea = p.Results.ellipseTransparentUB; ub_pinArea(3) = pPosteriorTransparent(3);
-        [pFinalFitTransparent, ~, fitError] = calcPupilLikelihood(Xc,Yc, lb_pinArea, ub_pinArea, nonlinconst);
+        [pFinalFitTransparent, ~, fitError] = constrainedEllipseFit(Xc,Yc, lb_pinArea, ub_pinArea, nonlinconst);
     end % check if there are any perimeter points to fit
     
     % store results
     ellipseFitData.pFinalFitTransparent(ii,:) = pFinalFitTransparent';
     ellipseFitData.FinalFitError(ii) = fitError;
-    pFitExplicit = (ellipse_transparent2ex(pFinalFitTransparent))';
-    ellipseFitData.pFitExplicit(ii,:)= pFitExplicit;
-    ellipseFitData.X(ii) = pFitExplicit(1);
-    ellipseFitData.Y(ii) = pFitExplicit(2);
-    ellipseFitData.area(ii) = pFinalFitTransparent(3);
+    ellipseFitData.pFitExplicit(ii,:)= (ellipse_transparent2ex(pFinalFitTransparent))';
     
     % Plot the pupil boundary data points
     imshow(thisFrame)
