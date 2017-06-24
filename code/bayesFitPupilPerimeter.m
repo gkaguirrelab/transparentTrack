@@ -2,11 +2,11 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 % [foo] = bayesFitPupilPerimeter(perimeterVideoFileName, varargin)
 %
 % This routine fits an ellipse to each frame of a video that contains the
-% perimeter of the ellipseFitData. First, an ellipse is fit to each frame of the
+% perimeter of a pupil. First, an ellipse is fit to each frame of the
 % video using a non-linear search routine, with some constraints on size
 % and aspect ratio of the solution. An estimate of the standard deviation
 % of the parameters of the best fitting ellipse is stored as well.
-% Next, a smoothing operation is conducted which estimates the posterior
+% Next, a smoothing operation is conducted that estimates the posterior
 % parameter values, using the measured ellipse as the likelihood and a
 % non-causal, exponentially weighted window of surrounding parameter values
 % as a prior.
@@ -22,16 +22,20 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 % these values (specifically area and eccentricity).
 %
 % Inputs:
-%   perimeterVideoFileName: full path to a .avi file. Points on the
+%   perimeterVideoFileName: full path to an .avi file. Points on the
 %   boundary of the pupil should have a value of unity, and the frame
 %   should be otherwise zero filled. A frame that has no information
 %   regarding the pupil (e.g., during a blink) should be zero-filled.
 %   pupilFileName: full path to the .mat file in which to save pupil
 %   tracking information.
 %
-% Optional key/value pairs
+% Optional key/value pairs (display and I/O)
 %  'verbosity' - level of verbosity. [none, full]
 %  'display' - controls a display of the fitting outcome. [none, full]
+%  'finalFitVideoOutFileName' - File name to save video showing the fits.
+%     Defaults to empty, for which no file is saved.
+%  'videoOutFrameRate' - frame rate (in Hz) of saved video. Default 30.
+%
 %  'ellipseTransparentLB/UB' - Define the hard upper and lower boundaries
 %     for the ellipse fit, in units of pixels of the video. The center
 %     points should be constrained to the size of the video. Eccentricity
@@ -66,14 +70,15 @@ p.addParameter('forceNumFrames',[],@isnumeric);
 p.addParameter('ellipseTransparentLB',[0, 0, 1000, 0, -0.5*pi],@isnumeric);
 p.addParameter('ellipseTransparentUB',[240,320,10000,0.42, 0.5*pi],@isnumeric);
 p.addParameter('exponentialTauParams',[1, 1, 20, 5, 5],@isnumeric);
-p.addParameter('constrainEccen_x_Theta',0.30,@isnumeric);
+p.addParameter('constrainEccen_x_Theta',[0.3,0.42],@isnumeric);
 p.addParameter('likelihoodErrorExponent',1,@isnumeric);
-p.addParameter('nBoots',20,@isnumeric);
-p.addParameter('useParallel',true,@islogical);
+p.addParameter('nSplits',8,@isnumeric);
+p.addParameter('nBoots',0,@isnumeric);
+p.addParameter('useParallel',false,@islogical);
+p.addParameter('debugMode',false,@islogical);
 p.parse(perimeterVideoFileName,varargin{:});
 
 %% Sanity check the parameters
-
 nEllipseParams=5; % 5 params in the transparent ellipse form
 
 if length(p.Results.ellipseTransparentLB)~=nEllipseParams
@@ -89,14 +94,25 @@ if sum(p.Results.ellipseTransparentUB>=p.Results.ellipseTransparentLB)~=nEllipse
     error('Lower bounds must be equal to or less than upper bounds');
 end
 
-
-%% Conduct an initial ellipse fit for each video frame
-
-% Alert the user
-if strcmp(p.Results.verbosity,'full')
-    disp('Conducting initial ellipse fit to pupil perimeter video');
+%% Prepare anonymous functions that are used throughout
+% Create a non-linear constraint for the ellipse fit. If no parameters are
+%  given, then this is an identity function that does not provide any
+%  constraint
+if isempty(p.Results.constrainEccen_x_Theta)
+    nonlinconst = [];
+else
+    nonlinconst = @(x) restrictEccenByTheta(x,p.Results.constrainEccen_x_Theta);
 end
 
+% Create an anonymous function for ellipse fitting
+obtainPupilLikelihood = @(x,y) constrainedEllipseFit(x, y, ...
+    p.Results.ellipseTransparentLB, p.Results.ellipseTransparentUB, nonlinconst);
+
+% Create an anonymous function to return a rotation matrix given theta in
+% radians
+returnRotMat = @(theta) [cos(theta) -sin(theta); sin(theta) cos(theta)];
+
+%% Open the video in and figure out how many frames we  will be using
 % Create the video object for reading, check the number of frames
 inVideoObj = VideoReader(perimeterVideoFileName);
 numFrames = floor(inVideoObj.Duration*inVideoObj.FrameRate);
@@ -106,108 +122,115 @@ if ~isempty(p.Results.forceNumFrames)
     numFrames = p.Results.forceNumFrames;
 end
 
-% Create a figure to hold the fit result movie frames, and display if
-% requested
-if strcmp(p.Results.display,'full')
-    frameFig = figure( 'Visible', 'on');
+%% Conduct (or load) an initial ellipse fit for each video frame
+if p.Results.debugMode
+    load(p.Results.ellipseFitDataFileName);
 else
-    frameFig = figure( 'Visible', 'off');
-end
-
-% Initialize the pupil struct
-ellipseFitData.X = nan(numFrames,1);
-ellipseFitData.Y = nan(numFrames,1);
-ellipseFitData.area = nan(numFrames,1);
-ellipseFitData.pInitialFitTransparent = nan(numFrames,5);
-ellipseFitData.pInitialFitSD = nan(numFrames,5);
-ellipseFitData.pFinalFitTransparent = nan(numFrames,5);
-ellipseFitData.pFitExplicit = nan(numFrames,5);
-ellipseFitData.FinalFitError = nan(numFrames,1);
-
-% Create a non-linear constraint for the ellipse fit. If no parameters are
-%  given, then this is an identity function that does not provide any
-%  constraint
-if isempty(p.Results.constrainEccen_x_Theta)
-    nonlinconst = [];
-else
-    parameterfun = @(x) p.Results.constrainEccen_x_Theta;
-    nonlinconst = @(x) restrictEccenByTheta(x,parameterfun());
-end
-
-% Create an anonymous function for ellipse fitting
-obtainPupilLikelihood = @(x,y) constrainedEllipseFit(x, y, ...
-    p.Results.ellipseTransparentLB, p.Results.ellipseTransparentUB, nonlinconst);
-
-% If parallel computation was requested, start a parpool
-
-if p.Results.useParallel
-    c = parcluster;
-    poolObj = parpool(c);
-end
-
-% Loop through the frames
-for ii = 1:numFrames
-    
-    % readFrame loads frames sequentially as it is calledl; make gray
-    thisFrame = rgb2gray(readFrame(inVideoObj));
-    
-    % get the boundary points
-    [Yc, Xc] = ind2sub(size(thisFrame),find(thisFrame));
-    
-    % fit an ellipse to the boundaary
-    if isempty(Xc) || isempty(Yc)
-        pInitialFitTransparent=[NaN,NaN,NaN,NaN,NaN];
-        pFitBootSD=[NaN,NaN,NaN,NaN,NaN];
-    else
-        % Obtain the fit to the veridical data
-        [pInitialFitTransparent, pFitHessianSD, ~] = ...
-            obtainPupilLikelihood(Xc, Yc);
-        
-        % Obtain the SEM of the parameters through a bootstrap resample
-        bootOptSet = statset('UseParallel',p.Results.useParallel);
-        pFitBootSD = std(bootstrp(p.Results.nBoots,obtainPupilLikelihood,Xc,Yc,'Options',bootOptSet));        
+    % Alert the user
+    if strcmp(p.Results.verbosity,'full')
+        disp('Conducting initial ellipse fit to pupil perimeter video');
     end
     
-    % store results
-    ellipseFitData.pInitialFitTransparent(ii,:) = pInitialFitTransparent';
-    ellipseFitData.pFitHessianSD(ii,:) = pFitHessianSD';
-    ellipseFitData.pFitBootSD(ii,:) = pFitBootSD';
+    % Create a figure to hold the fit result movie frames, and display if
+    % requested
+    if strcmp(p.Results.display,'full')
+        frameFig = figure( 'Visible', 'on');
+    else
+        frameFig = figure( 'Visible', 'off');
+    end
     
-    % Plot the pupil boundary data points
-    imshow(thisFrame)
-    if ~isnan(pInitialFitTransparent(1))
-        pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(pInitialFitTransparent));
-        a = num2str(pFitImplicit(1));
-        b = num2str(pFitImplicit(2));
-        c = num2str(pFitImplicit(3));
-        d = num2str(pFitImplicit(4));
-        e = num2str(pFitImplicit(5));
-        f = num2str(pFitImplicit(6));
+    % Loop through the frames
+    for ii = 1:numFrames
         
-        % ellipse impicit equation
-        eqt= ['(',a, ')*x^2 + (',b,')*x*y + (',c,')*y^2 + (',d,')*x+ (',e,')*y + (',f,')'];
+        % readFrame loads frames sequentially as it is calledl; make gray
+        thisFrame = rgb2gray(readFrame(inVideoObj));
         
-        hold on
-        h= ezplot(eqt,[1, 240, 1, 320]);
-        set (h, 'Color', 'green')
-    end % check for a valid ellipse fit to plot
+        % get the boundary points
+        [Yc, Xc] = ind2sub(size(thisFrame),find(thisFrame));
+        
+        % fit an ellipse to the boundaary
+        if isempty(Xc) || isempty(Yc)
+            pInitialFitTransparent=[NaN,NaN,NaN,NaN,NaN];
+            pInitialFitHessianSD=[NaN,NaN,NaN,NaN,NaN];
+            pInitialFitSplitsSD=[NaN,NaN,NaN,NaN,NaN];
+            pInitialFitBootsSD=[NaN,NaN,NaN,NaN,NaN];
+        else
+            % Obtain the fit to the veridical data
+            [pInitialFitTransparent, pInitialFitHessianSD, ~] = ...
+                obtainPupilLikelihood(Xc, Yc);
+            
+            if p.Results.nSplits == 0
+                pInitialFitSplitsSD=[NaN,NaN,NaN,NaN,NaN];
+            else
+                % Find the center of the pupil boundary points, place the boundary
+                % points in a matrix and shift them to the center position
+                xCenter=mean(Xc); yCenter=mean(Yc);
+                centerMatrix = repmat([xCenter'; yCenter'], 1, length(Xc));
+                
+                % Loop through nSplits and take half the data for a random rotation
+                for ss=1:p.Results.nSplits
+                    theta=((pi/2)/p.Results.nSplits)*ss;
+                    forwardPoints = returnRotMat(theta) * ([Xc,Yc]' - centerMatrix) + centerMatrix;
+                    splitIdx1 = find((forwardPoints(1,:) < median(forwardPoints(1,:))))';
+                    splitIdx2 = find((forwardPoints(1,:) >= median(forwardPoints(1,:))))';
+                    
+                    pFitTransparentSplit(1,ss,:) = ...
+                        obtainPupilLikelihood(Xc(splitIdx1), Yc(splitIdx1));
+                    pFitTransparentSplit(2,ss,:) = ...
+                        obtainPupilLikelihood(Xc(splitIdx2), Yc(splitIdx2));
+                end % loop through splits
+                
+                % Calculate the SD of the parameters across splits, scaling by
+                % sqrt(2) to roughly account for our use of just half the data
+                pInitialFitSplitsSD=std(reshape(pFitTransparentSplit,ss*2,nEllipseParams))/sqrt(2);
+            end % check if we want to do splits
+            
+            % Obtain the SEM of the parameters through a bootstrap resample
+            if p.Results.nBoots == 0
+                pInitialFitBootsSD=[NaN,NaN,NaN,NaN,NaN];
+            else
+                bootOptSet = statset('UseParallel',p.Results.useParallel);
+                pInitialFitBootsSD = std(bootstrp(p.Results.nBoots,obtainPupilLikelihood,Xc,Yc,'Options',bootOptSet));
+            end % check if we want to do bootstraps
+            
+        end % check if there are pupil boundary data to be fit
+        
+        % store results
+        ellipseFitData.pInitialFitTransparent(ii,:) = pInitialFitTransparent';
+        ellipseFitData.pInitialFitHessianSD(ii,:) = pInitialFitHessianSD';
+        ellipseFitData.pInitialFitSplitsSD(ii,:) = pInitialFitSplitsSD';
+        ellipseFitData.pInitialFitBootsSD(ii,:) = pInitialFitBootsSD';
+        
+        % Plot the pupil boundary data points
+        imshow(thisFrame)
+        if ~isnan(pInitialFitTransparent(1))
+            pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(pInitialFitTransparent));
+            a = num2str(pFitImplicit(1));
+            b = num2str(pFitImplicit(2));
+            c = num2str(pFitImplicit(3));
+            d = num2str(pFitImplicit(4));
+            e = num2str(pFitImplicit(5));
+            f = num2str(pFitImplicit(6));
+            
+            % ellipse impicit equation
+            eqt= ['(',a, ')*x^2 + (',b,')*x*y + (',c,')*y^2 + (',d,')*x+ (',e,')*y + (',f,')'];
+            
+            hold on
+            h= ezplot(eqt,[1, 240, 1, 320]);
+            set (h, 'Color', 'green')
+        end % check for a valid ellipse fit to plot
+        
+    end % loop over frames
     
-end % loop over frames
-
-% close the pool object
-delete poolObj
+    % close the figure
+    close(frameFig)
+    
+end % debug check
 
 % close the video object
 clear RGB inVideoObj
 
-% close the figure
-close(frameFig)
-
-figure
-plot(ellipseFitData.pFitBootSD(:,3),ellipseFitData.pFitHessianSD(:,3),'.r');
-
 %% Conduct a Bayesian smoothing operation
-
 % Alert the user
 if strcmp(p.Results.verbosity,'full')
     disp('Conducting Bayesian smoothing of fit values');
@@ -251,6 +274,8 @@ for ii = 1:numFrames
     % if this frame has no data, don't attempt to fit, else fit
     if isempty(Xc) || isempty(Yc)
         pFinalFitTransparent=[NaN,NaN,NaN,NaN,NaN];
+        pPriorMeanTransparent=[NaN,NaN,NaN,NaN,NaN];
+        pPriorSDTransparent=[NaN,NaN,NaN,NaN,NaN];
         fitError=NaN;
     else
         % Calculate the prior, which is the mean of the surrounding fit
@@ -263,23 +288,23 @@ for ii = 1:numFrames
             dataVector=squeeze(ellipseFitData.pInitialFitTransparent(:,jj))';
             dataVector=dataVector(rangeLowSignal:rangeHiSignal);
             weightFunction=exponentialWeights(jj,1+restrictLowWindow:end-restrictHiWindow);
-            pPriorMeanTransparent(jj) = nansum(weightFunction.*dataVector,2)./nansum(weightFunction,2);
+            pPriorMeanTransparent(jj) = nansum(weightFunction.*dataVector,2)./nansum(weightFunction(~isnan(dataVector)),2);
             pPriorSDTransparent(jj) = nanstd(dataVector,weightFunction);
         end
         
         % Retrieve the initialFit for this frame
         pInitialFitTransparent = ellipseFitData.pInitialFitTransparent(ii,:);
-        pFitBootSD = ellipseFitData.pFitBootSD(ii,:);
+        pInitialFitSplitsSD = ellipseFitData.pFitSplitsSD(ii,:);
         
         % Raise the estimate of the SD from the initial fit to an
         % exponential scalar. This has been empirically determined to
         % improve the relative weighting of the current fit to the prior
-        pFitBootSD = pFitBootSD .^ p.Results.likelihoodErrorExponent;
+        pInitialFitSplitsSD = pInitialFitSplitsSD .^ p.Results.likelihoodErrorExponent;
         
         % calculate the posterior values for the pupil fits, given the current
         % measurement and the priors
-        pPosteriorTransparent = pPriorSDTransparent.^2.*pInitialFitTransparent./(pPriorSDTransparent.^2+pFitBootSD.^2) + ...
-            pFitBootSD.^2.*pPriorMeanTransparent./(pPriorSDTransparent.^2+pFitBootSD.^2);
+        pPosteriorTransparent = pPriorSDTransparent.^2.*pInitialFitTransparent./(pPriorSDTransparent.^2+pInitialFitSplitsSD.^2) + ...
+            pInitialFitSplitsSD.^2.*pPriorMeanTransparent./(pPriorSDTransparent.^2+pInitialFitSplitsSD.^2);
         
         % re-calculate the fit, fixing the pupil size from the posterior
         lb_pinArea = p.Results.ellipseTransparentLB; lb_pinArea(3) = pPosteriorTransparent(3);
@@ -290,7 +315,8 @@ for ii = 1:numFrames
     % store results
     ellipseFitData.pFinalFitTransparent(ii,:) = pFinalFitTransparent';
     ellipseFitData.FinalFitError(ii) = fitError;
-    ellipseFitData.pFitExplicit(ii,:)= (ellipse_transparent2ex(pFinalFitTransparent))';
+    ellipseFitData.pPriorMeanTransparent(ii,:)= pPriorMeanTransparent';
+    ellipseFitData.pPriorSDTransparent(ii,:)= pPriorSDTransparent';
     
     % Plot the pupil boundary data points
     imshow(thisFrame)
@@ -339,28 +365,29 @@ end
 end % function
 
 
-% This function implements the non-linear constraint upon the ellipse fit
+
+
+function [c, ceq]=restrictEccenByTheta(transparentEllipseParams,constrainEccen_x_Theta)
+% function [c, ceq]=restrictEccenByTheta(transparentEllipseParams,constrainEccen_x_Theta)
+%
+% This function implements a non-linear constraint upon the ellipse fit
 % to the pupil boundary. The goal of the limit is to constrain theta to the
 % cardinal axes, and more severely constrain eccentricity in the horizontal
 % as compared to the vertical direction.
 
-function [c, ceq]=restrictEccenByTheta(transparentEllipseParams,constrainEccen_x_Theta)
 
-cardinalTolerance = (2*pi)/180;
+% First constraint (equality)
+%  - the theta is on a cardinal axis (i.e., theta is from the set [-pi/2,0,pi/2])
+ceq = mod(abs(transparentEllipseParams(5)),(pi/2));
 
-if isempty(constrainEccen_x_Theta)
-    c=[];
-    ceq=[];
+% Second constraint (inequality)
+%  - require the eccen to be less than constrainEccen_x_Theta, where this
+%    has one value for horizontal ellipses (abs(theta)<pi/2) and a second
+%    value for vertical ellipses.
+if abs(transparentEllipseParams(5))<(pi/4)
+    c = transparentEllipseParams(4) - constrainEccen_x_Theta(1);
 else
-    % We implement two constraints:
-    %  - the theta is on a cardinal axis (i.e., theta is from the set [-pi/2,0,pi/2])
-    %  - when theta is horizontal (=0), we require that eccen be less than the
-    %  more stringent horizontal eccentricity value
-    c=[];
-    ceq = mod(transparentEllipseParams(5),(pi/2));
-    if abs(transparentEllipseParams(5)) < 0.0001
-        ceq = double(transparentEllipseParams(4) > constrainEccen_x_Theta);
-    end
+    c = transparentEllipseParams(4) - constrainEccen_x_Theta(2);
 end
 
 end
