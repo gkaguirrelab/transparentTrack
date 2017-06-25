@@ -43,7 +43,7 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 %     calculated using:
 %           eccentricity = axes2ecc(semimajor, semiminor)
 %     If we wish to prevent ellipses with an aspect ratio greater than
-%     1.2 : 1, this gives us an eccentricity UB threshold of ~0.55.
+%     1.15 : 1, this gives us an eccentricity UB threshold of ~0.5.
 %  'exponentialTauParams' - The time constant (in video frames) of the
 %     decaying exponential weighting functions that are used to construct
 %     the non-causal prior arround each frame. A different time constant
@@ -68,14 +68,14 @@ p.addParameter('finalFitVideoOutFileName',[],@ischar);
 p.addParameter('videoOutFrameRate',30,@isnumeric);
 p.addParameter('forceNumFrames',[],@isnumeric);
 p.addParameter('ellipseTransparentLB',[0, 0, 1000, 0, -0.5*pi],@isnumeric);
-p.addParameter('ellipseTransparentUB',[240,320,10000,0.42, 0.5*pi],@isnumeric);
-p.addParameter('exponentialTauParams',[1, 1, 20, 5, 5],@isnumeric);
-p.addParameter('constrainEccen_x_Theta',[0.3,0.42],@isnumeric);
-p.addParameter('likelihoodErrorExponent',1,@isnumeric);
+p.addParameter('ellipseTransparentUB',[240,320,10000,0.417, 0.5*pi],@isnumeric);
+p.addParameter('exponentialTauParams',[0.25, 0.25, 5, 1, 1],@isnumeric);
+p.addParameter('constrainEccen_x_Theta',[0.305,0.417],@isnumeric);
+p.addParameter('likelihoodErrorExponent',1.25,@isnumeric);
 p.addParameter('nSplits',8,@isnumeric);
 p.addParameter('nBoots',0,@isnumeric);
 p.addParameter('useParallel',false,@islogical);
-p.addParameter('debugMode',false,@islogical);
+p.addParameter('debugMode',true,@islogical);
 p.parse(perimeterVideoFileName,varargin{:});
 
 %% Sanity check the parameters
@@ -238,7 +238,7 @@ end
 
 % Set up the decaying exponential weighting functions
 % Define tau prior values for each parameter
-window=max(p.Results.exponentialTauParams)*4;
+window=max(p.Results.exponentialTauParams)*8;
 windowSupport=1:1:window;
 for jj=1:length(p.Results.exponentialTauParams)
     baseExpFunc=exp(-1/p.Results.exponentialTauParams(jj)*windowSupport);
@@ -278,8 +278,10 @@ for ii = 1:numFrames
         pPriorSDTransparent=[NaN,NaN,NaN,NaN,NaN];
         fitError=NaN;
     else
-        % Calculate the prior, which is the mean of the surrounding fit
-        % values, weighted by a decaying exponential in time
+        % Calculate the prior. The prior mean is given by the surrounding
+        % fit values, weighted by a decaying exponential in time and the
+        % inverse of the standard deviation of each measure. The prior
+        % standard deviation is weighted only by time.
         rangeLowSignal=max([ii-window,1]);
         rangeHiSignal=min([ii+window,numFrames]);
         restrictLowWindow= max([(ii-window-1)*-1,0]);
@@ -287,9 +289,16 @@ for ii = 1:numFrames
         for jj=1:5
             dataVector=squeeze(ellipseFitData.pInitialFitTransparent(:,jj))';
             dataVector=dataVector(rangeLowSignal:rangeHiSignal);
-            weightFunction=exponentialWeights(jj,1+restrictLowWindow:end-restrictHiWindow);
-            pPriorMeanTransparent(jj) = nansum(weightFunction.*dataVector,2)./nansum(weightFunction(~isnan(dataVector)),2);
-            pPriorSDTransparent(jj) = nanstd(dataVector,weightFunction);
+            precisionVector=squeeze(ellipseFitData.pInitialFitSplitsSD(:,jj))';
+            precisionVector=precisionVector.^(-1);
+            precisionVector=precisionVector(rangeLowSignal:rangeHiSignal);
+            precisionVector=precisionVector-nanmin(precisionVector);
+            precisionVector=precisionVector/nanmax(precisionVector);
+            temporalWeightVector=exponentialWeights(jj,1+restrictLowWindow:end-restrictHiWindow);
+            combinedWeightVector=precisionVector.*temporalWeightVector;
+            pPriorMeanTransparent(jj) = nansum(dataVector.*combinedWeightVector,2)./ ...
+                nansum(combinedWeightVector(~isnan(dataVector)),2);
+            pPriorSDTransparent(jj) = nanstd(dataVector,temporalWeightVector);
         end
         
         % Retrieve the initialFit for this frame
@@ -306,15 +315,19 @@ for ii = 1:numFrames
         pPosteriorTransparent = pPriorSDTransparent.^2.*pInitialFitTransparent./(pPriorSDTransparent.^2+pInitialFitSplitsSD.^2) + ...
             pInitialFitSplitsSD.^2.*pPriorMeanTransparent./(pPriorSDTransparent.^2+pInitialFitSplitsSD.^2);
         
-        % re-calculate the fit, fixing the pupil size from the posterior
-        lb_pinArea = p.Results.ellipseTransparentLB; lb_pinArea(3) = pPosteriorTransparent(3);
-        ub_pinArea = p.Results.ellipseTransparentUB; ub_pinArea(3) = pPosteriorTransparent(3);
-        [pFinalFitTransparent, ~, fitError] = constrainedEllipseFit(Xc,Yc, lb_pinArea, ub_pinArea, nonlinconst);
+        % refit the data points to deal with any nans in the posterior, and
+        % to obtain an measure of the fit error
+        lb_pin = p.Results.ellipseTransparentLB;
+        ub_pin = p.Results.ellipseTransparentUB;
+        lb_pin(~isnan(pPosteriorTransparent))=pPosteriorTransparent(~isnan(pPosteriorTransparent));
+        ub_pin(~isnan(pPosteriorTransparent))=pPosteriorTransparent(~isnan(pPosteriorTransparent));
+        [pFinalFitTransparent, ~, fitError] = constrainedEllipseFit(Xc,Yc, lb_pin, ub_pin, nonlinconst);
+
     end % check if there are any perimeter points to fit
     
     % store results
     ellipseFitData.pFinalFitTransparent(ii,:) = pFinalFitTransparent';
-    ellipseFitData.FinalFitError(ii) = fitError;
+    ellipseFitData.finalFitError(ii) = fitError;
     ellipseFitData.pPriorMeanTransparent(ii,:)= pPriorMeanTransparent';
     ellipseFitData.pPriorSDTransparent(ii,:)= pPriorSDTransparent';
     
