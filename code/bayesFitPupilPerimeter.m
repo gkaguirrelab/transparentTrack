@@ -35,7 +35,9 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 %  'finalFitVideoOutFileName' - File name to save video showing the fits.
 %     Defaults to empty, for which no file is saved.
 %  'videoOutFrameRate' - frame rate (in Hz) of saved video. Default 30.
+%  'forceNumFrames' - analyze fewer than the total number of video frames.
 %
+% Optional key/value pairs (analysis parameters)
 %  'ellipseTransparentLB/UB' - Define the hard upper and lower boundaries
 %     for the ellipse fit, in units of pixels of the video. The center
 %     points should be constrained to the size of the video. Eccentricity
@@ -50,9 +52,30 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 %     can (and should) be specified for the different ellipse parameters.
 %     This is because pupil poisition can change rapidly due to saccades,
 %     but pupil area is expected to change slowly.
+%   'constrainEccen_x_Theta' - If defined, the ellipse fitting will be
+%     constrained to allow only eccentric ellipses aligned with the
+%     vertical or horizontal axes. Further, the two values provided will
+%     limit the eccentricity of ellipses on the horizontal and vertical
+%     axes, respectively.
+%   'likelihoodErrorExponent' - The SD of the parameters estimated for each
+%     frame are raises to this exponent, to either to weaken (>1) or
+%     strengthen (<1) the influence of the current measure on the
+%     posterior.
+%   'nSplits' - The number of tests upon the spatial split-halves of the
+%     pupil boundary values to examine to estimate a likelihood SD.
+%   'nBoots' - The number of bootstrap resamples of the pupil boundary
+%     points to perform to estimate a likelihood SD. This was found in
+%     testing to not be useful, as the pupil boundary is oversampled, so
+%     this is left at a default of zero.
+%   'useParallel' - If set to true, use the Matlab parallel pool for the
+%     bootstrap estimate of SD.
+%   'debugMode' - If set to true, the routine attempts to load a
+%     pre-existing set of initial ellipse measures (and SDs upon those
+%     params), rather than re-computing these.
 
 % Outputs:
-%   foo: bar
+%   ellipseFitData: A structure with multiple fields corresponding to the
+%   parameters, SDs, and errors of the initial and final ellipse fits.
 
 %% Parse vargin for options passed here
 %
@@ -305,9 +328,9 @@ for ii = 1:numFrames
         pInitialFitTransparent = ellipseFitData.pInitialFitTransparent(ii,:);
         pInitialFitSplitsSD = ellipseFitData.pInitialFitSplitsSD(ii,:);
         
-        % Raise the estimate of the SD from the initial fit to an
-        % exponential scalar. This has been empirically determined to
-        % improve the relative weighting of the current fit to the prior
+        % Raise the estimate of the SD from the initial fit to a
+        % passed exponent. This is used to adjust the relative weighting of
+        % the current frame realtive to the prior
         pInitialFitSplitsSD = pInitialFitSplitsSD .^ p.Results.likelihoodErrorExponent;
         
         % calculate the posterior values for the pupil fits, given the current
@@ -316,7 +339,7 @@ for ii = 1:numFrames
             pInitialFitSplitsSD.^2.*pPriorMeanTransparent./(pPriorSDTransparent.^2+pInitialFitSplitsSD.^2);
         
         % refit the data points to deal with any nans in the posterior, and
-        % to obtain an measure of the fit error
+        % to obtain a measure of the fit error
         lb_pin = p.Results.ellipseTransparentLB;
         ub_pin = p.Results.ellipseTransparentUB;
         lb_pin(~isnan(pPosteriorTransparent))=pPosteriorTransparent(~isnan(pPosteriorTransparent));
@@ -355,7 +378,7 @@ for ii = 1:numFrames
     if ~isempty(p.Results.finalFitVideoOutFileName)
         frame   = getframe(frameFig);
         writeVideo(outVideoObj,frame);
-    end % check if we are saving an movie out
+    end % check if we are saving a movie out
     
 end % loop over frames to calculate the posterior
 
@@ -395,8 +418,8 @@ ceq = mod(abs(transparentEllipseParams(5)),(pi/2));
 
 % Second constraint (inequality)
 %  - require the eccen to be less than constrainEccen_x_Theta, where this
-%    has one value for horizontal ellipses (abs(theta)<pi/2) and a second
-%    value for vertical ellipses.
+%    has one value for horizontal ellipses (i.e., abs(theta)<pi/2) and a
+%    second value for vertical ellipses.
 if abs(transparentEllipseParams(5))<(pi/4)
     c = transparentEllipseParams(4) - constrainEccen_x_Theta(1);
 else
