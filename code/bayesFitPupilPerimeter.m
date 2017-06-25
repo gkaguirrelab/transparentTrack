@@ -69,6 +69,8 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 %     this is left at a default of zero.
 %   'useParallel' - If set to true, use the Matlab parallel pool for the
 %     bootstrap estimate of SD.
+%   'priorCenterNaN' - Controls the behavior of the weighting function for
+%     the prior for the current time point. 
 %   'debugMode' - If set to true, the routine attempts to load a
 %     pre-existing set of initial ellipse measures (and SDs upon those
 %     params), rather than re-computing these.
@@ -98,7 +100,8 @@ p.addParameter('likelihoodErrorExponent',1.25,@isnumeric);
 p.addParameter('nSplits',8,@isnumeric);
 p.addParameter('nBoots',0,@isnumeric);
 p.addParameter('useParallel',false,@islogical);
-p.addParameter('debugMode',true,@islogical);
+p.addParameter('priorCenterNaN',false,@islogical);
+p.addParameter('developmentMode',false,@islogical);
 p.parse(perimeterVideoFileName,varargin{:});
 
 %% Sanity check the parameters
@@ -146,12 +149,13 @@ if ~isempty(p.Results.forceNumFrames)
 end
 
 %% Conduct (or load) an initial ellipse fit for each video frame
-if p.Results.debugMode
+if p.Results.developmentMode
     load(p.Results.ellipseFitDataFileName);
 else
     % Alert the user
     if strcmp(p.Results.verbosity,'full')
-        disp('Conducting initial ellipse fit to pupil perimeter video');
+        % initialize progress bar
+        progBar = ProgressBar(numFrames,'Initial ellipse fit to pupil perimeter...');
     end
     
     % Create a figure to hold the fit result movie frames, and display if
@@ -243,6 +247,10 @@ else
             set (h, 'Color', 'green')
         end % check for a valid ellipse fit to plot
         
+        if strcmp(p.Results.verbosity,'full')
+            if ~mod(ii,10); progBar(ii); end % update progressbar
+        end
+
     end % loop over frames
     
     % close the figure
@@ -254,10 +262,6 @@ end % debug check
 clear RGB inVideoObj
 
 %% Conduct a Bayesian smoothing operation
-% Alert the user
-if strcmp(p.Results.verbosity,'full')
-    disp('Conducting Bayesian smoothing of fit values');
-end
 
 % Set up the decaying exponential weighting functions
 % Define tau prior values for each parameter
@@ -265,7 +269,17 @@ window=max(p.Results.exponentialTauParams)*8;
 windowSupport=1:1:window;
 for jj=1:length(p.Results.exponentialTauParams)
     baseExpFunc=exp(-1/p.Results.exponentialTauParams(jj)*windowSupport);
-    exponentialWeights(jj,:)=[fliplr(baseExpFunc) NaN baseExpFunc];
+
+    % The weighting function is symmetric about the current time point. A
+    % parameter flag switches the treatment of the current time point,
+    % either excluding it and weighting most heavily the immediately
+    % adjacent frames, or giving the current time point a weight of unity.
+    if p.Results.priorCenterNaN
+        exponentialWeights(jj,:)=[fliplr(baseExpFunc) NaN baseExpFunc];
+    else
+        exponentialWeights(jj,1:window)=fliplr(baseExpFunc);
+        exponentialWeights(jj,window:window*2-1)=baseExpFunc;
+    end
 end
 
 % Create the video object for reading
@@ -284,6 +298,12 @@ if ~isempty(p.Results.finalFitVideoOutFileName)
     outVideoObj = VideoWriter(p.Results.finalFitVideoOutFileName);
     outVideoObj.FrameRate = p.Results.videoOutFrameRate;
     open(outVideoObj);
+end
+
+% Alert the user
+if strcmp(p.Results.verbosity,'full')
+    % initialize progress bar
+    progBar = ProgressBar(numFrames,'Bayesian smoothing of fit values...');
 end
 
 for ii = 1:numFrames
@@ -379,7 +399,11 @@ for ii = 1:numFrames
         frame   = getframe(frameFig);
         writeVideo(outVideoObj,frame);
     end % check if we are saving a movie out
-    
+
+    if strcmp(p.Results.verbosity,'full')
+        if ~mod(ii,10); progBar(ii); end % update progressbar
+    end
+
 end % loop over frames to calculate the posterior
 
 % close the figure
