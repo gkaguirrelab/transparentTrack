@@ -138,7 +138,12 @@ for ii = 1:numFrames
         % Fit ellipse to glint
         [Xg, Yg] = ind2sub(size(binG),find(binG));
         try
+            % turn of warnings for singular matrix
+            origWarnState = warning();
+            warning('off','MATLAB:singularMatrix');
+            warning('off','MATLAB:illConditionedMatrix');
             Egi = ellipsefit_direct(Xg,Yg);
+            warning(origWarnState);
             Eg = ellipse_im2ex(Egi);
             % get errorMetric
             [~,dg,~,~] = ellipse_distance(Xg, Yg, Egi);
