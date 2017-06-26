@@ -575,13 +575,11 @@ if strcmp(p.Results.verbosity,'full')
     fprintf('\n\n');
 end
 
-% Restore the warning state in the parallel
+% Delete the parallel pool
 if p.Results.useParallel
     poolObj = gcp;
     if ~isempty(poolObj)
-        spmd
-            warning('on','MATLAB:mir_warning_maybe_uninitialized_temporary');
-        end
+        delete(poolObj);
     end
 end
 
