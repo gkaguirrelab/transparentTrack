@@ -131,7 +131,7 @@ if p.Results.useParallel
     if isempty(poolObj)
         nWorkers=0;
     else
-        nWorkers = p.NumWorkers;
+        nWorkers = poolObj.NumWorkers;
     end
 else
     nWorkers=0;
@@ -155,49 +155,52 @@ obtainPupilLikelihood = @(x,y) constrainedEllipseFit(x, y, ...
 % radians
 returnRotMat = @(theta) [cos(theta) -sin(theta); sin(theta) cos(theta)];
 
-%% Open the video
-% Figure out the dimensions of the video, how many frames we  will be
-% using, and if we are to analyze just some of them.
+%% Open and load the video
 inVideoObj = VideoReader(perimeterVideoFileName);
+
+% Get video dimensions
 videoSizeX = inVideoObj.Width;
 videoSizeY = inVideoObj.Height;
+
+% Determine how many frames to process
 nFrames = floor(inVideoObj.Duration*inVideoObj.FrameRate);
 if ~isempty(p.Results.forceNumFrames)
     nFrames = p.Results.forceNumFrames;
 end
 
+% Load the entire pupil perimeter video into memory and then close the
+% video object. For a 5 minute video, this is about 50 MB
+for ii = 1:nFrames
+    % readFrame loads frames sequentially as it is called; make gray
+    pupilBoundaryData(:,:,ii) = rgb2gray(readFrame(inVideoObj));
+end
+clear RGB inVideoObj
+
 %% Conduct (or load) an initial ellipse fit for each video frame
 if p.Results.developmentMode
     load(p.Results.ellipseFitDataFileName);
-    clear RGB inVideoObj     % close the video object
 else
     
-    % Load the entire pupil perimeter video into memory and then close the
-    % video object. For a 5 minute video, this is about 50 MB
-    for ii = 1:nFrames
-        % readFrame loads frames sequentially as it is called; make gray
-        pupilBoundaryData(:,:,ii) = rgb2gray(readFrame(inVideoObj));
+    % Alert the user
+    if strcmp(p.Results.verbosity,'full')
+        fprintf('Initial ellipse fit...\n');
+        fprintf('| 0                      50                   100%% |\n');
+        fprintf('.\n');
     end
-    clear RGB inVideoObj
     
-    % If we are not in parallel mode, check for display preferences
-    if ~p.Results.useParallel
-        % Alert the user
-        if strcmp(p.Results.verbosity,'full')
-            % initialize progress bar
-            progBar = ProgressBar(nFrames,'Initial ellipse fit to pupil perimeter...');
-        end
-        
-        % Create a figure to display the fit results
-        if strcmp(p.Results.display,'full')
-            frameFig = figure( 'Visible', 'on');
-        else
-            frameFig = figure( 'Visible', 'off');
-        end
+    % Create a figure to display the fit results
+    if ~p.Results.useParallel && strcmp(p.Results.display,'full')
+        frameFig = figure( 'Visible', 'on');
     end
     
     % Loop through the frames
     parfor (ii = 1:nFrames, nWorkers)
+        
+        if strcmp(p.Results.verbosity,'full')
+            if mod(ii,round(nFrames/50))==0
+              fprintf('\b.\n');
+            end
+        end
         
         % get the data frame
         thisFrame = squeeze(pupilBoundaryData(:,:,ii));
@@ -261,9 +264,8 @@ else
         loopVar_pInitialFitSplitsSD(ii,:) = pInitialFitSplitsSD';
         loopVar_pInitialFitBootsSD(ii,:) = pInitialFitBootsSD';
         
-        % If we are not in parallel mode, plot the pupil boundary data
-        % points and update the progress bar
-        if ~p.Results.useParallel
+        % Plot the pupil boundary data
+        if ~p.Results.useParallel && strcmp(p.Results.display,'full')
             imshow(thisFrame)
             if ~isnan(pInitialFitTransparent(1))
                 % build ellipse impicit equation
@@ -278,17 +280,16 @@ else
                 h = ezplot(eqt,[1, videoSizeY, 1, videoSizeX]);
                 set (h, 'Color', 'green')
             end % check for a valid ellipse fit to plot
-            
-            if strcmp(p.Results.verbosity,'full')
-                if ~mod(ii,10); feval(progBar,ii); end % update progressbar
-            end
-        end % check for parallel mode
+        end % display check
+                
     end % loop over frames
-    
+
     % close the figure
-    close(frameFig)
+    if ~p.Results.useParallel && strcmp(p.Results.display,'full')
+        close(frameFig)
+    end
     
-end % debug check
+end % developmentMode check
 
 % gather the loop vars into the ellipse structure
 ellipseFitData.pInitialFitTransparent = loopVar_pInitialFitTransparent;
@@ -323,9 +324,6 @@ for jj=1:nEllipseParams
     end
 end
 
-% Create the video object for reading
-inVideoObj = VideoReader(perimeterVideoFileName);
-
 % Create a figure to hold the fit result movie frames, and display if
 % requested
 if strcmp(p.Results.display,'full')
@@ -348,9 +346,9 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 for ii = 1:nFrames
-    
-    % readFrame loads frames sequentially as it is called; make gray
-    thisFrame = rgb2gray(readFrame(inVideoObj));
+
+    % get the data frame
+    thisFrame = squeeze(pupilBoundaryData(:,:,ii));
     
     % get the boundary points
     [Yc, Xc] = ind2sub(size(thisFrame),find(thisFrame));
@@ -466,7 +464,7 @@ for ii = 1:nFrames
     end % check if we are saving a movie out
     
     if strcmp(p.Results.verbosity,'full')
-        if ~mod(ii,10); progBar(ii); end % update progressbar
+        if ~mod(ii,10); feval(progBar,ii); end % update progressbar
     end
     
 end % loop over frames to calculate the posterior
@@ -474,9 +472,6 @@ end % loop over frames to calculate the posterior
 %% Cleanup and save data
 % close the figure
 close(frameFig)
-
-% close the inVideoObj
-clear RGB inVideoObj
 
 % close the outVideoObj
 if ~isempty(p.Results.finalFitVideoOutFileName)
@@ -489,7 +484,6 @@ if ~isempty(p.Results.ellipseFitDataFileName)
 end
 
 end % function
-
 
 
 
