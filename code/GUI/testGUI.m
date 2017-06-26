@@ -22,7 +22,7 @@ function varargout = testGUI(varargin)
 
 % Edit the above text to modify the response to help testGUI
 
-% Last Modified by GUIDE v2.5 23-Jun-2017 15:20:28
+% Last Modified by GUIDE v2.5 26-Jun-2017 15:26:56
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -52,14 +52,12 @@ function testGUI_OpeningFcn(hObject, eventdata, handles, varargin)
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to testGUI (see VARARGIN)
 
-
-%% parse vargin
+% parse vargin
 % if a dropbox dir and param struct are passed in as variables, then load
 % the corresponding data immediately
 if nargin == 5
     dropboxDir = varargin{1};
     params = varargin{2};
-    
     handles = loadDataInGUI(dropboxDir, params, handles);
 end
 
@@ -84,35 +82,13 @@ function varargout = testGUI_OutputFcn(hObject, eventdata, handles)
 varargout{1} = handles.output;
 
 
-% --- Executes on button press in playbtn.
-function playbtn_Callback(hObject, eventdata, handles)
-% hObject    handle to playbtn (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-
-% --- Executes on button press in pauseBtn.
-function pauseBtn_Callback(hObject, eventdata, handles)
-% hObject    handle to pauseBtn (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-
-% --- Executes on button press in stopBtn.
-function stopBtn_Callback(hObject, eventdata, handles)
-% hObject    handle to stopBtn (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-
+% --- Frame number textbox
 function frameNumTxt_Callback(hObject, eventdata, handles)
 % hObject    handle to frameNumTxt (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of frameNumTxt as text
-%        str2double(get(hObject,'String')) returns contents of frameNumTxt as a double
-
+%return contents of frameNumTxt as a double
 handles.frameNumber = str2double(get(hObject,'String'));
 
 % Update handles structure
@@ -153,24 +129,81 @@ handles = refreshInstructionList(handles);
 guidata(hObject, handles);
 
 
-% --- Executes on button press in saveInstructionBtn.
-function saveInstructionBtn_Callback(hObject, eventdata, handles)
-% hObject    handle to saveInstructionBtn (see GCBO)
+% --- Executes on slider movement.
+function slider1_Callback(hObject, eventdata, handles)
+% hObject    handle to slider1 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% --- Executes on button press in drawEllipseBtn.
-function drawEllipseBtn_Callback(hObject, eventdata, handles)
-% hObject    handle to drawEllipseBtn (see GCBO)
+% Hints: get(hObject,'Value') returns position of slider
+%        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
+frameNumber = get(hObject,'Value');
+handles.frameNumber = round(frameNumber);
+
+% show images
+axes(handles.axes3);
+imshow(squeeze(handles.perimVid(:,:,handles.frameNumber)));
+axes(handles.axes4);
+imshow(squeeze(handles.origVid(:,:,handles.frameNumber)));
+set(handles.slider1,'Value',handles.frameNumber)
+
+% update frame number
+set(handles.frameNumTxt, 'string', (num2str(handles.frameNumber)));
+
+% refresh instuction list
+handles = refreshInstructionList(handles);
+
+% Update handles structure
+guidata(hObject, handles);
+
+ 
+% --- Executes during object creation, after setting all properties.
+function slider1_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to slider1 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: slider controls usually have a light gray background.
+if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor',[.9 .9 .9]);
+end
+
+
+
+% --- Executes on selection change in instrunctionList.
+function instrunctionList_Callback(hObject, eventdata, handles)
+% hObject    handle to instrunctionList (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+% Hints: contents = cellstr(get(hObject,'String')) returns instrunctionList contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from instrunctionList
 
-% --- Executes on button press in loadInstructionBtn.
-function loadInstructionBtn_Callback(hObject, eventdata, handles)
-% hObject    handle to loadInstructionBtn (see GCBO)
+% DISPLAY CURRENT INSTRUCTION OVER REAL PUPIL VIDEO
+% get the instruction line
+instructionLine = handles.instructionLines(str2double(get(hObject,'String')));
+% load instruction
+handles = loadInstructionParams(instructionLine, handles);
+
+% display instruction
+handles = displayInstructionOnEyeVideo(handles);
+
+% Update handles structure
+guidata(hObject, handles);
+
+% --- Executes during object creation, after setting all properties.
+function instrunctionList_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to instrunctionList (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: listbox controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
+
+
 
 
 % --- Executes on button press in blinkBtn.
@@ -180,7 +213,10 @@ function blinkBtn_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of blinkBtn
+get(hObject, 'Value')
 
+% Update handles structure
+guidata(hObject, handles);
 
 % --- Executes on button press in previewBtn.
 function previewBtn_Callback(hObject, eventdata, handles)
@@ -213,18 +249,18 @@ end
 
 
 
-function rTxt_Callback(hObject, eventdata, handles)
-% hObject    handle to rTxt (see GCBO)
+function Rtxt_Callback(hObject, eventdata, handles)
+% hObject    handle to Rtxt (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of rTxt as text
-%        str2double(get(hObject,'String')) returns contents of rTxt as a double
+% Hints: get(hObject,'String') returns contents of Rtxt as text
+%        str2double(get(hObject,'String')) returns contents of Rtxt as a double
 
 
 % --- Executes during object creation, after setting all properties.
-function rTxt_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to rTxt (see GCBO)
+function Rtxt_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to Rtxt (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -233,51 +269,6 @@ function rTxt_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
-
-
-% --- Executes on slider movement.
-function slider1_Callback(hObject, eventdata, handles)
-% hObject    handle to slider1 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: get(hObject,'Value') returns position of slider
-%        get(hObject,'Min') and get(hObject,'Max') to determine range of slider
-frameNumber = get(hObject,'Value');
-handles.frameNumber = round(frameNumber);
-
-% show images
-axes(handles.axes3);
-imshow(squeeze(handles.perimVid(:,:,handles.frameNumber)));
-axes(handles.axes4);
-imshow(squeeze(handles.origVid(:,:,handles.frameNumber)));
-set(handles.slider1,'Value',handles.frameNumber)
-
-% update frame number
-set(handles.frameNumTxt, 'string', (num2str(handles.frameNumber)));
-
-% refresh instuction list
-handles = refreshInstructionList(handles);
-
-% Update handles structure
-guidata(hObject, handles);
-
- 
-
-
-% --- Executes during object creation, after setting all properties.
-function slider1_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to slider1 (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: slider controls usually have a light gray background.
-if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor',[.9 .9 .9]);
-end
-
-
-
 
 
 % --- Executes on button press in deleteInstructionBtn.
@@ -421,31 +412,16 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
-
-% --- Executes on selection change in instrunctionList.
-function instrunctionList_Callback(hObject, eventdata, handles)
-% hObject    handle to instrunctionList (see GCBO)
+% --- Executes on button press in saveInstructionBtn.
+function saveInstructionBtn_Callback(hObject, eventdata, handles)
+% hObject    handle to saveInstructionBtn (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: contents = cellstr(get(hObject,'String')) returns instrunctionList contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from instrunctionList
-
-
-
-
-% --- Executes during object creation, after setting all properties.
-function instrunctionList_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to instrunctionList (see GCBO)
+% --- Executes on button press in drawEllipseBtn.
+function drawEllipseBtn_Callback(hObject, eventdata, handles)
+% hObject    handle to drawEllipseBtn (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
-% handles    empty - handles not created until after all CreateFcns called
-
-% Hint: listbox controls usually have a white background on Windows.
-%       See ISPC and COMPUTER.
-if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
-    set(hObject,'BackgroundColor','white');
-end
-
-
+% handles    structure with handles and user data (see GUIDATA)
 
 
