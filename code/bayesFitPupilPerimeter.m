@@ -41,7 +41,7 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 % Optional key/value pairs (display and I/O)
 %  'verbosity' - level of verbosity. [none, full]
 %  'display' - controls a display of the fitting outcome. [none, full]
-%  'ellipseFitDataFileName': full path to the .mat file in which to save 
+%  'ellipseFitDataFileName': full path to the .mat file in which to save
 %     pupil tracking information.
 %  'finalFitVideoOutFileName' - File name to save video showing the fits.
 %     Defaults to empty, in which case no file is saved.
@@ -148,10 +148,20 @@ if p.Results.useParallel
         nWorkers = poolObj.NumWorkers;
         % Use TbTb to configure the workers.
         if ~isempty(p.Results.tbtbRepoName)
-            spmd
-                tbUse(p.Results.tbtbRepoName,'reset','full','online',false);
+            if strcmp(p.Results.verbosity,'full')
+                fprintf('\n');
+                fprintf('TbTb configuration messages from the workers:\n');
             end
-            clc
+            spmd
+                tbUse(p.Results.tbtbRepoName,'reset','full','verbose',false,'online',false);
+            end
+            if strcmp(p.Results.verbosity,'full')
+                fprintf('\n');
+            end
+        end
+        % Silence warnings regarding temporary variables in the parFor loop
+        spmd
+            warning('off','MATLAB:mir_warning_maybe_uninitialized_temporary');
         end
     end
 else
@@ -193,6 +203,7 @@ end
 % minutes of 60 Hz data)
 if strcmp(p.Results.verbosity,'full')
     tic
+    fprintf('\n');
     fprintf(['Loading pupil perimeter file. Started ' char(datetime('now')) '\n']);
 end
 for ii = 1:nFrames
@@ -206,7 +217,7 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 
-%% Conduct (or load) an initial ellipse fit for each video frame
+%% Load or calculate an initial ellipse fit for each video frame
 if p.Results.developmentMode
     load(p.Results.ellipseFitDataFileName);
 else
@@ -401,7 +412,8 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % if this frame has no data, don't attempt to fit, else fit
     if isempty(Xc) || isempty(Yc)
-        pFinalFitTransparent=NaN(1,nEllipseParams);
+        pPosteriorMeanTransparent=NaN(1,nEllipseParams);
+        pPosteriorSDTransparent=NaN(1,nEllipseParams);
         pPriorMeanTransparent=NaN(1,nEllipseParams);
         pPriorSDTransparent=NaN(1,nEllipseParams);
         fitError=NaN;
@@ -467,21 +479,25 @@ parfor (ii = 1:nFrames, nWorkers)
         
         % Calculate the posterior values for the pupil fits, given the
         % likelihood and the prior
-        pPosteriorTransparent = pPriorSDTransparent.^2.*pLikelihoodMeanTransparent./(pPriorSDTransparent.^2+pLikelihoodSDTransparent.^2) + ...
+        pPosteriorMeanTransparent = pPriorSDTransparent.^2.*pLikelihoodMeanTransparent./(pPriorSDTransparent.^2+pLikelihoodSDTransparent.^2) + ...
             pLikelihoodSDTransparent.^2.*pPriorMeanTransparent./(pPriorSDTransparent.^2+pLikelihoodSDTransparent.^2);
+
+        pPosteriorSDTransparent = sqrt((pPriorSDTransparent.^2.*pLikelihoodSDTransparent.^2) ./ ...
+            (pPriorSDTransparent.^2+pLikelihoodSDTransparent.^2));
         
         % refit the data points to deal with any NaNs in the posterior and
         % to obtain a measure of the fit error
         lb_pin = p.Results.ellipseTransparentLB;
         ub_pin = p.Results.ellipseTransparentUB;
-        lb_pin(~isnan(pPosteriorTransparent))=pPosteriorTransparent(~isnan(pPosteriorTransparent));
-        ub_pin(~isnan(pPosteriorTransparent))=pPosteriorTransparent(~isnan(pPosteriorTransparent));
-        [pFinalFitTransparent, ~, fitError] = constrainedEllipseFit(Xc,Yc, lb_pin, ub_pin, nonlinconst);
+        lb_pin(~isnan(pPosteriorMeanTransparent))=pPosteriorMeanTransparent(~isnan(pPosteriorMeanTransparent));
+        ub_pin(~isnan(pPosteriorMeanTransparent))=pPosteriorMeanTransparent(~isnan(pPosteriorMeanTransparent));
+        [pPosteriorMeanTransparent, ~, fitError] = constrainedEllipseFit(Xc,Yc, lb_pin, ub_pin, nonlinconst);
         
     end % check if there are any perimeter points to fit
     
     % store results
-    loopVar_pFinalFitTransparent(ii,:) = pFinalFitTransparent';
+    loopVar_pPosteriorMeanTransparent(ii,:) = pPosteriorMeanTransparent';
+    loopVar_pPosteriorSDTransparent(ii,:) = pPosteriorSDTransparent';
     loopVar_finalFitError(ii) = fitError;
     loopVar_pPriorMeanTransparent(ii,:)= pPriorMeanTransparent';
     loopVar_pPriorSDTransparent(ii,:)= pPriorSDTransparent';
@@ -489,9 +505,9 @@ parfor (ii = 1:nFrames, nWorkers)
     % Plot the pupil boundary data points
     imshow(thisFrame)
     
-    if ~isnan(pFinalFitTransparent(1))
+    if ~isnan(pPosteriorMeanTransparent(1))
         % build ellipse impicit equation
-        pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(pFinalFitTransparent));
+        pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(pPosteriorMeanTransparent));
         a = num2str(pFitImplicit(1)); b = num2str(pFitImplicit(2));
         c = num2str(pFitImplicit(3)); d = num2str(pFitImplicit(4));
         e = num2str(pFitImplicit(5)); f = num2str(pFitImplicit(6));
@@ -511,7 +527,8 @@ parfor (ii = 1:nFrames, nWorkers)
 end % loop over frames to calculate the posterior
 
 % gather the loop vars into the ellipse structure
-ellipseFitData.pFinalFitTransparent=loopVar_pFinalFitTransparent;
+ellipseFitData.pPosteriorMeanTransparent=loopVar_pPosteriorMeanTransparent;
+ellipseFitData.pPosteriorSDTransparent=loopVar_pPosteriorSDTransparent;
 ellipseFitData.fitError=loopVar_finalFitError;
 ellipseFitData.pPriorMeanTransparent=loopVar_pPriorMeanTransparent;
 ellipseFitData.pPriorSDTransparent=loopVar_pPriorSDTransparent;
@@ -537,10 +554,21 @@ if ~isempty(p.Results.ellipseFitDataFileName)
     save(p.Results.ellipseFitDataFileName,'ellipseFitData')
 end
 
+% report completion of Bayesian analysis
 if strcmp(p.Results.verbosity,'full')
     fprintf('\n');
     toc
     fprintf('\n\n');
+end
+
+% Restore the warning state in the parallel
+if p.Results.useParallel
+    poolObj = gcp;
+    if ~isempty(poolObj)
+        spmd
+            warning('on','MATLAB:mir_warning_maybe_uninitialized_temporary');
+        end
+    end
 end
 
 end % function
