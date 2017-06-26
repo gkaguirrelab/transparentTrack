@@ -164,13 +164,13 @@ if p.Results.useParallel
         if ~isempty(p.Results.tbtbRepoName)
             if strcmp(p.Results.verbosity,'full')
                 fprintf('\n');
-                fprintf('TbTb configuration messages from the workers:\n');
+                fprintf('Configuration messages from the workers:\n');
             end
             spmd
                 tbUse(p.Results.tbtbRepoName,'reset','full','verbose',false,'online',false);
             end
-            if strcmp(p.Results.verbosity,'full')
-                fprintf('\n');
+            if strcmp(p.Results.verbosity,'full')                
+                fprintf('CAUTION: TbTb has verbose set to false.\n');
             end
         end
         % Silence warnings regarding temporary variables in the parFor loop
