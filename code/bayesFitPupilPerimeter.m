@@ -24,18 +24,18 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 % NOTES REGARDING USE OF PARALLEL POOL
 %
 % The initial ellipse fitting is conducted within a parfor loop. The
-% parallel pool will not be used, however, unless the key/value pair
+% parallel pool will not be used unless the key/value pair
 % 'useParallel' is set to true. The routine should gracefully fall-back on
-% serial processing if the parallel pool is not available.
+% serial processing if the parallel pool is unavailable.
 %
 % To use the parallel pool with TbTb, provide the identity of the repo
-% name in the 'tbtbRepoName', which is then used to be configure the workers.
+% name in the 'tbtbRepoName', which is then used to configure the workers.
 
 %
 % INPUTS:
 %   perimeterVideoFileName: full path to an .avi file. Points on the
 %     boundary of the pupil should have a value of unity, and the frame
-%     should be otherwise zero filled. A frame that has no information
+%     should be otherwise zero-filled. A frame that has no information
 %     regarding the pupil (e.g., during a blink) should be zero-filled.
 %
 % Optional key/value pairs (display and I/O)
@@ -46,9 +46,21 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 %  'finalFitVideoOutFileName' - File name to save video showing the fits.
 %     Defaults to empty, in which case no file is saved.
 %  'videoOutFrameRate' - frame rate (in Hz) of saved video. Default 30.
-%  'forceNumFrames' - analyze fewer than the total number of video frames.
 %
-% Optional key/value pairs (analysis parameters)
+% Optional key/value pairs (flow control)
+% 
+%  'forceNumFrames' - analyze fewer than the total number of video frames.
+%  'useParallel' - If set to true, use the Matlab parallel pool for the
+%    initial ellipse fitting.
+%  'tbtbProjectName' - The workers in the parallel pool are configured by
+%    issuing a tbUseProject command for the project specified here.
+%  'developmentMode' - If set to true, the routine attempts to load a
+%    pre-existing set of initial ellipse measures (and SDs upon those
+%    params), rather than re-computing these. This allows more rapid
+%    exploration of parameter settigns that guide the Bayesian smoothing.
+%
+% Optional key/value pairs (fitting parameters)
+%
 %  'ellipseTransparentLB/UB' - Define the hard upper and lower boundaries
 %     for the ellipse fit, in units of pixels of the video. The center
 %     points should be constrained to the size of the video. Eccentricity
@@ -78,10 +90,6 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 %     points to perform to estimate a likelihood SD. This was found in
 %     testing to not be useful, as the pupil boundary is oversampled, so
 %     this is left at a default of zero.
-%   'useParallel' - If set to true, use the Matlab parallel pool for the
-%     initial ellipse fitting.
-%   'tbtbProjectName' - The workers in the parallel pool are configured by
-%    issuing a tbUseProject command for the project specified here.
 %   'priorCenterNaN' - Controls the behavior of the weighting function for
 %     the prior for the current time point. See comments below for details.
 %   'whichLikelihoodSD' - The variance of the measured parameters for a
@@ -91,24 +99,31 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 %       'pInitialFitHessianSD'
 %       'pInitialFitSplitsSD'
 %       'pInitialFitBootsSD'
-%   'developmentMode' - If set to true, the routine attempts to load a
-%     pre-existing set of initial ellipse measures (and SDs upon those
-%     params), rather than re-computing these. This allows more rapid
-%     exploration of parameter settigns that guide the Bayesian smoothing.
-
+%
 % OUTPUTS:
 %   ellipseFitData: A structure with multiple fields corresponding to the
 %     parameters, SDs, and errors of the initial and final ellipse fits.
 
 %% Parse vargin for options passed here
 p = inputParser;
+
+% Required
 p.addRequired('perimeterVideoFileName',@ischar);
-p.addParameter('ellipseFitDataFileName',[],@ischar);
+
+% Optional display and I/O params
 p.addParameter('verbosity','none',@ischar);
 p.addParameter('display','none',@ischar);
+p.addParameter('ellipseFitDataFileName',[],@ischar);
 p.addParameter('finalFitVideoOutFileName',[],@ischar);
 p.addParameter('videoOutFrameRate',30,@isnumeric);
+
+% Optional flow control params
 p.addParameter('forceNumFrames',[],@isnumeric);
+p.addParameter('useParallel',false,@islogical);
+p.addParameter('tbtbRepoName','LiveTrackAnalysisToolbox',@ischar);
+p.addParameter('developmentMode',false,@islogical);
+
+% Optional fitting params
 p.addParameter('ellipseTransparentLB',[0, 0, 1000, 0, -0.5*pi],@isnumeric);
 p.addParameter('ellipseTransparentUB',[240,320,10000,0.417, 0.5*pi],@isnumeric);
 p.addParameter('exponentialTauParams',[.25, .25, 5, 1, 1],@isnumeric);
@@ -116,11 +131,10 @@ p.addParameter('constrainEccen_x_Theta',[0.305,0.417],@isnumeric);
 p.addParameter('likelihoodErrorExponent',1.25,@isnumeric);
 p.addParameter('nSplits',8,@isnumeric);
 p.addParameter('nBoots',0,@isnumeric);
-p.addParameter('useParallel',false,@islogical);
-p.addParameter('tbtbRepoName','LiveTrackAnalysisToolbox',@ischar);
 p.addParameter('priorCenterNaN',true,@islogical);
 p.addParameter('whichLikelihoodSD','pInitialFitSplitsSD',@ischar);
-p.addParameter('developmentMode',false,@islogical);
+
+% Parse the parameters
 p.parse(perimeterVideoFileName,varargin{:});
 
 %% Sanity check the parameters
