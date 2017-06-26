@@ -22,7 +22,7 @@ function varargout = testGUI(varargin)
 
 % Edit the above text to modify the response to help testGUI
 
-% Last Modified by GUIDE v2.5 26-Jun-2017 15:26:56
+% Last Modified by GUIDE v2.5 26-Jun-2017 16:26:05
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -170,30 +170,43 @@ end
 
 
 
-% --- Executes on selection change in instrunctionList.
-function instrunctionList_Callback(hObject, eventdata, handles)
-% hObject    handle to instrunctionList (see GCBO)
+% --- Executes on selection change in instructionList.
+function instructionList_Callback(hObject, eventdata, handles)
+% hObject    handle to instructionList (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: contents = cellstr(get(hObject,'String')) returns instrunctionList contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from instrunctionList
-
-% DISPLAY CURRENT INSTRUCTION OVER REAL PUPIL VIDEO
+% Hints: contents = cellstr(get(hObject,'String')) returns instructionList contents as cell array
+%        contents{get(hObject,'Value')} returns selected item from instructionList
+% 
 % get the instruction line
 instructionLine = handles.instructionLines(str2double(get(hObject,'String')));
-% load instruction
-handles = loadInstructionParams(instructionLine, handles);
-
-% display instruction
-handles = displayInstructionOnEyeVideo(handles);
+if ~isempty(instructionLine)
+    % load instruction
+    handles = loadInstructionParams(instructionLine, handles);
+    
+    % display instruction
+%     handles = displayInstructionOnEyeVideo(handles);
+    
+else
+    % set all handles to be empty
+    % set handles to the GUI elements
+    set(handles.blinkBtn,'value',0)
+    set(handles.Utxt,'string', [])
+    set(handles.Rtxt,'string', [])
+    set(handles.ellipse1Txt,'string', [])
+    set(handles.ellipse2Txt,'string', [])
+    set(handles.ellipse3Txt,'string', [])
+    set(handles.ellipse4Txt,'string', [])
+    set(handles.ellipse5Txt,'string', [])
+end
 
 % Update handles structure
 guidata(hObject, handles);
 
 % --- Executes during object creation, after setting all properties.
-function instrunctionList_CreateFcn(hObject, eventdata, handles)
-% hObject    handle to instrunctionList (see GCBO)
+function instructionList_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to instructionList (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
 
@@ -423,5 +436,3 @@ function drawEllipseBtn_Callback(hObject, eventdata, handles)
 % hObject    handle to drawEllipseBtn (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-
-
