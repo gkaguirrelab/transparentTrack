@@ -1,5 +1,5 @@
 function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varargin)
-% [foo] = bayesFitPupilPerimeter(perimeterVideoFileName, varargin)
+% [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varargin)
 %
 % This routine fits an ellipse to each frame of a video that contains the
 % perimeter of the pupil. First, an ellipse is fit to each frame of the
@@ -21,7 +21,18 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 % We use this parameterization to allow us to constrain fits with regard to
 % these values (specifically area and eccentricity).
 %
-% Inputs:
+% NOTES REGARDING USE OF PARALLEL POOL
+%
+% The initial ellipse fitting is conducted within a parfor loop. The
+% parallel pool will not be used, however, unless the key/value pair
+% 'useParallel' is set to true. The routine should gracefully fall-back on
+% serial processing if the parallel pool is not available.
+%
+% To use the parallel pool with TbTb, provide the identity of the project
+% in the 'tbtbProjectName', which is then used to be configure the workers.
+
+%
+% INPUTS:
 %   perimeterVideoFileName: full path to an .avi file. Points on the
 %     boundary of the pupil should have a value of unity, and the frame
 %     should be otherwise zero filled. A frame that has no information
@@ -69,6 +80,8 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 %     this is left at a default of zero.
 %   'useParallel' - If set to true, use the Matlab parallel pool for the
 %     initial ellipse fitting.
+%   'tbtbProjectName' - The workers in the parallel pool are configured by
+%    issuing a tbUseProject command for the project specified here. 
 %   'priorCenterNaN' - Controls the behavior of the weighting function for
 %     the prior for the current time point. See comments below for details.
 %   'whichLikelihoodSD' - The variance of the measured parameters for a
@@ -81,9 +94,9 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 %   'developmentMode' - If set to true, the routine attempts to load a
 %     pre-existing set of initial ellipse measures (and SDs upon those
 %     params), rather than re-computing these. This allows more rapid
-%     explioration of parameter settigns that guide the Bayesian smoothing.
+%     exploration of parameter settigns that guide the Bayesian smoothing.
 
-% Outputs:
+% OUTPUTS:
 %   ellipseFitData: A structure with multiple fields corresponding to the
 %     parameters, SDs, and errors of the initial and final ellipse fits.
 
@@ -98,13 +111,14 @@ p.addParameter('videoOutFrameRate',30,@isnumeric);
 p.addParameter('forceNumFrames',[],@isnumeric);
 p.addParameter('ellipseTransparentLB',[0, 0, 1000, 0, -0.5*pi],@isnumeric);
 p.addParameter('ellipseTransparentUB',[240,320,10000,0.417, 0.5*pi],@isnumeric);
-p.addParameter('exponentialTauParams',[0.25, 0.25, 5, 1, 1],@isnumeric);
+p.addParameter('exponentialTauParams',[.25, .25, 5, 1, 1],@isnumeric);
 p.addParameter('constrainEccen_x_Theta',[0.305,0.417],@isnumeric);
 p.addParameter('likelihoodErrorExponent',1.25,@isnumeric);
 p.addParameter('nSplits',8,@isnumeric);
 p.addParameter('nBoots',0,@isnumeric);
 p.addParameter('useParallel',false,@islogical);
-p.addParameter('priorCenterNaN',false,@islogical);
+p.addParameter('tbtbProjectName','eyeTOMEAnalysis',@ischar);
+p.addParameter('priorCenterNaN',true,@islogical);
 p.addParameter('whichLikelihoodSD','pInitialFitSplitsSD',@ischar);
 p.addParameter('developmentMode',false,@islogical);
 p.parse(perimeterVideoFileName,varargin{:});
@@ -132,6 +146,13 @@ if p.Results.useParallel
         nWorkers=0;
     else
         nWorkers = poolObj.NumWorkers;
+        % Use TbTb to configure the workers.
+        if ~isempty(p.Results.tbtbProjectName)
+            spmd
+                tbUseProject(p.Results.tbtbProjectName,'reset','full','online',false);
+            end
+            clc
+        end
     end
 else
     nWorkers=0;
@@ -183,7 +204,8 @@ else
     
     % Alert the user
     if strcmp(p.Results.verbosity,'full')
-        fprintf('Initial ellipse fit...\n');
+        tic
+        fprintf(['Initial ellipse fit. Started ' char(datetime('now')) '\n']);
         fprintf('| 0                      50                   100%% |\n');
         fprintf('.\n');
     end
@@ -210,10 +232,10 @@ else
         
         % fit an ellipse to the boundary (if any points exist)
         if isempty(Xc) || isempty(Yc)
-            pInitialFitTransparent=[NaN,NaN,NaN,NaN,NaN];
-            pInitialFitHessianSD=[NaN,NaN,NaN,NaN,NaN];
-            pInitialFitSplitsSD=[NaN,NaN,NaN,NaN,NaN];
-            pInitialFitBootsSD=[NaN,NaN,NaN,NaN,NaN];
+            pInitialFitTransparent=NaN(1,nEllipseParams);
+            pInitialFitHessianSD=NaN(1,nEllipseParams);
+            pInitialFitSplitsSD=NaN(1,nEllipseParams);
+            pInitialFitBootsSD=NaN(1,nEllipseParams);
         else
             % Obtain the fit to the veridical data
             [pInitialFitTransparent, pInitialFitHessianSD, ~] = ...
@@ -221,7 +243,7 @@ else
             
             % Re-calculate fit for splits of data points, if requested
             if p.Results.nSplits == 0
-                pInitialFitSplitsSD=[NaN,NaN,NaN,NaN,NaN];
+                pInitialFitSplitsSD=NaN(1,nEllipseParams);
             else
                 % Find the center of the pupil boundary points, place the boundary
                 % points in a matrix and shift them to the center position
@@ -250,7 +272,7 @@ else
             % Obtain the SD of the parameters through a bootstrap resample
             % of data points if requested
             if p.Results.nBoots == 0
-                pInitialFitBootsSD=[NaN,NaN,NaN,NaN,NaN];
+                pInitialFitBootsSD=NaN(1,nEllipseParams);
             else
                 bootOptSet = statset('UseParallel',p.Results.useParallel);
                 pInitialFitBootsSD = std(bootstrp(p.Results.nBoots,obtainPupilLikelihood,Xc,Yc,'Options',bootOptSet));
@@ -288,14 +310,19 @@ else
     if ~p.Results.useParallel && strcmp(p.Results.display,'full')
         close(frameFig)
     end
+
+    % gather the loop vars into the ellipse structure
+    ellipseFitData.pInitialFitTransparent = loopVar_pInitialFitTransparent;
+    ellipseFitData.pInitialFitHessianSD = loopVar_pInitialFitHessianSD;
+    ellipseFitData.pInitialFitSplitsSD = loopVar_pInitialFitSplitsSD;
+    ellipseFitData.pInitialFitBootsSD = loopVar_pInitialFitBootsSD;
+
+    if strcmp(p.Results.verbosity,'full')
+        toc
+        fprintf('\n\n');
+    end
     
 end % developmentMode check
-
-% gather the loop vars into the ellipse structure
-ellipseFitData.pInitialFitTransparent = loopVar_pInitialFitTransparent;
-ellipseFitData.pInitialFitHessianSD = loopVar_pInitialFitHessianSD;
-ellipseFitData.pInitialFitSplitsSD = loopVar_pInitialFitSplitsSD;
-ellipseFitData.pInitialFitBootsSD = loopVar_pInitialFitBootsSD;
 
 %% Conduct a Bayesian smoothing operation
 
@@ -341,11 +368,20 @@ end
 
 % Alert the user
 if strcmp(p.Results.verbosity,'full')
-    % initialize progress bar
-    progBar = ProgressBar(nFrames,'Bayesian smoothing of fit values...');
+    tic
+    fprintf(['Bayesian smoothing. Started ' char(datetime('now')) '\n']);
+    fprintf('| 0                      50                   100%% |\n');
+    fprintf('.\n');
 end
 
 for ii = 1:nFrames
+
+    % update progress
+    if strcmp(p.Results.verbosity,'full')
+        if mod(ii,round(nFrames/50))==0
+            fprintf('\b.');
+        end
+    end
 
     % get the data frame
     thisFrame = squeeze(pupilBoundaryData(:,:,ii));
@@ -355,9 +391,9 @@ for ii = 1:nFrames
     
     % if this frame has no data, don't attempt to fit, else fit
     if isempty(Xc) || isempty(Yc)
-        pFinalFitTransparent=[NaN,NaN,NaN,NaN,NaN];
-        pPriorMeanTransparent=[NaN,NaN,NaN,NaN,NaN];
-        pPriorSDTransparent=[NaN,NaN,NaN,NaN,NaN];
+        pFinalFitTransparent=NaN(1,nEllipseParams);
+        pPriorMeanTransparent=NaN(1,nEllipseParams);
+        pPriorSDTransparent=NaN(1,nEllipseParams);
         fitError=NaN;
     else
         % Calculate the prior. The prior mean is given by the surrounding
@@ -463,10 +499,6 @@ for ii = 1:nFrames
         writeVideo(outVideoObj,frame);
     end % check if we are saving a movie out
     
-    if strcmp(p.Results.verbosity,'full')
-        if ~mod(ii,10); feval(progBar,ii); end % update progressbar
-    end
-    
 end % loop over frames to calculate the posterior
 
 %% Cleanup and save data
@@ -483,6 +515,12 @@ if ~isempty(p.Results.ellipseFitDataFileName)
     save(p.Results.ellipseFitDataFileName,'ellipseFitData')
 end
 
+if strcmp(p.Results.verbosity,'full')
+    fprintf('\n');
+    toc
+    fprintf('\n\n');
+end
+    
 end % function
 
 
