@@ -28,8 +28,8 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 % 'useParallel' is set to true. The routine should gracefully fall-back on
 % serial processing if the parallel pool is not available.
 %
-% To use the parallel pool with TbTb, provide the identity of the project
-% in the 'tbtbProjectName', which is then used to be configure the workers.
+% To use the parallel pool with TbTb, provide the identity of the repo
+% name in the 'tbtbRepoName', which is then used to be configure the workers.
 
 %
 % INPUTS:
@@ -81,7 +81,7 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 %   'useParallel' - If set to true, use the Matlab parallel pool for the
 %     initial ellipse fitting.
 %   'tbtbProjectName' - The workers in the parallel pool are configured by
-%    issuing a tbUseProject command for the project specified here. 
+%    issuing a tbUseProject command for the project specified here.
 %   'priorCenterNaN' - Controls the behavior of the weighting function for
 %     the prior for the current time point. See comments below for details.
 %   'whichLikelihoodSD' - The variance of the measured parameters for a
@@ -117,7 +117,7 @@ p.addParameter('likelihoodErrorExponent',1.25,@isnumeric);
 p.addParameter('nSplits',8,@isnumeric);
 p.addParameter('nBoots',0,@isnumeric);
 p.addParameter('useParallel',false,@islogical);
-p.addParameter('tbtbProjectName','eyeTOMEAnalysis',@ischar);
+p.addParameter('tbtbRepoName','LiveTrackAnalysisToolbox',@ischar);
 p.addParameter('priorCenterNaN',true,@islogical);
 p.addParameter('whichLikelihoodSD','pInitialFitSplitsSD',@ischar);
 p.addParameter('developmentMode',false,@islogical);
@@ -147,9 +147,9 @@ if p.Results.useParallel
     else
         nWorkers = poolObj.NumWorkers;
         % Use TbTb to configure the workers.
-        if ~isempty(p.Results.tbtbProjectName)
+        if ~isempty(p.Results.tbtbRepoName)
             spmd
-                tbUseProject(p.Results.tbtbProjectName,'reset','full','online',false);
+                tbUse(p.Results.tbtbRepoName,'reset','full','online',false);
             end
             clc
         end
@@ -189,13 +189,22 @@ if ~isempty(p.Results.forceNumFrames)
     nFrames = p.Results.forceNumFrames;
 end
 
-% Load the entire pupil perimeter video into memory and then close the
-% video object. For a 5 minute video, this is about 50 MB
+% Load the entire pupil perimeter video into memory (about 50 MB for five
+% minutes of 60 Hz data)
+if strcmp(p.Results.verbosity,'full')
+    tic
+    fprintf(['Loading pupil perimeter file. Started ' char(datetime('now')) '\n']);
+    toc
+end
 for ii = 1:nFrames
     % readFrame loads frames sequentially as it is called; make gray
     pupilBoundaryData(:,:,ii) = rgb2gray(readFrame(inVideoObj));
 end
 clear RGB inVideoObj
+if strcmp(p.Results.verbosity,'full')
+    toc
+end
+
 
 %% Conduct (or load) an initial ellipse fit for each video frame
 if p.Results.developmentMode
@@ -220,7 +229,7 @@ else
         
         if strcmp(p.Results.verbosity,'full')
             if mod(ii,round(nFrames/50))==0
-              fprintf('\b.\n');
+                fprintf('\b.\n');
             end
         end
         
@@ -303,26 +312,31 @@ else
                 set (h, 'Color', 'green')
             end % check for a valid ellipse fit to plot
         end % display check
-                
+        
     end % loop over frames
-
+    
     % close the figure
     if ~p.Results.useParallel && strcmp(p.Results.display,'full')
         close(frameFig)
     end
-
+    
     % gather the loop vars into the ellipse structure
     ellipseFitData.pInitialFitTransparent = loopVar_pInitialFitTransparent;
     ellipseFitData.pInitialFitHessianSD = loopVar_pInitialFitHessianSD;
     ellipseFitData.pInitialFitSplitsSD = loopVar_pInitialFitSplitsSD;
     ellipseFitData.pInitialFitBootsSD = loopVar_pInitialFitBootsSD;
-
+    
     if strcmp(p.Results.verbosity,'full')
         toc
         fprintf('\n\n');
     end
     
 end % developmentMode check
+
+% save the ellipse fit results if requested
+if ~isempty(p.Results.ellipseFitDataFileName)
+    save(p.Results.ellipseFitDataFileName,'ellipseFitData')
+end
 
 %% Conduct a Bayesian smoothing operation
 
@@ -359,30 +373,25 @@ else
     frameFig = figure( 'Visible', 'off');
 end
 
-% Create the video object for writing, if requested
-if ~isempty(p.Results.finalFitVideoOutFileName)
-    outVideoObj = VideoWriter(p.Results.finalFitVideoOutFileName);
-    outVideoObj.FrameRate = p.Results.videoOutFrameRate;
-    open(outVideoObj);
-end
-
 % Alert the user
 if strcmp(p.Results.verbosity,'full')
     tic
     fprintf(['Bayesian smoothing. Started ' char(datetime('now')) '\n']);
     fprintf('| 0                      50                   100%% |\n');
-    fprintf('.');
+    fprintf('.\n');
 end
 
-for ii = 1:nFrames
+finalFitVideo=cell(nFrames,1);
 
+parfor (ii = 1:nFrames, nWorkers)
+    
     % update progress
     if strcmp(p.Results.verbosity,'full')
         if mod(ii,round(nFrames/50))==0
-            fprintf('.');
+            fprintf('\b.\n');
         end
     end
-
+    
     % get the data frame
     thisFrame = squeeze(pupilBoundaryData(:,:,ii));
     
@@ -471,10 +480,10 @@ for ii = 1:nFrames
     end % check if there are any perimeter points to fit
     
     % store results
-    ellipseFitData.pFinalFitTransparent(ii,:) = pFinalFitTransparent';
-    ellipseFitData.finalFitError(ii) = fitError;
-    ellipseFitData.pPriorMeanTransparent(ii,:)= pPriorMeanTransparent';
-    ellipseFitData.pPriorSDTransparent(ii,:)= pPriorSDTransparent';
+    loopVar_pFinalFitTransparent(ii,:) = pFinalFitTransparent';
+    loopVar_finalFitError(ii) = fitError;
+    loopVar_pPriorMeanTransparent(ii,:)= pPriorMeanTransparent';
+    loopVar_pPriorSDTransparent(ii,:)= pPriorSDTransparent';
     
     % Plot the pupil boundary data points
     imshow(thisFrame)
@@ -493,20 +502,32 @@ for ii = 1:nFrames
         set (h, 'Color', 'green')
     end
     
-    % save frame
+    % collect the frame into the finalFitVideo
     if ~isempty(p.Results.finalFitVideoOutFileName)
-        frame   = getframe(frameFig);
-        writeVideo(outVideoObj,frame);
+        finalFitVideo{ii}   = getframe(frameFig);
     end % check if we are saving a movie out
     
 end % loop over frames to calculate the posterior
+
+% gather the loop vars into the ellipse structure
+ellipseFitData.pFinalFitTransparent=loopVar_pFinalFitTransparent;
+ellipseFitData.fitError=loopVar_finalFitError;
+ellipseFitData.pPriorMeanTransparent=loopVar_pPriorMeanTransparent;
+ellipseFitData.pPriorSDTransparent=loopVar_pPriorSDTransparent;
 
 %% Cleanup and save data
 % close the figure
 close(frameFig)
 
-% close the outVideoObj
+% save the finalFitVideo
 if ~isempty(p.Results.finalFitVideoOutFileName)
+    % Create the video object for writing
+    outVideoObj = VideoWriter(p.Results.finalFitVideoOutFileName);
+    outVideoObj.FrameRate = p.Results.videoOutFrameRate;
+    open(outVideoObj);
+    for ii=1:nFrames
+        writeVideo(outVideoObj,finalFitVideo{ii});
+    end
     close(outVideoObj);
 end
 
@@ -520,7 +541,7 @@ if strcmp(p.Results.verbosity,'full')
     toc
     fprintf('\n\n');
 end
-    
+
 end % function
 
 
