@@ -37,12 +37,12 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 %     boundary of the pupil should have a value of unity, and the frame
 %     should be otherwise zero filled. A frame that has no information
 %     regarding the pupil (e.g., during a blink) should be zero-filled.
-%   pupilFileName: full path to the .mat file in which to save pupil
-%     tracking information.
 %
 % Optional key/value pairs (display and I/O)
 %  'verbosity' - level of verbosity. [none, full]
 %  'display' - controls a display of the fitting outcome. [none, full]
+%  'ellipseFitDataFileName': full path to the .mat file in which to save 
+%     pupil tracking information.
 %  'finalFitVideoOutFileName' - File name to save video showing the fits.
 %     Defaults to empty, in which case no file is saved.
 %  'videoOutFrameRate' - frame rate (in Hz) of saved video. Default 30.
