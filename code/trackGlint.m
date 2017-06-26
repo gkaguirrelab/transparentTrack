@@ -43,16 +43,11 @@ p.addRequired('grayI');
 p.addRequired('glintFile',@isstr);
 
 % optional inputs
-displayTrackingDefault = false;
-gammaCorrectionDefault = 1;
-glintCircleThreshDefault =  0.999;
-glintRangeDefault = [10 30];
-glintEllipseThreshDefault = 0.9;
-p.addParameter('displayTracking', displayTrackingDefault, @islogical);
-p.addParameter('gammaCorrection', gammaCorrectionDefault, @isnumeric);
-p.addParameter('glintCircleThresh', glintCircleThreshDefault, @isnumeric);
-p.addParameter('glintRange', glintRangeDefault, @isnumeric);
-p.addParameter('glintEllipseThresh', glintEllipseThreshDefault, @isnumeric);
+p.addParameter('displayTracking', false, @islogical);
+p.addParameter('gammaCorrection', 1, @isnumeric);
+p.addParameter('glintCircleThresh', 0.999, @isnumeric);
+p.addParameter('glintRange', [10 30], @isnumeric);
+p.addParameter('glintEllipseThresh', 0.9, @isnumeric);
 
 %parse
 p.parse(grayI, glintFileName, varargin{:})
@@ -198,5 +193,5 @@ close all
 glintTrackingParams = p.Results;
 
 %% save out a mat file with the glint tracking data
-save (glintFileName, 'glint', 'glintTrackingParams')
+save (glintFileName, 'glint')
     
