@@ -371,7 +371,7 @@ if strcmp(p.Results.verbosity,'full')
     tic
     fprintf(['Bayesian smoothing. Started ' char(datetime('now')) '\n']);
     fprintf('| 0                      50                   100%% |\n');
-    fprintf('.\n');
+    fprintf('.');
 end
 
 for ii = 1:nFrames
@@ -379,7 +379,7 @@ for ii = 1:nFrames
     % update progress
     if strcmp(p.Results.verbosity,'full')
         if mod(ii,round(nFrames/50))==0
-            fprintf('\b.');
+            fprintf('.');
         end
     end
 
