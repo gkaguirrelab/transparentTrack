@@ -194,7 +194,6 @@ end
 if strcmp(p.Results.verbosity,'full')
     tic
     fprintf(['Loading pupil perimeter file. Started ' char(datetime('now')) '\n']);
-    toc
 end
 for ii = 1:nFrames
     % readFrame loads frames sequentially as it is called; make gray
@@ -203,6 +202,7 @@ end
 clear RGB inVideoObj
 if strcmp(p.Results.verbosity,'full')
     toc
+    fprintf('\n');
 end
 
 
@@ -381,6 +381,7 @@ if strcmp(p.Results.verbosity,'full')
     fprintf('.\n');
 end
 
+% Pre-allocate a cell array to hold the finalFit video frames
 finalFitVideo=cell(nFrames,1);
 
 parfor (ii = 1:nFrames, nWorkers)
