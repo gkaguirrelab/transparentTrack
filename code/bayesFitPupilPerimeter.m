@@ -48,7 +48,7 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 %  'videoOutFrameRate' - frame rate (in Hz) of saved video. Default 30.
 %
 % Optional key/value pairs (flow control)
-% 
+%
 %  'forceNumFrames' - analyze fewer than the total number of video frames.
 %  'useParallel' - If set to true, use the Matlab parallel pool for the
 %    initial ellipse fitting.
@@ -169,13 +169,9 @@ if p.Results.useParallel
             spmd
                 tbUse(p.Results.tbtbRepoName,'reset','full','verbose',false,'online',false);
             end
-            if strcmp(p.Results.verbosity,'full')                
+            if strcmp(p.Results.verbosity,'full')
                 fprintf('CAUTION: TbTb has verbose set to false.\n');
             end
-        end
-        % Silence warnings regarding temporary variables in the parFor loop
-        spmd
-            warning('off','MATLAB:mir_warning_maybe_uninitialized_temporary');
         end
     end
 else
@@ -326,15 +322,13 @@ else
             if ~isnan(pInitialFitTransparent(1))
                 % build ellipse impicit equation
                 pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(pInitialFitTransparent));
-                a = num2str(pFitImplicit(1)); b = num2str(pFitImplicit(2));
-                c = num2str(pFitImplicit(3)); d = num2str(pFitImplicit(4));
-                e = num2str(pFitImplicit(5)); f = num2str(pFitImplicit(6));
-                eqt = ['(',a, ')*x^2 + (',b,')*x*y + (',c,')*y^2 + (',d,')*x+ (',e,')*y + (',f,')'];
+                fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
                 
-                % superimpose the ellipse using ezplot
+                % superimpose the ellipse using fimplicit
                 hold on
-                h = ezplot(eqt,[1, videoSizeY, 1, videoSizeX]);
-                set (h, 'Color', 'green')
+                fimplicit(fh,[1, videoSizeY, 1, videoSizeX],'Color', 'green');
+                set(gca,'position',[0 0 1 1],'units','normalized')
+                axis off;
             end % check for a valid ellipse fit to plot
         end % display check
         
@@ -424,14 +418,16 @@ parfor (ii = 1:nFrames, nWorkers)
     % get the boundary points
     [Yc, Xc] = ind2sub(size(thisFrame),find(thisFrame));
     
-    % if this frame has no data, don't attempt to fit, else fit
-    if isempty(Xc) || isempty(Yc)
-        pPosteriorMeanTransparent=NaN(1,nEllipseParams);
-        pPosteriorSDTransparent=NaN(1,nEllipseParams);
-        pPriorMeanTransparent=NaN(1,nEllipseParams);
-        pPriorSDTransparent=NaN(1,nEllipseParams);
-        fitError=NaN;
-    else
+    pPosteriorMeanTransparent=NaN(1,nEllipseParams);
+    pPosteriorSDTransparent=NaN(1,nEllipseParams);
+    pPriorMeanTransparent=NaN(1,nEllipseParams);
+    pPriorSDTransparent=NaN(1,nEllipseParams);
+    pLikelihoodMeanTransparent=NaN(1,nEllipseParams);
+    pLikelihoodSDTransparent=NaN(1,nEllipseParams);    
+    fitError=NaN;
+    
+    % if this frame has data, calculate the posterior
+    if ~isempty(Xc) &&  ~isempty(Yc)
         % Calculate the prior. The prior mean is given by the surrounding
         % fit values, weighted by a decaying exponential in time and the
         % inverse of the standard deviation of each measure. The prior
@@ -495,7 +491,7 @@ parfor (ii = 1:nFrames, nWorkers)
         % likelihood and the prior
         pPosteriorMeanTransparent = pPriorSDTransparent.^2.*pLikelihoodMeanTransparent./(pPriorSDTransparent.^2+pLikelihoodSDTransparent.^2) + ...
             pLikelihoodSDTransparent.^2.*pPriorMeanTransparent./(pPriorSDTransparent.^2+pLikelihoodSDTransparent.^2);
-
+        
         pPosteriorSDTransparent = sqrt((pPriorSDTransparent.^2.*pLikelihoodSDTransparent.^2) ./ ...
             (pPriorSDTransparent.^2+pLikelihoodSDTransparent.^2));
         
@@ -522,15 +518,13 @@ parfor (ii = 1:nFrames, nWorkers)
     if ~isnan(pPosteriorMeanTransparent(1))
         % build ellipse impicit equation
         pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(pPosteriorMeanTransparent));
-        a = num2str(pFitImplicit(1)); b = num2str(pFitImplicit(2));
-        c = num2str(pFitImplicit(3)); d = num2str(pFitImplicit(4));
-        e = num2str(pFitImplicit(5)); f = num2str(pFitImplicit(6));
-        eqt = ['(',a, ')*x^2 + (',b,')*x*y + (',c,')*y^2 + (',d,')*x+ (',e,')*y + (',f,')'];
+        fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
         
-        % superimpose the ellipse using ezplot
+        % superimpose the ellipse using fimplicit
         hold on
-        h = ezplot(eqt,[1, videoSizeY, 1, videoSizeX]);
-        set (h, 'Color', 'green')
+        fimplicit(fh,[1, videoSizeY, 1, videoSizeX],'Color', 'green');
+        set(gca,'position',[0 0 1 1],'units','normalized')
+        axis off;
     end
     
     % collect the frame into the finalFitVideo
