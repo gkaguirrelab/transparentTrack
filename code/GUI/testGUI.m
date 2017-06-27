@@ -237,6 +237,11 @@ function previewBtn_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
+% display instructions
+handles = displayInstructionOnEyeVideo(handles);
+
+% Update handles structure
+guidata(hObject, handles);
 
 
 function Utxt_Callback(hObject, eventdata, handles)
@@ -247,6 +252,10 @@ function Utxt_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of Utxt as text
 %        str2double(get(hObject,'String')) returns contents of Utxt as a double
 
+get(hObject,'String');
+
+% Update handles structure
+guidata(hObject, handles)
 
 % --- Executes during object creation, after setting all properties.
 function Utxt_CreateFcn(hObject, eventdata, handles)
@@ -270,6 +279,10 @@ function Rtxt_Callback(hObject, eventdata, handles)
 % Hints: get(hObject,'String') returns contents of Rtxt as text
 %        str2double(get(hObject,'String')) returns contents of Rtxt as a double
 
+get(hObject,'String');
+
+% Update handles structure
+guidata(hObject, handles)
 
 % --- Executes during object creation, after setting all properties.
 function Rtxt_CreateFcn(hObject, eventdata, handles)
@@ -317,10 +330,10 @@ function ellipse1Txt_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of ellipse1Txt as text
-%        str2double(get(hObject,'String')) returns contents of ellipse1Txt as a double
+get(hObject,'String');
 
-
+% Update handles structure
+guidata(hObject, handles)
 % --- Executes during object creation, after setting all properties.
 function ellipse1Txt_CreateFcn(hObject, eventdata, handles)
 % hObject    handle to ellipse1Txt (see GCBO)
@@ -340,9 +353,10 @@ function ellipse2Txt_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of ellipse2Txt as text
-%        str2double(get(hObject,'String')) returns contents of ellipse2Txt as a double
+get(hObject,'String');
 
+% Update handles structure
+guidata(hObject, handles)
 
 % --- Executes during object creation, after setting all properties.
 function ellipse2Txt_CreateFcn(hObject, eventdata, handles)
@@ -363,9 +377,10 @@ function ellipse5Txt_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of ellipse5Txt as text
-%        str2double(get(hObject,'String')) returns contents of ellipse5Txt as a double
+get(hObject,'String');
 
+% Update handles structure
+guidata(hObject, handles)
 
 % --- Executes during object creation, after setting all properties.
 function ellipse5Txt_CreateFcn(hObject, eventdata, handles)
@@ -386,9 +401,10 @@ function ellipse4Txt_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of ellipse4Txt as text
-%        str2double(get(hObject,'String')) returns contents of ellipse4Txt as a double
+get(hObject,'String')
 
+% Update handles structure
+guidata(hObject, handles)
 
 % --- Executes during object creation, after setting all properties.
 function ellipse4Txt_CreateFcn(hObject, eventdata, handles)
@@ -409,9 +425,10 @@ function ellipse3Txt_Callback(hObject, eventdata, handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-% Hints: get(hObject,'String') returns contents of ellipse3Txt as text
-%        str2double(get(hObject,'String')) returns contents of ellipse3Txt as a double
+get(hObject,'String')
 
+% Update handles structure
+guidata(hObject, handles)
 
 % --- Executes during object creation, after setting all properties.
 function ellipse3Txt_CreateFcn(hObject, eventdata, handles)
