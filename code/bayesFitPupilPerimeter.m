@@ -28,6 +28,10 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 % 'useParallel' is set to true. The routine should gracefully fall-back on
 % serial processing if the parallel pool is unavailable.
 %
+% Each worker requires ~8 GB of memory to operate. It is important to keep
+% total RAM usage below the physical memory limit to prevent swapping and
+% a dramatic slow down in processing.
+%
 % To use the parallel pool with TbTb, provide the identity of the repo
 % name in the 'tbtbRepoName', which is then used to configure the workers.
 
@@ -52,6 +56,8 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 %  'forceNumFrames' - analyze fewer than the total number of video frames.
 %  'useParallel' - If set to true, use the Matlab parallel pool for the
 %    initial ellipse fitting.
+%  'nWorkers' - Specify the number of workers in the parallel pool. If
+%    undefined the default number will be used.
 %  'tbtbProjectName' - The workers in the parallel pool are configured by
 %    issuing a tbUseProject command for the project specified here.
 %  'developmentMode' - If set to true, the routine attempts to load a
@@ -120,6 +126,7 @@ p.addParameter('videoOutFrameRate',30,@isnumeric);
 % Optional flow control params
 p.addParameter('forceNumFrames',[],@isnumeric);
 p.addParameter('useParallel',false,@islogical);
+p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('tbtbRepoName','LiveTrackAnalysisToolbox',@ischar);
 p.addParameter('developmentMode',false,@islogical);
 
@@ -155,6 +162,11 @@ end
 
 %% Set up the parallel pool
 if p.Results.useParallel
+    if isempty(p.Results.nWorkers)
+        parpool;
+    else
+        parpool(p.Results.nWorkers);
+    end
     poolObj = gcp;
     if isempty(poolObj)
         nWorkers=0;
