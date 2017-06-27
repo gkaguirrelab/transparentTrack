@@ -58,14 +58,24 @@ end
 pInitTransparent = ellipse_ex2transparent(ellipse_im2ex(pInitImplicit));
 
 % Find the ellipse parameters (in transparent form) using a non-linear
-% search. We minimize the sqrt of the sum of squared distance values
-% of the points to the ellipse fit
+% search.
 
 options = optimset('fmincon');
 options = optimset(options,'Diagnostics','off','Display','off','LargeScale','off','Algorithm','interior-point');
-        
+
+% Define the objective function, which is the sqrt of the sum of squared
+% distance values of the boundary points to the ellipse fit
 myFun = @(p) sqrt(nansum(ellipsefit_distance(x,y,ellipse_transparent2ex(p)).^2));
+
+% save the current warning status and silence anticipated warnings
+warningState = warning;
+warning('off','MATLAB:nearlySingularMatrix');
+
+% Fit that sucker
 [pFitTransparent,e,~,~,~,~,Hessian] = fmincon(myFun, pInitTransparent, [], [], [], [], lb, ub, nonlinconst, options);
+
+% Restore the warning state
+warning(warningState);
 
 % The sqrt of the diagonals of the inverse Hessian matrix approxiates the
 %  standard deviation of the parameter estimates (with multiple caveats
@@ -75,10 +85,8 @@ myFun = @(p) sqrt(nansum(ellipsefit_distance(x,y,ellipse_transparent2ex(p)).^2))
 % We check to see if there was a warning regardng an inability to invert
 % the matrix, and if so we used the pseudo-inverse
 
-% save the current warning status
-s = warning;
-
-% turn off display of the anticipated warnings
+% save the current warning status and silence anticipated warnings
+warningState = warning;
 warning('off','MATLAB:nearlySingularMatrix');
 warning('off','MATLAB:singularMatrix');
 
@@ -98,7 +106,7 @@ switch msgid
 end
 
 % restore the warning status
-warning(s);
+warning(warningState);
 
 function [d,ddp] = ellipsefit_distance(x,y,p)
 % Distance of points to ellipse defined with explicit parameters (center,
