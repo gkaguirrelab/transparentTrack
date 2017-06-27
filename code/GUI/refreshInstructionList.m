@@ -16,4 +16,5 @@ set(handles.instructionList,'string',ListOfImageNames);
 instructionLine = handles.instructionLines(str2double(get(handles.instructionList,'String')));
 if ~isempty(instructionLine)
     handles = loadInstructionParams(instructionLine, handles);
+    handles = displayInstructionOnEyeVideo(handles);
 end

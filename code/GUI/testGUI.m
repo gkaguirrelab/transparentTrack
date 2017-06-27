@@ -186,7 +186,7 @@ if ~isempty(instructionLine)
     handles = loadInstructionParams(instructionLine, handles);
     
     % display instruction
-%     handles = displayInstructionOnEyeVideo(handles);
+    handles = displayInstructionOnEyeVideo(handles);
     
 else
     % set all handles to be empty
