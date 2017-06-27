@@ -187,8 +187,10 @@ framesToCut(any(isnan(framesToCut),2),:) = [];
 %% NOW WE TRY HORIZONTAL CUTS
 
 % we just look of what is still bad after the vertical cuts
+fittingErrorIdx = find(framesToCut(:,5) == 0);
 highErrorIdx = find(framesToCut(:,5)> errorThreshold);
 
+highErrorIdx = union(fittingErrorIdx,highErrorIdx);
 if ~isempty(highErrorIdx)
     
     highErrorFrames = framesToCut(highErrorIdx,1);
