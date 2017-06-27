@@ -547,11 +547,11 @@ parfor (ii = 1:nFrames, nWorkers)
 end % loop over frames to calculate the posterior
 
 % gather the loop vars into the ellipse structure
-ellipseFitData.pPosteriorMeanTransparent=loopVar_pPosteriorMeanTransparent;
-ellipseFitData.pPosteriorSDTransparent=loopVar_pPosteriorSDTransparent;
-ellipseFitData.fitError=loopVar_finalFitError;
 ellipseFitData.pPriorMeanTransparent=loopVar_pPriorMeanTransparent;
 ellipseFitData.pPriorSDTransparent=loopVar_pPriorSDTransparent;
+ellipseFitData.pPosteriorMeanTransparent=loopVar_pPosteriorMeanTransparent;
+ellipseFitData.pPosteriorSDTransparent=loopVar_pPosteriorSDTransparent;
+ellipseFitData.fitError=loopVar_finalFitError';
 
 %% Cleanup and save data
 % close the figure
