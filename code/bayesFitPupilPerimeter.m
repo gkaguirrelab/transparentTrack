@@ -160,6 +160,59 @@ if sum(p.Results.ellipseTransparentUB>=p.Results.ellipseTransparentLB)~=nEllipse
     error('Lower bounds must be equal to or less than upper bounds');
 end
 
+%% Prepare some anonymous functions
+% Create a non-linear constraint for the ellipse fit. If no parameters are
+% given, then create an empty function handle (and thus have no non-linear
+% constraint)
+if isempty(p.Results.constrainEccen_x_Theta)
+    nonlinconst = [];
+else
+    nonlinconst = @(x) restrictEccenByTheta(x,p.Results.constrainEccen_x_Theta);
+end
+
+% Create an anonymous function for ellipse fitting
+obtainPupilLikelihood = @(x,y) constrainedEllipseFit(x, y, ...
+    p.Results.ellipseTransparentLB, p.Results.ellipseTransparentUB, nonlinconst);
+
+% Create an anonymous function to return a rotation matrix given theta in
+% radians
+returnRotMat = @(theta) [cos(theta) -sin(theta); sin(theta) cos(theta)];
+
+%% Open and load the video
+inVideoObj = VideoReader(perimeterVideoFileName);
+
+% Get video dimensions
+videoSizeX = inVideoObj.Width;
+videoSizeY = inVideoObj.Height;
+
+% Determine how many frames to process
+nFrames = floor(inVideoObj.Duration*inVideoObj.FrameRate);
+if ~isempty(p.Results.forceNumFrames)
+    if p.Results.forceNumFrames > nFrames
+        error('You cannot force more frames than are in the video')
+    else
+        nFrames = p.Results.forceNumFrames;
+    end
+end
+
+% Load the entire pupil perimeter video into memory (about 50 MB for five
+% minutes of 60 Hz data)
+if strcmp(p.Results.verbosity,'full')
+    tic
+    fprintf('\n');
+    fprintf(['Loading pupil perimeter file. Started ' char(datetime('now')) '\n']);
+end
+for ii = 1:nFrames
+    % readFrame loads frames sequentially as it is called; make gray
+    pupilBoundaryData(:,:,ii) = rgb2gray(readFrame(inVideoObj));
+end
+clear RGB inVideoObj
+if strcmp(p.Results.verbosity,'full')
+    toc
+    fprintf('\n');
+end
+
+
 %% Set up the parallel pool
 if p.Results.useParallel
     if isempty(p.Results.nWorkers)
@@ -190,54 +243,6 @@ else
     nWorkers=0;
 end
 
-%% Prepare some anonymous functions
-% Create a non-linear constraint for the ellipse fit. If no parameters are
-% given, then create an empty function handle (and thus have no non-linear
-% constraint)
-if isempty(p.Results.constrainEccen_x_Theta)
-    nonlinconst = [];
-else
-    nonlinconst = @(x) restrictEccenByTheta(x,p.Results.constrainEccen_x_Theta);
-end
-
-% Create an anonymous function for ellipse fitting
-obtainPupilLikelihood = @(x,y) constrainedEllipseFit(x, y, ...
-    p.Results.ellipseTransparentLB, p.Results.ellipseTransparentUB, nonlinconst);
-
-% Create an anonymous function to return a rotation matrix given theta in
-% radians
-returnRotMat = @(theta) [cos(theta) -sin(theta); sin(theta) cos(theta)];
-
-%% Open and load the video
-inVideoObj = VideoReader(perimeterVideoFileName);
-
-% Get video dimensions
-videoSizeX = inVideoObj.Width;
-videoSizeY = inVideoObj.Height;
-
-% Determine how many frames to process
-nFrames = floor(inVideoObj.Duration*inVideoObj.FrameRate);
-if ~isempty(p.Results.forceNumFrames)
-    nFrames = p.Results.forceNumFrames;
-end
-
-% Load the entire pupil perimeter video into memory (about 50 MB for five
-% minutes of 60 Hz data)
-if strcmp(p.Results.verbosity,'full')
-    tic
-    fprintf('\n');
-    fprintf(['Loading pupil perimeter file. Started ' char(datetime('now')) '\n']);
-end
-for ii = 1:nFrames
-    % readFrame loads frames sequentially as it is called; make gray
-    pupilBoundaryData(:,:,ii) = rgb2gray(readFrame(inVideoObj));
-end
-clear RGB inVideoObj
-if strcmp(p.Results.verbosity,'full')
-    toc
-    fprintf('\n');
-end
-
 
 %% Load or calculate an initial ellipse fit for each video frame
 if p.Results.developmentMode
@@ -251,15 +256,11 @@ else
         fprintf('| 0                      50                   100%% |\n');
         fprintf('.\n');
     end
-    
-    % Create a figure to display the fit results
-    if ~p.Results.useParallel && strcmp(p.Results.display,'full')
-        frameFig = figure( 'Visible', 'on');
-    end
-    
+        
     % Loop through the frames
     parfor (ii = 1:nFrames, nWorkers)
-        
+
+        % Update progress
         if strcmp(p.Results.verbosity,'full')
             if mod(ii,round(nFrames/50))==0
                 fprintf('\b.\n');
@@ -328,29 +329,8 @@ else
         loopVar_pInitialFitSplitsSD(ii,:) = pInitialFitSplitsSD';
         loopVar_pInitialFitBootsSD(ii,:) = pInitialFitBootsSD';
         
-        % Plot the pupil boundary data
-        if ~p.Results.useParallel && strcmp(p.Results.display,'full')
-            imshow(thisFrame)
-            if ~isnan(pInitialFitTransparent(1))
-                % build ellipse impicit equation
-                pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(pInitialFitTransparent));
-                fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
-                
-                % superimpose the ellipse using fimplicit
-                hold on
-                fimplicit(fh,[1, videoSizeY, 1, videoSizeX],'Color', 'green');
-                set(gca,'position',[0 0 1 1],'units','normalized')
-                axis off;
-            end % check for a valid ellipse fit to plot
-        end % display check
-        
     end % loop over frames
-    
-    % close the figure
-    if ~p.Results.useParallel && strcmp(p.Results.display,'full')
-        close(frameFig)
-    end
-    
+        
     % gather the loop vars into the ellipse structure
     ellipseFitData.pInitialFitTransparent = loopVar_pInitialFitTransparent;
     ellipseFitData.pInitialFitHessianSD = loopVar_pInitialFitHessianSD;
@@ -396,14 +376,6 @@ for jj=1:nEllipseParams
     end
 end
 
-% Create a figure to hold the fit result movie frames, and display if
-% requested
-if strcmp(p.Results.display,'full')
-    frameFig = figure( 'Visible', 'on');
-else
-    frameFig = figure( 'Visible', 'off');
-end
-
 % Alert the user
 if strcmp(p.Results.verbosity,'full')
     tic
@@ -412,11 +384,8 @@ if strcmp(p.Results.verbosity,'full')
     fprintf('.\n');
 end
 
-% Pre-allocate a cell array to hold the finalFit video frames
-finalFitVideo=cell(nFrames,1);
-
 parfor (ii = 1:nFrames, nWorkers)
-    
+
     % update progress
     if strcmp(p.Results.verbosity,'full')
         if mod(ii,round(nFrames/50))==0
@@ -524,26 +493,6 @@ parfor (ii = 1:nFrames, nWorkers)
     loopVar_pPriorMeanTransparent(ii,:)= pPriorMeanTransparent';
     loopVar_pPriorSDTransparent(ii,:)= pPriorSDTransparent';
     
-    % Plot the pupil boundary data points
-    imshow(thisFrame)
-    
-    if ~isnan(pPosteriorMeanTransparent(1))
-        % build ellipse impicit equation
-        pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(pPosteriorMeanTransparent));
-        fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
-        
-        % superimpose the ellipse using fimplicit
-        hold on
-        fimplicit(fh,[1, videoSizeY, 1, videoSizeX],'Color', 'green');
-        set(gca,'position',[0 0 1 1],'units','normalized')
-        axis off;
-    end
-    
-    % collect the frame into the finalFitVideo
-    if ~isempty(p.Results.finalFitVideoOutFileName)
-        finalFitVideo{ii}   = getframe(frameFig);
-    end % check if we are saving a movie out
-    
 end % loop over frames to calculate the posterior
 
 % gather the loop vars into the ellipse structure
@@ -552,22 +501,6 @@ ellipseFitData.pPriorSDTransparent=loopVar_pPriorSDTransparent;
 ellipseFitData.pPosteriorMeanTransparent=loopVar_pPosteriorMeanTransparent;
 ellipseFitData.pPosteriorSDTransparent=loopVar_pPosteriorSDTransparent;
 ellipseFitData.fitError=loopVar_finalFitError';
-
-%% Cleanup and save data
-% close the figure
-close(frameFig)
-
-% save the finalFitVideo
-if ~isempty(p.Results.finalFitVideoOutFileName)
-    % Create the video object for writing
-    outVideoObj = VideoWriter(p.Results.finalFitVideoOutFileName);
-    outVideoObj.FrameRate = p.Results.videoOutFrameRate;
-    open(outVideoObj);
-    for ii=1:nFrames
-        writeVideo(outVideoObj,finalFitVideo{ii});
-    end
-    close(outVideoObj);
-end
 
 % save the ellipse fit results if requested
 if ~isempty(p.Results.ellipseFitDataFileName)
@@ -588,6 +521,78 @@ if p.Results.useParallel
         delete(poolObj);
     end
 end
+
+
+
+%% Create a fit video if requested
+
+if ~isempty(p.Results.finalFitVideoOutFileName)
+
+    % Alert the user
+    if strcmp(p.Results.verbosity,'full')
+        tic
+        fprintf(['Creating and saving fit video. Started ' char(datetime('now')) '\n']);
+        fprintf('| 0                      50                   100%% |\n');
+        fprintf('.');
+    end
+
+    % Create a figure
+    if strcmp(p.Results.display,'full')
+        frameFig = figure( 'Visible', 'on');
+    else
+        frameFig = figure( 'Visible', 'off');
+    end
+    
+    % Open the video out object
+    outVideoObj = VideoWriter(p.Results.finalFitVideoOutFileName);
+    outVideoObj.FrameRate = p.Results.videoOutFrameRate;
+    open(outVideoObj);
+    
+    % Loop through the frames
+    for ii=1:nFrames
+
+        % Update the progress display
+        if strcmp(p.Results.verbosity,'full')
+            if mod(ii,round(nFrames/50))==0
+                fprintf('.');
+            end
+        end
+            
+        % Plot the pupil boundary data points
+        imshow(squeeze(pupilBoundaryData(:,:,ii)))
+        
+        if ~isnan(ellipseFitData.pPosteriorMeanTransparent(ii,1))
+            % build ellipse impicit equation
+            pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(ellipseFitData.pPosteriorMeanTransparent(ii,:)));
+            fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
+            
+            % superimpose the ellipse using fimplicit
+            hold on
+            fimplicit(fh,[1, videoSizeY, 1, videoSizeX],'Color', 'green');
+            set(gca,'position',[0 0 1 1],'units','normalized')
+            axis off;
+        end
+        
+        % Write the frame to the file
+        writeVideo(outVideoObj,getframe(frameFig));
+        
+    end
+    
+    % close the video object
+    close(outVideoObj);
+    
+    % close the figure
+    close(frameFig)
+    
+    % report completion of fit video generation
+    if strcmp(p.Results.verbosity,'full')
+        fprintf('\n');
+        toc
+        fprintf('\n');
+    end
+    
+end
+
 
 end % function
 
