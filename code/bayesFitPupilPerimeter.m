@@ -161,7 +161,7 @@ end
 
 %% Announce we are starting
 if strcmp(p.Results.verbosity,'full')
-    fprintf(['Performing non-causal Bayesian fitting of the pupil boundary file ''' perimeterVideoFileName ''''\n\n']);
+    fprintf(['Performing non-causal Bayesian fitting of the pupil boundary file ''' perimeterVideoFileName '''\n\n']);
 end
 
 %% Prepare some anonymous functions
