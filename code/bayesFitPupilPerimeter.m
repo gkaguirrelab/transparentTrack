@@ -514,6 +514,8 @@ ellipseFitData.fitError=loopVar_finalFitError';
 
 % add a meta field with analysis details
 ellipseFitData.meta.params = p.Results;
+ellipseFitData.meta.environment.ver = ver();
+ellipseFitData.meta.environment.computer = computer();
 ellipseFitData.meta.timestamp = char(datetime('now'));
 
 % save the ellipse fit results if requested
