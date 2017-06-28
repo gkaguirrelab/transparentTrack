@@ -350,6 +350,7 @@ if ~isempty(p.Results.ellipseFitDataFileName)
     save(p.Results.ellipseFitDataFileName,'ellipseFitData')
 end
 
+
 %% Conduct a Bayesian smoothing operation
 
 % Set up the decaying exponential weighting functions. The relatively large
@@ -510,7 +511,7 @@ ellipseFitData.meta.params = p.Results;
 ellipseFitData.meta.params.perimeterVideoFileName = perimeterVideoFileName;
 ellipseFitData.meta.environment.ver = ver();
 ellipseFitData.meta.environment.computer = computer();
-ellipseFitData.meta.environment.tbConfigResult = tbConfigResult();
+ellipseFitData.meta.environment.tbConfigResult = tbConfigResult;
 ellipseFitData.meta.timestamp = char(datetime('now'));
 
 % save the ellipse fit results if requested
