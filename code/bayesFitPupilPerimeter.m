@@ -229,7 +229,7 @@ if p.Results.useParallel
         % Use TbTb to configure the workers.
         if ~isempty(p.Results.tbtbRepoName)
             spmd
-                tbUse(p.Results.tbtbRepoName,'reset','full','verbose',false,'online',false);
+                tbConfigResult=tbUse(p.Results.tbtbRepoName,'reset','full','verbose',false,'online',false);
             end
             if strcmp(p.Results.verbosity,'full')
                 fprintf('CAUTION: Any TbTb messages from the workers will not be shown.\n');
@@ -508,9 +508,9 @@ ellipseFitData.fitError=loopVar_finalFitError';
 % add a meta field with analysis details
 ellipseFitData.meta.params = p.Results;
 ellipseFitData.meta.params.perimeterVideoFileName = perimeterVideoFileName;
-
 ellipseFitData.meta.environment.ver = ver();
 ellipseFitData.meta.environment.computer = computer();
+ellipseFitData.meta.environment.tbConfigResult = tbConfigResult();
 ellipseFitData.meta.timestamp = char(datetime('now'));
 
 % save the ellipse fit results if requested
