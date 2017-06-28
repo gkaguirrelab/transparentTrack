@@ -215,6 +215,11 @@ end
 
 %% Set up the parallel pool
 if p.Results.useParallel
+    if strcmp(p.Results.verbosity,'full')
+        tic
+        fprintf('\n');
+        fprintf(['Opening parallel pool. Started ' char(datetime('now')) '\n']);
+    end
     if isempty(p.Results.nWorkers)
         parpool;
     else
@@ -238,6 +243,10 @@ if p.Results.useParallel
                 fprintf('CAUTION: TbTb has verbose set to false.\n');
             end
         end
+    end
+    if strcmp(p.Results.verbosity,'full')
+        toc
+        fprintf('\n');
     end
 else
     nWorkers=0;
