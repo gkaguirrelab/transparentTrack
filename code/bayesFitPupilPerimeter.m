@@ -42,14 +42,10 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 %     should be otherwise zero-filled. A frame that has no information
 %     regarding the pupil (e.g., during a blink) should be zero-filled.
 %
-% Optional key/value pairs (display and I/O)
+% Optional key/value pairs (verbosity and I/O)
 %  'verbosity' - level of verbosity. [none, full]
-%  'display' - controls a display of the fitting outcome. [none, full]
 %  'ellipseFitDataFileName': full path to the .mat file in which to save
 %     pupil tracking information.
-%  'finalFitVideoOutFileName' - File name to save video showing the fits.
-%     Defaults to empty, in which case no file is saved.
-%  'videoOutFrameRate' - frame rate (in Hz) of saved video. Default 30.
 %
 % Optional key/value pairs (flow control)
 %
@@ -118,10 +114,7 @@ p.addRequired('perimeterVideoFileName',@ischar);
 
 % Optional display and I/O params
 p.addParameter('verbosity','none',@ischar);
-p.addParameter('display','none',@ischar);
 p.addParameter('ellipseFitDataFileName',[],@ischar);
-p.addParameter('finalFitVideoOutFileName',[],@ischar);
-p.addParameter('videoOutFrameRate',30,@isnumeric);
 
 % Optional flow control params
 p.addParameter('forceNumFrames',[],@isnumeric);
