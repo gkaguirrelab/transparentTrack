@@ -514,6 +514,8 @@ ellipseFitData.fitError=loopVar_finalFitError';
 
 % add a meta field with analysis details
 ellipseFitData.meta.params = p.Results;
+ellipseFitData.meta.params.perimeterVideoFileName = perimeterVideoFileName;
+
 ellipseFitData.meta.environment.ver = ver();
 ellipseFitData.meta.environment.computer = computer();
 ellipseFitData.meta.timestamp = char(datetime('now'));
@@ -546,74 +548,6 @@ if strcmp(p.Results.verbosity,'full')
     fprintf('\n');
 end
 
-
-%% Create a fit video if requested
-
-if ~isempty(p.Results.finalFitVideoOutFileName)
-
-    % Alert the user
-    if strcmp(p.Results.verbosity,'full')
-        tic
-        fprintf(['Creating and saving fit video. Started ' char(datetime('now')) '\n']);
-        fprintf('| 0                      50                   100%% |\n');
-        fprintf('.');
-    end
-
-    % Create a figure
-    if strcmp(p.Results.display,'full')
-        frameFig = figure( 'Visible', 'on');
-    else
-        frameFig = figure( 'Visible', 'off');
-    end
-    
-    % Open the video out object
-    outVideoObj = VideoWriter(p.Results.finalFitVideoOutFileName);
-    outVideoObj.FrameRate = p.Results.videoOutFrameRate;
-    open(outVideoObj);
-    
-    % Loop through the frames
-    for ii=1:nFrames
-
-        % Update the progress display
-        if strcmp(p.Results.verbosity,'full')
-            if mod(ii,round(nFrames/50))==0
-                fprintf('.');
-            end
-        end
-            
-        % Plot the pupil boundary data points
-        imshow(squeeze(pupilBoundaryData(:,:,ii)))
-        
-        if ~isnan(ellipseFitData.pPosteriorMeanTransparent(ii,1))
-            % build ellipse impicit equation
-            pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(ellipseFitData.pPosteriorMeanTransparent(ii,:)));
-            fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
-            
-            % superimpose the ellipse using fimplicit
-            hold on
-            fimplicit(fh,[1, videoSizeY, 1, videoSizeX],'Color', 'green');
-            set(gca,'position',[0 0 1 1],'units','normalized')
-            axis off;
-        end
-        
-        % Write the frame to the file
-        writeVideo(outVideoObj,getframe(frameFig));
-        
-    end
-    
-    % close the video object
-    close(outVideoObj);
-    
-    % close the figure
-    close(frameFig)
-    
-    % report completion of fit video generation
-    if strcmp(p.Results.verbosity,'full')
-        fprintf('\n');
-        toc
-    end
-    
-end
 
 
 end % function
