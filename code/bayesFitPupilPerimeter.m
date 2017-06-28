@@ -161,7 +161,8 @@ end
 
 %% Announce we are starting
 if strcmp(p.Results.verbosity,'full')
-    fprintf(['Performing non-causal Bayesian fitting of the pupil boundary file ''' perimeterVideoFileName '''\n\n']);
+    fprintf('Performing non-causal Bayesian fitting of the pupil boundary file:\n');
+    fprintf(['\t' perimeterVideoFileName '\n\n']);
 end
 
 %% Prepare some anonymous functions
@@ -502,12 +503,18 @@ parfor (ii = 1:nFrames, nWorkers)
     
 end % loop over frames to calculate the posterior
 
+%% Clean up and save the fit results
+
 % gather the loop vars into the ellipse structure
 ellipseFitData.pPriorMeanTransparent=loopVar_pPriorMeanTransparent;
 ellipseFitData.pPriorSDTransparent=loopVar_pPriorSDTransparent;
 ellipseFitData.pPosteriorMeanTransparent=loopVar_pPosteriorMeanTransparent;
 ellipseFitData.pPosteriorSDTransparent=loopVar_pPosteriorSDTransparent;
 ellipseFitData.fitError=loopVar_finalFitError';
+
+% add a meta field with analysis details
+ellipseFitData.meta.params = p.Results;
+ellipseFitData.meta.timestamp = char(datetime('now'));
 
 % save the ellipse fit results if requested
 if ~isempty(p.Results.ellipseFitDataFileName)
