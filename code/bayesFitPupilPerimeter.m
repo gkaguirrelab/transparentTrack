@@ -141,10 +141,9 @@ p.addParameter('nBoots',0,@isnumeric);
 p.addParameter('priorCenterNaN',true,@islogical);
 p.addParameter('whichLikelihoodSD','pInitialFitSplitsSD',@ischar);
 
-% Parse the parameters
+%% Parse and check the parameters
 p.parse(perimeterVideoFileName,varargin{:});
 
-%% Sanity check the parameters
 nEllipseParams=5; % 5 params in the transparent ellipse form
 
 if length(p.Results.ellipseTransparentLB)~=nEllipseParams
@@ -158,6 +157,11 @@ if length(p.Results.exponentialTauParams)~=nEllipseParams
 end
 if sum(p.Results.ellipseTransparentUB>=p.Results.ellipseTransparentLB)~=nEllipseParams
     error('Lower bounds must be equal to or less than upper bounds');
+end
+
+%% Announce we are starting
+if strcmp(p.Results.verbosity,'full')
+    fprintf(['Performing non-causal Bayesian fitting of the pupil boundary file ''' perimeterVideoFileName ''''\n\n']);
 end
 
 %% Prepare some anonymous functions
@@ -199,7 +203,6 @@ end
 % minutes of 60 Hz data)
 if strcmp(p.Results.verbosity,'full')
     tic
-    fprintf('\n');
     fprintf(['Loading pupil perimeter file. Started ' char(datetime('now')) '\n']);
 end
 for ii = 1:nFrames
@@ -217,7 +220,6 @@ end
 if p.Results.useParallel
     if strcmp(p.Results.verbosity,'full')
         tic
-        fprintf('\n');
         fprintf(['Opening parallel pool. Started ' char(datetime('now')) '\n']);
     end
     if isempty(p.Results.nWorkers)
@@ -232,15 +234,11 @@ if p.Results.useParallel
         nWorkers = poolObj.NumWorkers;
         % Use TbTb to configure the workers.
         if ~isempty(p.Results.tbtbRepoName)
-            if strcmp(p.Results.verbosity,'full')
-                fprintf('\n');
-                fprintf('Configuration messages from the workers:\n');
-            end
             spmd
                 tbUse(p.Results.tbtbRepoName,'reset','full','verbose',false,'online',false);
             end
             if strcmp(p.Results.verbosity,'full')
-                fprintf('CAUTION: TbTb has verbose set to false.\n');
+                fprintf('CAUTION: Any TbTb messages from the workers will not be shown.\n');
             end
         end
     end
@@ -348,7 +346,7 @@ else
     
     if strcmp(p.Results.verbosity,'full')
         toc
-        fprintf('\n\n');
+        fprintf('\n');
     end
     
 end % developmentMode check
@@ -518,19 +516,26 @@ end
 
 % report completion of Bayesian analysis
 if strcmp(p.Results.verbosity,'full')
-    fprintf('\n');
     toc
-    fprintf('\n\n');
+    fprintf('\n');
 end
 
-% Delete the parallel pool
+
+%% Delete the parallel pool
+if strcmp(p.Results.verbosity,'full')
+    tic
+    fprintf(['Closing parallel pool. Started ' char(datetime('now')) '\n']);
+end
 if p.Results.useParallel
     poolObj = gcp;
     if ~isempty(poolObj)
         delete(poolObj);
     end
 end
-
+if strcmp(p.Results.verbosity,'full')
+    toc
+    fprintf('\n');
+end
 
 
 %% Create a fit video if requested
@@ -597,7 +602,6 @@ if ~isempty(p.Results.finalFitVideoOutFileName)
     if strcmp(p.Results.verbosity,'full')
         fprintf('\n');
         toc
-        fprintf('\n');
     end
     
 end
