@@ -130,5 +130,4 @@ switch bobMode
             if ~mod(i,10);progBar(i);end
         end
 end
-close (Bob)
-close (inObj)
+clear Bob inObj
