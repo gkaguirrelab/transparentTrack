@@ -40,11 +40,13 @@ p = inputParser;
 % required input
 p.addRequired('inputVideoName',@isstr);
 p.addRequired('outputVideoName',@isstr);
-% optional inputs
+% optional params
 p.addParameter('resizeVideo',[486 720]/2, @isnumeric);
 p.addParameter('cropVideo', [1 1 319 239], @isnumeric);
 p.addParameter('numberOfFrames', Inf, @isnumeric);
 p.addParameter('keepOriginalSize', false, @islogic);
+% optional display and I/O params
+p.addParameter('verbosity','none',@ischar);
 %parse
 p.parse(inputVideoName,outputVideoName,varargin{:})
 
@@ -53,14 +55,17 @@ resizeVideo = p.Results.resizeVideo;
 cropVideo = p.Results.cropVideo;
 numberOfFrames = p.Results.numberOfFrames;
 keepOriginalSize = p.Results.keepOriginalSize;
+verbosity = p.Results.verbosity;
 
-%% Prepare Video
 
-% load video
+%% load video
+if strcmp(verbosity,'full')
+    tic
 disp('Loading video file...');
+end
 inObj = VideoReader(inputVideoName);
 
-% create outputVideo object
+%% create outputVideo object
 outObj = VideoWriter(outputVideoName);
 outObj.FrameRate = inObj.FrameRate;
 open(outObj);
@@ -72,8 +77,16 @@ else
     numFrames = floor(inObj.Duration*inObj.FrameRate);
 end
 
-% Convert to gray, resize, crop, save
-progBar = ProgressBar(numFrames,'Converting video to LiveTrack format...');
+%% Convert to gray, resize, crop, save
+
+% report start of the analysis
+if strcmp(verbosity,'full')
+    tic
+    fprintf(['Converting video to LiveTrack format.. Started ' char(datetime('now')) '\n']);
+    fprintf('| 0                      50                   100%% |\n');
+    fprintf('.');
+end
+
 for ff = 1:numFrames
     thisFrame = readFrame(inObj);
     tmp = rgb2gray(thisFrame);
@@ -82,8 +95,19 @@ for ff = 1:numFrames
         tmp = imcrop(tmp2,cropVideo);
     end
     writeVideo(outObj,tmp);
-    % increment progress bar
-    if ~mod(ff,10);progBar(ff);end;
+    % update progressbar
+    if strcmp(verbosity,'full')
+        if mod(ii,round(nFrames/50))==0
+            fprintf('.');
+        end
+    end
 end
 
 clear inObj outObj
+
+% report completion of analysis
+if strcmp(verbosity,'full')
+    fprintf('\n');
+    toc
+    fprintf('\n');
+end
