@@ -1,4 +1,4 @@
-function perimeterParams = extractPupilPerimeter(grayVideoName, perimeterVideoName,varargin)
+function perimeterParams = extractPupilPerimeter(grayI, perimeterVideoName,varargin)
 
 % This function thresholds the video to extract the pupil perimeter and
 % saves out a BW video showing the pupil perimeter only.
@@ -6,7 +6,7 @@ function perimeterParams = extractPupilPerimeter(grayVideoName, perimeterVideoNa
 % 
 % Input params
 % ============
-%       grayVideoName : name and path of the gray video to track
+%       grayI : 3D array of gray frames to track
 %       perimeterVideoName : name of the output avi in which to save the output.
 %       
 % Options
@@ -28,35 +28,36 @@ function perimeterParams = extractPupilPerimeter(grayVideoName, perimeterVideoNa
 % 
 % Usage examples
 % ==============
+%  define options beforehand:
 % 
 %  gammaCorrection = 1.2;
 %  pupilEllipseThresh = 0.93;
-%  perimeterParams = extractPupilPerimeter(grayVideoName, perimeterVideoName, 'gammaCorrection', gammaCorrection, 'pupilEllipseThresh', pupilEllipseThresh)
+%  perimeterParams = extractPupilPerimeter(grayI, perimeterVideoName, 'gammaCorrection', gammaCorrection, 'pupilEllipseThresh', pupilEllipseThresh)
 % 
+%  OR
+% 
+%  define options directly:
+% 
+%  perimeterParams = extractPupilPerimeter(grayI, perimeterVideoName, 'gammaCorrection', 1.2, 'pupilEllipseThresh', 0.93)
+
+
 %% parse input and define variables
 
 p = inputParser;
 % required input
-p.addRequired('grayVideoName',@isstr);
+p.addRequired('grayI');
 p.addRequired('perimeterVideo',@isstr);
 
 % optional inputs
-frameRateDefault = 60;
-gammaCorrectionDefault = 1;
-pupilCircleThreshDefault =  0.06;
-pupilRangeDefault = [30 90];
-pupilEllipseThreshDefault = 0.95;
-p.addParameter('frameRate', frameRateDefault, @isnumeric);
-p.addParameter('gammaCorrection', gammaCorrectionDefault, @isnumeric);
-p.addParameter('pupilCircleThresh', pupilCircleThreshDefault, @isnumeric);
-p.addParameter('pupilRange', pupilRangeDefault, @isnumeric);
-p.addParameter('pupilEllipseThresh', pupilEllipseThreshDefault, @isnumeric);
+p.addParameter('frameRate', 60, @isnumeric);
+p.addParameter('gammaCorrection', 1, @isnumeric);
+p.addParameter('pupilCircleThresh', 0.06, @isnumeric);
+p.addParameter('pupilRange', [30 90], @isnumeric);
+p.addParameter('pupilEllipseThresh', 0.95, @isnumeric);
+p.addParameter('verbosity','none', @ischar);
 
-% Optional display and I/O params
-p.addParameter('verbosity','none',@ischar);
-
-%parse
-p.parse(grayVideoName, perimeterVideoName, varargin{:})
+% parse
+p.parse(grayI, perimeterVideoName, varargin{:})
 
 % define optional variables values
 frameRate = p.Results.frameRate;
@@ -64,41 +65,41 @@ gammaCorrection = p.Results.gammaCorrection;
 pupilCircleThresh =  p.Results.pupilCircleThresh;
 pupilRange = p.Results.pupilRange;
 pupilEllipseThresh = p.Results.pupilEllipseThresh;
-verbosity =  p.Results.verbosity;
 
-
-
-%% read input video file
-% load pupilPerimeter
-inObj = VideoReader(grayVideoName);
-
-% get number of frames
-numFrames = floor(inObj.Duration*inObj.FrameRate);
 
 %% initiate output video object
-
 outObj = VideoWriter(perimeterVideoName);
 outObj.FrameRate = frameRate;
 open(outObj);
 
 %% extract pupil perimeter
 
-% initiate progress bar 
-progBar = ProgressBar(numFrames,'Extracting perimeter...');
+% get number of frames from grayI
+nFrames = size(grayI,3);
+
+% alert the user
+if strcmp(p.Results.verbosity,'full')
+    tic
+    fprintf(['Extracting pupil perimeter. Started ' char(datetime('now')) '\n']);
+    fprintf('| 0                      50                   100%% |\n');
+    fprintf('.');
+end
 
 % open a figure
 ih = figure;
 
 % loop through gray frames
-for ii = 1:numFrames
+for ii = 1:nFrames
+    % increment the progress bar
+    if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
+        fprintf('.');
+    end
     
     % Get the frame
-    I = readFrame(inObj);
+    I = squeeze(grayI(:,:,ii));
     
      % adjust gamma for this frame
     I = imadjust(I,[],[],gammaCorrection);
-    
-    I = rgb2gray (I);
     
     % Show the frame
     imshow(I, 'Border', 'tight');
@@ -134,8 +135,6 @@ for ii = 1:numFrames
         frame   = getframe(ih);
         writeVideo(outObj,frame);
         
-        % increment progress bar
-        if ~mod(ii,10);progBar(ii);end;
     end
 end % loop through gray frames
 
@@ -145,3 +144,12 @@ clear outObj
 
 %% export perimeter params
 perimeterParams = p.Results;
+
+% report completion of analysis
+if strcmp(p.Results.verbosity,'full')
+    fprintf('\n');
+    toc
+    fprintf('\n');
+end
+
+end % function

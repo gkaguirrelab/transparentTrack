@@ -1,9 +1,11 @@
 function deinterlaceVideo (inputVideoName, outputVideoName, varargin)
 
-% This function allows to deinterlace NTSC DV 30Hz videos, saving out
+% This function deinterlaces NTSC DV 30Hz videos, saving out
 % progressive 60 Hz videos, using a "bob deinterlacing" strategy.
 %
-% These deinterlace strategies are available (bobMode):
+% The video is also converted to gray scale.
+%
+% Four deinterlace strategies are available (bobMode):
 % 'Raw'    =  extract 2 fields for every frame. Save progressive video.
 %             Final spatial resolution is half the original resolution.
 % 'Zero'   =  extract 2 fields for every frame. Alternate every row with a
@@ -30,40 +32,49 @@ p = inputParser;
 % required input
 p.addRequired('inputVideoName',@isstr);
 p.addRequired('outputVideoName',@isstr);
-% optional parameters
+
+% optional inputs
 p.addParameter('bobMode', 'Mean', @isstr);
-% Optional display and I/O params
-p.addParameter('verbosity','none',@ischar);
-%parse
+p.addParameter('verbosity', 'none', @isstr);
+p.addParameter('nFrames', Inf, @isnumeric);
+
+% parse
 p.parse(inputVideoName,outputVideoName,varargin{:})
 
 % define variables
 bobMode = p.Results.bobMode;
-verbosity = p.Results.verbosity;
+
 %% Load video to deinterlace and set parameters for output video file.
 
-
 inObj = VideoReader(inputVideoName);
-nFrames = floor(inObj.Duration*inObj.FrameRate);
+
+if p.Results.nFrames == Inf
+    nFrames = floor(inObj.Duration*inObj.FrameRate);
+else
+    nFrames=p.Results.nFrames;
+end
 
 Bob = VideoWriter(outputVideoName);
 Bob.FrameRate = inObj.FrameRate * 2;
 Bob.Quality = 100;
 
-
-%% Deinterlace
-
-% report start of the analysis
-if strcmp(verbosity,'full')
+% Alert the user
+if strcmp(p.Results.verbosity,'full')
     tic
-    fprintf(['Deinterlacing. Started ' char(datetime('now')) '\n']);
+    fprintf(['Deinterlacing video. Started ' char(datetime('now')) '\n']);
     fprintf('| 0                      50                   100%% |\n');
     fprintf('.');
 end
 
 open(Bob)
 
-for ff = 1:nFrames
+for ii = 1:nFrames
+    
+    % update progressbar
+    if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
+        fprintf('.');
+    end
+    
     % get the frame
     tmp = readFrame(inObj);
     thisFrame = rgb2gray(tmp);
@@ -119,18 +130,16 @@ for ff = 1:nFrames
     writeVideo(Bob,oddFields);
     writeVideo(Bob,evenFields);
     
-    % update progressbar
-    if strcmp(verbosity,'full')
-        if mod(ff,round(nFrames/50))==0
-            fprintf('.');
-        end
-    end
 end
+
 clear Bob inObj
 
 % report completion of analysis
-if strcmp(verbosity,'full')
+if strcmp(p.Results.verbosity,'full')
     fprintf('\n');
     toc
     fprintf('\n');
 end
+
+
+end % function

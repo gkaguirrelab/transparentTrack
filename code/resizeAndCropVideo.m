@@ -1,5 +1,6 @@
-function prepareVideo(inputVideoName, outputVideoName, varargin)
-
+function resizeAndCropVideo(inputVideoName, outputVideoName, varargin)
+% function resizeAndCropVideo(inputVideoName, outputVideoName, varargin)
+%
 %  This fuction converts the video to a "gray frames array" that is stored
 %  in the memory and ready to be tracked or written to file. With the
 %  default options the routine will scale and crop the video to livetrack
@@ -29,8 +30,8 @@ function prepareVideo(inputVideoName, outputVideoName, varargin)
 %
 % Usage examples
 % ==============
-%  prepareVideo(inputVideoName,outputVideoName);
-%  prepareVideo(inputVideoName,outputVideoName, 'numberOfFrames', 1000) % this will
+%  resizeAndCropVideo(inputVideoName,outputVideoName);
+%  resizeAndCropVideo(inputVideoName,outputVideoName, 'numberOfFrames', 1000) % this will
 %       process just the first 1000 frames of the video
 
 
@@ -40,54 +41,54 @@ p = inputParser;
 % required input
 p.addRequired('inputVideoName',@isstr);
 p.addRequired('outputVideoName',@isstr);
-% optional params
+
+% optional inputs
 p.addParameter('resizeVideo',[486 720]/2, @isnumeric);
 p.addParameter('cropVideo', [1 1 319 239], @isnumeric);
-p.addParameter('numberOfFrames', Inf, @isnumeric);
 p.addParameter('keepOriginalSize', false, @islogic);
-% optional display and I/O params
-p.addParameter('verbosity','none',@ischar);
+p.addParameter('nFrames', Inf, @isnumeric);
+p.addParameter('verbosity', 'none', @ischar);
+
+
 %parse
 p.parse(inputVideoName,outputVideoName,varargin{:})
 
 % define variables
 resizeVideo = p.Results.resizeVideo;
 cropVideo = p.Results.cropVideo;
-numberOfFrames = p.Results.numberOfFrames;
 keepOriginalSize = p.Results.keepOriginalSize;
-verbosity = p.Results.verbosity;
 
+%% Prepare Video
 
-%% load video
-if strcmp(verbosity,'full')
-    tic
-disp('Loading video file...');
-end
+% load video
 inObj = VideoReader(inputVideoName);
 
-%% create outputVideo object
+% create outputVideo object
 outObj = VideoWriter(outputVideoName);
 outObj.FrameRate = inObj.FrameRate;
 open(outObj);
 
 % option to manually set numFrames
-if numberOfFrames ~= Inf
-    numFrames = numberOfFrames;
+if p.Results.nFrames == Inf
+    nFrames = floor(inObj.Duration*inObj.FrameRate);
 else
-    numFrames = floor(inObj.Duration*inObj.FrameRate);
+    nFrames=p.Results.nFrames;
 end
 
-%% Convert to gray, resize, crop, save
-
-% report start of the analysis
-if strcmp(verbosity,'full')
+% alert the user
+if strcmp(p.Results.verbosity,'full')
     tic
-    fprintf(['Converting video to LiveTrack format.. Started ' char(datetime('now')) '\n']);
+    fprintf(['Resizing and cropping video. Started ' char(datetime('now')) '\n']);
     fprintf('| 0                      50                   100%% |\n');
     fprintf('.');
 end
 
-for ff = 1:numFrames
+% Resize and crop, save
+for ii = 1:nFrames
+    % increment the progress bar
+    if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
+        fprintf('.');
+    end
     thisFrame = readFrame(inObj);
     tmp = rgb2gray(thisFrame);
     if keepOriginalSize == 0
@@ -95,19 +96,15 @@ for ff = 1:numFrames
         tmp = imcrop(tmp2,cropVideo);
     end
     writeVideo(outObj,tmp);
-    % update progressbar
-    if strcmp(verbosity,'full')
-        if mod(ff,round(nFrames/50))==0
-            fprintf('.');
-        end
-    end
 end
 
 clear inObj outObj
 
 % report completion of analysis
-if strcmp(verbosity,'full')
+if strcmp(p.Results.verbosity,'full')
     fprintf('\n');
     toc
     fprintf('\n');
 end
+
+end % function
