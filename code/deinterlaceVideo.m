@@ -30,8 +30,10 @@ p = inputParser;
 % required input
 p.addRequired('inputVideoName',@isstr);
 p.addRequired('outputVideoName',@isstr);
-% optional inputs
+% optional parameters
 p.addParameter('bobMode', 'Mean', @isstr);
+% Optional display and I/O params
+p.addParameter('verbosity','none',@ischar);
 %parse
 p.parse(inputVideoName,outputVideoName,varargin{:})
 
@@ -49,31 +51,35 @@ Bob.FrameRate = inObj.FrameRate * 2;
 Bob.Quality = 100;
 
 
-%%
-progBar = ProgressBar(nFrames,'Deinterlacing video...');
+%% Deinterlace
+
+% report start of the analysis
+if strcmp(p.Results.verbosity,'full')
+    tic
+    fprintf(['Deinterlacing. Started ' char(datetime('now')) '\n']);
+    fprintf('| 0                      50                   100%% |\n');
+    fprintf('.');
+end
+
 open(Bob)
 
-switch bobMode
-    case 'Raw'
-        for i = 1:nFrames
-            tmp = readFrame(inObj);
-            thisFrame = rgb2gray(tmp);
-            oddFields = thisFrame(1:2:end,:);
-            evenFields = thisFrame(2:2:end,:);
+for ff = 1:nFrames
+    % get the frame
+    tmp = readFrame(inObj);
+    thisFrame = rgb2gray(tmp);
+    
+    %get the fields
+    oddFields = thisFrame(1:2:end,:);
+    evenFields = thisFrame(2:2:end,:);
+    
+    %deinterlace
+    switch bobMode
+        case 'Raw'
             % shift the even lines to avoid "jumping" from frame to frame. (i.e
             % align the two fields)
             evenFields = cat(1,zeros(1,size(evenFields,2),'like',evenFields), evenFields(1:end-1,:));
-            writeVideo(Bob,oddFields);
-            writeVideo(Bob,evenFields);
-            if ~mod(i,10);progBar(i);end
-        end
-        
-    case 'Zero'
-        for i = 1:nFrames
-            tmp = readFrame(inObj);
-            thisFrame = rgb2gray(tmp);
-            oddFields = thisFrame(1:2:end,:);
-            evenFields = thisFrame(2:2:end,:);
+            
+        case 'Zero'
             % put zero rows in
             m = 1;
             k = 1;
@@ -81,32 +87,14 @@ switch bobMode
             oddFields = reshape([reshape(oddFields,m,[]);zeros(k,n(1)/m*n(2))],[],n(2));
             evenFields = reshape([reshape(evenFields,m,[]);zeros(k,n(1)/m*n(2))],[],n(2));
             evenFields = cat(1,zeros(1,size(evenFields,2),'like',evenFields), evenFields(1:end-1,:));
-            writeVideo(Bob,oddFields)
-            writeVideo(Bob,evenFields)
-            if ~mod(i,10);progBar(i);end
-        end
-        
-    case 'Double'
-        for i = 1:nFrames
-            tmp = readFrame(inObj);
-            thisFrame = rgb2gray(tmp);
-            oddFields = thisFrame(1:2:end,:);
-            evenFields = thisFrame(2:2:end,:);
+            
+        case 'Double'
             % duplicate each row
             oddFields = repelem(oddFields, 2, 1);
             evenFields = repelem(evenFields, 2, 1);
             evenFields = cat(1,zeros(1,size(evenFields,2),'like',evenFields), evenFields(1:end-1,:));
-            writeVideo(Bob,oddFields)
-            writeVideo(Bob,evenFields)
-            if ~mod(i,10);progBar(i);end
-        end
-        
-    case 'Mean'
-        for i = 1:nFrames
-            tmp             = readFrame(inObj);
-            thisFrame       = rgb2gray(tmp);
-            oddFields = thisFrame(1:2:end,:);
-            evenFields = thisFrame(2:2:end,:);
+            
+        case 'Mean'
             % put means in between rows (odd fields)
             tmp = [oddFields(1,:); ((oddFields(1,:)+oddFields(2,:))/2);oddFields(2,:)];
             for jj = 2 : size(oddFields,1)-1
@@ -125,9 +113,24 @@ switch bobMode
             evenFields = cat(1,evenFields(1,:),tmp);
             clear tmp
             clear newLines
-            writeVideo(Bob,oddFields)
-            writeVideo(Bob,evenFields)
-            if ~mod(i,10);progBar(i);end
+    end
+    
+    % write the fields as frames
+    writeVideo(Bob,oddFields);
+    writeVideo(Bob,evenFields);
+    
+    %update progressbar
+    if strcmp(p.Results.verbosity,'full')
+        if mod(ii,round(nFrames/50))==0
+            fprintf('.');
         end
+    end
 end
 clear Bob inObj
+
+% report completion of analysis
+if strcmp(p.Results.verbosity,'full')
+    fprintf('\n');
+    toc
+    fprintf('\n');
+end
