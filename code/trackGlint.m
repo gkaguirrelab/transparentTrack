@@ -1,4 +1,4 @@
-function [glint, glintTrackingParams] = trackGlint(grayI, glintFileName, varargin)
+function [glint, glintTrackingParams] = trackGlint(grayVideoName, glintFileName, varargin)
 
 % This function tracks the glint using the circle patch + direct ellipse
 % fitting approach.
@@ -13,7 +13,8 @@ function [glint, glintTrackingParams] = trackGlint(grayI, glintFileName, varargi
 % 
 % Input params
 % ============
-%       grayI : 3D array of gray frames to track
+%       grayVideoName : name and path of the gray video on which to track
+%           the glint
 %       glintFileName : name of the output matFile in which to save the glint
 %         results.
 %       
@@ -31,7 +32,7 @@ function [glint, glintTrackingParams] = trackGlint(grayI, glintFileName, varargi
 % 
 % Usage example
 % =============
-%  [glint, glintTrackingParams] = trackGlint(grayI, glintFileName, 'displayTracking', true)
+%  [glint, glintTrackingParams] = trackGlint(grayVideoName, glintFileName, 'displayTracking', true)
 
 
 
@@ -39,18 +40,24 @@ function [glint, glintTrackingParams] = trackGlint(grayI, glintFileName, varargi
 
 p = inputParser;
 % required input
-p.addRequired('grayI');
+p.addRequired('grayVideoName',@isstr);
 p.addRequired('glintFile',@isstr);
 
-% optional inputs
+% optional control parameters
 p.addParameter('displayTracking', false, @islogical);
 p.addParameter('gammaCorrection', 1, @isnumeric);
 p.addParameter('glintCircleThresh', 0.999, @isnumeric);
 p.addParameter('glintRange', [10 30], @isnumeric);
 p.addParameter('glintEllipseThresh', 0.9, @isnumeric);
 
+% Environment parameters
+p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
+p.addParameter('timestamp',char(datetime('now')),@ischar);
+p.addParameter('hostname',char(java.lang.System.getProperty('user.name')),@ischar);
+p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@ischar); 
+
 %parse
-p.parse(grayI, glintFileName, varargin{:})
+p.parse(grayVideoName, glintFileName, varargin{:})
 
 % define optional variables values
 displayTracking = p.Results.displayTracking;
@@ -58,6 +65,16 @@ gammaCorrection = p.Results.gammaCorrection;
 glintCircleThresh =  p.Results.glintCircleThresh;
 glintRange = p.Results.glintRange;
 glintEllipseThresh = p.Results.glintEllipseThresh;
+
+
+
+%% read video file
+% load pupilPerimeter
+inObj = VideoReader(grayVideoName);
+
+% get number of frames
+numFrames = floor(inObj.Duration*inObj.FrameRate);
+
 
 
 %% Initialize glint struct
@@ -69,8 +86,6 @@ disp(glintCircleThresh)
 disp('Ellipse threshold: ')
 disp(glintEllipseThresh)
 
-% get number of frames from grayI
-numFrames = size(grayI,3);
 
 % main glint params
 glint.X = nan(numFrames,1);
@@ -100,9 +115,6 @@ glint.ellipseFittingError = nan(numFrames,1);
 pupilRange = [30 90];
 pupilCircleThresh = 0.06;
 
-if displayTracking
-    ih = figure;
-end
 
 % initialize progress bar
 progBar = ProgressBar(numFrames,'Tracking the glint...');
@@ -110,16 +122,12 @@ progBar = ProgressBar(numFrames,'Tracking the glint...');
 %loop through frames
 for ii = 1:numFrames 
     % Get the frame
-    I = squeeze(grayI(:,:,ii));
+    I = readFrame(inObj);
     
     % adjust gamma for this frame
     I = imadjust(I,[],[],gammaCorrection);
     
-    % Show the frame (optional)
-    if displayTracking
-            imshow(I, 'Border', 'tight')
-    end
-    
+    I = rgb2gray (I);
     % track with circles (using the default options)
     [~,~,~, gCenters, gRadii,gMetric, pupilRange, glintRange] = circleFit(I,pupilCircleThresh,glintCircleThresh,pupilRange,glintRange);
     
@@ -178,20 +186,14 @@ for ii = 1:numFrames
         end
         if ~mod(ii,10);progBar(ii);end % update progressbar
     end
-    
-    % plot results
-    if displayTracking && ~isnan(glint.X(ii))
-        hold on
-        plot(glint.X(ii),glint.Y(ii),'+b');
-        hold off
-    end
 end
 
 close all
+clear inObj
 
 % store the tracking params
 glintTrackingParams = p.Results;
 
 %% save out a mat file with the glint tracking data
-save (glintFileName, 'glint')
+save (glintFileName, 'glint','glintTrackingParams')
     
