@@ -23,12 +23,15 @@ p.addRequired('outputVideoName',@isstr);
 
 % optional inputs
 p.addParameter('numberOfFrames', Inf, @isnumeric);
+% Optional display and I/O params
+p.addParameter('verbosity','none',@ischar);
 
 % parse
 p.parse(inputVideoName,outputVideoName,varargin{:});
 
 % define variables
 numberOfFrames = p.Results.numberOfFrames;
+verbosity = p.Results.numberOfFverbosityrames;
 
 %% deinterlace video
 
@@ -42,11 +45,11 @@ deinterlacedVideoName = fullfile(pathstr,[name '_60hz.avi']);
 
 % check if deinterlaced video already exists
 if ~exist(deinterlacedVideoName, 'file')
-    deinterlaceVideo(inputVideoName, deinterlacedVideoName);
+    deinterlaceVideo(inputVideoName, deinterlacedVideoName,'verbosity',verbosity);
 end
 
 %% get the video in livetrack format
-prepareVideo(deinterlacedVideoName, outputVideoName,'numberOfFrames',numberOfFrames);
+prepareVideo(deinterlacedVideoName, outputVideoName,'numberOfFrames',numberOfFrames,'verbosity',verbosity));
 
 %% remove the temporary 60Hz video
 delete (deinterlacedVideoName)

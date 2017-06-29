@@ -39,7 +39,7 @@ p.parse(inputVideoName,outputVideoName,varargin{:})
 
 % define variables
 bobMode = p.Results.bobMode;
-
+verbosity = p.Results.verbosity;
 %% Load video to deinterlace and set parameters for output video file.
 
 
@@ -54,7 +54,7 @@ Bob.Quality = 100;
 %% Deinterlace
 
 % report start of the analysis
-if strcmp(p.Results.verbosity,'full')
+if strcmp(verbosity,'full')
     tic
     fprintf(['Deinterlacing. Started ' char(datetime('now')) '\n']);
     fprintf('| 0                      50                   100%% |\n');
@@ -120,7 +120,7 @@ for ff = 1:nFrames
     writeVideo(Bob,evenFields);
     
     %update progressbar
-    if strcmp(p.Results.verbosity,'full')
+    if strcmp(verbosity,'full')
         if mod(ii,round(nFrames/50))==0
             fprintf('.');
         end
@@ -129,7 +129,7 @@ end
 clear Bob inObj
 
 % report completion of analysis
-if strcmp(p.Results.verbosity,'full')
+if strcmp(verbosity,'full')
     fprintf('\n');
     toc
     fprintf('\n');
