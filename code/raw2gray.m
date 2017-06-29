@@ -49,7 +49,7 @@ if ~exist(deinterlacedVideoName, 'file')
 end
 
 %% get the video in livetrack format
-prepareVideo(deinterlacedVideoName, outputVideoName,'numberOfFrames',numberOfFrames,'verbosity',verbosity));
+prepareVideo(deinterlacedVideoName, outputVideoName,'numberOfFrames',numberOfFrames,'verbosity',verbosity);
 
 %% remove the temporary 60Hz video
 delete (deinterlacedVideoName)
