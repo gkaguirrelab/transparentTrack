@@ -61,6 +61,15 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 %    params), rather than re-computing these. This allows more rapid
 %    exploration of parameter settigns that guide the Bayesian smoothing.
 %
+% Optional key/value pairs (Environment parameters)
+
+%  'tbSnapshot' - This should contain the output of the tbDeploymentSnapshot
+%    performed upon the result of the tbUse command. This documents the
+%    state of the system at the time of analysis.
+%  'timestamp' - AUTOMATIC - The current time and date
+%  'username' - AUTOMATIC - The user
+%  'hostname' - AUTOMATIC - The host
+%
 % Optional key/value pairs (fitting parameters)
 %
 %  'ellipseTransparentLB/UB' - Define the hard upper and lower boundaries
@@ -106,6 +115,7 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 %   ellipseFitData: A structure with multiple fields corresponding to the
 %     parameters, SDs, and errors of the initial and final ellipse fits.
 
+
 %% Parse vargin for options passed here
 p = inputParser;
 
@@ -122,6 +132,12 @@ p.addParameter('useParallel',false,@islogical);
 p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('tbtbRepoName','LiveTrackAnalysisToolbox',@ischar);
 p.addParameter('developmentMode',false,@islogical);
+
+% Environment parameters
+p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
+p.addParameter('timestamp',char(datetime('now')),@ischar);
+p.addParameter('hostname',char(java.lang.System.getProperty('user.name')),@ischar);
+p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional fitting params
 p.addParameter('ellipseTransparentLB',[0, 0, 1000, 0, -0.5*pi],@isnumeric);
@@ -229,7 +245,7 @@ if p.Results.useParallel
         % Use TbTb to configure the workers.
         if ~isempty(p.Results.tbtbRepoName)
             spmd
-                tbConfigResult=tbUse(p.Results.tbtbRepoName,'reset','full','verbose',false,'online',false);
+                tbUse(p.Results.tbtbRepoName,'reset','full','verbose',false,'online',false);
             end
             if strcmp(p.Results.verbosity,'full')
                 fprintf('CAUTION: Any TbTb messages from the workers will not be shown.\n');
@@ -508,11 +524,6 @@ ellipseFitData.fitError=loopVar_finalFitError';
 
 % add a meta field with analysis details
 ellipseFitData.meta.params = p.Results;
-ellipseFitData.meta.params.perimeterVideoFileName = perimeterVideoFileName;
-ellipseFitData.meta.environment.ver = ver();
-ellipseFitData.meta.environment.computer = computer();
-ellipseFitData.meta.environment.tbConfigResult = tbConfigResult;
-ellipseFitData.meta.timestamp = char(datetime('now'));
 
 % save the ellipse fit results if requested
 if ~isempty(p.Results.ellipseFitDataFileName)
