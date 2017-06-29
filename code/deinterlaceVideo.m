@@ -68,32 +68,29 @@ end
 
 open(Bob)
 
-switch bobMode
-    case 'Raw'
-        for ii = 1:nFrames
-            if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
-                fprintf('.');
-            end
-            tmp = readFrame(inObj);
-            thisFrame = rgb2gray(tmp);
-            oddFields = thisFrame(1:2:end,:);
-            evenFields = thisFrame(2:2:end,:);
+for ii = 1:nFrames
+    
+    % update progressbar
+    if strcmp(verbosity,'full') && mod(ii,round(nFrames/50))==0
+        fprintf('.');
+    end
+    
+    % get the frame
+    tmp = readFrame(inObj);
+    thisFrame = rgb2gray(tmp);
+    
+    %get the fields
+    oddFields = thisFrame(1:2:end,:);
+    evenFields = thisFrame(2:2:end,:);
+    
+    %deinterlace
+    switch bobMode
+        case 'Raw'
             % shift the even lines to avoid "jumping" from frame to frame. (i.e
             % align the two fields)
             evenFields = cat(1,zeros(1,size(evenFields,2),'like',evenFields), evenFields(1:end-1,:));
-            writeVideo(Bob,oddFields);
-            writeVideo(Bob,evenFields);
-        end
-        
-    case 'Zero'
-        for ii = 1:nFrames
-            if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
-                fprintf('.');
-            end
-            tmp = readFrame(inObj);
-            thisFrame = rgb2gray(tmp);
-            oddFields = thisFrame(1:2:end,:);
-            evenFields = thisFrame(2:2:end,:);
+            
+        case 'Zero'
             % put zero rows in
             m = 1;
             k = 1;
@@ -101,36 +98,14 @@ switch bobMode
             oddFields = reshape([reshape(oddFields,m,[]);zeros(k,n(1)/m*n(2))],[],n(2));
             evenFields = reshape([reshape(evenFields,m,[]);zeros(k,n(1)/m*n(2))],[],n(2));
             evenFields = cat(1,zeros(1,size(evenFields,2),'like',evenFields), evenFields(1:end-1,:));
-            writeVideo(Bob,oddFields)
-            writeVideo(Bob,evenFields)
-        end
-        
-    case 'Double'
-        for ii = 1:nFrames
-            if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
-                fprintf('.');
-            end
-            tmp = readFrame(inObj);
-            thisFrame = rgb2gray(tmp);
-            oddFields = thisFrame(1:2:end,:);
-            evenFields = thisFrame(2:2:end,:);
+            
+        case 'Double'
             % duplicate each row
             oddFields = repelem(oddFields, 2, 1);
             evenFields = repelem(evenFields, 2, 1);
             evenFields = cat(1,zeros(1,size(evenFields,2),'like',evenFields), evenFields(1:end-1,:));
-            writeVideo(Bob,oddFields)
-            writeVideo(Bob,evenFields)
-        end
-        
-    case 'Mean'
-        for ii = 1:nFrames
-            if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
-                fprintf('.');
-            end
-            tmp = readFrame(inObj);
-            thisFrame = rgb2gray(tmp);
-            oddFields = thisFrame(1:2:end,:);
-            evenFields = thisFrame(2:2:end,:);
+            
+        case 'Mean'
             % put means in between rows (odd fields)
             tmp = [oddFields(1,:); ((oddFields(1,:)+oddFields(2,:))/2);oddFields(2,:)];
             for jj = 2 : size(oddFields,1)-1
@@ -149,10 +124,15 @@ switch bobMode
             evenFields = cat(1,evenFields(1,:),tmp);
             clear tmp
             clear newLines
-            writeVideo(Bob,oddFields)
-            writeVideo(Bob,evenFields)
-        end
+    end
+    
+    % write the fields as frames
+    writeVideo(Bob,oddFields);
+    writeVideo(Bob,evenFields);
+    
 end
+
+clear Bob inObj
 
 % report completion of analysis
 if strcmp(p.Results.verbosity,'full')
@@ -161,6 +141,5 @@ if strcmp(p.Results.verbosity,'full')
     fprintf('\n');
 end
 
-clear Bob inObj
 
 end % function
