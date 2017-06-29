@@ -97,7 +97,7 @@ for ff = 1:numFrames
     writeVideo(outObj,tmp);
     % update progressbar
     if strcmp(verbosity,'full')
-        if mod(ii,round(nFrames/50))==0
+        if mod(ff,round(nFrames/50))==0
             fprintf('.');
         end
     end

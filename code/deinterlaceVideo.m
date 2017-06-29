@@ -119,9 +119,9 @@ for ff = 1:nFrames
     writeVideo(Bob,oddFields);
     writeVideo(Bob,evenFields);
     
-    %update progressbar
+    % update progressbar
     if strcmp(verbosity,'full')
-        if mod(ii,round(nFrames/50))==0
+        if mod(ff,round(nFrames/50))==0
             fprintf('.');
         end
     end

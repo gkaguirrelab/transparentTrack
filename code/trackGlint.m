@@ -2,22 +2,22 @@ function [glint, glintTrackingParams] = trackGlint(grayVideoName, glintFileName,
 
 % This function tracks the glint using the circle patch + direct ellipse
 % fitting approach.
-% 
+%
 % There usually is no need to change the parameters for glint tracking, as
 % it is pretty consistently tracked with the default settings.
-% 
-% 
+%
+%
 % Output
 % ======
 %       glint file, glint variable, glintTrackingParams.
-% 
+%
 % Input params
 % ============
 %       grayVideoName : name and path of the gray video on which to track
 %           the glint
 %       glintFileName : name of the output matFile in which to save the glint
 %         results.
-%       
+%
 % Options
 % =======
 %       displayTracking : display online glint tracking in a figure
@@ -28,8 +28,8 @@ function [glint, glintTrackingParams] = trackGlint(grayVideoName, glintFileName,
 %       glintRange : radius range for cirfle fitting of the glint (default [10 30])
 %       glintEllipseThresh : threshold value to locate the glint for
 %           ellipse fitting (default 0.9)
-% 
-% 
+%
+%
 % Usage example
 % =============
 %  [glint, glintTrackingParams] = trackGlint(grayVideoName, glintFileName, 'displayTracking', true)
@@ -50,11 +50,14 @@ p.addParameter('glintCircleThresh', 0.999, @isnumeric);
 p.addParameter('glintRange', [10 30], @isnumeric);
 p.addParameter('glintEllipseThresh', 0.9, @isnumeric);
 
+% Optional display and I/O params
+p.addParameter('verbosity','none',@ischar);
+
 % Environment parameters
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
 p.addParameter('timestamp',char(datetime('now')),@ischar);
 p.addParameter('hostname',char(java.lang.System.getProperty('user.name')),@ischar);
-p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@ischar); 
+p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 %parse
 p.parse(grayVideoName, glintFileName, varargin{:})
@@ -65,7 +68,7 @@ gammaCorrection = p.Results.gammaCorrection;
 glintCircleThresh =  p.Results.glintCircleThresh;
 glintRange = p.Results.glintRange;
 glintEllipseThresh = p.Results.glintEllipseThresh;
-
+verbosity =  p.Results.verbosity;
 
 
 %% read video file
@@ -80,11 +83,14 @@ numFrames = floor(inObj.Duration*inObj.FrameRate);
 %% Initialize glint struct
 
 % display main tracking parameters
-disp('Starting tracking with the following parameters:');
-disp('Circle threshold: ')
-disp(glintCircleThresh)
-disp('Ellipse threshold: ')
-disp(glintEllipseThresh)
+if strcmp(verbosity,'full')
+    tic
+    disp('Starting tracking with the following parameters:');
+    disp('Circle threshold: ')
+    disp(glintCircleThresh)
+    disp('Ellipse threshold: ')
+    disp(glintEllipseThresh)
+end
 
 
 % main glint params
@@ -117,10 +123,15 @@ pupilCircleThresh = 0.06;
 
 
 % initialize progress bar
-progBar = ProgressBar(numFrames,'Tracking the glint...');
+if strcmp(verbosity,'full')
+    tic
+    fprintf(['Glint Tracking. Started ' char(datetime('now')) '\n']);
+    fprintf('| 0                      50                   100%% |\n');
+    fprintf('.');
+end
 
 %loop through frames
-for ii = 1:numFrames 
+for ii = 1:numFrames
     % Get the frame
     I = readFrame(inObj);
     
@@ -133,7 +144,12 @@ for ii = 1:numFrames
     
     % get a more precise tracking with direct ellipse fitting
     if isempty(gCenters) %no glint was found by circleFit
-        if ~mod(ii,10);progBar(ii);end % update progressbar
+        % update progressbar
+        if strcmp(verbosity,'full')
+            if mod(ii,round(nFrames/50))==0
+                fprintf('.');
+            end
+        end
         continue
     else % glint was found by circleFit
         % getGlintPerimeter
@@ -141,7 +157,7 @@ for ii = 1:numFrames
         % Fit ellipse to glint
         [Xg, Yg] = ind2sub(size(binG),find(binG));
         try
-            % turn of warnings for singular matrix
+            % turn off warnings for singular matrix
             origWarnState = warning();
             warning('off','MATLAB:singularMatrix');
             warning('off','MATLAB:illConditionedMatrix');
@@ -184,7 +200,12 @@ for ii = 1:numFrames
             glint.size(ii) = gRadii(1);
             glint.circleStrength(ii) = gMetric(1);
         end
-        if ~mod(ii,10);progBar(ii);end % update progressbar
+        % update progressbar
+        if strcmp(verbosity,'full')
+            if mod(ii,round(nFrames/50))==0
+                fprintf('.');
+            end
+        end
     end
 end
 
@@ -196,4 +217,10 @@ glintTrackingParams = p.Results;
 
 %% save out a mat file with the glint tracking data
 save (glintFileName, 'glint','glintTrackingParams')
-    
+
+if strcmp(verbosity,'full')
+    fprintf('\n');
+    toc
+    fprintf('\n');
+end
+
