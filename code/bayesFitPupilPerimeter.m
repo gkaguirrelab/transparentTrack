@@ -49,7 +49,7 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 %
 % Optional key/value pairs (flow control)
 %
-%  'forceNumFrames' - analyze fewer than the total number of video frames.
+%  'nFrames' - analyze fewer than the total number of video frames.
 %  'useParallel' - If set to true, use the Matlab parallel pool for the
 %    initial ellipse fitting.
 %  'nWorkers' - Specify the number of workers in the parallel pool. If
@@ -127,7 +127,7 @@ p.addParameter('verbosity','none',@ischar);
 p.addParameter('ellipseFitDataFileName',[],@ischar);
 
 % Optional flow control params
-p.addParameter('forceNumFrames',[],@isnumeric);
+p.addParameter('nFrames',[],@isnumeric);
 p.addParameter('useParallel',false,@islogical);
 p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('tbtbRepoName','LiveTrackAnalysisToolbox',@ischar);
@@ -201,11 +201,11 @@ videoSizeY = inVideoObj.Height;
 
 % Determine how many frames to process
 nFrames = floor(inVideoObj.Duration*inVideoObj.FrameRate);
-if ~isempty(p.Results.forceNumFrames)
-    if p.Results.forceNumFrames > nFrames
-        error('You cannot force more frames than are in the video')
+if ~isempty(p.Results.nFrames)
+    if p.Results.nFrames > nFrames
+        error('You cannot process more frames than are in the video')
     else
-        nFrames = p.Results.forceNumFrames;
+        nFrames = p.Results.nFrames;
     end
 end
 

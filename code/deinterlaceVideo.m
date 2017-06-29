@@ -1,9 +1,11 @@
 function deinterlaceVideo (inputVideoName, outputVideoName, varargin)
 
-% This function allows to deinterlace NTSC DV 30Hz videos, saving out
+% This function deinterlaces NTSC DV 30Hz videos, saving out
 % progressive 60 Hz videos, using a "bob deinterlacing" strategy.
 %
-% These deinterlace strategies are available (bobMode):
+% The video is also converted to gray scale.
+%
+% Four deinterlace strategies are available (bobMode):
 % 'Raw'    =  extract 2 fields for every frame. Save progressive video.
 %             Final spatial resolution is half the original resolution.
 % 'Zero'   =  extract 2 fields for every frame. Alternate every row with a
@@ -30,9 +32,13 @@ p = inputParser;
 % required input
 p.addRequired('inputVideoName',@isstr);
 p.addRequired('outputVideoName',@isstr);
+
 % optional inputs
 p.addParameter('bobMode', 'Mean', @isstr);
-%parse
+p.addParameter('verbosity', 'none', @isstr);
+p.addParameter('nFrames', Inf, @isnumeric);
+
+% parse
 p.parse(inputVideoName,outputVideoName,varargin{:})
 
 % define variables
@@ -40,22 +46,34 @@ bobMode = p.Results.bobMode;
 
 %% Load video to deinterlace and set parameters for output video file.
 
-
 inObj = VideoReader(inputVideoName);
-nFrames = floor(inObj.Duration*inObj.FrameRate);
+
+if p.Results.nFrames == Inf
+    nFrames = floor(inObj.Duration*inObj.FrameRate);
+else
+    nFrames=p.Results.nFrames;
+end
 
 Bob = VideoWriter(outputVideoName);
 Bob.FrameRate = inObj.FrameRate * 2;
 Bob.Quality = 100;
 
+% Alert the user
+if strcmp(p.Results.verbosity,'full')
+    tic
+    fprintf(['Deinterlacing video. Started ' char(datetime('now')) '\n']);
+    fprintf('| 0                      50                   100%% |\n');
+    fprintf('.');
+end
 
-%%
-progBar = ProgressBar(nFrames,'Deinterlacing video...');
 open(Bob)
 
 switch bobMode
     case 'Raw'
-        for i = 1:nFrames
+        for ii = 1:nFrames
+            if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
+                fprintf('.');
+            end
             tmp = readFrame(inObj);
             thisFrame = rgb2gray(tmp);
             oddFields = thisFrame(1:2:end,:);
@@ -65,11 +83,13 @@ switch bobMode
             evenFields = cat(1,zeros(1,size(evenFields,2),'like',evenFields), evenFields(1:end-1,:));
             writeVideo(Bob,oddFields);
             writeVideo(Bob,evenFields);
-            if ~mod(i,10);progBar(i);end
         end
         
     case 'Zero'
-        for i = 1:nFrames
+        for ii = 1:nFrames
+            if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
+                fprintf('.');
+            end
             tmp = readFrame(inObj);
             thisFrame = rgb2gray(tmp);
             oddFields = thisFrame(1:2:end,:);
@@ -83,11 +103,13 @@ switch bobMode
             evenFields = cat(1,zeros(1,size(evenFields,2),'like',evenFields), evenFields(1:end-1,:));
             writeVideo(Bob,oddFields)
             writeVideo(Bob,evenFields)
-            if ~mod(i,10);progBar(i);end
         end
         
     case 'Double'
-        for i = 1:nFrames
+        for ii = 1:nFrames
+            if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
+                fprintf('.');
+            end
             tmp = readFrame(inObj);
             thisFrame = rgb2gray(tmp);
             oddFields = thisFrame(1:2:end,:);
@@ -98,13 +120,15 @@ switch bobMode
             evenFields = cat(1,zeros(1,size(evenFields,2),'like',evenFields), evenFields(1:end-1,:));
             writeVideo(Bob,oddFields)
             writeVideo(Bob,evenFields)
-            if ~mod(i,10);progBar(i);end
         end
         
     case 'Mean'
-        for i = 1:nFrames
-            tmp             = readFrame(inObj);
-            thisFrame       = rgb2gray(tmp);
+        for ii = 1:nFrames
+            if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
+                fprintf('.');
+            end
+            tmp = readFrame(inObj);
+            thisFrame = rgb2gray(tmp);
             oddFields = thisFrame(1:2:end,:);
             evenFields = thisFrame(2:2:end,:);
             % put means in between rows (odd fields)
@@ -127,7 +151,16 @@ switch bobMode
             clear newLines
             writeVideo(Bob,oddFields)
             writeVideo(Bob,evenFields)
-            if ~mod(i,10);progBar(i);end
         end
 end
+
+% report completion of analysis
+if strcmp(p.Results.verbosity,'full')
+    fprintf('\n');
+    toc
+    fprintf('\n');
+end
+
 clear Bob inObj
+
+end % function
