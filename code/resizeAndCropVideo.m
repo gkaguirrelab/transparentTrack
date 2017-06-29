@@ -75,6 +75,7 @@ else
     nFrames=p.Results.nFrames;
 end
 
+% alert the user
 if strcmp(p.Results.verbosity,'full')
     tic
     fprintf(['Resizing and cropping video. Started ' char(datetime('now')) '\n']);
@@ -84,6 +85,7 @@ end
 
 % Resize and crop, save
 for ii = 1:nFrames
+    % increment the progress bar
     if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
         fprintf('.');
     end
@@ -94,7 +96,6 @@ for ii = 1:nFrames
         tmp = imcrop(tmp2,cropVideo);
     end
     writeVideo(outObj,tmp);
-    % increment progress bar
 end
 
 clear inObj outObj

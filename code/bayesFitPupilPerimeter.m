@@ -523,7 +523,7 @@ ellipseFitData.pPosteriorSDTransparent=loopVar_pPosteriorSDTransparent;
 ellipseFitData.fitError=loopVar_finalFitError';
 
 % add a meta field with analysis details
-ellipseFitData.meta.params = p.Results;
+ellipseFitData.meta = p.Results;
 
 % save the ellipse fit results if requested
 if ~isempty(p.Results.ellipseFitDataFileName)
