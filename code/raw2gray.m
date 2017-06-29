@@ -25,7 +25,7 @@ p.addRequired('outputVideoName',@isstr);
 p.addParameter('numberOfFrames', Inf, @isnumeric);
 
 % parse
-p.parse(inputVideoName,outputVideoName,varargin);
+p.parse(inputVideoName,outputVideoName,varargin{:});
 
 % define variables
 numberOfFrames = p.Results.numberOfFrames;
@@ -33,10 +33,12 @@ numberOfFrames = p.Results.numberOfFrames;
 %% deinterlace video
 
 % get file parts for inputVideoName
-[pathstr,name,~] = fileparts(inputVideoName);
+[~,name,~] = fileparts(inputVideoName);
+name = name(1:end-4);
+[pathstr,~,~] = fileparts(outputVideoName);
 
 % set deinterlaced video name (large temporary file)
-deinterlacedVideoName = fullfile(pathstr,[name '_60Hz.avi']);
+deinterlacedVideoName = fullfile(pathstr,[name '_60hz.avi']);
 
 % check if deinterlaced video already exists
 if ~exist(deinterlacedVideoName, 'file')
