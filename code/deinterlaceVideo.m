@@ -1,4 +1,4 @@
-function deinterlaceVideo (params, dropboxDir, bobMode)
+function deinterlaceVideo (inputVideoName, outputVideoName, varargin)
 
 % This function allows to deinterlace NTSC DV 30Hz videos, saving out
 % progressive 60 Hz videos, using a "bob deinterlacing" strategy.
@@ -19,61 +19,32 @@ function deinterlaceVideo (params, dropboxDir, bobMode)
 % http://www.100fps.com/
 %
 %   Usage:
-%       deinterlaceVideo (params, dropboxDir, bobMode)
+%       deinterlaceVideo (inputVideoName, outputVideoName)
 %
-%   Required inputs:
-%    
-%       params.outputDir
-%       params.projectFolder
-%       params.projectSubfolder
-%       params.eyeTrackingDir
-%
-%       params.subjectName
-%       params.sessionDate
-%       params.runName
-% 
-%       dropboxDir
-% 
-% Note that the params field are the same as the metaData fields for a
-% standard pupilResponse struct, so this function can also be used like
-% this:
-%       deinterlaceVideo (metadata, dropboxDir, bobMode)
 %
 %   Written by Giulia Frazzetta - Nov.2016
+%  Edited June 2017 - added input parsing, changed input/output format.
+%% parse input and define variables
 
+p = inputParser;
+% required input
+p.addRequired('inputVideoName',@isstr);
+p.addRequired('outputVideoName',@isstr);
+% optional inputs
+p.addParameter('bobMode', 'Mean', @isstr);
+%parse
+p.parse(inputVideoName,outputVideoName,varargin{:})
 
-%% Set session and file names
-if ~exist('bobMode', 'var')
-    bobMode = 'Mean';
-end
+% define variables
+bobMode = p.Results.bobMode;
 
-if isfield(params,'projectSubfolder')
-    sessDir = fullfile(dropboxDir,params.projectFolder, params.projectSubfolder, ...
-        params.subjectName,params.sessionDate,params.eyeTrackingDir);
-    
-    outDir = fullfile(dropboxDir,params.outputDir, params.projectSubfolder, ...
-        params.subjectName,params.sessionDate,params.eyeTrackingDir);
-else
-    sessDir = fullfile(dropboxDir,params.projectFolder, ...
-        params.subjectName,params.sessionDate,params.eyeTrackingDir);
-    
-    outDir = fullfile(dropboxDir,params.outputDir, ...
-        params.subjectName,params.sessionDate,params.eyeTrackingDir);
-end
-
-if ~exist ('outDir', 'dir')
-    mkdir (outDir)
-end
 %% Load video to deinterlace and set parameters for output video file.
 
-inFile = fullfile(sessDir,[params.runName '_raw.mov']);
-if ~exist(inFile,'file')
-    inFile = fullfile(sessDir,[params.runName '.mov']);
-end
-inObj = VideoReader(inFile);
+
+inObj = VideoReader(inputVideoName);
 nFrames = floor(inObj.Duration*inObj.FrameRate);
 
-Bob = VideoWriter(fullfile(outDir,[params.runName '_60hz.avi']));
+Bob = VideoWriter(outputVideoName);
 Bob.FrameRate = inObj.FrameRate * 2;
 Bob.Quality = 100;
 
@@ -160,3 +131,4 @@ switch bobMode
         end
 end
 close (Bob)
+close (inObj)
