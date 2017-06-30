@@ -56,7 +56,7 @@ p.addParameter('nFrames',Inf,@isnumeric);
 
 % Optional display and I/O params
 p.addParameter('verbosity','none',@ischar);
-p.addParmeter('showTracking', false, @islogical)
+p.addParameter('showTracking', false, @islogical)
 
 % Environment parameters
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
@@ -73,9 +73,9 @@ inObj = VideoReader(grayVideoName);
 
 % get number of frames
 if p.Results.nFrames == Inf
-    numFrames = floor(inObj.Duration*inObj.FrameRate);
+    nFrames = floor(inObj.Duration*inObj.FrameRate);
 else
-    numFrames = p.Resulst.nFrames;
+    nFrames = p.Results.nFrames;
 end
 %% initiate output video object
 
@@ -88,7 +88,7 @@ open(outObj);
 % alert the user
 if strcmp(p.Results.verbosity,'full')
     tic
-    fprintf(['Tracking the glint. Started ' char(datetime('now')) '\n']);
+    fprintf(['Extracting pupil perimeter. Started ' char(datetime('now')) '\n']);
     fprintf('| 0                      50                   100%% |\n');
     fprintf('.');
 end
@@ -102,7 +102,7 @@ end
 pupilRange = p.Results.pupilRange;
 
 % loop through gray frames
-for ii = 1:numFrames
+for ii = 1:nFrames
     % increment the progress bar
     if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
         fprintf('.');
@@ -157,7 +157,9 @@ for ii = 1:numFrames
 end % loop through gray frames
 
 %% close video
+if p.Results.showTracking
 close(ih);
+end
 clear outObj
 
 %% save mat file with analysis details and save it
