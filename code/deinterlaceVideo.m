@@ -1,9 +1,11 @@
-function deinterlaceVideo (params, dropboxDir, bobMode)
+function deinterlaceVideo (inputVideoName, outputVideoName, varargin)
 
-% This function allows to deinterlace NTSC DV 30Hz videos, saving out
+% This function deinterlaces NTSC DV 30Hz videos, saving out
 % progressive 60 Hz videos, using a "bob deinterlacing" strategy.
 %
-% These deinterlace strategies are available (bobMode):
+% The video is also converted to gray scale.
+%
+% Four deinterlace strategies are available (bobMode):
 % 'Raw'    =  extract 2 fields for every frame. Save progressive video.
 %             Final spatial resolution is half the original resolution.
 % 'Zero'   =  extract 2 fields for every frame. Alternate every row with a
@@ -19,90 +21,76 @@ function deinterlaceVideo (params, dropboxDir, bobMode)
 % http://www.100fps.com/
 %
 %   Usage:
-%       deinterlaceVideo (params, dropboxDir, bobMode)
+%       deinterlaceVideo (inputVideoName, outputVideoName)
 %
-%   Required inputs:
-%    
-%       params.outputDir
-%       params.projectFolder
-%       params.projectSubfolder
-%       params.eyeTrackingDir
-%
-%       params.subjectName
-%       params.sessionDate
-%       params.runName
-% 
-%       dropboxDir
-% 
-% Note that the params field are the same as the metaData fields for a
-% standard pupilResponse struct, so this function can also be used like
-% this:
-%       deinterlaceVideo (metadata, dropboxDir, bobMode)
 %
 %   Written by Giulia Frazzetta - Nov.2016
+%  Edited June 2017 - added input parsing, changed input/output format.
+%% parse input and define variables
 
+p = inputParser;
+% required input
+p.addRequired('inputVideoName',@isstr);
+p.addRequired('outputVideoName',@isstr);
 
-%% Set session and file names
-if ~exist('bobMode', 'var')
-    bobMode = 'Mean';
-end
+% optional inputs
+p.addParameter('bobMode', 'Mean', @isstr);
+p.addParameter('verbosity', 'none', @isstr);
+p.addParameter('nFrames', Inf, @isnumeric);
 
-if isfield(params,'projectSubfolder')
-    sessDir = fullfile(dropboxDir,params.projectFolder, params.projectSubfolder, ...
-        params.subjectName,params.sessionDate,params.eyeTrackingDir);
-    
-    outDir = fullfile(dropboxDir,params.outputDir, params.projectSubfolder, ...
-        params.subjectName,params.sessionDate,params.eyeTrackingDir);
-else
-    sessDir = fullfile(dropboxDir,params.projectFolder, ...
-        params.subjectName,params.sessionDate,params.eyeTrackingDir);
-    
-    outDir = fullfile(dropboxDir,params.outputDir, ...
-        params.subjectName,params.sessionDate,params.eyeTrackingDir);
-end
+% parse
+p.parse(inputVideoName,outputVideoName,varargin{:})
 
-if ~exist ('outDir', 'dir')
-    mkdir (outDir)
-end
+% define variables
+bobMode = p.Results.bobMode;
+
 %% Load video to deinterlace and set parameters for output video file.
 
-inFile = fullfile(sessDir,[params.runName '_raw.mov']);
-if ~exist(inFile,'file')
-    inFile = fullfile(sessDir,[params.runName '.mov']);
-end
-inObj = VideoReader(inFile);
-nFrames = floor(inObj.Duration*inObj.FrameRate);
+inObj = VideoReader(inputVideoName);
 
-Bob = VideoWriter(fullfile(outDir,[params.runName '_60hz.avi']));
+if p.Results.nFrames == Inf
+    nFrames = floor(inObj.Duration*inObj.FrameRate);
+else
+    nFrames=p.Results.nFrames;
+end
+
+Bob = VideoWriter(outputVideoName);
 Bob.FrameRate = inObj.FrameRate * 2;
 Bob.Quality = 100;
 
+% Alert the user
+if strcmp(p.Results.verbosity,'full')
+    tic
+    fprintf(['Deinterlacing video. Started ' char(datetime('now')) '\n']);
+    fprintf('| 0                      50                   100%% |\n');
+    fprintf('.');
+end
 
-%%
-progBar = ProgressBar(nFrames,'Deinterlacing video...');
 open(Bob)
 
-switch bobMode
-    case 'Raw'
-        for i = 1:nFrames
-            tmp = readFrame(inObj);
-            thisFrame = rgb2gray(tmp);
-            oddFields = thisFrame(1:2:end,:);
-            evenFields = thisFrame(2:2:end,:);
+for ii = 1:nFrames
+    
+    % update progressbar
+    if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
+        fprintf('.');
+    end
+    
+    % get the frame
+    tmp = readFrame(inObj);
+    thisFrame = rgb2gray(tmp);
+    
+    %get the fields
+    oddFields = thisFrame(1:2:end,:);
+    evenFields = thisFrame(2:2:end,:);
+    
+    %deinterlace
+    switch bobMode
+        case 'Raw'
             % shift the even lines to avoid "jumping" from frame to frame. (i.e
             % align the two fields)
             evenFields = cat(1,zeros(1,size(evenFields,2),'like',evenFields), evenFields(1:end-1,:));
-            writeVideo(Bob,oddFields);
-            writeVideo(Bob,evenFields);
-            if ~mod(i,10);progBar(i);end
-        end
-        
-    case 'Zero'
-        for i = 1:nFrames
-            tmp = readFrame(inObj);
-            thisFrame = rgb2gray(tmp);
-            oddFields = thisFrame(1:2:end,:);
-            evenFields = thisFrame(2:2:end,:);
+            
+        case 'Zero'
             % put zero rows in
             m = 1;
             k = 1;
@@ -110,32 +98,14 @@ switch bobMode
             oddFields = reshape([reshape(oddFields,m,[]);zeros(k,n(1)/m*n(2))],[],n(2));
             evenFields = reshape([reshape(evenFields,m,[]);zeros(k,n(1)/m*n(2))],[],n(2));
             evenFields = cat(1,zeros(1,size(evenFields,2),'like',evenFields), evenFields(1:end-1,:));
-            writeVideo(Bob,oddFields)
-            writeVideo(Bob,evenFields)
-            if ~mod(i,10);progBar(i);end
-        end
-        
-    case 'Double'
-        for i = 1:nFrames
-            tmp = readFrame(inObj);
-            thisFrame = rgb2gray(tmp);
-            oddFields = thisFrame(1:2:end,:);
-            evenFields = thisFrame(2:2:end,:);
+            
+        case 'Double'
             % duplicate each row
             oddFields = repelem(oddFields, 2, 1);
             evenFields = repelem(evenFields, 2, 1);
             evenFields = cat(1,zeros(1,size(evenFields,2),'like',evenFields), evenFields(1:end-1,:));
-            writeVideo(Bob,oddFields)
-            writeVideo(Bob,evenFields)
-            if ~mod(i,10);progBar(i);end
-        end
-        
-    case 'Mean'
-        for i = 1:nFrames
-            tmp             = readFrame(inObj);
-            thisFrame       = rgb2gray(tmp);
-            oddFields = thisFrame(1:2:end,:);
-            evenFields = thisFrame(2:2:end,:);
+            
+        case 'Mean'
             % put means in between rows (odd fields)
             tmp = [oddFields(1,:); ((oddFields(1,:)+oddFields(2,:))/2);oddFields(2,:)];
             for jj = 2 : size(oddFields,1)-1
@@ -154,9 +124,22 @@ switch bobMode
             evenFields = cat(1,evenFields(1,:),tmp);
             clear tmp
             clear newLines
-            writeVideo(Bob,oddFields)
-            writeVideo(Bob,evenFields)
-            if ~mod(i,10);progBar(i);end
-        end
+    end
+    
+    % write the fields as frames
+    writeVideo(Bob,oddFields);
+    writeVideo(Bob,evenFields);
+    
 end
-close (Bob)
+
+clear Bob inObj
+
+% report completion of analysis
+if strcmp(p.Results.verbosity,'full')
+    fprintf('\n');
+    toc
+    fprintf('\n');
+end
+
+
+end % function

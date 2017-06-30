@@ -49,7 +49,7 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 %
 % Optional key/value pairs (flow control)
 %
-%  'forceNumFrames' - analyze fewer than the total number of video frames.
+%  'nFrames' - analyze fewer than the total number of video frames.
 %  'useParallel' - If set to true, use the Matlab parallel pool for the
 %    initial ellipse fitting.
 %  'nWorkers' - Specify the number of workers in the parallel pool. If
@@ -60,6 +60,15 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 %    pre-existing set of initial ellipse measures (and SDs upon those
 %    params), rather than re-computing these. This allows more rapid
 %    exploration of parameter settigns that guide the Bayesian smoothing.
+%
+% Optional key/value pairs (Environment parameters)
+
+%  'tbSnapshot' - This should contain the output of the tbDeploymentSnapshot
+%    performed upon the result of the tbUse command. This documents the
+%    state of the system at the time of analysis.
+%  'timestamp' - AUTOMATIC - The current time and date
+%  'username' - AUTOMATIC - The user
+%  'hostname' - AUTOMATIC - The host
 %
 % Optional key/value pairs (fitting parameters)
 %
@@ -106,6 +115,7 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 %   ellipseFitData: A structure with multiple fields corresponding to the
 %     parameters, SDs, and errors of the initial and final ellipse fits.
 
+
 %% Parse vargin for options passed here
 p = inputParser;
 
@@ -117,11 +127,17 @@ p.addParameter('verbosity','none',@ischar);
 p.addParameter('ellipseFitDataFileName',[],@ischar);
 
 % Optional flow control params
-p.addParameter('forceNumFrames',[],@isnumeric);
+p.addParameter('nFrames',[],@isnumeric);
 p.addParameter('useParallel',false,@islogical);
 p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('tbtbRepoName','LiveTrackAnalysisToolbox',@ischar);
 p.addParameter('developmentMode',false,@islogical);
+
+% Environment parameters
+p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
+p.addParameter('timestamp',char(datetime('now')),@ischar);
+p.addParameter('hostname',char(java.lang.System.getProperty('user.name')),@ischar);
+p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional fitting params
 p.addParameter('ellipseTransparentLB',[0, 0, 1000, 0, -0.5*pi],@isnumeric);
@@ -185,11 +201,11 @@ videoSizeY = inVideoObj.Height;
 
 % Determine how many frames to process
 nFrames = floor(inVideoObj.Duration*inVideoObj.FrameRate);
-if ~isempty(p.Results.forceNumFrames)
-    if p.Results.forceNumFrames > nFrames
-        error('You cannot force more frames than are in the video')
+if ~isempty(p.Results.nFrames)
+    if p.Results.nFrames > nFrames
+        error('You cannot process more frames than are in the video')
     else
-        nFrames = p.Results.forceNumFrames;
+        nFrames = p.Results.nFrames;
     end
 end
 
@@ -229,7 +245,7 @@ if p.Results.useParallel
         % Use TbTb to configure the workers.
         if ~isempty(p.Results.tbtbRepoName)
             spmd
-                tbConfigResult=tbUse(p.Results.tbtbRepoName,'reset','full','verbose',false,'online',false);
+                tbUse(p.Results.tbtbRepoName,'reset','full','verbose',false,'online',false);
             end
             if strcmp(p.Results.verbosity,'full')
                 fprintf('CAUTION: Any TbTb messages from the workers will not be shown.\n');
@@ -349,6 +365,7 @@ end % developmentMode check
 if ~isempty(p.Results.ellipseFitDataFileName)
     save(p.Results.ellipseFitDataFileName,'ellipseFitData')
 end
+
 
 %% Conduct a Bayesian smoothing operation
 
@@ -506,12 +523,7 @@ ellipseFitData.pPosteriorSDTransparent=loopVar_pPosteriorSDTransparent;
 ellipseFitData.fitError=loopVar_finalFitError';
 
 % add a meta field with analysis details
-ellipseFitData.meta.params = p.Results;
-ellipseFitData.meta.params.perimeterVideoFileName = perimeterVideoFileName;
-ellipseFitData.meta.environment.ver = ver();
-ellipseFitData.meta.environment.computer = computer();
-ellipseFitData.meta.environment.tbConfigResult = tbConfigResult();
-ellipseFitData.meta.timestamp = char(datetime('now'));
+ellipseFitData.meta = p.Results;
 
 % save the ellipse fit results if requested
 if ~isempty(p.Results.ellipseFitDataFileName)

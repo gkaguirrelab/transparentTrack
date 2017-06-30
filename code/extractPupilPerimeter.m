@@ -49,18 +49,14 @@ p.addRequired('grayI');
 p.addRequired('perimeterVideo',@isstr);
 
 % optional inputs
-frameRateDefault = 60;
-gammaCorrectionDefault = 1;
-pupilCircleThreshDefault =  0.06;
-pupilRangeDefault = [30 90];
-pupilEllipseThreshDefault = 0.95;
-p.addParameter('frameRate', frameRateDefault, @isnumeric);
-p.addParameter('gammaCorrection', gammaCorrectionDefault, @isnumeric);
-p.addParameter('pupilCircleThresh', pupilCircleThreshDefault, @isnumeric);
-p.addParameter('pupilRange', pupilRangeDefault, @isnumeric);
-p.addParameter('pupilEllipseThresh', pupilEllipseThreshDefault, @isnumeric);
+p.addParameter('frameRate', 60, @isnumeric);
+p.addParameter('gammaCorrection', 1, @isnumeric);
+p.addParameter('pupilCircleThresh', 0.06, @isnumeric);
+p.addParameter('pupilRange', [30 90], @isnumeric);
+p.addParameter('pupilEllipseThresh', 0.95, @isnumeric);
+p.addParameter('verbosity','none', @ischar);
 
-%parse
+% parse
 p.parse(grayI, perimeterVideoName, varargin{:})
 
 % define optional variables values
@@ -72,7 +68,6 @@ pupilEllipseThresh = p.Results.pupilEllipseThresh;
 
 
 %% initiate output video object
-
 outObj = VideoWriter(perimeterVideoName);
 outObj.FrameRate = frameRate;
 open(outObj);
@@ -80,17 +75,25 @@ open(outObj);
 %% extract pupil perimeter
 
 % get number of frames from grayI
-numFrames = size(grayI,3);
+nFrames = size(grayI,3);
 
-
-% initiate progress bar 
-progBar = ProgressBar(numFrames,'Extracting perimeter...');
+% alert the user
+if strcmp(p.Results.verbosity,'full')
+    tic
+    fprintf(['Extracting pupil perimeter. Started ' char(datetime('now')) '\n']);
+    fprintf('| 0                      50                   100%% |\n');
+    fprintf('.');
+end
 
 % open a figure
 ih = figure;
 
 % loop through gray frames
-for ii = 1:numFrames
+for ii = 1:nFrames
+    % increment the progress bar
+    if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
+        fprintf('.');
+    end
     
     % Get the frame
     I = squeeze(grayI(:,:,ii));
@@ -132,8 +135,6 @@ for ii = 1:numFrames
         frame   = getframe(ih);
         writeVideo(outObj,frame);
         
-        % increment progress bar
-        if ~mod(ii,10);progBar(ii);end;
     end
 end % loop through gray frames
 
@@ -143,3 +144,12 @@ clear outObj
 
 %% export perimeter params
 perimeterParams = p.Results;
+
+% report completion of analysis
+if strcmp(p.Results.verbosity,'full')
+    fprintf('\n');
+    toc
+    fprintf('\n');
+end
+
+end % function

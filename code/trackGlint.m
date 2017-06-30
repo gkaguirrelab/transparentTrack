@@ -1,37 +1,44 @@
-function [glint, glintTrackingParams] = trackGlint(grayI, glintFileName, varargin)
-
+function [glintData] = trackGlint(grayVideoName, glintFileName, varargin)
+% function [glintData] = trackGlint(grayVideoName, glintFileName, varargin)
+%
 % This function tracks the glint using the circle patch + direct ellipse
 % fitting approach.
-% 
+%
 % There usually is no need to change the parameters for glint tracking, as
 % it is pretty consistently tracked with the default settings.
 % 
-% 
+% Note: even if this function is not tracking the pupil, the circle patch
+% step requires a starting pupil range and threshold for a more accurate
+% glint detection. These are set as an optional input and it is usually not
+% necessary to change it.
+%
 % Output
 % ======
 %       glint file, glint variable, glintTrackingParams.
-% 
+%
 % Input params
 % ============
-%       grayI : 3D array of gray frames to track
+%       grayVideoName : name and path of the gray video on which to track
+%           the glint
 %       glintFileName : name of the output matFile in which to save the glint
 %         results.
-%       
+%
 % Options
 % =======
-%       displayTracking : display online glint tracking in a figure
-%           (default: false)
 %       gammaCorrection : gamma correction to be applied in current frame
 %       glintCircleThresh : threshold value to locate the glint for circle
 %           fitting (default 0.999)
 %       glintRange : radius range for cirfle fitting of the glint (default [10 30])
 %       glintEllipseThresh : threshold value to locate the glint for
 %           ellipse fitting (default 0.9)
-% 
-% 
+%       pupilRange: pupil range initialization for more accurate glint
+%           tracking in the circle patch step
+%       pupilCircleThresh: pupil threshold initialization for more accurate glint
+%           tracking in the circle patch step
+%
 % Usage example
 % =============
-%  [glint, glintTrackingParams] = trackGlint(grayI, glintFileName, 'displayTracking', true)
+% trackGlint(grayVideoName, glintFileName)
 
 
 
@@ -39,99 +46,84 @@ function [glint, glintTrackingParams] = trackGlint(grayI, glintFileName, varargi
 
 p = inputParser;
 % required input
-p.addRequired('grayI');
-p.addRequired('glintFile',@isstr);
+p.addRequired('grayVideoName',@isstr);
+p.addRequired('glintFileName',@isstr);
 
-% optional inputs
-p.addParameter('displayTracking', false, @islogical);
+% optional control parameters
 p.addParameter('gammaCorrection', 1, @isnumeric);
 p.addParameter('glintCircleThresh', 0.999, @isnumeric);
 p.addParameter('glintRange', [10 30], @isnumeric);
 p.addParameter('glintEllipseThresh', 0.9, @isnumeric);
+p.addParameter('pupilRange', [30 90], @isnumeric);
+p.addParameter('pupilCircleThresh', 0.06, @isnumeric);
+p.addParameter('verbosity', 'none', @ischar);
+
+% Environment parameters
+p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
+p.addParameter('timestamp',char(datetime('now')),@ischar);
+p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischar);
+p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 %parse
-p.parse(grayI, glintFileName, varargin{:})
+p.parse(grayVideoName, glintFileName, varargin{:})
 
-% define optional variables values
-displayTracking = p.Results.displayTracking;
-gammaCorrection = p.Results.gammaCorrection;
-glintCircleThresh =  p.Results.glintCircleThresh;
-glintRange = p.Results.glintRange;
-glintEllipseThresh = p.Results.glintEllipseThresh;
 
+%% read video file
+% load pupilPerimeter
+videoInObj = VideoReader(grayVideoName);
+
+% get number of frames
+nFrames = floor(videoInObj.Duration*videoInObj.FrameRate);
 
 %% Initialize glint struct
 
-% display main tracking parameters
-disp('Starting tracking with the following parameters:');
-disp('Circle threshold: ')
-disp(glintCircleThresh)
-disp('Ellipse threshold: ')
-disp(glintEllipseThresh)
-
-% get number of frames from grayI
-numFrames = size(grayI,3);
-
 % main glint params
-glint.X = nan(numFrames,1);
-glint.Y = nan(numFrames,1);
-glint.size = nan(numFrames,1);
+glintData.X = nan(nFrames,1);
+glintData.Y = nan(nFrames,1);
 
-% glint fit params
-glint.implicitEllipseParams = nan(numFrames,6);
-glint.explicitEllipseParams= nan(numFrames,5);
-glint.distanceErrorMetric= nan(numFrames,1);
-
-% glint mask params
-glint.circleRad = nan(numFrames,1);
-glint.circleX = nan(numFrames,1);
-glint.circleY = nan(numFrames,1);
-glint.circleStrength = nan(numFrames,1);
 
 % glint flags
-glint.ellipseFittingError = nan(numFrames,1);
+glintData.ellipseFittingError = nan(nFrames,1); %if this flag is true the X and Y position of the glint is based on the circle patch only.
+
 
 %% Track the glint
 
-% NOTE: it is necessary to give a starting value for the pupil range,
-% to remove the glint outside the pupil during the circle fitting step.
-% The value will be updated during the tracking and pupil results won't
-% be stored at this point.
-pupilRange = [30 90];
-pupilCircleThresh = 0.06;
-
-if displayTracking
-    ih = figure;
+% alert the user
+if strcmp(p.Results.verbosity,'full')
+    tic
+    fprintf(['Tracking the glint. Started ' char(datetime('now')) '\n']);
+    fprintf('| 0                      50                   100%% |\n');
+    fprintf('.');
 end
 
-% initialize progress bar
-progBar = ProgressBar(numFrames,'Tracking the glint...');
-
 %loop through frames
-for ii = 1:numFrames 
-    % Get the frame
-    I = squeeze(grayI(:,:,ii));
-    
-    % adjust gamma for this frame
-    I = imadjust(I,[],[],gammaCorrection);
-    
-    % Show the frame (optional)
-    if displayTracking
-            imshow(I, 'Border', 'tight')
+for ii = 1:nFrames
+    % increment the progress bar
+    if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
+        fprintf('.');
     end
     
-    % track with circles (using the default options)
-    [~,~,~, gCenters, gRadii,gMetric, pupilRange, glintRange] = circleFit(I,pupilCircleThresh,glintCircleThresh,pupilRange,glintRange);
+    % Get the frame
+    thisFrame = readFrame(videoInObj);
     
-    % get a more precise tracking with direct ellipse fitting
-    if isempty(gCenters) %no glint was found by circleFit
-        if ~mod(ii,10);progBar(ii);end % update progressbar
-        continue
-    else % glint was found by circleFit
+    % adjust gamma for this frame
+    thisFrame = imadjust(thisFrame,[],[],p.Results.gammaCorrection);
+    
+    thisFrame = rgb2gray (thisFrame);
+    
+    % track with circles (using the default options)
+    [~,~,~, gCenters, gRadii,gMetric, pupilRange, glintRange] = circleFit(thisFrame, ...
+        p.Results.pupilCircleThresh, ...
+        p.Results.glintCircleThresh, ...
+        p.Results.pupilRange, ...
+        p.Results.glintRange);
+    
+    % if a glint was present, refine the location
+    if ~isempty(gCenters)
         % getGlintPerimeter
-        [binG] = getGlintPerimeter (I, gCenters, gRadii, glintEllipseThresh);
+        [binG] = getGlintPerimeter (thisFrame, gCenters, gRadii, p.Results.glintEllipseThresh);
         % Fit ellipse to glint
-        [Xg, Yg] = ind2sub(size(binG),find(binG));
+        [Yg, Xg] = ind2sub(size(binG),find(binG));
         try
             % turn of warnings for singular matrix
             origWarnState = warning();
@@ -140,58 +132,44 @@ for ii = 1:numFrames
             Egi = ellipsefit_direct(Xg,Yg);
             warning(origWarnState);
             Eg = ellipse_im2ex(Egi);
-            % get errorMetric
-            [~,dg,~,~] = ellipse_distance(Xg, Yg, Egi);
-            gdistanceErrorMetric = nanmedian(sqrt(sum(dg.^2)));
         catch ME
         end
         if  exist ('ME', 'var')
-            glint.X(ii)= gCenters(1,1);
-            glint.Y(ii) = gCenters(1,2);
-            glint.size(ii) = gRadii(1);
-            glint.circleStrength(ii) = gMetric(1);
-            glint.ellipseFittingError(ii) = 1;
+            glintData.X(ii)= gCenters(1,1);
+            glintData.Y(ii) = gCenters(1,2);
+            glintData.ellipseFittingError(ii) = 1;
             clear ME
         end
         
         % store results
         if exist ('Eg','var')
             if ~isempty (Eg) && isreal(Egi)
-                glint.X(ii) = Eg(2);
-                glint.Y(ii) = Eg(1);
-                glint.circleStrength(ii) = gMetric(1);
-                glint.implicitEllipseParams(ii,:) = Egi';
-                glint.explicitEllipseParams(ii,:) = Eg';
-                glint.distanceErrorMetric(ii) = gdistanceErrorMetric;
-                % circle params for glint
-                glint.circleStrength(ii) = gMetric(1);
-                glint.circleRad(ii) = gRadii(1);
-                glint.circleX(ii) = gCenters(1,1);
-                glint.circleY(ii) = gCenters(1,2);
+                glintData.X(ii) = Eg(1);
+                glintData.Y(ii) = Eg(2);
             end
             clear Eg Egi errors
         else
-            glint.X(ii)= gCenters(1,1);
-            glint.Y(ii) = gCenters(1,2);
-            glint.size(ii) = gRadii(1);
-            glint.circleStrength(ii) = gMetric(1);
+            glintData.X(ii)= gCenters(1,1);
+            glintData.Y(ii) = gCenters(1,2);
         end
-        if ~mod(ii,10);progBar(ii);end % update progressbar
-    end
-    
-    % plot results
-    if displayTracking && ~isnan(glint.X(ii))
-        hold on
-        plot(glint.X(ii),glint.Y(ii),'+b');
-        hold off
     end
 end
 
 close all
+clear inObj
 
-% store the tracking params
-glintTrackingParams = p.Results;
+% add a meta field with analysis details
+glintData.meta = p.Results;
 
 %% save out a mat file with the glint tracking data
-save (glintFileName, 'glint')
-    
+save (glintFileName, 'glintData')
+
+% report completion of analysis
+if strcmp(p.Results.verbosity,'full')
+    fprintf('\n');
+    toc
+    fprintf('\n');
+end
+
+end % function
+

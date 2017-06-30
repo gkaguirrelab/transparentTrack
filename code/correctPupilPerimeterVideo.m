@@ -150,8 +150,8 @@ for ff = 1:numFrames
             % APPLY CUT
             
             % get glint position for this frame
-            Xg = glint.X(ff);
-            Yg = glint.Y(ff);
+            Xg = glintData.X(ff);
+            Yg = glintData.Y(ff);
             
             % get cut params
             [U,R] = parseInstructionParams(instructions(instructionLines(il)));

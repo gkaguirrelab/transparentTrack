@@ -47,8 +47,8 @@ end
 % there are cutting instructions
 if  ~isnan(U) && ~isnan(R) && isempty(find(~isnan([cx cy a b phi]))) && ~isblink
     % get glint position
-    Xg = handles.glintFile.glint.X(handles.frameNumber);
-    Yg = handles.glintFile.glint.Y(handles.frameNumber);
+    Xg = handles.glintFile.glintData.X(handles.frameNumber);
+    Yg = handles.glintFile.glintData.Y(handles.frameNumber);
     % get perimeter frame
     binP = imbinarize(squeeze(handles.perimVid(:,:,handles.frameNumber)));
     
