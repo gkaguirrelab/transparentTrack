@@ -1,4 +1,5 @@
-function [perimeterParams] = extractPupilPerimeter(grayVideoName, perimeterVideoName,varargin)
+function [perimeter] = extractPupilPerimeter(grayVideoName, perimeterVideoName,varargin)
+% function [perimeterParams] = extractPupilPerimeter(grayVideoName, perimeterVideoName,varargin)
 % 
 % This function thresholds the video to extract the pupil perimeter and
 % saves out a BW video showing the pupil perimeter only.
@@ -15,7 +16,7 @@ function [perimeterParams] = extractPupilPerimeter(grayVideoName, perimeterVideo
 %       gammaCorrection : gamma correction to be applied in current frame 
 %           (default 1, typical range [0.5 1.8])
 %       pupilCircleThresh : threshold value to locate the glint for circle
-%           fitting (default 0.6, typical range [0.5 0.9])
+%           fitting (default 0.06, typical range [0.04 0.09])
 %       pupilRange : initial radius range for circle fitting of the glint
 %       (default [30 90]). This value gets dynamically updated.
 %       pupilEllipseThresh : threshold value to locate the glint for
@@ -51,6 +52,8 @@ p.addParameter('gammaCorrection', gammaCorrectionDefault, @isnumeric);
 p.addParameter('pupilCircleThresh', pupilCircleThreshDefault, @isnumeric);
 p.addParameter('pupilRange', pupilRangeDefault, @isnumeric);
 p.addParameter('pupilEllipseThresh', pupilEllipseThreshDefault, @isnumeric);
+p.addParameter('glintCircleThresh', 0.999, @isnumeric);
+p.addParameter('glintRange', [10 30], @isnumeric);
 
 % Optional display and I/O params
 p.addParameter('verbosity','none',@ischar);
@@ -70,6 +73,9 @@ gammaCorrection = p.Results.gammaCorrection;
 pupilCircleThresh =  p.Results.pupilCircleThresh;
 pupilRange = p.Results.pupilRange;
 pupilEllipseThresh = p.Results.pupilEllipseThresh;
+glintCircleThresh = p.Results.glintCircleThresh;
+glintRange = p.Results.glintCircleThresh;
+
 verbosity =  p.Results.verbosity;
 
 
@@ -89,14 +95,23 @@ open(outObj);
 
 %% extract pupil perimeter
 
-% initiate progress bar 
-progBar = ProgressBar(numFrames,'Extracting perimeter...');
+% alert the user
+if strcmp(p.Results.verbosity,'full')
+    tic
+    fprintf(['Tracking the glint. Started ' char(datetime('now')) '\n']);
+    fprintf('| 0                      50                   100%% |\n');
+    fprintf('.');
+end
 
 % open a figure
 ih = figure;
 
 % loop through gray frames
 for ii = 1:numFrames
+    % increment the progress bar
+    if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
+        fprintf('.');
+    end
     
     % Get the frame
     I = readFrame(inObj);
@@ -110,11 +125,7 @@ for ii = 1:numFrames
     imshow(I, 'Border', 'tight');
 
     % track with circles 
-    % feed default values for glint (glint data won't be stored now)
-    glintCircleThresh = 0.999;
-    glintRange = [10 30];
-    
-    [pCenters, pRadii,pMetric,~,~,~, pupilRange, ~] = circleFit(I,pupilCircleThresh,glintCircleThresh,pupilRange,glintRange);
+    [pCenters, pRadii,~,~,~,~, pupilRange, ~] = circleFit(I,pupilCircleThresh,glintCircleThresh,pupilRange,glintRange);
     
     if isempty(pCenters) %no pupil circle patch was found
         % make the frame black and save it
@@ -122,8 +133,6 @@ for ii = 1:numFrames
         imshow(I, 'Border', 'tight');
         frame   = getframe(ih);
         writeVideo(outObj,frame);
-        % increment progress bar
-        if ~mod(ii,10);progBar(ii);end;
         continue
     else
         % get pupil perimeter
@@ -140,8 +149,6 @@ for ii = 1:numFrames
         frame   = getframe(ih);
         writeVideo(outObj,frame);
         
-        % increment progress bar
-        if ~mod(ii,10);progBar(ii);end;
     end
 end % loop through gray frames
 
@@ -149,5 +156,16 @@ end % loop through gray frames
 close(ih);
 clear outObj
 
-%% export perimeter params
-perimeterParams = p.Results;
+%% save mat file with analysis details and save it
+perimeter.meta = p.Results;
+
+[perimeterMatPath, perimeterMatName, ~] = fileparts(perimeterVideoName);
+
+save (fullfile(perimeterMatPath,[perimeterMatName '.mat']),'perimeter')
+
+% report completion of analysis
+if strcmp(p.Results.verbosity,'full')
+    fprintf('\n');
+    toc
+    fprintf('\n');
+end
