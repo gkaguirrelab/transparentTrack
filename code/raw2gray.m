@@ -3,13 +3,13 @@ function raw2gray(inputVideoName,outputVideoName,varargin)
 %
 % This function converts the raw, RBG 30Hz video acquired with the V.top
 % device into a 60Hz, grayscale video. Additionally, the video is cropped
-% correspond to the same field of view as that returned by the LiveTrack
+% to correspond to the same field of view as that returned by the LiveTrack
 % device.
 % 
 % This process happens in two steps:
 % 1. the original video is deinterlaced using the function deinterlaceVideo
 % 2. the resulting video is converted to gray and resized to LiveTrack
-% format using the function prepareVideo.
+% format using the function resizeAndCropVideo.
 % 
 % Note that between step 1 and 2 a large temporary video file is created,
 % but it is deleted at the end of the routine, as it won't be necessary in
@@ -36,7 +36,8 @@ p.parse(inputVideoName,outputVideoName,varargin{:});
 % get file parts for inputVideoName
 [~,nameRoot,~] = fileparts(inputVideoName);
 
-% Assume that the name root ends in a '.mov' suffix
+% Assume that the name root ends in a '_raw' suffix (standard saving format
+% for V.TOP acquisitons)
 nameRoot = nameRoot(1:end-4);
 [pathstr,~,~] = fileparts(outputVideoName);
 

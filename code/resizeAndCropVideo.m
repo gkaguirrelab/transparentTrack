@@ -1,10 +1,10 @@
 function resizeAndCropVideo(inputVideoName, outputVideoName, varargin)
 % function resizeAndCropVideo(inputVideoName, outputVideoName, varargin)
 %
-%  This fuction converts the video to a "gray frames array" that is stored
-%  in the memory and ready to be tracked or written to file. With the
-%  default options the routine will scale and crop the video to livetrack
-%  standard size.
+%  This fuction crops and resizes a video according to the specified
+%  parameters. Using the default options the routine will scale and crop a
+%  V.TOP video (720x486 px) to LiveTrack standard size (320x240 px). The
+%  video is also converted to gray.
 
 % Output
 % ======
@@ -12,17 +12,17 @@ function resizeAndCropVideo(inputVideoName, outputVideoName, varargin)
 %
 % Input
 % =====
-%       inputVideoName
-%       outputVideoName
+%       inputVideoName : name (including path) of the input video
+%       outputVideoName : name (including path) of the output video
 %
 % Options
 % =======
-%       numberOfFrames : number of frames to process. If not specified or
+%       'nFrames' : number of frames to process. If not specified or
 %           Inf will process the full video.
-%       resizeVideo : [Y X] desired output video resolution. (recommended: keep default)
-%       cropVideo : [firstX firstY lastX lastY] position of first and last
+%       'resizeVideo' : [Y X] desired output video resolution. (recommended: keep default)
+%       'cropVideo' : [firstX firstY lastX lastY] position of first and last
 %           pixels to include in the crop. (recommended: keep default)
-%       keepOriginalSize : option to skip video resizing.
+%       'keepOriginalSize' : option to skip video resizing.
 %
 %  NOTE: if processing videos acquired with the LiveTrack+V.TOP hardware
 %  setup, do not alter the default resizing and cropping video options
@@ -31,7 +31,7 @@ function resizeAndCropVideo(inputVideoName, outputVideoName, varargin)
 % Usage examples
 % ==============
 %  resizeAndCropVideo(inputVideoName,outputVideoName);
-%  resizeAndCropVideo(inputVideoName,outputVideoName, 'numberOfFrames', 1000) % this will
+%  resizeAndCropVideo(inputVideoName,outputVideoName, 'nFrames', 1000) % this will
 %       process just the first 1000 frames of the video
 
 
