@@ -58,11 +58,11 @@ load(glintFile)
 % the video.
 
 % locate all nans
-blinks = find (isnan(glint.X));
+blinks = find (isnan(glintData.X));
 
 % locate all points further away than 2 std from the glint mean
-farX = find(glint.X > nanmean(glint.X) + (2 * nanstd(glint.X)) | glint.X < nanmean(glint.X) - (2 * nanstd(glint.X)));
-farY = find(glint.Y > nanmean(glint.Y) + (2 * nanstd(glint.Y)) | glint.Y < nanmean(glint.Y) - (2* nanstd(glint.Y)));
+farX = find(glintData.X > nanmean(glintData.X) + (2 * nanstd(glintData.X)) | glintData.X < nanmean(glintData.X) - (2 * nanstd(glintData.X)));
+farY = find(glintData.Y > nanmean(glintData.Y) + (2 * nanstd(glintData.Y)) | glintData.Y < nanmean(glintData.Y) - (2* nanstd(glintData.Y)));
 
 farGlints = union(farX, farY);
 

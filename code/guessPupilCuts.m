@@ -131,8 +131,8 @@ for ii = 1:numFrames
         % (prioritize cutting the least amount of pixels).
         
         % get glint position for this frame
-        Xg = glint.X(ii);
-        Yg = glint.Y(ii);
+        Xg = glintData.X(ii);
+        Yg = glintData.Y(ii);
         
         % FIRST WE TRY HORIZONTAL CUTS (most common occurrence)
         % define vertical cuts
@@ -209,8 +209,8 @@ if ~isempty(highErrorIdx)
         [Yp, Xp] = ind2sub(size(binP),find(binP));
         
         % get glint position for this frame
-        Xg = glint.X(highErrorFrames(ee));
-        Yg = glint.Y(highErrorFrames(ee));
+        Xg = glintData.X(highErrorFrames(ee));
+        Yg = glintData.Y(highErrorFrames(ee));
         
         % define horizontal cuts
         R = flip(0:1:round((max(Xp)-1) - Xg ));
