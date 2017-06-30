@@ -1,16 +1,16 @@
 function [glintData] = trackGlint(grayVideoName, glintFileName, varargin)
 % function [glintData] = trackGlint(grayVideoName, glintFileName, varargin)
 %
-%   DO WE NEED TO SAVE ALL THIS GLINT TRACKING DATA?
-%       Most of it seems inessential. Also, there is row x column
-%       disagrement in the output.
-%
 % This function tracks the glint using the circle patch + direct ellipse
 % fitting approach.
 %
 % There usually is no need to change the parameters for glint tracking, as
 % it is pretty consistently tracked with the default settings.
-%
+% 
+% Note: even if this function is not tracking the pupil, the circle patch
+% step requires a starting pupil range and threshold for a more accurate
+% glint detection. These are set as an optional input and it is usually not
+% necessary to change it.
 %
 % Output
 % ======
@@ -31,12 +31,14 @@ function [glintData] = trackGlint(grayVideoName, glintFileName, varargin)
 %       glintRange : radius range for cirfle fitting of the glint (default [10 30])
 %       glintEllipseThresh : threshold value to locate the glint for
 %           ellipse fitting (default 0.9)
-%       pupilRange: DESCRIBE WHAT THIS IS
-%       pupilCircleThresh: DESCRIBE WHAT THIS IS
+%       pupilRange: pupil range initialization for more accurate glint
+%           tracking in the circle patch step
+%       pupilCircleThresh: pupil threshold initialization for more accurate glint
+%           tracking in the circle patch step
 %
 % Usage example
 % =============
-%  [glint, glintTrackingParams] = trackGlint(grayVideoName, glintFileName, 'displayTracking', true)
+% trackGlint(grayVideoName, glintFileName)
 
 
 
@@ -59,8 +61,8 @@ p.addParameter('verbosity', 'none', @ischar);
 % Environment parameters
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
 p.addParameter('timestamp',char(datetime('now')),@ischar);
-p.addParameter('hostname',char(java.lang.System.getProperty('user.name')),@ischar);
-p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
+p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischar);
+p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 %parse
 p.parse(grayVideoName, glintFileName, varargin{:})
@@ -73,26 +75,15 @@ videoInObj = VideoReader(grayVideoName);
 % get number of frames
 nFrames = floor(videoInObj.Duration*videoInObj.FrameRate);
 
-% %% Initialize glint struct
-% 
-% % main glint params
-% glintData.X = nan(nFrames,1);
-% glintData.Y = nan(nFrames,1);
-% glintData.size = nan(nFrames,1);
-% 
-% % glint fit params
-% glintData.implicitEllipseParams = nan(nFrames,6);
-% glintData.explicitEllipseParams= nan(nFrames,5);
-% glintData.distanceErrorMetric= nan(nFrames,1);
-% 
-% % glint mask params
-% glintData.circleRad = nan(nFrames,1);
-% glintData.circleX = nan(nFrames,1);
-% glintData.circleY = nan(nFrames,1);
-% glintData.circleStrength = nan(nFrames,1);
-% 
-% % glint flags
-% glintData.ellipseFittingError = nan(nFrames,1);
+%% Initialize glint struct
+
+% main glint params
+glintData.X = nan(nFrames,1);
+glintData.Y = nan(nFrames,1);
+
+
+% glint flags
+glintData.ellipseFittingError = nan(nFrames,1); %if this flag is true the X and Y position of the glint is based on the circle patch only.
 
 
 %% Track the glint
@@ -119,6 +110,7 @@ for ii = 1:nFrames
     thisFrame = imadjust(thisFrame,[],[],p.Results.gammaCorrection);
     
     thisFrame = rgb2gray (thisFrame);
+    
     % track with circles (using the default options)
     [~,~,~, gCenters, gRadii,gMetric, pupilRange, glintRange] = circleFit(thisFrame, ...
         p.Results.pupilCircleThresh, ...
@@ -131,7 +123,7 @@ for ii = 1:nFrames
         % getGlintPerimeter
         [binG] = getGlintPerimeter (thisFrame, gCenters, gRadii, p.Results.glintEllipseThresh);
         % Fit ellipse to glint
-        [Xg, Yg] = ind2sub(size(binG),find(binG));
+        [Yg, Xg] = ind2sub(size(binG),find(binG));
         try
             % turn of warnings for singular matrix
             origWarnState = warning();
@@ -140,16 +132,11 @@ for ii = 1:nFrames
             Egi = ellipsefit_direct(Xg,Yg);
             warning(origWarnState);
             Eg = ellipse_im2ex(Egi);
-            % get errorMetric
-            [~,dg,~,~] = ellipse_distance(Xg, Yg, Egi);
-            gdistanceErrorMetric = nanmedian(sqrt(sum(dg.^2)));
         catch ME
         end
         if  exist ('ME', 'var')
             glintData.X(ii)= gCenters(1,1);
             glintData.Y(ii) = gCenters(1,2);
-            glintData.size(ii) = gRadii(1);
-            glintData.circleStrength(ii) = gMetric(1);
             glintData.ellipseFittingError(ii) = 1;
             clear ME
         end
@@ -157,24 +144,13 @@ for ii = 1:nFrames
         % store results
         if exist ('Eg','var')
             if ~isempty (Eg) && isreal(Egi)
-                glintData.X(ii) = Eg(2);
-                glintData.Y(ii) = Eg(1);
-                glintData.circleStrength(ii) = gMetric(1);
-                glintData.implicitEllipseParams(ii,:) = Egi';
-                glintData.explicitEllipseParams(ii,:) = Eg';
-                glintData.distanceErrorMetric(ii) = gdistanceErrorMetric;
-                % circle params for glint
-                glintData.circleStrength(ii) = gMetric(1);
-                glintData.circleRad(ii) = gRadii(1);
-                glintData.circleX(ii) = gCenters(1,1);
-                glintData.circleY(ii) = gCenters(1,2);
+                glintData.X(ii) = Eg(1);
+                glintData.Y(ii) = Eg(2);
             end
             clear Eg Egi errors
         else
             glintData.X(ii)= gCenters(1,1);
             glintData.Y(ii) = gCenters(1,2);
-            glintData.size(ii) = gRadii(1);
-            glintData.circleStrength(ii) = gMetric(1);
         end
     end
 end
