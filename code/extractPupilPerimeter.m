@@ -72,10 +72,10 @@ p.parse(grayVideoName, perimeterVideoName, varargin{:})
 inObj = VideoReader(grayVideoName);
 
 % get number of frames
-if p.Results.nFrame == Inf
+if p.Results.nFrames == Inf
     numFrames = floor(inObj.Duration*inObj.FrameRate);
 else
-    numFrames = p.Resulst.nFrame;
+    numFrames = p.Resulst.nFrames;
 end
 %% initiate output video object
 
