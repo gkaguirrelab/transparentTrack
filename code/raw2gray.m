@@ -36,9 +36,13 @@ p.parse(inputVideoName,outputVideoName,varargin{:});
 % get file parts for inputVideoName
 [~,nameRoot,~] = fileparts(inputVideoName);
 
-% Assume that the name root ends in a '_raw' suffix (standard saving format
-% for V.TOP acquisitons)
-nameRoot = nameRoot(1:end-4);
+% Check if the name root ends in a '_raw' suffix (standard saving format
+% for V.TOP acquisitons). If so remove suffix to get the real nameRoot.
+if regexp(nameRoot, regexptranslate('wildcard','*_raw'))
+    nameRoot = nameRoot(1:end-4); %runs
+end
+
+% get saving path from outputVideoName
 [pathstr,~,~] = fileparts(outputVideoName);
 
 % set deinterlaced video name (large temporary file)
