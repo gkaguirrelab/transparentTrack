@@ -42,21 +42,17 @@ p.addRequired('grayVideoName',@isstr);
 p.addRequired('perimeterVideo',@isstr);
 
 % optional inputs
-frameRateDefault = 60;
-gammaCorrectionDefault = 1;
-pupilCircleThreshDefault =  0.06;
-pupilRangeDefault = [30 90];
-pupilEllipseThreshDefault = 0.95;
-p.addParameter('frameRate', frameRateDefault, @isnumeric);
-p.addParameter('gammaCorrection', gammaCorrectionDefault, @isnumeric);
-p.addParameter('pupilCircleThresh', pupilCircleThreshDefault, @isnumeric);
-p.addParameter('pupilRange', pupilRangeDefault, @isnumeric);
-p.addParameter('pupilEllipseThresh', pupilEllipseThreshDefault, @isnumeric);
+p.addParameter('frameRate', 60, @isnumeric);
+p.addParameter('gammaCorrection', 1, @isnumeric);
+p.addParameter('pupilCircleThresh', 0.06, @isnumeric);
+p.addParameter('pupilRange', [30 90], @isnumeric);
+p.addParameter('pupilEllipseThresh', 0.95, @isnumeric);
 p.addParameter('glintCircleThresh', 0.999, @isnumeric);
 p.addParameter('glintRange', [10 30], @isnumeric);
 
 % Optional display and I/O params
 p.addParameter('verbosity','none',@ischar);
+p.addParmeter('showTracking', false, @islogical)
 
 % Environment parameters
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
@@ -76,7 +72,6 @@ pupilEllipseThresh = p.Results.pupilEllipseThresh;
 glintCircleThresh = p.Results.glintCircleThresh;
 glintRange = p.Results.glintCircleThresh;
 
-verbosity =  p.Results.verbosity;
 
 
 
@@ -103,8 +98,10 @@ if strcmp(p.Results.verbosity,'full')
     fprintf('.');
 end
 
+if p.Results.showTracking
 % open a figure
 ih = figure;
+end
 
 % loop through gray frames
 for ii = 1:numFrames
@@ -121,17 +118,25 @@ for ii = 1:numFrames
     
     I = rgb2gray (I);
     
-    % Show the frame
+    if p.Results.showTracking
+    % show the frame
     imshow(I, 'Border', 'tight');
-
+    end
+    
     % track with circles 
     [pCenters, pRadii,~,~,~,~, pupilRange, ~] = circleFit(I,pupilCircleThresh,glintCircleThresh,pupilRange,glintRange);
     
     if isempty(pCenters) %no pupil circle patch was found
         % make the frame black and save it
         I = zeros(size(I));
-        imshow(I, 'Border', 'tight');
-        frame   = getframe(ih);
+        
+        if p.Results.showTracking
+            imshow(I, 'Border', 'tight');
+            frame   = getframe(ih);
+        else
+            frame   = im2uint8(I);
+        end
+        
         writeVideo(outObj,frame);
         continue
     else
@@ -141,12 +146,13 @@ for ii = 1:numFrames
         % convert BW frame
         I = im2uint8(binP);
         
-        % Show the frame
-        imshow(I, 'Border', 'tight');
+        if p.Results.showTracking
+            imshow(I, 'Border', 'tight');
+            frame   = getframe(ih);
+        else
+            frame   = im2uint8(I);
+        end
 
-
-        % write frame to thresholded video
-        frame   = getframe(ih);
         writeVideo(outObj,frame);
         
     end
