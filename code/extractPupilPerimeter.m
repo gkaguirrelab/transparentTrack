@@ -4,28 +4,32 @@ function [perimeter] = extractPupilPerimeter(grayVideoName, perimeterVideoName,v
 % This function thresholds the video to extract the pupil perimeter and
 % saves out a BW video showing the pupil perimeter only.
 % 
-% 
-% Input params
-% ============
-%       grayVideoName : name and path of the gray video to track
-%       perimeterVideoName : name of the output avi in which to save the output.
-%       
-% Options
-% =======
-%       frameRate: frame rate for the output video (default 60)
-%       gammaCorrection : gamma correction to be applied in current frame 
-%           (default 1, typical range [0.5 1.8])
-%       pupilCircleThresh : threshold value to locate the glint for circle
-%           fitting (default 0.06, typical range [0.04 0.09])
-%       pupilRange : initial radius range for circle fitting of the glint
-%       (default [30 90]). This value gets dynamically updated.
-%       pupilEllipseThresh : threshold value to locate the glint for
-%           ellipse fitting (default 0.9, typical range [0.8 0.98])
-% 
 % Output
-% ======
-%       perimeterVideo, perimeterParams.
+%   perimeter - matfile with informations about the parameters and the
+%       environment in which the code was run.
 % 
+% Input (required)
+%       grayVideoName - full path to  the gray video to track
+%       perimeterVideoName - full path to the output avi in which to save 
+%           the output.
+%       
+% Options (analysis)
+%       gammaCorrection - gamma correction to be applied in current frame 
+%           (default 1, typical range [0.5 1.8])
+%       pupilCircleThresh - threshold value to locate the glint for circle
+%           fitting (default 0.06, typical range [0.04 0.09])
+%       pupilRange - initial radius range for circle fitting of the glint
+%       (default [30 90]). This value gets dynamically updated.
+%       pupilEllipseThresh - threshold value to locate the glint for
+%           ellipse fitting (default 0.9, typical range [0.8 0.98])
+%       nFrames - number of frames to process. If not specified or
+%           Inf will process the full video.
+% 
+% Options (environment)
+%   tbSnapshot - the passed tbSnapshot output that is to be saved along
+%      with the data
+%   timestamp / username / hostname - these are automatically derived and
+%      saved within the p.Results structure. 
 % 
 % Usage examples
 % ==============
@@ -42,13 +46,13 @@ p.addRequired('grayVideoName',@isstr);
 p.addRequired('perimeterVideo',@isstr);
 
 % optional inputs
-p.addParameter('frameRate', 60, @isnumeric);
 p.addParameter('gammaCorrection', 1, @isnumeric);
 p.addParameter('pupilCircleThresh', 0.06, @isnumeric);
 p.addParameter('pupilRange', [30 90], @isnumeric);
 p.addParameter('pupilEllipseThresh', 0.95, @isnumeric);
 p.addParameter('glintCircleThresh', 0.999, @isnumeric);
 p.addParameter('glintRange', [10 30], @isnumeric);
+p.addParameter('nFrames',Inf,@isnumeric);
 
 % Optional display and I/O params
 p.addParameter('verbosity','none',@ischar);
@@ -63,29 +67,20 @@ p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@i
 % parse
 p.parse(grayVideoName, perimeterVideoName, varargin{:})
 
-% define optional variables values
-frameRate = p.Results.frameRate;
-gammaCorrection = p.Results.gammaCorrection;
-pupilCircleThresh =  p.Results.pupilCircleThresh;
-pupilRange = p.Results.pupilRange;
-pupilEllipseThresh = p.Results.pupilEllipseThresh;
-glintCircleThresh = p.Results.glintCircleThresh;
-glintRange = p.Results.glintCircleThresh;
-
-
-
-
 %% read input video file
 % load pupilPerimeter
 inObj = VideoReader(grayVideoName);
 
 % get number of frames
-numFrames = floor(inObj.Duration*inObj.FrameRate);
-
+if p.Results.nFrame == Inf
+    numFrames = floor(inObj.Duration*inObj.FrameRate);
+else
+    numFrames = p.Resulst.nFrame;
+end
 %% initiate output video object
 
 outObj = VideoWriter(perimeterVideoName);
-outObj.FrameRate = frameRate;
+outObj.FrameRate = inObj.FrameRate;
 open(outObj);
 
 %% extract pupil perimeter
@@ -103,6 +98,9 @@ if p.Results.showTracking
 ih = figure;
 end
 
+% initialize pupil range (it will change dynamically in the loop)
+pupilRange = p.Results.pupilRange;
+
 % loop through gray frames
 for ii = 1:numFrames
     % increment the progress bar
@@ -114,7 +112,7 @@ for ii = 1:numFrames
     I = readFrame(inObj);
     
      % adjust gamma for this frame
-    I = imadjust(I,[],[],gammaCorrection);
+    I = imadjust(I,[],[],p.Results.gammaCorrection);
     
     I = rgb2gray (I);
     
@@ -124,7 +122,7 @@ for ii = 1:numFrames
     end
     
     % track with circles 
-    [pCenters, pRadii,~,~,~,~, pupilRange, ~] = circleFit(I,pupilCircleThresh,glintCircleThresh,pupilRange,glintRange);
+    [pCenters, pRadii,~,~,~,~, pupilRange, ~] = circleFit(I,p.Results.pupilCircleThresh,p.Results.glintCircleThresh,pupilRange,p.Results.glintCircleThresh);
     
     if isempty(pCenters) %no pupil circle patch was found
         % make the frame black and save it
@@ -141,7 +139,7 @@ for ii = 1:numFrames
         continue
     else
         % get pupil perimeter
-        [binP] = getPupilPerimeter(I,pCenters,pRadii, pupilEllipseThresh);
+        [binP] = getPupilPerimeter(I,pCenters,pRadii, p.Results.pupilEllipseThresh);
         
         % convert BW frame
         I = im2uint8(binP);
