@@ -1,4 +1,4 @@
-function [perimeterParams] = extractPupilPerimeter(grayVideoName, perimeterVideoName, varargin)
+function [perimeter] = extractPupilPerimeter(grayVideoName, perimeterFileName, varargin)
 % function [perimeterParams] = extractPupilPerimeter(grayVideoName, perimeterVideoName,varargin)
 % 
 % This function thresholds the video to extract the pupil perimeter and
@@ -11,13 +11,14 @@ function [perimeterParams] = extractPupilPerimeter(grayVideoName, perimeterVideo
 % process (believed to be the pupil).
 % 
 % Output
-%   perimeter - matfile with informations about the parameters and the
-%       environment in which the code was run.
+%   perimeter - structure with a 'data' field containing a 3D matrix
+%       (video height x video width x nFrames) containing the pupil
+%       perimeter, and a meta field with analysis and environment params.
 % 
 % Input (required)
 %	grayVideoName - full path to  the gray video to track
-%	perimeterVideoName - full path to the output avi in which to save 
-%           the output.
+%	perimeterFileName - full path to the .mat file in which to save the
+%       output.
 %       
 % Options (analysis)
 % 	gammaCorrection - gamma correction to be applied to the video frames 
@@ -52,7 +53,7 @@ p = inputParser;
 
 % required input
 p.addRequired('grayVideoName',@isstr);
-p.addRequired('perimeterVideo',@isstr);
+p.addRequired('perimeterFileName',@isstr);
 
 % Optional analysis params
 p.addParameter('gammaCorrection', 1, @isnumeric);
@@ -76,11 +77,10 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % parse
-p.parse(grayVideoName, perimeterVideoName, varargin{:})
+p.parse(grayVideoName, perimeterFileName, varargin{:})
 
 
 %% Display setup and prepare video objects
-
 % alert the user
 if strcmp(p.Results.verbosity,'full')
     tic
@@ -103,14 +103,15 @@ else
     nFrames = p.Results.nFrames;
 end
 
-% open outVideoObj
-outVideoObj = VideoWriter(perimeterVideoName);
-outVideoObj.FrameRate = inVideoObj.FrameRate;
-open(outVideoObj);
+% get video dimensions
+videoSizeX = inVideoObj.Width;
+videoSizeY = inVideoObj.Height;
+
+% initialize variable to hold the perimeter data
+perimeter.data = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
 
 
 %% Extract pupil perimeter
-
 % initialize pupil range (it will change dynamically in the loop)
 pupilRange = p.Results.pupilRange;
 
@@ -173,12 +174,12 @@ for ii = 1:nFrames
         % get perimeter of object
         binP = bwperim(binP);
         
-        % write out the perimeter
+        % save the perimeter
         thisFrame = im2uint8(binP);
-        writeVideo(outVideoObj,im2uint8(binP));
+        perimeter.data(:,:,ii) = thisFrame;
     else
         thisFrame = im2uint8(zeros(size(thisFrame)));
-        writeVideo(outVideoObj,thisFrame);
+        perimeter.data(:,:,ii) = thisFrame;
     end
     
     % show the perimeter frame
@@ -196,10 +197,9 @@ end
 clear inVideoObj
 clear outVideoObj
 
-% save mat file with analysis details
-perimeterParams.meta = p.Results;
-[perimeterMatPath, perimeterMatName, ~] = fileparts(perimeterVideoName);
-save (fullfile(perimeterMatPath,[perimeterMatName '.mat']),'perimeterParams')
+% save mat file with the video and analysis details
+perimeter.meta = p.Results;
+save(perimeterFileName,'perimeter');
 
 % report completion of analysis
 if strcmp(p.Results.verbosity,'full')
