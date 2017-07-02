@@ -1,78 +1,38 @@
-function [binPcut] = cutPupil (binP,U,R,Xg,Yg)
+function [binPcut] = cutPupil(binP,radiusThresh,theta)
 
-% cuts the pupil perimeter according to the instructions in U and R, where:
-% U = distance in pixels from the glint on the Y axis, going UP
-% R = distance in pixels from the glint on the X axis going RIGHT
+% cuts the pupil perimeter according to the instructions in radius and
+% theta where:
+% radius = distance in pixels from the glint
+% theta = polar angle, ranging from zero (superior vertical) to 2*pi
 %
-% If R is INF, the routine will perform an horizontal cut, thus removing
-% the upper part of the pupil perimeter, U pixels above the glint.
-% If U is INF, the routine will perform a vertical cut, thus removing the
-% right part of the pupil, R pixel from the glint.
-% If R and U are both finite integers, a combinations of the 2 cuts will be
-% performed, effectively performing a diagonal cut of only the pixels
-% common to the 2 orthogonal cuts.
-%
-%  The function accepts negative values for U and R, making the cut go
-%  below/left of the glint, but it is not recommended to cut more than half
-%  of the perimeter.
+
+binPcut = binP*0;
+
+% Create an anonymous function to return a rotation matrix given theta in
+% radians
+returnRotMat = @(theta) [cos(theta) -sin(theta); sin(theta) cos(theta)];
 
 %% get perimeter points
 [Yp, Xp] = ind2sub(size(binP),find(binP));
 
-%% store full perimeter length
-fullPerimeterLength = length(Xp);
+% Create a matrix that will center the pupil boundary points relative to
+% the glint
+xCenter=min(Xp)+(max(Xp)-min(Xp))/2;
+yCenter=min(Yp)+(max(Yp)-min(Yp))/2;
+centerMatrix = repmat([xCenter'; yCenter'], 1, length(Xp));
+                
+% Rotate the boundary points by theta radians
+rotatedPoints = returnRotMat(theta) * ([Xp,Yp]' - centerMatrix) + centerMatrix;
+                
+% Identify those points that have a position that exceeds radiusThresh in
+% the Y axis of the rotated points
+toBeKeptIdx = (find(rotatedPoints(2,:) <= (yCenter+radiusThresh)))';
 
-%% find pixels
-
-% only horizontal cut
-if isinf(R) && ~isinf(U)
-    underGlint = find (Yp > Yg - U);  %%% MUST CHECK IF EMPTY
-    % get the cut perimeter
-    binPcut = zeros(size(binP));
-    binPcut(sub2ind(size(binP),Yp(underGlint),Xp(underGlint))) = 1;
-    % remove small objects
-    CC = bwconncomp(binPcut);
-    numPixels = cellfun(@numel,CC.PixelIdxList);
-    [biggest,idx] = max(numPixels);
-    if idx >0
-        binPcut = zeros(size(binP));
-        binPcut(CC.PixelIdxList{idx}) = 1;
-    end
-    
-% only vertical cut
-elseif isinf(U) && ~isinf(R)
-    leftOfGlint = find (Xp < Xg + R);  %%% MUST CHECK IF EMPTY
-    % get the cut perimeter
-    binPcut = zeros(size(binP));
-    binPcut(sub2ind(size(binP),Yp(leftOfGlint),Xp(leftOfGlint))) = 1;
-    % remove small objects
-    CC = bwconncomp(binPcut);
-    numPixels = cellfun(@numel,CC.PixelIdxList);
-    [biggest,idx] = max(numPixels);
-    if idx >0
-        binPcut = zeros(size(binP));
-        binPcut(CC.PixelIdxList{idx}) = 1;
-    end
-    
-% diagonal cut
-elseif ~isinf(U) && ~isinf(R)
-    underGlint = find (Yp > Yg - U);
-    leftOfGlint = find (Xp < Xg + R);
-    toKeep = intersect(underGlint, leftOfGlint);
-    % get the cut perimeter
-    binPcut = zeros(size(binP));
-    binPcut(sub2ind(size(binP),Yp(toKeep),Xp(toKeep))) = 1;
-    % remove small objects
-    CC = bwconncomp(binPcut);
-    numPixels = cellfun(@numel,CC.PixelIdxList);
-    [biggest,idx] = max(numPixels);
-    if idx >0
-        binPcut = zeros(size(binP));
-        binPcut(CC.PixelIdxList{idx}) = 1;
-    end
-    
-% return an error
-else
-    error('U and R can''t be INF at the same time')
-
+% Image the kept points
+if ~isempty(toBeKeptIdx)
+    linearInd = sub2ind(size(binP), Yp(toBeKeptIdx), Xp(toBeKeptIdx));
+    binPcut(linearInd)=1;
 end
+
+
+end % function
