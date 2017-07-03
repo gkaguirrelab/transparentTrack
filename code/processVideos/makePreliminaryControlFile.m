@@ -240,33 +240,43 @@ parfor (ii = 1:nFrames, nWorkers)
         
         % if the fitting error is above the threshold, search over cuts
         if originalFittingError > p.Results.cutErrorThreshold
-            stillSearching = false;
-        else
+            smallestFittingError = originalFittingError;
             stillSearching = true;
+        else
+            stillSearching = false;
         end
         
         % We start with a cut radius that is one division below the maxium
         % radius in the pupil boundary
         maxRadius=round(max([max(Xp)-min(Xp),max(Yp)-min(Yp)])/2);
-        candidateRadius=maxRadius - floor(maxRadius/p.Results.radiusDivisions);
+        stepReducer = max([1,floor(maxRadius/p.Results.radiusDivisions)]);
+        candidateRadius=maxRadius - stepReducer;
         
         % Keep searching until we have a fit of accetable quality, or if
         % the candidate radius drops below zero
-        while stillSearching || candidateRadius < 0
+        while stillSearching && candidateRadius > 0
 
             % Perform a grid search across thetas
             [gridSearchRadii,gridSearchThetas] = ndgrid(candidateRadius,p.Results.candidateThetas);
             myCutOptim = @(params) calcErrorForACut(binP, params(1), params(2), p.Results.ellipseTransparentLB, p.Results.ellipseTransparentUB);
             gridSearchResults=arrayfun(@(k1,k2) myCutOptim([k1,k2]),gridSearchRadii,gridSearchThetas);
             
-            if min(min(gridSearchResults)) < p.Results.cutErrorThreshold
-                [~,col] = find(gridSearchResults==min(min(gridSearchResults)));
+            % Store the best cut from this search
+            bestFitOnThisSearch=min(min(gridSearchResults));
+            
+            if bestFitOnThisSearch < smallestFittingError
+                smallestFittingError=bestFitOnThisSearch;
+                [~,col] = find(gridSearchResults==bestFitOnThisSearch);
                 frameRadii(ii)=candidateRadius;
-                frameThetas(ii)=candidateThetas(col(1));
-            else
-                candidateRadius=candidateRadius- floor(maxRadius/p.Results.radiusDivisions)
+                frameThetas(ii)=p.Results.candidateThetas(col(1));
             end
             
+            % Are we done searching? If not, shrink the radius 
+            if bestFitOnThisSearch < p.Results.cutErrorThreshold
+                stillSearching = false;
+            else
+                candidateRadius=candidateRadius - stepReducer;
+            end
         end % search over cuts
         
     end % not an empty frame
