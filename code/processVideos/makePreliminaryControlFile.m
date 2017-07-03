@@ -82,10 +82,12 @@ p.addRequired('glintFileName',@isstr);
 
 % Optional analysis params
 p.addParameter('glintDisplaceSTD', 2, @isnumeric);
-p.addParameter('extendBlinkWindow', [2,2], @isnumeric);
+p.addParameter('extendBlinkWindow', [5,2], @isnumeric);
 p.addParameter('cutErrorThreshold', 10, @isnumeric);
 p.addParameter('ellipseTransparentLB',[0, 0, 1000, 0, -0.5*pi],@isnumeric);
 p.addParameter('ellipseTransparentUB',[240,320,10000,0.417, 0.5*pi],@isnumeric);
+p.addParameter('candidateThetas',pi/2:pi/16:pi,@isnumeric);
+p.addParameter('radiusDivisions',5,@isnumeric);
 
 % Optional display params
 p.addParameter('verbosity','none',@ischar);
@@ -204,7 +206,6 @@ end
 
 %% Guess pupil cuts
 
-
 % Intialize some variables
 frameRadii=nan(nFrames,1);
 frameThetas=nan(nFrames,1);
@@ -231,7 +232,7 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % proceed if the frame is not empty and has not been tagged as a blink
     if ~ismember(ii,blinkFrames) && ~isempty(Xp)
-        
+                
         % fit an ellipse to the full perimeter using the constrainedEllipseFit
         [~, ~, originalFittingError] = constrainedEllipseFit(Xp, Yp, ...
             p.Results.ellipseTransparentLB, ...
@@ -239,17 +240,31 @@ parfor (ii = 1:nFrames, nWorkers)
         
         % if the fitting error is above the threshold, search over cuts
         if originalFittingError > p.Results.cutErrorThreshold
-            candidateRadii=0;
-            candidateThetas=pi/2:pi/16:pi;
-            [gridSearchRadii,gridSearchThetas] = ndgrid(candidateRadii,candidateThetas);
+            stillSearching = false;
+        else
+            stillSearching = true;
+        end
+        
+        % We start with a cut radius that is one division below the maxium
+        % radius in the pupil boundary
+        maxRadius=round(max([max(Xp)-min(Xp),max(Yp)-min(Yp)])/2);
+        candidateRadius=maxRadius - floor(maxRadius/p.Results.radiusDivisions);
+        
+        % Keep searching until we have a fit of accetable quality, or if
+        % the candidate radius drops below zero
+        while stillSearching || candidateRadius < 0
+
+            % Perform a grid search across thetas
+            [gridSearchRadii,gridSearchThetas] = ndgrid(candidateRadius,p.Results.candidateThetas);
             myCutOptim = @(params) calcErrorForACut(binP, params(1), params(2), p.Results.ellipseTransparentLB, p.Results.ellipseTransparentUB);
             gridSearchResults=arrayfun(@(k1,k2) myCutOptim([k1,k2]),gridSearchRadii,gridSearchThetas);
             
-            [row,col] = find(gridSearchResults==min(min(gridSearchResults)));
-            
-            if ~isempty(row)
+            if min(min(gridSearchResults)) < p.Results.cutErrorThreshold
+                [row,col] = find(gridSearchResults==min(min(gridSearchResults)));
                 frameRadii(ii)=candidateRadii(row(1));
                 frameThetas(ii)=candidateThetas(col(1));
+            else
+                candidateRadius=candidateRadius- floor(maxRadius/p.Results.radiusDivisions)
             end
             
         end % search over cuts
