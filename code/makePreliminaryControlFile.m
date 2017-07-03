@@ -147,6 +147,13 @@ else
     nWorkers=0;
 end
 
+%% Load the pupil perimeter data.
+% It will be a structure variable "perimeter", with the fields .data and .meta
+dataLoad=load(perimeterFileName);
+perimeter=dataLoad.perimeter;
+clear dataLoad
+nFrames=size(perimeter.data,3);
+
 
 %% Perform blink detection
 dataLoad = load(glintFileName);
@@ -166,17 +173,37 @@ farGlints = union(farX, farY);
 % combine to obtain all blinks
 blinkFrames = union(blinks, farGlints);
 
-% ADD CODE HERE TO EXTEND NANS ACCORDING TO THE extendBlinkWindow param
+% extend the frames identified as blinks to before and after blocks of
+% blink frames
+if ~isempty(blinkFrames)
+    tmp=diff(blinkFrames); 
+    blinkBoundaryIdx=find(tmp~=1);
+    if ~isempty(blinkBoundaryIdx) && p.Results.extendBlinkWindow(1)>0
+      padBlinksBefore=[];
+      for pp=1:p.Results.extendBlinkWindow(1)
+          candidateBlinkFrames=blinkFrames(blinkBoundaryIdx)-pp;
+          inBoundFrames=(find(candidateBlinkFrames>=1) .* (candidateBlinkFrames<=nFrames));
+          if ~isempty(inBoundFrames)
+              padBlinksBefore=[padBlinksBefore;candidateBlinkFrames(inBoundFrames)];
+          end
+      end
+    end
+    if ~isempty(blinkBoundaryIdx) && p.Results.extendBlinkWindow(2)>0
+      padBlinksAfter=[];
+      for pp=1:p.Results.extendBlinkWindow(2)
+          candidateBlinkFrames=blinkFrames(blinkBoundaryIdx)+pp;
+          inBoundFrames=(find(candidateBlinkFrames>=1) .* (candidateBlinkFrames<=nFrames));
+          if ~isempty(inBoundFrames)
+              padBlinksAfter=[padBlinksAfter;candidateBlinkFrames(inBoundFrames)];
+          end
+      end
+    end
+    blinkFrames=unique(sort([blinkFrames;padBlinksBefore;padBlinksAfter]));    
+end
 
 
 %% Guess pupil cuts
 
-% Load the pupil perimeter data. It will be a structure variable
-% "perimeter", with the fields .data and .meta
-dataLoad=load(perimeterFileName);
-perimeter=dataLoad.perimeter;
-clear dataLoad
-nFrames=size(perimeter.data,3);
 
 % Intialize some variables
 frameRadii=nan(nFrames,1);
