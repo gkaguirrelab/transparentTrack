@@ -34,7 +34,7 @@ p.addRequired('videoOutFileName', @ischar);
 % Optional display and I/O params
 p.addParameter('verbosity','none', @ischar);
 p.addParameter('display','none', @ischar);
-p.addParameter('videoOutFrameRate', 30, @isnumeric);
+p.addParameter('videoOutFrameRate', 60, @isnumeric);
 p.addParameter('nFrames',Inf,@isnumeric);
 
 % Optional items to include in the video
