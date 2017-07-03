@@ -260,8 +260,8 @@ parfor (ii = 1:nFrames, nWorkers)
             gridSearchResults=arrayfun(@(k1,k2) myCutOptim([k1,k2]),gridSearchRadii,gridSearchThetas);
             
             if min(min(gridSearchResults)) < p.Results.cutErrorThreshold
-                [row,col] = find(gridSearchResults==min(min(gridSearchResults)));
-                frameRadii(ii)=candidateRadii(row(1));
+                [~,col] = find(gridSearchResults==min(min(gridSearchResults)));
+                frameRadii(ii)=candidateRadius;
                 frameThetas(ii)=candidateThetas(col(1));
             else
                 candidateRadius=candidateRadius- floor(maxRadius/p.Results.radiusDivisions)
