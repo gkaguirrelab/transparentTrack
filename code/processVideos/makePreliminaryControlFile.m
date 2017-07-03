@@ -81,8 +81,7 @@ p.addRequired('perimeterFileName',@isstr);
 p.addRequired('glintFileName',@isstr);
 
 % Optional analysis params
-p.addParameter('glintDisplaceSTD', 2, @isnumeric);
-p.addParameter('extendBlinkWindow', [5,2], @isnumeric);
+p.addParameter('extendBlinkWindow', [3,3], @isnumeric);
 p.addParameter('cutErrorThreshold', 10, @isnumeric);
 p.addParameter('ellipseTransparentLB',[0, 0, 1000, 0, -0.5*pi],@isnumeric);
 p.addParameter('ellipseTransparentUB',[240,320,10000,0.417, 0.5*pi],@isnumeric);
@@ -163,17 +162,7 @@ glintData = dataLoad.glintData;
 clear dataLoad
 
 % locate all nans
-blinks = find(isnan(glintData.X));
-
-% locate all points further away than glintDisplaceSTD from the glint mean
-farX = find(glintData.X > nanmean(glintData.X) + (p.Results.glintDisplaceSTD * nanstd(glintData.X)) | ...
-    glintData.X < nanmean(glintData.X) - (p.Results.glintDisplaceSTD * nanstd(glintData.X)));
-farY = find(glintData.Y > nanmean(glintData.Y) + (p.Results.glintDisplaceSTD * nanstd(glintData.Y)) | ...
-    glintData.Y < nanmean(glintData.Y) - (p.Results.glintDisplaceSTD * nanstd(glintData.Y)));
-farGlints = union(farX, farY);
-
-% combine to obtain all blinks
-blinkFrames = union(blinks, farGlints);
+blinkFrames = find(isnan(glintData.X));
 
 % extend the frames identified as blinks to before and after blocks of
 % blink frames
@@ -183,12 +172,13 @@ if ~isempty(blinkFrames)
     if ~isempty(blinkBoundaryIdx) && p.Results.extendBlinkWindow(1)>0
       padBlinksBefore=[];
       for pp=1:p.Results.extendBlinkWindow(1)
-          candidateBlinkFrames=blinkFrames(blinkBoundaryIdx)-pp;
+          candidateBlinkFrames=blinkFrames(blinkBoundaryIdx+1)-pp;
           inBoundFrames=(find(candidateBlinkFrames>=1) .* (candidateBlinkFrames<=nFrames));
           if ~isempty(inBoundFrames)
               padBlinksBefore=[padBlinksBefore;candidateBlinkFrames(inBoundFrames)];
           end
       end
+    blinkFrames=unique(sort([blinkFrames;padBlinksBefore]));    
     end
     if ~isempty(blinkBoundaryIdx) && p.Results.extendBlinkWindow(2)>0
       padBlinksAfter=[];
@@ -199,8 +189,8 @@ if ~isempty(blinkFrames)
               padBlinksAfter=[padBlinksAfter;candidateBlinkFrames(inBoundFrames)];
           end
       end
+    blinkFrames=unique(sort([blinkFrames;padBlinksAfter]));    
     end
-    blinkFrames=unique(sort([blinkFrames;padBlinksBefore;padBlinksAfter]));    
 end
 
 
