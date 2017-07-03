@@ -220,6 +220,8 @@ parfor (ii = 1:nFrames, nWorkers)
     binP = squeeze(perimeter.data(:,:,ii));
     [Yp, Xp] = ind2sub(size(binP),find(binP));
     
+    smallestFittingError = NaN;
+    
     % proceed if the frame is not empty and has not been tagged as a blink
     if ~ismember(ii,blinkFrames) && ~isempty(Xp)
                 
