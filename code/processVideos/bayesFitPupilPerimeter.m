@@ -1,4 +1,4 @@
-function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varargin)
+function [ellipseFitData] = bayesFitPupilPerimeter(perimeterFileName, ellipseFitDataFileName, varargin)
 % [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varargin)
 %
 % This routine fits an ellipse to each frame of a video that contains the
@@ -37,19 +37,20 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 
 %
 % INPUTS:
-%   perimeterVideoFileName: full path to an .avi file. Points on the
-%     boundary of the pupil should have a value of unity, and the frame
-%     should be otherwise zero-filled. A frame that has no information
-%     regarding the pupil (e.g., during a blink) should be zero-filled.
-%
-% Optional key/value pairs (verbosity and I/O)
-%  'verbosity' - level of verbosity. [none, full]
-%  'ellipseFitDataFileName': full path to the .mat file in which to save
+%   perimeterFileName: full path to a .mat file that contains the perimeter
+%     data varaible. Points on the boundary of the pupil should have a
+%     value of unity, and the frame should be otherwise zero-filled. A
+%     frame that has no information regarding the pupil (e.g., during a
+%     blink) should be zero-filled.
+%   ellipseFitDataFileName: full path to the .mat file in which to save
 %     pupil tracking information.
+%
+% Optional key/value pairs (verbosity)
+%  'verbosity' - level of verbosity. [none, full]
 %
 % Optional key/value pairs (flow control)
 %
-%  'nFrames' - analyze fewer than the total number of video frames.
+%  'nFrames' - analyze fewer than the total number of frames.
 %  'useParallel' - If set to true, use the Matlab parallel pool for the
 %    initial ellipse fitting.
 %  'nWorkers' - Specify the number of workers in the parallel pool. If
@@ -62,7 +63,6 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 %    exploration of parameter settigns that guide the Bayesian smoothing.
 %
 % Optional key/value pairs (Environment parameters)
-
 %  'tbSnapshot' - This should contain the output of the tbDeploymentSnapshot
 %    performed upon the result of the tbUse command. This documents the
 %    state of the system at the time of analysis.
@@ -120,11 +120,11 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varar
 p = inputParser;
 
 % Required
-p.addRequired('perimeterVideoFileName',@ischar);
+p.addRequired('perimeterFileName',@ischar);
+p.addRequired('ellipseFitDataFileName',@ischar);
 
 % Optional display and I/O params
 p.addParameter('verbosity','none',@ischar);
-p.addParameter('ellipseFitDataFileName',[],@ischar);
 
 % Optional flow control params
 p.addParameter('nFrames',[],@isnumeric);
@@ -141,9 +141,9 @@ p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@i
 
 % Optional fitting params
 p.addParameter('ellipseTransparentLB',[0, 0, 1000, 0, -0.5*pi],@isnumeric);
-p.addParameter('ellipseTransparentUB',[240,320,10000,0.417, 0.5*pi],@isnumeric);
+p.addParameter('ellipseTransparentUB',[240,320,10000,0.5, 0.5*pi],@isnumeric);
 p.addParameter('exponentialTauParams',[.25, .25, 5, 1, 1],@isnumeric);
-p.addParameter('constrainEccen_x_Theta',[0.305,0.417],@isnumeric);
+p.addParameter('constrainEccen_x_Theta',[0.5,0.5],@isnumeric);
 p.addParameter('likelihoodErrorExponent',1.25,@isnumeric);
 p.addParameter('nSplits',8,@isnumeric);
 p.addParameter('nBoots',0,@isnumeric);
@@ -151,7 +151,7 @@ p.addParameter('priorCenterNaN',true,@islogical);
 p.addParameter('whichLikelihoodSD','pInitialFitSplitsSD',@ischar);
 
 %% Parse and check the parameters
-p.parse(perimeterVideoFileName,varargin{:});
+p.parse(perimeterFileName, ellipseFitDataFileName, varargin{:});
 
 nEllipseParams=5; % 5 params in the transparent ellipse form
 
@@ -171,10 +171,10 @@ end
 %% Announce we are starting
 if strcmp(p.Results.verbosity,'full')
     fprintf('Performing non-causal Bayesian fitting of the pupil boundary file:\n');
-    fprintf(['\t' perimeterVideoFileName '\n\n']);
+    fprintf(['\t' perimeterFileName '\n\n']);
 end
 
-%% Prepare some anonymous functions
+%% Prepare some anonymous functions and load the pupil perimeter data
 % Create a non-linear constraint for the ellipse fit. If no parameters are
 % given, then create an empty function handle (and thus have no non-linear
 % constraint)
@@ -192,37 +192,20 @@ obtainPupilLikelihood = @(x,y) constrainedEllipseFit(x, y, ...
 % radians
 returnRotMat = @(theta) [cos(theta) -sin(theta); sin(theta) cos(theta)];
 
-%% Open and load the video
-inVideoObj = VideoReader(perimeterVideoFileName);
+% Load the pupil perimeter data. It will be a structure variable
+% "perimeter", with the fields .data and .meta
+dataLoad=load(perimeterFileName);
+perimeter=dataLoad.perimeter;
+clear dataLoad
 
-% Get video dimensions
-videoSizeX = inVideoObj.Width;
-videoSizeY = inVideoObj.Height;
-
-% Determine how many frames to process
-nFrames = floor(inVideoObj.Duration*inVideoObj.FrameRate);
+% determine how many frames we will process
+nFrames=size(perimeter.data,3);
 if ~isempty(p.Results.nFrames)
     if p.Results.nFrames > nFrames
         error('You cannot process more frames than are in the video')
     else
         nFrames = p.Results.nFrames;
     end
-end
-
-% Load the entire pupil perimeter video into memory (about 50 MB for five
-% minutes of 60 Hz data)
-if strcmp(p.Results.verbosity,'full')
-    tic
-    fprintf(['Loading pupil perimeter file. Started ' char(datetime('now')) '\n']);
-end
-for ii = 1:nFrames
-    % readFrame loads frames sequentially as it is called; make gray
-    pupilBoundaryData(:,:,ii) = rgb2gray(readFrame(inVideoObj));
-end
-clear RGB inVideoObj
-if strcmp(p.Results.verbosity,'full')
-    toc
-    fprintf('\n');
 end
 
 
@@ -285,7 +268,7 @@ else
         end
         
         % get the data frame
-        thisFrame = squeeze(pupilBoundaryData(:,:,ii));
+        thisFrame = squeeze(perimeter.data(:,:,ii));
         
         % get the boundary points
         [Yc, Xc] = ind2sub(size(thisFrame),find(thisFrame));
@@ -412,7 +395,7 @@ parfor (ii = 1:nFrames, nWorkers)
     end
     
     % get the data frame
-    thisFrame = squeeze(pupilBoundaryData(:,:,ii));
+    thisFrame = squeeze(perimeter.data(:,:,ii));
     
     % get the boundary points
     [Yc, Xc] = ind2sub(size(thisFrame),find(thisFrame));
