@@ -8,8 +8,8 @@ p.addRequired('pathParams',@isstruct);
 
 % parse
 p.parse(pathParams, varargin{:})
-
 pathParams=p.Results.pathParams;
+
 
 %% Create output directories if needed
 if ~exist(pathParams.dataOutputDirFull,'dir')
@@ -19,10 +19,18 @@ if ~exist(pathParams.controlFileDirFull,'dir')
     mkdir(pathParams.controlFileDirFull)
 end
 
+
+%% Determine if the suffix of the raw file is "_raw.mov" or ".mov"
+if exist(fullfile(pathParams.dataSourceDirFull,[pathParams.runName '_raw.mov']),'file')
+    rawVideoName = fullfile(pathParams.dataSourceDirFull,[pathParams.runName '_raw.mov']);
+else
+    rawVideoName = fullfile(pathParams.dataSourceDirFull,[pathParams.runName '.mov']);
+end
+
+
 %% Conduct the analysis
 
 % Convert raw video to cropped, resized, 60Hz gray
-rawVideoName = fullfile(pathParams.dataSourceDirFull,[pathParams.runName '_raw.mov']);
 grayVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_gray.avi']);
 raw2gray(rawVideoName,grayVideoName, varargin{:});
 
