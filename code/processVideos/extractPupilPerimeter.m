@@ -49,7 +49,7 @@ function [perimeter] = extractPupilPerimeter(grayVideoName, perimeterFileName, v
 
 
 %% Parse input and define variables
-p = inputParser;
+p = inputParser; p.KeepUnmatched = true;
 
 % required input
 p.addRequired('grayVideoName',@isstr);
@@ -59,7 +59,7 @@ p.addRequired('perimeterFileName',@isstr);
 p.addParameter('gammaCorrection', 1, @isnumeric);
 p.addParameter('pupilCircleThresh', 0.06, @isnumeric);
 p.addParameter('pupilRange', [30 90], @isnumeric);
-p.addParameter('pupilEllipseThresh', 0.95, @isnumeric);
+p.addParameter('pupilEllipseThresh', 0.945, @isnumeric);
 p.addParameter('glintCircleThresh', 0.999, @isnumeric);
 p.addParameter('glintRange', [10 30], @isnumeric);
 p.addParameter('maskBox', [4 30], @isnumeric);

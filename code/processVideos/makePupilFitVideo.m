@@ -25,7 +25,7 @@ function makePupilFitVideo(videoInFileName, videoOutFileName, varargin)
 %  ellipseFitDataFileName
 
 %% Parse vargin for options passed here
-p = inputParser;
+p = inputParser; p.KeepUnmatched = true;
 
 % Required
 p.addRequired('videoInFileName', @ischar);

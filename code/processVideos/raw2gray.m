@@ -17,7 +17,7 @@ function raw2gray(inputVideoName,outputVideoName,varargin)
 % 
 % 
 %% parse input
-p = inputParser;
+p = inputParser; p.KeepUnmatched = true;
 
 % required input
 p.addRequired('inputVideoName',@isstr);

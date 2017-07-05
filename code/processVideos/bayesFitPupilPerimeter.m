@@ -117,7 +117,7 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterFileName, ellipseFit
 
 
 %% Parse vargin for options passed here
-p = inputParser;
+p = inputParser; p.KeepUnmatched = true;
 
 % Required
 p.addRequired('perimeterFileName',@ischar);

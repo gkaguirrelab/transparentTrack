@@ -41,7 +41,7 @@ function correctPupilPerimeter(perimeterFileName, controlFileName, correctedPeri
 %  'hostname' - AUTOMATIC - The host
 
 %% Parse input and define variables
-p = inputParser;
+p = inputParser; p.KeepUnmatched = true;
 
 % required input
 p.addRequired('perimeterFileName',@isstr);

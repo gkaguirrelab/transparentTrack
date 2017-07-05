@@ -73,7 +73,7 @@ function makePreliminaryControlFile(controlFileName, perimeterFileName, glintFil
 
 
 %% Parse input and define variables
-p = inputParser;
+p = inputParser; p.KeepUnmatched = true;
 
 % required input
 p.addRequired('controlFileName',@isstr);
