@@ -81,7 +81,7 @@ p.addRequired('perimeterFileName',@isstr);
 p.addRequired('glintFileName',@isstr);
 
 % Optional analysis params
-p.addParameter('extendBlinkWindow', [3,3], @isnumeric);
+p.addParameter('extendBlinkWindow', [4,7], @isnumeric);
 p.addParameter('cutErrorThreshold', 10, @isnumeric);
 p.addParameter('ellipseTransparentLB',[0, 0, 1000, 0, -0.5*pi],@isnumeric);
 p.addParameter('ellipseTransparentUB',[240,320,10000,0.417, 0.5*pi],@isnumeric);
@@ -92,6 +92,7 @@ p.addParameter('radiusDivisions',5,@isnumeric);
 p.addParameter('verbosity','none',@ischar);
 
 % Optional flow control params
+p.addParameter('nFrames',Inf,@isnumeric);
 p.addParameter('useParallel',true,@islogical);
 p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('tbtbRepoName','LiveTrackAnalysisToolbox',@ischar);
@@ -110,7 +111,8 @@ p.parse(controlFileName, perimeterFileName, glintFileName, varargin{:})
 % We decline to over-write an existing control file, as it may contain
 % instructions lovingly crafted by a human
 if exist(controlFileName, 'file') == 2
-    error(['The control file ' controlFileName ' exists already and cannot be over-written']);
+    warning(['The control file ' controlFileName ' exists already and cannot be over-written. Exiting.']);
+    return
 end
 
 
@@ -153,7 +155,12 @@ end
 dataLoad=load(perimeterFileName);
 perimeter=dataLoad.perimeter;
 clear dataLoad
-nFrames=size(perimeter.data,3);
+if p.Results.nFrames == Inf
+    nFrames=size(perimeter.data,3);
+else
+    nFrames = p.Results.nFrames;
+end
+
 
 
 %% Perform blink detection
@@ -173,7 +180,7 @@ if ~isempty(blinkFrames)
       padBlinksBefore=[];
       for pp=1:p.Results.extendBlinkWindow(1)
           candidateBlinkFrames=blinkFrames(blinkBoundaryIdx+1)-pp;
-          inBoundFrames=(find(candidateBlinkFrames>=1) .* (candidateBlinkFrames<=nFrames));
+          inBoundFrames=logical((candidateBlinkFrames>=1) .* (candidateBlinkFrames<=nFrames));
           if ~isempty(inBoundFrames)
               padBlinksBefore=[padBlinksBefore;candidateBlinkFrames(inBoundFrames)];
           end
@@ -184,7 +191,7 @@ if ~isempty(blinkFrames)
       padBlinksAfter=[];
       for pp=1:p.Results.extendBlinkWindow(2)
           candidateBlinkFrames=blinkFrames(blinkBoundaryIdx)+pp;
-          inBoundFrames=(find(candidateBlinkFrames>=1) .* (candidateBlinkFrames<=nFrames));
+          inBoundFrames=logical((candidateBlinkFrames>=1) .* (candidateBlinkFrames<=nFrames));
           if ~isempty(inBoundFrames)
               padBlinksAfter=[padBlinksAfter;candidateBlinkFrames(inBoundFrames)];
           end
@@ -199,6 +206,7 @@ end
 % Intialize some variables
 frameRadii=nan(nFrames,1);
 frameThetas=nan(nFrames,1);
+frameBads=nan(nFrames,1);
 
 % alert the user
 if strcmp(p.Results.verbosity,'full')
@@ -220,7 +228,10 @@ parfor (ii = 1:nFrames, nWorkers)
     binP = squeeze(perimeter.data(:,:,ii));
     [Yp, Xp] = ind2sub(size(binP),find(binP));
     
+    % define these so that the parfor loop is not concerned that the values
+    % will not carry from one loop to the next
     smallestFittingError = NaN;
+    bestFitOnThisSearch= NaN;
     
     % proceed if the frame is not empty and has not been tagged as a blink
     if ~ismember(ii,blinkFrames) && ~isempty(Xp)
@@ -271,6 +282,12 @@ parfor (ii = 1:nFrames, nWorkers)
             end
         end % search over cuts
         
+        % If, after finishing the search, the bestFitOnThisSearch is still
+        % larger than the error threshold, tag this frame bad
+        if bestFitOnThisSearch > p.Results.cutErrorThreshold
+            frameBads(ii)=1;
+        end
+        
     end % not an empty frame
     
 end % parloop over frames
@@ -285,11 +302,11 @@ end
 fid = fopen(controlFileName,'a');
 % write out blinks
 if ~isempty(blinkFrames)
-for bb = 1 : length(blinkFrames)
-    instruction = [num2str(blinkFrames(bb)) ',' 'blink'];
-    fprintf(fid,'%s\n',instruction);
-    clear instruction
-end
+    for bb = 1 : length(blinkFrames)
+        instruction = [num2str(blinkFrames(bb)) ',' 'blink'];
+        fprintf(fid,'%s\n',instruction);
+        clear instruction
+    end
 end
 % write out cuts
 cutFrames=find(~isnan(frameThetas));
@@ -297,6 +314,16 @@ if ~isempty(cutFrames)
     for cc = 1 : length(cutFrames)
         frameIdx=cutFrames(cc);
         instruction = [num2str(frameIdx) ',' 'cut' ',' num2str(frameRadii(frameIdx)) ',' num2str(frameThetas(frameIdx))];
+        fprintf(fid,'%s\n',instruction);
+        clear instruction
+    end
+end
+% write out bad frames
+badFrameIdx=find(~isnan(frameBads));
+if ~isempty(badFrameIdx)
+    for cc = 1 : length(badFrameIdx)
+        frameIdx=badFrameIdx(cc);
+        instruction = [num2str(frameIdx) ',' 'bad' ];
         fprintf(fid,'%s\n',instruction);
         clear instruction
     end
