@@ -136,15 +136,21 @@ for ii=1:nFrames
     
     % add ellipse fit
     if ~isempty(p.Results.ellipseFitFileName)
-        % build ellipse impicit equation
-        pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(ellipseFitParams(ii,:)));
-        fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
-        
-        % superimpose the ellipse using fimplicit
-        hold on
-        fimplicit(fh,[1, videoSizeY, 1, videoSizeX],'Color', p.Results.ellipseColor);
-        set(gca,'position',[0 0 1 1],'units','normalized')
-        axis off;
+        if sum(isnan(ellipseFitParams(ii,:)))==0
+            % build ellipse impicit equation
+            pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(ellipseFitParams(ii,:)));
+            fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
+            
+            % superimpose the ellipse using fimplicit
+            hold on
+            if strcmp(version('-release'),'2016a')
+                ezplot(fh,[1, videoSizeY, 1, videoSizeX]);
+            else
+                fimplicit(fh,[1, videoSizeY, 1, videoSizeX],'Color', p.Results.ellipseColor);
+                set(gca,'position',[0 0 1 1],'units','normalized')
+                axis off;
+            end
+        end
     end
     
     % Write the frame to the file
