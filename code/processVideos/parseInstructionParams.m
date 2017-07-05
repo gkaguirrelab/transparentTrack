@@ -31,6 +31,12 @@ switch instructionType
         if ~isempty(params)
             error ('Invalid number of params for instruction type "blink" (0 expected)')
         end
+    case 'bad'
+        % just make sure that the param field is empty
+         params = str2num(instructionLine.params);
+        if ~isempty(params)
+            error ('Invalid number of params for instruction type "bad" (0 expected)')
+        end
     case 'cut'
         % parse the cut params
         params = str2num(instructionLine.params);
