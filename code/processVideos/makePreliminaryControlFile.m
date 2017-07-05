@@ -92,6 +92,7 @@ p.addParameter('radiusDivisions',5,@isnumeric);
 p.addParameter('verbosity','none',@ischar);
 
 % Optional flow control params
+p.addParameter('overwriteControlFile',false,@islogical);
 p.addParameter('nFrames',Inf,@isnumeric);
 p.addParameter('useParallel',true,@islogical);
 p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
@@ -110,7 +111,7 @@ p.parse(controlFileName, perimeterFileName, glintFileName, varargin{:})
 %% Check that this control file does not exist
 % We decline to over-write an existing control file, as it may contain
 % instructions lovingly crafted by a human
-if exist(controlFileName, 'file') == 2
+if exist(controlFileName, 'file') == 2 && ~p.results.overwriteControlFile
     warning(['The control file ' controlFileName ' exists already and cannot be over-written. Exiting.']);
     return
 end
