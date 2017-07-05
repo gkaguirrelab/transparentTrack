@@ -38,12 +38,6 @@ function [perimeter] = extractPupilPerimeter(grayVideoName, perimeterFileName, v
 %
 % Optional key/value pairs (flow control)
 %  'nFrames' - analyze fewer than the total number of frames.
-%  'useParallel' - If set to true, use the Matlab parallel pool for the
-%    initial ellipse fitting.
-%  'nWorkers' - Specify the number of workers in the parallel pool. If
-%    undefined the default number will be used.
-%  'tbtbProjectName' - The workers in the parallel pool are configured by
-%    issuing a tbUseProject command for the project specified here.
 %
 % Options (environment)
 %   tbSnapshot - the passed tbSnapshot output that is to be saved along
@@ -75,9 +69,6 @@ p.addParameter('verbosity','none',@ischar);
 
 % Optional flow control params
 p.addParameter('nFrames',[],@isnumeric);
-p.addParameter('useParallel',false,@islogical);
-p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('tbtbRepoName','LiveTrackAnalysisToolbox',@ischar);
 
 % Environment parameters
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
@@ -113,41 +104,6 @@ end
 clear videoInObj
 
 
-%% Set up the parallel pool
-if p.Results.useParallel
-    if strcmp(p.Results.verbosity,'full')
-        tic
-        fprintf(['Opening parallel pool. Started ' char(datetime('now')) '\n']);
-    end
-    if isempty(p.Results.nWorkers)
-        parpool;
-    else
-        parpool(p.Results.nWorkers);
-    end
-    poolObj = gcp;
-    if isempty(poolObj)
-        nWorkers=0;
-    else
-        nWorkers = poolObj.NumWorkers;
-        % Use TbTb to configure the workers.
-        if ~isempty(p.Results.tbtbRepoName)
-            spmd
-                tbUse(p.Results.tbtbRepoName,'reset','full','verbose',false,'online',false);
-            end
-            if strcmp(p.Results.verbosity,'full')
-                fprintf('CAUTION: Any TbTb messages from the workers will not be shown.\n');
-            end
-        end
-    end
-    if strcmp(p.Results.verbosity,'full')
-        toc
-        fprintf('\n');
-    end
-else
-    nWorkers=0;
-end
-
-
 %% Extract pupil perimeter
 
 % alert the user
@@ -155,7 +111,7 @@ if strcmp(p.Results.verbosity,'full')
     tic
     fprintf(['Extracting pupil perimeter. Started ' char(datetime('now')) '\n']);
     fprintf('| 0                      50                   100%% |\n');
-    fprintf('.\n');
+    fprintf('.');
 end
 
 % initialize variable to hold the perimeter data
@@ -164,11 +120,14 @@ perimeter_data = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
 % structuring element for pupil mask size
 sep = strel('rectangle',p.Results.maskBox);
 
+pupilRange= p.Results.pupilRange;
+
 % loop through gray frames
-parfor (ii = 1:nFrames, nWorkers)
+for ii = 1:nFrames
+
     % increment the progress bar
     if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
-        fprintf('\b.\n');
+        fprintf('.');
     end
     
     % get the frame
@@ -179,7 +138,7 @@ parfor (ii = 1:nFrames, nWorkers)
         circleFit(thisFrame,...
         p.Results.pupilCircleThresh,...
         p.Results.glintCircleThresh,...
-        p.Results.pupilRange,...
+        pupilRange,...
         p.Results.glintCircleThresh);
     
     % If a pupil circle patch was found, get the perimeter, else write out
@@ -231,24 +190,10 @@ save(perimeterFileName,'perimeter');
 
 % report completion of analysis
 if strcmp(p.Results.verbosity,'full')
+    fprintf('\n');
     toc
     fprintf('\n');
 end
 
-% Delete the parallel pool
-if strcmp(p.Results.verbosity,'full')
-    tic
-    fprintf(['Closing parallel pool. Started ' char(datetime('now')) '\n']);
-end
-if p.Results.useParallel
-    poolObj = gcp;
-    if ~isempty(poolObj)
-        delete(poolObj);
-    end
-end
-if strcmp(p.Results.verbosity,'full')
-    toc
-    fprintf('\n');
-end
 
 end % function
