@@ -192,19 +192,22 @@ parfor (ii = 1:nFrames, nWorkers)
         origWarnState = warning();
         warning('off','MATLAB:singularMatrix');
         warning('off','MATLAB:illConditionedMatrix');
-        Egi = ellipsefit_direct(Xg,Yg);
-        warning(origWarnState);
-        Eg = ellipse_im2ex(Egi);
-        
-        % store results
-        if ~isempty (Eg) && isreal(Egi)
-            glintData_X(ii) = Eg(1);
-            glintData_Y(ii) = Eg(2);
-        else
+        try
+            Eg = ellipse_im2ex(ellipsefit_direct(Xg,Yg));
+            if isreal(Eg)
+                glintData_X(ii) = Eg(1);
+                glintData_Y(ii) = Eg(2);
+            else
+                glintData_X(ii)= gCenters(1,1);
+                glintData_Y(ii) = gCenters(1,2);
+                glintData_ellipseFittingError(ii) = 1;
+            end
+        catch % "Index exceeds matrix dimensions" for ellipsefit_direct 
             glintData_X(ii)= gCenters(1,1);
             glintData_Y(ii) = gCenters(1,2);
             glintData_ellipseFittingError(ii) = 1;
         end
+        warning(origWarnState);
     end
 end
 
