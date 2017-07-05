@@ -8,11 +8,10 @@ function correctPupilPerimeter(perimeterFileName, controlFileName, correctedPeri
 % according to the control file instructions (if any) for the given frame.
 % 
 % Currently available instructions include:
-% - there is a blink >> save out a black frame
-% - there is a manually set ellipse >> draw an ellipse according to those
-%       params and save the frame
-% - there are cutting instruction >> cut the perimeter according to current 
-%       glint position and cut instruction using the function cutPupil.m
+% - blink >> save out a black frame
+% - bad >> save out a black frame
+% - ellipse >> draw an ellipse with the given params into the frame
+% - cut >> cut the perimeter using radius and theta given
 % 
 % Note that each line of the control file is set of instructions for one
 % specifical video frame, identified by the FrameNumber. If there is no
@@ -111,6 +110,8 @@ for ii = 1:nFrames
         for dd=1:length(instructionIdx)
             switch instructions(instructionIdx(dd)).type
                 case 'blink'
+                    img=blankFrame;
+                case 'bad'
                     img=blankFrame;
                 case 'ellipse'
                     % get the instruction params
