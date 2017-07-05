@@ -39,7 +39,6 @@ function [glintData] = trackGlint(grayVideoName, glintFileName, varargin)
 %       glint tracking in the circle patch step
 %
 % Optional key/value pairs (flow control)
-%
 %  'nFrames' - analyze fewer than the total number of frames.
 %  'useParallel' - If set to true, use the Matlab parallel pool for the
 %    initial ellipse fitting.
@@ -224,7 +223,6 @@ save (glintFileName, 'glintData')
 
 % report completion of analysis
 if strcmp(p.Results.verbosity,'full')
-    fprintf('\n');
     toc
     fprintf('\n');
 end
