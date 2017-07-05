@@ -127,7 +127,7 @@ p.addRequired('ellipseFitDataFileName',@ischar);
 p.addParameter('verbosity','none',@ischar);
 
 % Optional flow control params
-p.addParameter('nFrames',[],@isnumeric);
+p.addParameter('nFrames',Inf,@isnumeric);
 p.addParameter('useParallel',false,@islogical);
 p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('tbtbRepoName','LiveTrackAnalysisToolbox',@ischar);
@@ -199,13 +199,10 @@ perimeter=dataLoad.perimeter;
 clear dataLoad
 
 % determine how many frames we will process
-nFrames=size(perimeter.data,3);
-if ~isempty(p.Results.nFrames)
-    if p.Results.nFrames > nFrames
-        error('You cannot process more frames than are in the video')
-    else
-        nFrames = p.Results.nFrames;
-    end
+if p.Results.nFrames == Inf
+    nFrames=size(perimeter.data,3);
+else
+    nFrames = p.Results.nFrames;
 end
 
 
