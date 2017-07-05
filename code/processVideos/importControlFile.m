@@ -48,8 +48,8 @@ instructionCell = textscan(controlFile,'%f%s%[^\n]','Delimiter',',');
 fclose(controlFile);
 %% write values to the struct array
 frames = double(instructionCell{1});
-types =  string(instructionCell{2});
-params = string(instructionCell{3});
+types =  cellstr(instructionCell{2});
+params = cellstr(instructionCell{3});
 for ff = 1: length(frames)
     instructions(ff).frame = frames(ff);
     instructions(ff).type =types{ff};
