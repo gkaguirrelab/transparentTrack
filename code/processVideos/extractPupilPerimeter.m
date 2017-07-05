@@ -32,8 +32,6 @@ function [perimeter] = extractPupilPerimeter(grayVideoName, perimeterFileName, v
 %   glintRange - DEFINE HERE
 %   maskBox - DEFINE HERE
 %   smallObjThresh - DEFINE HERE
-%   nFrames - number of frames to process. If not specified or
-%       Inf will process the full video.
 % 
 % Options (display)
 %   verbosity - controls console status updates
@@ -71,7 +69,6 @@ p.addParameter('glintCircleThresh', 0.999, @isnumeric);
 p.addParameter('glintRange', [10 30], @isnumeric);
 p.addParameter('maskBox', [4 30], @isnumeric);
 p.addParameter('smallObjThresh', 500, @isnumeric);
-p.addParameter('nFrames',Inf,@isnumeric);
 
 % Optional display params
 p.addParameter('verbosity','none',@ischar);
