@@ -57,6 +57,7 @@ p.addParameter('perimeterColor','w',@isstring);
 p.addParameter('ellipseFitFileName',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('ellipseColor','green',@isstring);
 p.addParameter('whichFieldToPlot', [],@(x)(isempty(x) | ischar(x)));
+p.addParameter('controlFileName',[],@(x)(isempty(x) | ischar(x)));
 
 % parse
 p.parse(videoInFileName, videoOutFileName, varargin{:})
@@ -126,6 +127,11 @@ if ~isempty(p.Results.ellipseFitFileName)
     ellipseFitData = dataLoad.ellipseFitData;
     clear dataLoad
     ellipseFitParams = ellipseFitData.(p.Results.whichFieldToPlot);
+end
+
+% Read in and parse the control file if passed
+if ~isempty(p.Results.controlFileName)
+    instructions = importControlFile(p.Results.controlFileName);
 end
 
 % read video file into memory
@@ -201,6 +207,24 @@ for ii=1:nFrames
         end
     end
     
+    % add an instruction label
+    if ~isempty(p.Results.controlFileName)
+        instructionIdx = find ([instructions.frame] == ii);
+        if ~isempty(instructionIdx)
+            text_str = instructions(instructionIdx(1)).type;
+            annotation('textbox',...
+                [.8 .7 .3 .3],...
+                'String',text_str,...
+                'FontSize',18,...
+                'FontName','Helvetica',...
+                'LineStyle','--',...
+                'EdgeColor',[1 1 1],...
+                'LineWidth',1,...
+                'BackgroundColor',[0.9  0.9 0.9],...
+                'Color',[1 0 0]);
+        end
+    end
+
     % Save the frame and close the figure
     tmp=getframe(frameFig);
     outputVideo(:,:,:,ii)=tmp.cdata;
