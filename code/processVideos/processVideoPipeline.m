@@ -58,7 +58,8 @@ bayesFitPupilPerimeter(correctedPerimeterFileName, ellipseFitFileName, varargin{
 finalFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_finalFit.mat']);
 makePupilFitVideo(grayVideoName, finalFitVideoName, ...
     'glintFileName', glintFileName, 'perimeterFileName', correctedPerimeterFileName,...
-    'ellipseFitFileName', ellipseFitFileName, 'whichFieldToPlot', 'pPosteriorMeanTransparent', varargin{:});
+    'ellipseFitFileName', ellipseFitFileName, 'whichFieldToPlot', 'pPosteriorMeanTransparent', ...
+    'controlFileName',controlFileName,varargin{:});
 
 end % function
 
