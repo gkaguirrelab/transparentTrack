@@ -4,25 +4,33 @@ function makePupilFitVideo(videoInFileName, videoOutFileName, varargin)
 % This routine will superimpose ellipses on frames of a video file.
 %
 % INPUTS:
-%   videoInFileName: full path to an .avi file. Points on the
-%     boundary of the pupil should have a value of unity, and the frame
-%     should be otherwise zero-filled. A frame that has no information
-%     regarding the pupil (e.g., during a blink) should be zero-filled.
-%   videoOutFileName: full path to an .avi file. Points on the
-%     boundary of the pupil should have a value of unity, and the frame
-%     should be otherwise zero-filled. A frame that has no information
-%     regarding the pupil (e.g., during a blink) should be zero-filled.
-%  ellipseFitDataFileName: full path to the .mat file that contains the
-%     pupil tracking information.
+%   videoInFileName: full path to an .avi file. Typically the gray video
+%   videoOutFileName: full path to an .avi file. This will be the output
 %
 % Optional key/value pairs (display and I/O)
 %  'verbosity' - level of verbosity. [none, full]
-%  'display' - controls a display of the fitting outcome. [none, full]
-%  'videoOutFrameRate' - frame rate (in Hz) of saved video. Default 30.
-%  'whichFieldToPlot' - The name of the field within the ellipseFitData
-%     struct that is to be plotted
+%  'videoOutFrameRate' - frame rate (in Hz) of saved video
 %
-%  ellipseFitDataFileName
+% Optional key/value pairs (flow control)
+%  'nFrames' - analyze fewer than the total number of frames.
+%  'useParallel' - If set to true, use the Matlab parallel pool for the
+%    initial ellipse fitting.
+%  'nWorkers' - Specify the number of workers in the parallel pool. If
+%    undefined the default number will be used.
+%  'tbtbProjectName' - The workers in the parallel pool are configured by
+%    issuing a tbUseProject command for the project specified here.
+%
+% Optional items to include in the video
+%	glintFileName
+%   glintColor
+%   perimeterFileName
+%   perimeterColor
+%   ellipseFitFileName - full path to the .mat file that contains the
+%       pupil tracking information.
+%   ellipseColor
+%   whichFieldToPlot - The name of the field within the ellipseFitData
+%   	struct that is to be plotted
+%
 
 %% Parse vargin for options passed here
 p = inputParser; p.KeepUnmatched = true;
@@ -33,9 +41,13 @@ p.addRequired('videoOutFileName', @ischar);
 
 % Optional display and I/O params
 p.addParameter('verbosity','none', @ischar);
-p.addParameter('display','none', @ischar);
 p.addParameter('videoOutFrameRate', 60, @isnumeric);
-p.addParameter('nFrames',Inf,@isnumeric);
+
+% Optional flow control params
+p.addParameter('nFrames',[],@isnumeric);
+p.addParameter('useParallel',false,@islogical);
+p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('tbtbRepoName','LiveTrackAnalysisToolbox',@ischar);
 
 % Optional items to include in the video
 p.addParameter('glintFileName',[],@(x)(isempty(x) | ischar(x)));
@@ -49,12 +61,49 @@ p.addParameter('whichFieldToPlot', [],@(x)(isempty(x) | ischar(x)));
 % parse
 p.parse(videoInFileName, videoOutFileName, varargin{:})
 
-% Alert the user
+
+
+%% Set up the parallel pool
+if p.Results.useParallel
+    if strcmp(p.Results.verbosity,'full')
+        tic
+        fprintf(['Opening parallel pool. Started ' char(datetime('now')) '\n']);
+    end
+    if isempty(p.Results.nWorkers)
+        parpool;
+    else
+        parpool(p.Results.nWorkers);
+    end
+    poolObj = gcp;
+    if isempty(poolObj)
+        nWorkers=0;
+    else
+        nWorkers = poolObj.NumWorkers;
+        % Use TbTb to configure the workers.
+        if ~isempty(p.Results.tbtbRepoName)
+            spmd
+                tbUse(p.Results.tbtbRepoName,'reset','full','verbose',false,'online',false);
+            end
+            if strcmp(p.Results.verbosity,'full')
+                fprintf('CAUTION: Any TbTb messages from the workers will not be shown.\n');
+            end
+        end
+    end
+    if strcmp(p.Results.verbosity,'full')
+        toc
+        fprintf('\n');
+    end
+else
+    nWorkers=0;
+end
+
+
+%% Alert the user and prepare variables
 if strcmp(p.Results.verbosity,'full')
     tic
     fprintf(['Creating and saving fit video. Started ' char(datetime('now')) '\n']);
     fprintf('| 0                      50                   100%% |\n');
-    fprintf('.');
+    fprintf('.\n');
 end
 
 % Read in the glint file if passed
@@ -74,57 +123,57 @@ end
 % Read in the ellipseFitData file if passed
 if ~isempty(p.Results.ellipseFitFileName)
     dataLoad = load(p.Results.ellipseFitFileName);
-    ellipseFitData = dataLoad.ellipseFitData;    
+    ellipseFitData = dataLoad.ellipseFitData;
     clear dataLoad
     ellipseFitParams = ellipseFitData.(p.Results.whichFieldToPlot);
 end
 
-% Create a figure
-if strcmp(p.Results.display,'full')
-    frameFig = figure( 'Visible', 'on');
-else
-    frameFig = figure( 'Visible', 'off');
-end
-
-
-% open inVideoObject
-inVideoObj = VideoReader(videoInFileName);
+% read video file into memory
+videoInObj = VideoReader(videoInFileName);
 % get number of frames
 if p.Results.nFrames == Inf
-    nFrames = floor(inVideoObj.Duration*inVideoObj.FrameRate);
+    nFrames = floor(videoInObj.Duration*videoInObj.FrameRate);
 else
     nFrames = p.Results.nFrames;
 end
-
 % get video dimensions
-videoSizeX = inVideoObj.Width;
-videoSizeY = inVideoObj.Height;
+videoSizeX = videoInObj.Width;
+videoSizeY = videoInObj.Height;
+% initialize variable to hold the perimeter data
+sourceVideo = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
+% read the video into memory, adjusting gamma if needed
+for ii = 1:nFrames
+    thisFrame = readFrame(videoInObj);
+    sourceVideo(:,:,ii) = rgb2gray (thisFrame);
+end
+% close the video object
+clear videoInObj
 
-% Open the video out object
-outVideoObj = VideoWriter(videoOutFileName);
-outVideoObj.FrameRate = p.Results.videoOutFrameRate;
-open(outVideoObj);
+% prepare the outputVideo
+outputVideo=zeros(videoSizeY,videoSizeX,3,nFrames,'uint8');
 
-
-% Loop through the frames
+%% Loop through the frames
 for ii=1:nFrames
     
     % Update the progress display
     if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
-            fprintf('.');
+        fprintf('\b.\n');
     end
     
-    % Read the frame, adjust gamma, make gray
-    thisFrame = readFrame(inVideoObj);
-    thisFrame = rgb2gray (thisFrame);
+    % Create a figure
+    frameFig = figure( 'Visible', 'off');
 
     % show the initial frame
-        imshow(thisFrame, 'Border', 'tight');
+    imshow(squeeze(sourceVideo(:,:,ii)), 'Border', 'tight');
     hold on
     
     % add glint
     if ~isempty(p.Results.glintFileName)
-        plot(glintData.X(ii),glintData.Y(ii),['*' p.Results.glintColor]);
+        if glintData.ellipseFittingError(ii)==1
+            plot(glintData.X(ii),glintData.Y(ii),'*y');
+        else
+            plot(glintData.X(ii),glintData.Y(ii),['*' p.Results.glintColor]);
+        end
     end
     
     % add pupil perimeter
@@ -140,38 +189,58 @@ for ii=1:nFrames
             % build ellipse impicit equation
             pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(ellipseFitParams(ii,:)));
             fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
-            
-            % superimpose the ellipse using fimplicit
-            hold on
-            if strcmp(version('-release'),'2016a')
-                plotHandle=ezplot(fh,[1, videoSizeY, 1, videoSizeX]);
-                set(plotHandle, 'Color', p.Results.ellipseColor)
-            else
+            % superimpose the ellipse using fimplicit or ezplot
+            if exist('fimplicit','file')==2
                 fimplicit(fh,[1, videoSizeY, 1, videoSizeX],'Color', p.Results.ellipseColor);
                 set(gca,'position',[0 0 1 1],'units','normalized')
                 axis off;
+            else
+                plotHandle=ezplot(fh,[1, videoSizeY, 1, videoSizeX]);
+                set(plotHandle, 'Color', p.Results.ellipseColor)
             end
         end
     end
     
-    % Write the frame to the file
-    writeVideo(outVideoObj,getframe(frameFig));
-    
-    hold off
+    % Save the frame and close the figure
+    tmp=getframe(frameFig);
+    outputVideo(:,:,:,ii)=tmp.cdata;
+    close(frameFig);
+
 end
 
-% close the video object
-close(outVideoObj);
+%% Save and cleanup
 
-% close the figure
-close(frameFig)
+% write the outputVideo to file
+videoOutObj = VideoWriter(videoOutFileName);
+videoOutObj.FrameRate = p.Results.videoOutFrameRate;
+open(videoOutObj);
+% loop through the frames and save them
+for ii=1:nFrames
+    writeVideo(videoOutObj,squeeze(outputVideo(:,:,:,ii)));
+end
+% close the videoObj
+clear videoOutObj
 
 % report completion of fit video generation
 if strcmp(p.Results.verbosity,'full')
-    fprintf('\n');
     toc
+    fprintf('\n');
 end
 
-
+% Delete the parallel pool
+if strcmp(p.Results.verbosity,'full')
+    tic
+    fprintf(['Closing parallel pool. Started ' char(datetime('now')) '\n']);
+end
+if p.Results.useParallel
+    poolObj = gcp;
+    if ~isempty(poolObj)
+        delete(poolObj);
+    end
+end
+if strcmp(p.Results.verbosity,'full')
+    toc
+    fprintf('\n');
 end
 
+end % function
