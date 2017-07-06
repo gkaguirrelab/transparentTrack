@@ -144,7 +144,8 @@ for ii=1:nFrames
             % superimpose the ellipse using fimplicit
             hold on
             if strcmp(version('-release'),'2016a')
-                ezplot(fh,[1, videoSizeY, 1, videoSizeX]);
+                plotHandle=ezplot(fh,[1, videoSizeY, 1, videoSizeX]);
+                set(plotHandle, 'Color', p.Results.ellipseColor)
             else
                 fimplicit(fh,[1, videoSizeY, 1, videoSizeX],'Color', p.Results.ellipseColor);
                 set(gca,'position',[0 0 1 1],'units','normalized')
