@@ -1,5 +1,5 @@
-function [perimeter] = extractPupilPerimeter(grayVideoName, perimeterFileName, varargin)
-% function [perimeterParams] = extractPupilPerimeter(grayVideoName, perimeterVideoName,varargin)
+function extractPupilPerimeter(grayVideoName, perimeterFileName, varargin)
+% function extractPupilPerimeter(grayVideoName, perimeterVideoName,varargin)
 % 
 % This function thresholds the video to extract the pupil perimeter.
 %
@@ -33,8 +33,10 @@ function [perimeter] = extractPupilPerimeter(grayVideoName, perimeterFileName, v
 %   maskBox - DEFINE HERE
 %   smallObjThresh - DEFINE HERE
 % 
-% Options (display)
+% Options (verbosity and display)
 %   verbosity - controls console status updates
+%   displayMode - when set to true, displays the results of the boundary
+%   	extraction and does not save a video.
 %
 % Optional key/value pairs (flow control)
 %  'nFrames' - analyze fewer than the total number of frames.
@@ -63,12 +65,15 @@ p.addParameter('glintCircleThresh', 0.999, @isnumeric);
 p.addParameter('glintRange', [10 30], @isnumeric);
 p.addParameter('maskBox', [4 30], @isnumeric);
 p.addParameter('smallObjThresh', 500, @isnumeric);
+p.addParameter('adaptHisEq', true, @islogical);
+
 
 % Optional display params
 p.addParameter('verbosity','none',@ischar);
+p.addParameter('displayMode',false,@islogical);
 
 % Optional flow control params
-p.addParameter('nFrames',[],@isnumeric);
+p.addParameter('nFrames',Inf,@isnumeric);
 
 % Environment parameters
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
@@ -106,6 +111,18 @@ clear videoInObj
 
 %% Extract pupil perimeter
 
+% Detect display mode
+if p.Results.displayMode
+    fprintf('** DISPLAY MODE **\n')
+    fprintf('Results will not be saved. Press space at any time to quit routine.\n')
+
+    % create a figure for display
+    figureHandle=figure();
+
+    % we will monitor the currentchar for a 'q'
+    set(figureHandle,'currentchar','?')
+end
+
 % alert the user
 if strcmp(p.Results.verbosity,'full')
     tic
@@ -125,6 +142,11 @@ pupilRange= p.Results.pupilRange;
 % loop through gray frames
 for ii = 1:nFrames
 
+    if p.Results.displayMode && strcmp(get(figureHandle,'currentchar'),' ')
+        close(figureHandle)
+        return
+    end
+        
     % increment the progress bar
     if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
         fprintf('.');
@@ -132,6 +154,10 @@ for ii = 1:nFrames
     
     % get the frame
     thisFrame = squeeze(grayVideo(:,:,ii));
+    
+    if p.Results.displayMode
+        imshow(thisFrame, 'Border', 'tight');
+    end
     
     % perform an initial search for the pupil with circleFit 
     [pCenters, pRadii,~,~,~,~, pupilRange, ~] = ...
@@ -154,6 +180,11 @@ for ii = 1:nFrames
         % apply mask to grey image complement image
         complementThisFrame = imcomplement(thisFrame);
         maskedPupil = immultiply(complementThisFrame,pupilMask);
+
+        % perfom optional contrast-limited adaptive histogram equalization
+        if p.Results.adaptHisEq
+            maskedPupil=adapthisteq(maskedPupil);
+        end
         
         % convert back to gray
         pI = uint8(maskedPupil);
@@ -161,7 +192,7 @@ for ii = 1:nFrames
         % Binarize pupil
         binP = ones(size(pI));
         binP(pI<quantile(double(complementThisFrame(:)),p.Results.pupilEllipseThresh)) = 0;
-        
+                
         % remove small objects
         binP = bwareaopen(binP, p.Results.smallObjThresh);
         
@@ -178,7 +209,11 @@ for ii = 1:nFrames
         thisFrame = im2uint8(zeros(size(thisFrame)));
         perimeter_data(:,:,ii) = thisFrame;
     end
-            
+    
+    if p.Results.displayMode
+        imshow(thisFrame, 'Border', 'tight');
+    end
+    
 end % loop through gray frames
 
 %% Clean up and close
@@ -186,7 +221,11 @@ end % loop through gray frames
 % save mat file with the video and analysis details
 perimeter.data = perimeter_data;
 perimeter.meta = p.Results;
-save(perimeterFileName,'perimeter');
+if ~p.Results.displayMode
+    save(perimeterFileName,'perimeter');
+else
+    close(figureHandle);
+end
 
 % report completion of analysis
 if strcmp(p.Results.verbosity,'full')
