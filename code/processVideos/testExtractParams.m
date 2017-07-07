@@ -11,6 +11,9 @@ p.parse(pathParams, varargin{:})
 pathParams=p.Results.pathParams;
 
 % get the list of available gray files
+pathParams.dataOutputDirFull = fullfile(pathParams.dataOutputDirRoot, pathParams.projectSubfolder, ...
+    pathParams.subjectID, pathParams.sessionDate, pathParams.eyeTrackingDir);
+
 FileList=dir(fullfile(pathParams.dataOutputDirFull, '*gray.avi'));
 
 % Ask the user which file to work on 
