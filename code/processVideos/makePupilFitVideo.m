@@ -211,9 +211,12 @@ for ii=1:nFrames
     if ~isempty(p.Results.controlFileName)
         instructionIdx = find ([instructions.frame] == ii);
         if ~isempty(instructionIdx)
-            text_str = instructions(instructionIdx(1)).type;
+            text_str = instructions(instructionIdx(end)).type;
             annotation('textbox',...
-                [.8 .8 .1 .1],...
+                [.80 .85 .1 .1],...
+                'HorizontalAlignment','center',...
+                'VerticalAlignment','middle',...
+                'Margin',1,...
                 'String',text_str,...
                 'FontSize',9,...
                 'FontName','Helvetica',...
@@ -233,13 +236,26 @@ end
 
 %% Save and cleanup
 
+% Create a color map
+cmap = [linspace(0,1,256)' linspace(0,1,256)' linspace(0,1,256)'];
+cmap(1,:)=[1 0 0];
+cmap(2,:)=[0 1 0];
+cmap(3,:)=[0 0 1];
+cmap(4,:)=[1 1 0];
+cmap(5,:)=[0 1 1];
+cmap(6,:)=[1 0 1];
+
 % write the outputVideo to file
 videoOutObj = VideoWriter(videoOutFileName,'Indexed AVI');
 videoOutObj.FrameRate = p.Results.videoOutFrameRate;
+videoOutObj.Colormap = cmap;
+
+
 open(videoOutObj);
 % loop through the frames and save them
 for ii=1:nFrames
-    writeVideo(videoOutObj,squeeze(outputVideo(:,:,:,ii)));
+    indexedFrame = rgb2ind(squeeze(outputVideo(:,:,:,ii)), cmap, 'nodither');
+    writeVideo(videoOutObj,indexedFrame);
 end
 % close the videoObj
 clear videoOutObj
