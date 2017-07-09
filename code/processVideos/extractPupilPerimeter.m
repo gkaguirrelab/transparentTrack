@@ -40,6 +40,7 @@ function extractPupilPerimeter(grayVideoName, perimeterFileName, varargin)
 %
 % Optional key/value pairs (flow control)
 %  'nFrames' - analyze fewer than the total number of frames.
+%  'startFrame' - which frame to start on
 %
 % Options (environment)
 %   tbSnapshot - the passed tbSnapshot output that is to be saved along
@@ -66,6 +67,8 @@ p.addParameter('glintRange', [10 30], @isnumeric);
 p.addParameter('maskBox', [4 30], @isnumeric);
 p.addParameter('smallObjThresh', 500, @isnumeric);
 p.addParameter('adaptHisEq', true, @islogical);
+p.addParameter('localContrastEdgeThresh', 0.5, @isnumeric);
+p.addParameter('localContrastAmount', 0.5, @isnumeric);
 
 
 % Optional display params
@@ -74,6 +77,7 @@ p.addParameter('displayMode',false,@islogical);
 
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
+p.addParameter('startFrame',1,@isnumeric);
 
 % Environment parameters
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
@@ -99,7 +103,7 @@ videoSizeX = videoInObj.Width;
 videoSizeY = videoInObj.Height;
 % initialize variable to hold the perimeter data
 grayVideo = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
-% read the video into memory, adjusting gamma if needed
+% read the video into memory, adjusting gamma and local contrast
 for ii = 1:nFrames
     thisFrame = readFrame(videoInObj);
     thisFrame = imadjust(thisFrame,[],[],p.Results.gammaCorrection);
@@ -140,7 +144,7 @@ sep = strel('rectangle',p.Results.maskBox);
 pupilRange= p.Results.pupilRange;
 
 % loop through gray frames
-for ii = 1:nFrames
+for ii = p.Results.startFrame:nFrames
 
     if p.Results.displayMode && strcmp(get(figureHandle,'currentchar'),' ')
         close(figureHandle)
@@ -148,17 +152,13 @@ for ii = 1:nFrames
     end
         
     % increment the progress bar
-    if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
+    if strcmp(p.Results.verbosity,'full') && mod(ii-p.Results.startFrame+1,round(nFrames/50))==0
         fprintf('.');
     end
     
     % get the frame
     thisFrame = squeeze(grayVideo(:,:,ii));
-    
-    if p.Results.displayMode
-        imshow(thisFrame, 'Border', 'tight');
-    end
-    
+            
     % perform an initial search for the pupil with circleFit 
     [pCenters, pRadii,~,~,~,~, pupilRange, ~] = ...
         circleFit(thisFrame,...
@@ -181,14 +181,24 @@ for ii = 1:nFrames
         complementThisFrame = imcomplement(thisFrame);
         maskedPupil = immultiply(complementThisFrame,pupilMask);
 
+        % adjust local contrast of the masked pupil. This is an edge-aware
+        % contrast enhancment
+        maskedPupil = localcontrast(maskedPupil, p.Results.localContrastEdgeThresh,  p.Results.localContrastAmount);
+
         % perfom optional contrast-limited adaptive histogram equalization
         if p.Results.adaptHisEq
             maskedPupil=adapthisteq(maskedPupil);
         end
-        
+
+        % partition the image into three regions, corresponding (from
+        % lightest to darkest) to the glint, iris, and pupil. Set the glint
+        % and the iris to white, and the pupil to black.        
+        otsuThresh = multithresh(maskedPupil,2);
+        maskedPupil = imquantize(maskedPupil, otsuThresh, [0 0 255]);
+
         % convert back to gray
         pI = uint8(maskedPupil);
-        
+                
         % Binarize pupil
         binP = ones(size(pI));
         binP(pI<quantile(double(complementThisFrame(:)),p.Results.pupilEllipseThresh)) = 0;
@@ -203,15 +213,20 @@ for ii = 1:nFrames
         binP = bwperim(binP);
         
         % save the perimeter
-        thisFrame = im2uint8(binP);
-        perimeter_data(:,:,ii) = thisFrame;
+        perimFrame = im2uint8(binP);
+        perimeter_data(:,:,ii) = perimFrame;
     else
-        thisFrame = im2uint8(zeros(size(thisFrame)));
-        perimeter_data(:,:,ii) = thisFrame;
+        perimFrame = im2uint8(zeros(size(thisFrame)));
+        perimeter_data(:,:,ii) = perimFrame;
     end
     
     if p.Results.displayMode
-        imshow(thisFrame, 'Border', 'tight');
+        displayFrame=thisFrame;
+        [Yp, Xp] = ind2sub(size(perimFrame),find(perimFrame));
+        if ~isempty(Xp)
+            displayFrame(sub2ind(size(perimFrame),Yp,Xp))=255;
+        end
+        imshow(displayFrame, 'Border', 'tight');
     end
     
 end % loop through gray frames
