@@ -70,6 +70,13 @@ p.addParameter('pupilRange', [30 90], @isnumeric);
 p.addParameter('pupilCircleThresh', 0.06, @isnumeric);
 p.addParameter('verbosity', 'none', @ischar);
 
+% circleFit routine params. Defined here for transparency
+p.addParameter('pupilOnly', false, @islogical);
+p.addParameter('glintOut', 0.1, @isnumeric);
+p.addParameter('dilateGlint', 6, @isnumeric);
+p.addParameter('imfindcirclesSensitivity', 0.99, @isnumeric);
+p.addParameter('rangeAdjust', 0.05, @isnumeric);
+
 % Optional flow control params
 p.addParameter('nFrames',[],@isnumeric);
 p.addParameter('useParallel',false,@islogical);
@@ -180,7 +187,8 @@ parfor (ii = 1:nFrames, nWorkers)
         p.Results.pupilCircleThresh, ...
         p.Results.glintCircleThresh, ...
         p.Results.pupilRange, ...
-        p.Results.glintRange);
+        p.Results.glintRange,...
+        p.Results.pupilOnly,p.Results.glintOut,p.Results.dilateGlint,p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust);
     
     % if a glint was present, refine the location
     if ~isempty(gCenters)
