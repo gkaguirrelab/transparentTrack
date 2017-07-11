@@ -1,4 +1,4 @@
-function [pCenters, pRadii,pMetric, gCenters, gRadii,gMetric, pupilRange, glintRange] = circleFit(I,pupilCircleThresh,glintCircleThresh,pupilRange,glintRange,varargin)
+function [pCenters, pRadii,pMetric, gCenters, gRadii,gMetric, pupilRange, glintRange] = circleFit(I,pupilCircleThresh,glintCircleThresh,pupilRange,glintRange,pupilOnly,glintOut,dilateGlint,imfindcirclesSensitivity,rangeAdjust)
 
 % this function is used for both glint and pupil circle fitting.
 
@@ -11,29 +11,15 @@ p.addRequired('pupilCircleThresh', @isnumeric)
 p.addRequired('glintCircleThresh', @isnumeric)
 p.addRequired('pupilRange',@isnumeric);
 p.addRequired('glintRange',@isnumeric);
+p.addRequired('pupilOnly', @islogical);
+p.addRequired('glintOut', @isnumeric);
+p.addRequired('dilateGlint', @isnumeric);
+p.addRequired('sensitivity', @isnumeric);
+p.addRequired('rangeAdjust', @isnumeric);
 
+% parse
+p.parse(I,pupilCircleThresh,glintCircleThresh,pupilRange,glintRange,pupilOnly,glintOut,dilateGlint,imfindcirclesSensitivity,rangeAdjust);
 
-% optional inputs
-pupilOnlyDefault = false;
-glintOutDefault = 0.1;
-dilateGlintDefault = 6;
-sensitivityDefault = 0.99;
-rangeAdjustDefault = 0.05;
-p.addParameter('pupilOnly', pupilOnlyDefault, @islogical);
-p.addParameter('glintOut', glintOutDefault, @isnumeric);
-p.addParameter('dilateGlint', dilateGlintDefault, @isnumeric);
-p.addParameter('sensitivity', sensitivityDefault, @isnumeric);
-p.addParameter('rangeAdjust', rangeAdjustDefault, @isnumeric);
-
-%parse
-p.parse(I,pupilCircleThresh,glintCircleThresh,pupilRange,glintRange,varargin{:})
-
-% define optional variables values
-pupilOnly = p.Results.pupilOnly;
-glintOut = p.Results.glintOut;
-dilateGlint = p.Results.dilateGlint;
-sensitivity = p.Results.sensitivity;
-rangeAdjust = p.Results.rangeAdjust;
 
 %% circle fit
 
@@ -73,12 +59,12 @@ warning('off','images:imfindcircles:warnForSmallRadius');
 
 % Find the pupil
 [pCenters, pRadii,pMetric] = imfindcircles(binP,pupilRange,'ObjectPolarity','dark',...
-    'Sensitivity',sensitivity);
+    'Sensitivity',imfindcirclesSensitivity);
 
 % Find the glint
 if ~pupilOnly
     [gCenters, gRadii,gMetric] = imfindcircles(dbinG,glintRange,'ObjectPolarity','bright',...
-        'Sensitivity',sensitivity);
+        'Sensitivity',imfindcirclesSensitivity);
 else
     gCenters = [NaN NaN];
     gRadii = NaN;
