@@ -26,11 +26,13 @@ function extractPupilPerimeter(grayVideoName, perimeterFileName, varargin)
 %       fitting (default 0.06, typical range [0.04 0.09])
 %	pupilRange - initial radius range for circle fitting of the glint
 %       (default [30 90]). This value gets dynamically updated.
-%	pupilEllipseThresh - threshold value to locate the glint for
-%       ellipse fitting (default 0.9, typical range [0.8 0.98])
 %   glintCircleThresh - DEFINE HERE
 %   glintRange - DEFINE HERE
-%   maskBox - DEFINE HERE
+%   maskBox - This is the proportion to dilate the pupil masked region in
+%       the vertical and horizontal directions respectively. A value of
+%       zero will result in no dilation in that direction. A value of unity
+%       will result in a masked region that is twice the size of the pupil
+%       radius.
 %   smallObjThresh - DEFINE HERE
 % 
 % Options (verbosity and display)
@@ -61,15 +63,20 @@ p.addRequired('perimeterFileName',@isstr);
 p.addParameter('gammaCorrection', 1, @isnumeric);
 p.addParameter('pupilCircleThresh', 0.06, @isnumeric);
 p.addParameter('pupilRange', [30 90], @isnumeric);
-p.addParameter('pupilEllipseThresh', 0.945, @isnumeric);
 p.addParameter('glintCircleThresh', 0.999, @isnumeric);
 p.addParameter('glintRange', [10 30], @isnumeric);
-p.addParameter('maskBox', [4 30], @isnumeric);
+p.addParameter('maskBox', [0.20 0.75], @isnumeric);
 p.addParameter('smallObjThresh', 500, @isnumeric);
 p.addParameter('adaptHisEq', true, @islogical);
 p.addParameter('localContrastEdgeThresh', 0.5, @isnumeric);
 p.addParameter('localContrastAmount', 0.5, @isnumeric);
 
+% circleFit routine params. Defined here for transparency
+p.addParameter('pupilOnly', false, @islogical);
+p.addParameter('glintOut', 0.1, @isnumeric);
+p.addParameter('dilateGlint', 6, @isnumeric);
+p.addParameter('imfindcirclesSensitivity', 0.99, @isnumeric);
+p.addParameter('rangeAdjust', 0.05, @isnumeric);
 
 % Optional display params
 p.addParameter('verbosity','none',@ischar);
@@ -138,9 +145,8 @@ end
 % initialize variable to hold the perimeter data
 perimeter_data = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
 
-% structuring element for pupil mask size
-sep = strel('rectangle',p.Results.maskBox);
-
+% Initialize the pupilRange with the parameter value. This value is updated
+% as we progress through the frames
 pupilRange= p.Results.pupilRange;
 
 % loop through gray frames
@@ -165,12 +171,19 @@ for ii = p.Results.startFrame:nFrames
         p.Results.pupilCircleThresh,...
         p.Results.glintCircleThresh,...
         pupilRange,...
-        p.Results.glintRange);
+        p.Results.glintRange,...
+        p.Results.pupilOnly,p.Results.glintOut,p.Results.dilateGlint,p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust);
     
     % If a pupil circle patch was found, get the perimeter, else write out
     % a zero-filled frame
     if ~isempty(pCenters)
         
+        % structuring element for pupil mask size. This is a rectangular
+        % dilation box that is adapted to the size of the radius of the
+        % initially found pupil circle. The proportional size of the
+        % dilation box is set in the key value 'maskBox'.
+        sep = strel('rectangle',round(pRadii(1).*p.Results.maskBox));
+
         % generate mask
         pupilMask = zeros(size(thisFrame));
         pupilMask = insertShape(pupilMask,'FilledCircle',[pCenters(1,1) pCenters(1,2) pRadii(1)],'Color','white');
@@ -181,27 +194,16 @@ for ii = p.Results.startFrame:nFrames
         complementThisFrame = imcomplement(thisFrame);
         maskedPupil = immultiply(complementThisFrame,pupilMask);
 
-        % adjust local contrast of the masked pupil. This is an edge-aware
-        % contrast enhancment
-        maskedPupil = localcontrast(maskedPupil, p.Results.localContrastEdgeThresh,  p.Results.localContrastAmount);
-
-        % perfom optional contrast-limited adaptive histogram equalization
-        if p.Results.adaptHisEq
-            maskedPupil=adapthisteq(maskedPupil);
-        end
-
         % partition the image into three regions, corresponding (from
-        % lightest to darkest) to the glint, iris, and pupil. Set the glint
-        % and the iris to white, and the pupil to black.        
-        otsuThresh = multithresh(maskedPupil,2);
-        maskedPupil = imquantize(maskedPupil, otsuThresh, [0 0 255]);
-
-        % convert back to gray
-        pI = uint8(maskedPupil);
-                
-        % Binarize pupil
-        binP = ones(size(pI));
-        binP(pI<quantile(double(complementThisFrame(:)),p.Results.pupilEllipseThresh)) = 0;
+        % lightest to darkest) to the glint, iris, and pupil. We first NaN
+        % out all points in the image that are not within the masked
+        % region, so that they do not influence the three region partition.        
+        maskedPupilNaN=double(maskedPupil);
+        maskedPupilNaN(pupilMask==0)=NaN;
+        otsuThresh = multithresh(maskedPupilNaN,2);
+        
+        % Now set the glint and iris to white and the pupil to black. 
+        binP = imquantize(maskedPupil, otsuThresh, [0 0 1]);
                 
         % remove small objects
         binP = bwareaopen(binP, p.Results.smallObjThresh);
