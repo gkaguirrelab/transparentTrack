@@ -249,9 +249,8 @@ cmap(6,:)=[1 0 1];
 videoOutObj = VideoWriter(videoOutFileName,'Indexed AVI');
 videoOutObj.FrameRate = p.Results.videoOutFrameRate;
 videoOutObj.Colormap = cmap;
-
-
 open(videoOutObj);
+
 % loop through the frames and save them
 for ii=1:nFrames
     indexedFrame = rgb2ind(squeeze(outputVideo(:,:,:,ii)), cmap, 'nodither');
