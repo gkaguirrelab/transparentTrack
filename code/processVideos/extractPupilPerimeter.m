@@ -190,7 +190,7 @@ for ii = p.Results.startFrame:nFrames
         pupilMask = imdilate(pupilMask,sep);
         pupilMask = im2bw(pupilMask);
         
-        % apply mask to grey image complement image
+        % apply mask to the complement of the image
         complementThisFrame = imcomplement(thisFrame);
         maskedPupil = immultiply(complementThisFrame,pupilMask);
 
