@@ -202,8 +202,9 @@ for ii = p.Results.startFrame:nFrames
         maskedPupilNaN(pupilMask==0)=NaN;
         otsuThresh = multithresh(maskedPupilNaN,2);
         
-        % Now set the glint and iris to white and the pupil to black. 
-        binP = imquantize(maskedPupil, otsuThresh, [0 0 1]);
+        % We assume that the glint is within the pupil boundary, so we set
+        % the glint and the pupil to unity, and the iris to zero
+        binP = imquantize(maskedPupil, otsuThresh, [1 0 1]);
                 
         % remove small objects
         binP = bwareaopen(binP, p.Results.smallObjThresh);
