@@ -111,7 +111,7 @@ videoSizeY = videoInObj.Height;
 % initialize variable to hold the perimeter data
 grayVideo = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
 % read the video into memory, adjusting gamma and local contrast
-for ii = 1:nFrames
+for ii = 1:floor(videoInObj.Duration*videoInObj.FrameRate)
     thisFrame = readFrame(videoInObj);
     thisFrame = imadjust(thisFrame,[],[],p.Results.gammaCorrection);
     grayVideo(:,:,ii) = rgb2gray (thisFrame);
@@ -150,7 +150,7 @@ perimeter_data = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
 pupilRange= p.Results.pupilRange;
 
 % loop through gray frames
-for ii = p.Results.startFrame:nFrames
+for ii = p.Results.startFrame:p.Results.startFrame+nFrames
 
     if p.Results.displayMode && strcmp(get(figureHandle,'currentchar'),' ')
         close(figureHandle)
@@ -215,17 +215,19 @@ for ii = p.Results.startFrame:nFrames
         % get perimeter of object
         binP = bwperim(binP);
         
-        % black out any residual glint component on the perimeter. This
-        % step will have no effect if the glint location is well within the
-        % pupil boundary. It will however remove any distortion of the
-        % perimeter if the glint happens to sit right on the pupil boundary
-        % and survives the fill holes step
-        glintPatch = ones(size(thisFrame));
-        glintPatch = insertShape(glintPatch,'FilledCircle',[gCenters(1,1) gCenters(1,2) round(gRadii(1)*1.2)],'Color','black');
-        glintPatch = im2bw(glintPatch);
-        
-        % apply glint patch
-        binP = immultiply(binP,glintPatch);
+        if ~isempty(gCenters)
+            % black out any residual glint component on the perimeter. This
+            % step will have no effect if the glint location is well within the
+            % pupil boundary. It will however remove any distortion of the
+            % perimeter if the glint happens to sit right on the pupil boundary
+            % and survives the fill holes step
+            glintPatch = ones(size(thisFrame));
+            glintPatch = insertShape(glintPatch,'FilledCircle',[gCenters(1,1) gCenters(1,2) gRadii(1)],'Color','black');
+            glintPatch = im2bw(glintPatch);
+            
+            % apply glint patch
+            binP = immultiply(binP,glintPatch);
+        end
         
         % save the perimeter
         perimFrame = im2uint8(binP);
