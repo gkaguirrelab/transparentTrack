@@ -165,8 +165,9 @@ for ii = p.Results.startFrame:nFrames
     % get the frame
     thisFrame = squeeze(grayVideo(:,:,ii));
             
-    % perform an initial search for the pupil with circleFit 
-    [pCenters, pRadii,~,~,~,~, pupilRange, ~] = ...
+    % perform an initial search for the pupil with circleFit. Also extract
+    % glint location and size information for later use.
+    [pCenters, pRadii,~,gCenters, gRadii,~, pupilRange, ~] = ...
         circleFit(thisFrame,...
         p.Results.pupilCircleThresh,...
         p.Results.glintCircleThresh,...
@@ -213,6 +214,18 @@ for ii = p.Results.startFrame:nFrames
         
         % get perimeter of object
         binP = bwperim(binP);
+        
+        % black out any residual glint component on the perimeter. This
+        % step will have no effect if the glint location is well within the
+        % pupil boundary. It will however remove any distortion of the
+        % perimeter if the glint happens to sit right on the pupil boundary
+        % and survives the fill holes step
+        glintPatch = ones(size(thisFrame));
+        glintPatch = insertShape(glintPatch,'FilledCircle',[gCenters(1,1) gCenters(1,2) round(gRadii(1)*1.2)],'Color','black');
+        glintPatch = im2bw(glintPatch);
+        
+        % apply glint patch
+        binP = immultiply(binP,glintPatch);
         
         % save the perimeter
         perimFrame = im2uint8(binP);
