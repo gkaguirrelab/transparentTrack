@@ -150,7 +150,7 @@ perimeter_data = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
 pupilRange= p.Results.pupilRange;
 
 % loop through gray frames
-for ii = p.Results.startFrame:p.Results.startFrame+nFrames
+for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
 
     if p.Results.displayMode && strcmp(get(figureHandle,'currentchar'),' ')
         close(figureHandle)
