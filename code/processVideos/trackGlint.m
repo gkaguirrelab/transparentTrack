@@ -72,7 +72,7 @@ p.addParameter('verbosity', 'none', @ischar);
 
 % circleFit routine params. Defined here for transparency
 p.addParameter('pupilOnly', false, @islogical);
-p.addParameter('glintOut', 0.1, @isnumeric);
+p.addParameter('glintOut', 0.15, @isnumeric);
 p.addParameter('dilateGlint', 6, @isnumeric);
 p.addParameter('imfindcirclesSensitivity', 0.99, @isnumeric);
 p.addParameter('rangeAdjust', 0.05, @isnumeric);
