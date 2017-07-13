@@ -215,7 +215,7 @@ for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
         % get perimeter of object
         binP = bwperim(binP);
         
-        if ~isempty(gCenters)
+        if ~isempty(gCenters) && ~p.Results.pupilOnly
             % black out any residual glint component on the perimeter. This
             % step will have no effect if the glint location is well within the
             % pupil boundary. It will however remove any distortion of the
