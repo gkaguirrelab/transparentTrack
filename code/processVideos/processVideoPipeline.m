@@ -8,7 +8,7 @@ p.addRequired('pathParams',@isstruct);
 
 % optional input
 p.addParameter('lastStage', 'makePupilFitVideo', @ischar);
-
+p.addParameter('skipStage', {}, @iscell);
 
 % parse
 p.parse(pathParams, varargin{:})
@@ -24,7 +24,7 @@ if ~exist(pathParams.controlFileDirFull,'dir')
 end
 
 
-%% Define inout and output filenames
+%% Define input and output filenames
 
 % Determine if the suffix of the raw file is "_raw.mov" or ".mov"
 if exist(fullfile(pathParams.dataSourceDirFull,[pathParams.runName '_raw.mov']),'file')
@@ -45,46 +45,60 @@ finalFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '
 %% Conduct the analysis
 
 % Convert raw video to cropped, resized, 60Hz gray
-raw2gray(rawVideoName,grayVideoName, varargin{:});
-if strcmp(p.Results.lastStage,'raw2gray')
-    return
+if ~any(strcmp(p.Results.skipStage,'raw2gray'))
+    raw2gray(rawVideoName,grayVideoName, varargin{:});
+    if strcmp(p.Results.lastStage,'raw2gray')
+        return
+    end
 end
 
 % track the glint
-trackGlint(grayVideoName, glintFileName, varargin{:});
-if strcmp(p.Results.lastStage,'trackGlint')
-    return
+if ~any(strcmp(p.Results.skipStage,'trackGlint'))
+    trackGlint(grayVideoName, glintFileName, varargin{:});
+    if strcmp(p.Results.lastStage,'trackGlint')
+        return
+    end
 end
 
 % extract pupil perimeter
-extractPupilPerimeter(grayVideoName, perimeterFileName, varargin{:});
-if strcmp(p.Results.lastStage,'extractPupilPerimeter')
-    return
+if ~any(strcmp(p.Results.skipStage,'extractPupilPerimeter'))
+    extractPupilPerimeter(grayVideoName, perimeterFileName, varargin{:});
+    if strcmp(p.Results.lastStage,'extractPupilPerimeter')
+        return
+    end
 end
 
 % generate preliminary control file
-makePreliminaryControlFile(controlFileName, perimeterFileName, glintFileName, varargin{:});
-if strcmp(p.Results.lastStage,'makePreliminaryControlFile')
-    return
+if ~any(strcmp(p.Results.skipStage,'makePreliminaryControlFile'))
+    makePreliminaryControlFile(controlFileName, perimeterFileName, glintFileName, varargin{:});
+    if strcmp(p.Results.lastStage,'makePreliminaryControlFile')
+        return
+    end
 end
 
 % correct the perimeter video
-correctPupilPerimeter(perimeterFileName,controlFileName,correctedPerimeterFileName, varargin{:});
-if strcmp(p.Results.lastStage,'correctPupilPerimeter')
-    return
+if ~any(strcmp(p.Results.skipStage,'correctPupilPerimeter'))
+    correctPupilPerimeter(perimeterFileName,controlFileName,correctedPerimeterFileName, varargin{:});
+    if strcmp(p.Results.lastStage,'correctPupilPerimeter')
+        return
+    end
 end
 
 % bayesian fit of the pupil on the corrected perimeter video
-bayesFitPupilPerimeter(correctedPerimeterFileName, ellipseFitFileName, varargin{:});
-if strcmp(p.Results.lastStage,'bayesFitPupilPerimeter')
-    return
+if ~any(strcmp(p.Results.skipStage,'bayesFitPupilPerimeter'))
+    bayesFitPupilPerimeter(correctedPerimeterFileName, ellipseFitFileName, varargin{:});
+    if strcmp(p.Results.lastStage,'bayesFitPupilPerimeter')
+        return
+    end
 end
 
 % create a video of the final fit
-makePupilFitVideo(grayVideoName, finalFitVideoName, ...
-    'glintFileName', glintFileName, 'perimeterFileName', correctedPerimeterFileName,...
-    'ellipseFitFileName', ellipseFitFileName, 'whichFieldToPlot', 'pPosteriorMeanTransparent', ...
-    'controlFileName',controlFileName,varargin{:});
+if ~any(strcmp(p.Results.skipStage,'makePupilFitVideo'))
+    makePupilFitVideo(grayVideoName, finalFitVideoName, ...
+        'glintFileName', glintFileName, 'perimeterFileName', correctedPerimeterFileName,...
+        'ellipseFitFileName', ellipseFitFileName, 'whichFieldToPlot', 'pPosteriorMeanTransparent', ...
+        'controlFileName',controlFileName,varargin{:});
+end
 
 end % function
 
