@@ -12,6 +12,9 @@ function correctPupilPerimeter(perimeterFileName, controlFileName, correctedPeri
 % - bad >> save out a black frame
 % - ellipse >> draw an ellipse with the given params into the frame
 % - cut >> cut the perimeter using radius and theta given
+% - error >> if any error occurred while compiling the automatic
+%       instructions the frame won't be corrected, but an error flag will be
+%       displayed for later inspection.
 % 
 % Note that each line of the control file is set of instructions for one
 % specifical video frame, identified by the FrameNumber. If there is no
@@ -113,6 +116,8 @@ for ii = 1:nFrames
                     img=blankFrame;
                 case 'bad'
                     img=blankFrame;
+                case 'error'
+                    % do not modify img at all 
                 case 'ellipse'
                     % get the instruction params
                     [cx, cy, a, b, phi] = parseInstructionParams(instructions(instructionIdx(dd)));
