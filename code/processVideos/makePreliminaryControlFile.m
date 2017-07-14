@@ -47,8 +47,21 @@ function makePreliminaryControlFile(controlFileName, perimeterFileName, glintFil
 %       block blinks.
 %   cutErrorThreshold - the distance error tolerated before attempting to
 %       cut
+%   pixelBoundaryThreshold - the number of pixels required to be on the
+%       pupil boundary (either originally or after cutting) to not be
+%       marked as bad
 %   ellipseTransparentLB/UB - the lower and upper bounds of the constrained
 %      ellipse fit that is used to judge the quality of different cuts.
+%   canidateThetas - A vector that gives the theta values at which to
+%       examine pupil cuts to improve the ellipse fit. pi/2 corresponds to
+%       the superior vertical medidian, while pi corresponds to the nasal
+%       horizontal vertical meridian. The default settings explore thetas
+%       in this range, accounting for intrusions on the pupil boundary from
+%       the eyelid, and from an IR shadow that is sometimes seen on the
+%       nasal border of the pupil.
+%   radiusDivisions - Controls how many divisions between the geometric
+%       center of the pupil perimeter and the outer edge are examined with
+%       a pupil cut.
 %
 % Optional key/value pairs (verbosity and I/O)
 %  'verbosity' - level of verbosity. [none, full]
@@ -82,6 +95,7 @@ p.addRequired('glintFileName',@isstr);
 
 % Optional analysis params
 p.addParameter('extendBlinkWindow', [4,7], @isnumeric);
+p.addParameter('pixelBoundaryThreshold', 50, @isnumeric);
 p.addParameter('cutErrorThreshold', 10, @isnumeric);
 p.addParameter('ellipseTransparentLB',[0, 0, 1000, 0, -0.5*pi],@isnumeric);
 p.addParameter('ellipseTransparentUB',[240,320,10000,0.417, 0.5*pi],@isnumeric);
@@ -230,6 +244,9 @@ parfor (ii = 1:nFrames, nWorkers)
     binP = squeeze(perimeter.data(:,:,ii));
     [Yp, Xp] = ind2sub(size(binP),find(binP));
     
+    % calculate the number of pixels that make up the perimeter
+    numberPerimeterPixels = length(Yp);
+    
     % define these so that the parfor loop is not concerned that the values
     % will not carry from one loop to the next
     smallestFittingError = NaN;
@@ -277,6 +294,12 @@ parfor (ii = 1:nFrames, nWorkers)
                     [~,col] = find(gridSearchResults==bestFitOnThisSearch);
                     frameRadii(ii)=candidateRadius;
                     frameThetas(ii)=p.Results.candidateThetas(col(1));
+                    
+                    % determine the number of pixels that remain on the
+                    % pupil boundary for this cut
+                    binPcut = cutPupil (binP, frameRadii(ii), frameThetas(ii));
+                    [tmpY, ~] = ind2sub(size(binPcut),find(binPcut));
+                    numberPerimeterPixels = length(tmpY);
                 end
                 
                 % Are we done searching? If not, shrink the radius
@@ -286,6 +309,7 @@ parfor (ii = 1:nFrames, nWorkers)
                     candidateRadius=candidateRadius - stepReducer;
                 end
             end % search over cuts
+
         catch
             % If there is a fitting error, tag this frame error and
             % continue with the parfor loop
@@ -294,9 +318,13 @@ parfor (ii = 1:nFrames, nWorkers)
         end % try-catch
         
         % If, after finishing the search, the bestFitOnThisSearch is still
-        % larger than the error threshold, tag this frame bad. 
-        if bestFitOnThisSearch > p.Results.cutErrorThreshold
-            frameBads(ii)=1;            
+        % larger than the error threshold, or there are too few pixels that 
+        % compose the boundary in this frame, then tag this frame bad. 
+        if bestFitOnThisSearch > p.Results.cutErrorThreshold || ...
+                numberPerimeterPixels < p.Results.pixelBoundaryThreshold
+            frameBads(ii)=1;
+            frameThetas(ii)=nan;
+            frameRadii(ii)=nan;
         end
         
     end % not an empty frame
@@ -373,7 +401,7 @@ end
 
 end % function
 
-function distanceError = calcErrorForACut(theFrame, radiusThresh, theta, lb, ub)
+function [distanceError] = calcErrorForACut(theFrame, radiusThresh, theta, lb, ub)
 [binPcut] = cutPupil (theFrame, radiusThresh, theta);
 [Yp, Xp] = ind2sub(size(binPcut),find(binPcut));
 [~, ~, distanceError] = constrainedEllipseFit(Xp, Yp, lb, ub, []);
