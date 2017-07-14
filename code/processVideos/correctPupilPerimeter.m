@@ -83,8 +83,8 @@ clear dataLoad
 
 % Set up some variables to guide the analysis and hold the result
 nFrames=size(originalPerimeter.data,3);
-blankFrame=originalPerimeter.data(:,:,1)*0;
-perimeter=originalPerimeter;
+blankFrame=uint8(zeros(size(originalPerimeter.data,1), size(originalPerimeter.data,2)) );
+perimeter.data=uint8(zeros(size(originalPerimeter.data)));
 
 % alert the user
 if strcmp(p.Results.verbosity,'full')
