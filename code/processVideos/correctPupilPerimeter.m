@@ -117,7 +117,7 @@ for ii = 1:nFrames
                 case 'bad'
                     img=blankFrame;
                 case 'error'
-                    % do not modify img at all 
+                    img=blankFrame;
                 case 'ellipse'
                     % get the instruction params
                     [cx, cy, a, b, phi] = parseInstructionParams(instructions(instructionIdx(dd)));
