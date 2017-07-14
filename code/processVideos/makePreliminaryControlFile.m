@@ -208,6 +208,7 @@ end
 frameRadii=nan(nFrames,1);
 frameThetas=nan(nFrames,1);
 frameBads=nan(nFrames,1);
+frameErrors=nan(nFrames,1);
 
 % alert the user
 if strcmp(p.Results.verbosity,'full')
@@ -236,57 +237,66 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % proceed if the frame is not empty and has not been tagged as a blink
     if ~ismember(ii,blinkFrames) && ~isempty(Xp)
-                
-        % fit an ellipse to the full perimeter using the constrainedEllipseFit
-        [~, ~, originalFittingError] = constrainedEllipseFit(Xp, Yp, ...
-            p.Results.ellipseTransparentLB, ...
-            p.Results.ellipseTransparentUB, []);
         
-        % if the fitting error is above the threshold, search over cuts
-        if originalFittingError > p.Results.cutErrorThreshold
-            smallestFittingError = originalFittingError;
-            stillSearching = true;
-        else
-            stillSearching = false;
-        end
-        
-        % We start with a cut radius that is one division below the maxium
-        % radius in the pupil boundary
-        maxRadius=round(max([max(Xp)-min(Xp),max(Yp)-min(Yp)])/2);
-        stepReducer = max([1,floor(maxRadius/p.Results.radiusDivisions)]);
-        candidateRadius=maxRadius - stepReducer;
-        
-        % Keep searching until we have a fit of accetable quality, or if
-        % the candidate radius drops below zero
-        while stillSearching && candidateRadius > 0
-
-            % Perform a grid search across thetas
-            [gridSearchRadii,gridSearchThetas] = ndgrid(candidateRadius,p.Results.candidateThetas);
-            myCutOptim = @(params) calcErrorForACut(binP, params(1), params(2), p.Results.ellipseTransparentLB, p.Results.ellipseTransparentUB);
-            gridSearchResults=arrayfun(@(k1,k2) myCutOptim([k1,k2]),gridSearchRadii,gridSearchThetas);
+        % add a try - catch here to prevent the code from breaking in case
+        % the ellipseFit/guess cut fails
+        try
+            % fit an ellipse to the full perimeter using the constrainedEllipseFit
+            [~, ~, originalFittingError] = constrainedEllipseFit(Xp, Yp, ...
+                p.Results.ellipseTransparentLB, ...
+                p.Results.ellipseTransparentUB, []);
             
-            % Store the best cut from this search
-            bestFitOnThisSearch=min(min(gridSearchResults));
-            
-            if bestFitOnThisSearch < smallestFittingError
-                smallestFittingError=bestFitOnThisSearch;
-                [~,col] = find(gridSearchResults==bestFitOnThisSearch);
-                frameRadii(ii)=candidateRadius;
-                frameThetas(ii)=p.Results.candidateThetas(col(1));
-            end
-            
-            % Are we done searching? If not, shrink the radius 
-            if bestFitOnThisSearch < p.Results.cutErrorThreshold
-                stillSearching = false;
+            % if the fitting error is above the threshold, search over cuts
+            if originalFittingError > p.Results.cutErrorThreshold
+                smallestFittingError = originalFittingError;
+                stillSearching = true;
             else
-                candidateRadius=candidateRadius - stepReducer;
+                stillSearching = false;
             end
-        end % search over cuts
+            
+            % We start with a cut radius that is one division below the maxium
+            % radius in the pupil boundary
+            maxRadius=round(max([max(Xp)-min(Xp),max(Yp)-min(Yp)])/2);
+            stepReducer = max([1,floor(maxRadius/p.Results.radiusDivisions)]);
+            candidateRadius=maxRadius - stepReducer;
+            
+            % Keep searching until we have a fit of accetable quality, or if
+            % the candidate radius drops below zero
+            while stillSearching && candidateRadius > 0
+                
+                % Perform a grid search across thetas
+                [gridSearchRadii,gridSearchThetas] = ndgrid(candidateRadius,p.Results.candidateThetas);
+                myCutOptim = @(params) calcErrorForACut(binP, params(1), params(2), p.Results.ellipseTransparentLB, p.Results.ellipseTransparentUB);
+                gridSearchResults=arrayfun(@(k1,k2) myCutOptim([k1,k2]),gridSearchRadii,gridSearchThetas);
+                
+                % Store the best cut from this search
+                bestFitOnThisSearch=min(min(gridSearchResults));
+                
+                if bestFitOnThisSearch < smallestFittingError
+                    smallestFittingError=bestFitOnThisSearch;
+                    [~,col] = find(gridSearchResults==bestFitOnThisSearch);
+                    frameRadii(ii)=candidateRadius;
+                    frameThetas(ii)=p.Results.candidateThetas(col(1));
+                end
+                
+                % Are we done searching? If not, shrink the radius
+                if bestFitOnThisSearch < p.Results.cutErrorThreshold
+                    stillSearching = false;
+                else
+                    candidateRadius=candidateRadius - stepReducer;
+                end
+            end % search over cuts
+        catch
+            % If there is a fitting error, tag this frame error and
+            % continue with the parfor loop
+             frameErrors(ii)=1;
+             continue
+        end % try-catch
         
         % If, after finishing the search, the bestFitOnThisSearch is still
-        % larger than the error threshold, tag this frame bad
+        % larger than the error threshold, tag this frame bad. 
         if bestFitOnThisSearch > p.Results.cutErrorThreshold
-            frameBads(ii)=1;
+            frameBads(ii)=1;            
         end
         
     end % not an empty frame
@@ -325,6 +335,16 @@ if ~isempty(badFrameIdx)
     for cc = 1 : length(badFrameIdx)
         frameIdx=badFrameIdx(cc);
         instruction = [num2str(frameIdx) ',' 'bad' ];
+        fprintf(fid,'%s\n',instruction);
+        clear instruction
+    end
+end
+% write out error frames
+errorFrameIdx=find(~isnan(frameErrors));
+if ~isempty(errorFrameIdx)
+    for cc = 1 : length(errorFrameIdx)
+        frameIdx=errorFrameIdx(cc);
+        instruction = [num2str(frameIdx) ',' 'error' ];
         fprintf(fid,'%s\n',instruction);
         clear instruction
     end
