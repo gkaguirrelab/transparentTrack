@@ -102,13 +102,14 @@ for ii = 1:nFrames
     if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
         fprintf('.');
     end
+    
+    % Obtain this frame
+    img = squeeze(originalPerimeter.data(:,:,ii));
 
-    % Proceed if there areinstructions for this frame
+    % Proceed if there are instructions for this frame
     instructionIdx = find ([instructions.frame] == ii);    
     if ~isempty(instructionIdx)
         
-        % Obtain this frame
-        img = squeeze(originalPerimeter.data(:,:,ii));
 
         for dd=1:length(instructionIdx)
             switch instructions(instructionIdx(dd)).type
@@ -138,10 +139,11 @@ for ii = 1:nFrames
                     warning(['Instruction ' instructions(instructionIdx(dd)).type ' for frame ' num2str(ii) ' is unrecognized.']);
             end % switch instruction types
         end % loop over instructions
-
-        % save modified frame
-        perimeter.data(:,:,ii)=img;
     end % we have instructions for this frame
+        
+    % save the frame, which may include modifications
+    perimeter.data(:,:,ii)=img;
+
 end % loop through frames
 
 % save mat file with the video and analysis details
