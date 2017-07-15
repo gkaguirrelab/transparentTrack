@@ -16,11 +16,11 @@ returnRotMat = @(theta) [cos(theta) -sin(theta); sin(theta) cos(theta)];
 [Yp, Xp] = ind2sub(size(binP),find(binP));
 
 % Create a matrix that will center the pupil boundary points relative to
-% the glint
+% the center of the boundary points
 xCenter=min(Xp)+(max(Xp)-min(Xp))/2;
 yCenter=min(Yp)+(max(Yp)-min(Yp))/2;
 centerMatrix = repmat([xCenter'; yCenter'], 1, length(Xp));
-                
+
 % Rotate the boundary points by theta radians
 rotatedPoints = returnRotMat(theta) * ([Xp,Yp]' - centerMatrix) + centerMatrix;
                 
@@ -31,7 +31,7 @@ toBeKeptIdx = (find(rotatedPoints(2,:) <= (yCenter+radiusThresh)))';
 % Image the kept points
 if ~isempty(toBeKeptIdx)
     linearInd = sub2ind(size(binP), Yp(toBeKeptIdx), Xp(toBeKeptIdx));
-    binPcut(linearInd)=1;
+    binPcut(linearInd)=255;
 end
 
 
