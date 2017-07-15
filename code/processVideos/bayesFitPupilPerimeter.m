@@ -306,7 +306,7 @@ else
                     
                     % Calculate the SD of the parameters across splits, scaling by
                     % sqrt(2) to roughly account for our use of just half the data
-                    pInitialFitSplitsSD=std(reshape(pFitTransparentSplit,ss*2,nEllipseParams))/sqrt(2);
+                    pInitialFitSplitsSD=nanstd(reshape(pFitTransparentSplit,ss*2,nEllipseParams))/sqrt(2);
                 end % check if we want to do splits
                 
                 % Obtain the SD of the parameters through a bootstrap resample
@@ -315,7 +315,7 @@ else
                     pInitialFitBootsSD=NaN(1,nEllipseParams);
                 else
                     bootOptSet = statset('UseParallel',p.Results.useParallel);
-                    pInitialFitBootsSD = std(bootstrp(p.Results.nBoots,obtainPupilLikelihood,Xc,Yc,'Options',bootOptSet));
+                    pInitialFitBootsSD = nanstd(bootstrp(p.Results.nBoots,obtainPupilLikelihood,Xc,Yc,'Options',bootOptSet));
                 end % check if we want to do bootstraps
                 
             end % check if there are pupil boundary data to be fit
@@ -408,8 +408,9 @@ parfor (ii = 1:nFrames, nWorkers)
     pLikelihoodSDTransparent=NaN(1,nEllipseParams);
     fitError=NaN;
     
-    % if this frame has data, calculate the posterior
-    if ~isempty(Xc) &&  ~isempty(Yc)
+    % if this frame has data, and the initial ellipse fit is not nan, 
+    % then proceed to calculate the posterior
+    if ~isempty(Xc) &&  ~isempty(Yc) && sum(isnan(ellipseFitData.pInitialFitTransparent(ii,:)))==0
         % Calculate the prior. The prior mean is given by the surrounding
         % fit values, weighted by a decaying exponential in time and the
         % inverse of the standard deviation of each measure. The prior
