@@ -67,9 +67,6 @@ p.addParameter('glintCircleThresh', 0.999, @isnumeric);
 p.addParameter('glintRange', [10 30], @isnumeric);
 p.addParameter('maskBox', [0.20 0.75], @isnumeric);
 p.addParameter('smallObjThresh', 500, @isnumeric);
-p.addParameter('adaptHisEq', true, @islogical);
-p.addParameter('localContrastEdgeThresh', 0.5, @isnumeric);
-p.addParameter('localContrastAmount', 0.5, @isnumeric);
 
 % circleFit routine params. Defined here for transparency
 p.addParameter('pupilOnly', false, @islogical);
@@ -150,7 +147,7 @@ perimeter_data = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
 pupilRange= p.Results.pupilRange;
 
 % loop through gray frames
-for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
+for ii = p.Results.startFrame:nFrames
 
     if p.Results.displayMode && strcmp(get(figureHandle,'currentchar'),' ')
         close(figureHandle)
@@ -175,8 +172,33 @@ for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
         p.Results.glintRange,...
         p.Results.pupilOnly,p.Results.glintOut,p.Results.dilateGlint,p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust);
     
-    % If a pupil circle patch was found, get the perimeter, else write out
-    % a zero-filled frame
+    % If a pupile circle patch was not found, try again after expanding the
+    % pupil search range by 50%, then 100%
+    if isempty(pCenters) % try 50% increase
+        initialPupilRange = pupilRange;
+        [pCenters, pRadii,~,gCenters, gRadii,~, pupilRange, ~] = ...
+            circleFit(thisFrame,...
+            p.Results.pupilCircleThresh,...
+            p.Results.glintCircleThresh,...
+            [ceil(pupilRange(1)/1.5) round(pupilRange(2)*1.5)],...
+            p.Results.glintRange,...
+            p.Results.pupilOnly,p.Results.glintOut,p.Results.dilateGlint,p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust);
+        if isempty(pCenters) % still no circle? Try 100% increase
+            [pCenters, pRadii,~,gCenters, gRadii,~, pupilRange, ~] = ...
+                circleFit(thisFrame,...
+                p.Results.pupilCircleThresh,...
+                p.Results.glintCircleThresh,...
+                [ceil(pupilRange(1)/2) round(pupilRange(2)*2)],...
+                p.Results.glintRange,...
+                p.Results.pupilOnly,p.Results.glintOut,p.Results.dilateGlint,p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust);
+            if isempty(pCenters) % STILL no circle? Give up and restore initialPupilRange
+                pupilRange = initialPupilRange;
+            end
+        end
+    end
+    
+    % If a pupil circle patch was ultimately found, get the perimeter, else
+    % write out a zero-filled frame
     if ~isempty(pCenters)
         
         % structuring element for pupil mask size. This is a rectangular
