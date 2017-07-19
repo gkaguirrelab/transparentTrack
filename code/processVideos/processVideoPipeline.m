@@ -43,6 +43,8 @@ finalFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '
 
 
 %% Conduct the analysis
+% NOTE: some of the analysis steps are wrapped in a while+try/catch loop to
+% fix the matlabprefs.mat corruption bug.
 
 % Convert raw video to cropped, resized, 60Hz gray
 if ~any(strcmp(p.Results.skipStage,'raw2gray'))
@@ -54,7 +56,26 @@ end
 
 % track the glint
 if ~any(strcmp(p.Results.skipStage,'trackGlint'))
-    trackGlint(grayVideoName, glintFileName, varargin{:});
+    % intialize while control
+    success = 0;
+    while ~success
+        try
+            trackGlint(grayVideoName, glintFileName, varargin{:});
+            success = 1;
+        catch ME
+            % if there is a corruption error clear matlabprefs.mat and try again
+            if (strcmp(ME.message, ...
+                    'Unable to read MAT-file /Users/giulia/Library/Application Support/MathWorks/MATLAB/R2016b/matlabprefs.mat. File might be corrupt.'))
+                warning ('File matlabprefs.mat corrupt during execution. Cleaning up and trying again.')
+                matlabprefsCleanup;
+                success = 0;
+            else
+                rethrow(ME)
+            end
+        end
+    end
+    % clear while control
+    clear success
     if strcmp(p.Results.lastStage,'trackGlint')
         return
     end
@@ -70,7 +91,25 @@ end
 
 % generate preliminary control file
 if ~any(strcmp(p.Results.skipStage,'makePreliminaryControlFile'))
-    makePreliminaryControlFile(controlFileName, perimeterFileName, glintFileName, varargin{:});
+    % intialize while control
+    success = 0;
+    while ~success
+        try
+            makePreliminaryControlFile(controlFileName, perimeterFileName, glintFileName, varargin{:});
+        catch ME
+            % if there is a corruption error clear matlabprefs.mat and try again
+            if (strcmp(ME.message, ...
+                    'Unable to read MAT-file /Users/giulia/Library/Application Support/MathWorks/MATLAB/R2016b/matlabprefs.mat. File might be corrupt.'))
+                warning ('File matlabprefs.mat corrupt during execution. Cleaning up and trying again.')
+                matlabprefsCleanup;
+                success = 0;
+            else
+                rethrow(ME)
+            end
+        end
+    end
+    % clear while control
+    clear success
     if strcmp(p.Results.lastStage,'makePreliminaryControlFile')
         return
     end
@@ -78,7 +117,25 @@ end
 
 % correct the perimeter video
 if ~any(strcmp(p.Results.skipStage,'correctPupilPerimeter'))
-    correctPupilPerimeter(perimeterFileName,controlFileName,correctedPerimeterFileName, varargin{:});
+    % intialize while control
+    success = 0;
+    while ~success
+        try
+            correctPupilPerimeter(perimeterFileName,controlFileName,correctedPerimeterFileName, varargin{:});
+        catch ME
+            % if there is a corruption error clear matlabprefs.mat and try again
+            if (strcmp(ME.message, ...
+                    'Unable to read MAT-file /Users/giulia/Library/Application Support/MathWorks/MATLAB/R2016b/matlabprefs.mat. File might be corrupt.'))
+                warning ('File matlabprefs.mat corrupt during execution. Cleaning up and trying again.')
+                matlabprefsCleanup;
+                success = 0;
+            else
+                rethrow(ME)
+            end
+        end
+    end
+    % clear while control
+    clear success
     if strcmp(p.Results.lastStage,'correctPupilPerimeter')
         return
     end
@@ -86,7 +143,25 @@ end
 
 % bayesian fit of the pupil on the corrected perimeter video
 if ~any(strcmp(p.Results.skipStage,'bayesFitPupilPerimeter'))
-    bayesFitPupilPerimeter(correctedPerimeterFileName, ellipseFitFileName, varargin{:});
+    % intialize while control
+    success = 0;
+    while ~success
+        try
+            bayesFitPupilPerimeter(correctedPerimeterFileName, ellipseFitFileName, varargin{:});
+        catch ME
+            % if there is a corruption error clear matlabprefs.mat and try again
+            if (strcmp(ME.message, ...
+                    'Unable to read MAT-file /Users/giulia/Library/Application Support/MathWorks/MATLAB/R2016b/matlabprefs.mat. File might be corrupt.'))
+                warning ('File matlabprefs.mat corrupt during execution. Cleaning up and trying again.')
+                matlabprefsCleanup;
+                success = 0;
+            else
+                rethrow(ME)
+            end
+        end
+    end
+    % clear while control
+    clear success
     if strcmp(p.Results.lastStage,'bayesFitPupilPerimeter')
         return
     end
@@ -94,10 +169,28 @@ end
 
 % create a video of the final fit
 if ~any(strcmp(p.Results.skipStage,'makePupilFitVideo'))
-    makePupilFitVideo(grayVideoName, finalFitVideoName, ...
-        'glintFileName', glintFileName, 'perimeterFileName', correctedPerimeterFileName,...
-        'ellipseFitFileName', ellipseFitFileName, 'whichFieldToPlot', 'pPosteriorMeanTransparent', ...
-        'controlFileName',controlFileName,varargin{:});
+    % intialize while control
+    success = 0;
+    while ~success
+        try
+            makePupilFitVideo(grayVideoName, finalFitVideoName, ...
+                'glintFileName', glintFileName, 'perimeterFileName', correctedPerimeterFileName,...
+                'ellipseFitFileName', ellipseFitFileName, 'whichFieldToPlot', 'pPosteriorMeanTransparent', ...
+                'controlFileName',controlFileName,varargin{:});
+        catch ME
+            % if there is a corruption error clear matlabprefs.mat and try again
+            if (strcmp(ME.message, ...
+                    'Unable to read MAT-file /Users/giulia/Library/Application Support/MathWorks/MATLAB/R2016b/matlabprefs.mat. File might be corrupt.'))
+                warning ('File matlabprefs.mat corrupt during execution. Cleaning up and trying again.')
+                matlabprefsCleanup;
+                success = 0;
+            else
+                rethrow(ME)
+            end
+        end
+    end
+    % clear while control
+    clear success
 end
 
 end % function
