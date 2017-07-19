@@ -69,6 +69,12 @@ if ~any(strcmp(p.Results.skipStage,'trackGlint'))
                 warning ('File matlabprefs.mat corrupt during execution. Cleaning up and trying again.')
                 matlabprefsCleanup;
                 success = 0;
+                % if a parpool is already open, close it and try again
+            elseif (strcmp(ME.message, ...
+                    'Found an interactive session. You cannot have multiple interactive sessions open simultaneously. To terminate the existing session, use ''delete(gcp(''nocreate''))''.'))
+                warning ('Found an parpool already open. Closing it and trying again.')
+                delete(gcp('nocreate'))
+                success = 0;
             else
                 rethrow(ME)
             end
@@ -83,7 +89,32 @@ end
 
 % extract pupil perimeter
 if ~any(strcmp(p.Results.skipStage,'extractPupilPerimeter'))
-    extractPupilPerimeter(grayVideoName, perimeterFileName, varargin{:});
+    % intialize while control
+    success = 0;
+    while ~success
+        try
+            extractPupilPerimeter(grayVideoName, perimeterFileName, varargin{:});
+            success = 1;
+        catch ME
+            % if there is a corruption error clear matlabprefs.mat and try again
+            if (strcmp(ME.message, ...
+                    'Unable to read MAT-file /Users/giulia/Library/Application Support/MathWorks/MATLAB/R2016b/matlabprefs.mat. File might be corrupt.'))
+                warning ('File matlabprefs.mat corrupt during execution. Cleaning up and trying again.')
+                matlabprefsCleanup;
+                success = 0;
+                % if a parpool is already open, close it and try again
+            elseif (strcmp(ME.message, ...
+                    'Found an interactive session. You cannot have multiple interactive sessions open simultaneously. To terminate the existing session, use ''delete(gcp(''nocreate''))''.'))
+                warning ('Found an parpool already open. Closing it and trying again.')
+                delete(gcp('nocreate'))
+                success = 0;
+            else
+                rethrow(ME)
+            end
+        end
+    end
+    % clear while control
+    clear success
     if strcmp(p.Results.lastStage,'extractPupilPerimeter')
         return
     end
@@ -96,12 +127,19 @@ if ~any(strcmp(p.Results.skipStage,'makePreliminaryControlFile'))
     while ~success
         try
             makePreliminaryControlFile(controlFileName, perimeterFileName, glintFileName, varargin{:});
+            success = 1;
         catch ME
             % if there is a corruption error clear matlabprefs.mat and try again
             if (strcmp(ME.message, ...
                     'Unable to read MAT-file /Users/giulia/Library/Application Support/MathWorks/MATLAB/R2016b/matlabprefs.mat. File might be corrupt.'))
                 warning ('File matlabprefs.mat corrupt during execution. Cleaning up and trying again.')
                 matlabprefsCleanup;
+                success = 0;
+                % if a parpool is already open, close it and try again
+            elseif (strcmp(ME.message, ...
+                    'Found an interactive session. You cannot have multiple interactive sessions open simultaneously. To terminate the existing session, use ''delete(gcp(''nocreate''))''.'))
+                warning ('Found an parpool already open. Closing it and trying again.')
+                delete(gcp('nocreate'))
                 success = 0;
             else
                 rethrow(ME)
@@ -122,12 +160,19 @@ if ~any(strcmp(p.Results.skipStage,'correctPupilPerimeter'))
     while ~success
         try
             correctPupilPerimeter(perimeterFileName,controlFileName,correctedPerimeterFileName, varargin{:});
+            success = 1;
         catch ME
             % if there is a corruption error clear matlabprefs.mat and try again
             if (strcmp(ME.message, ...
                     'Unable to read MAT-file /Users/giulia/Library/Application Support/MathWorks/MATLAB/R2016b/matlabprefs.mat. File might be corrupt.'))
                 warning ('File matlabprefs.mat corrupt during execution. Cleaning up and trying again.')
                 matlabprefsCleanup;
+                success = 0;
+                % if a parpool is already open, close it and try again
+            elseif (strcmp(ME.message, ...
+                    'Found an interactive session. You cannot have multiple interactive sessions open simultaneously. To terminate the existing session, use ''delete(gcp(''nocreate''))''.'))
+                warning ('Found an parpool already open. Closing it and trying again.')
+                delete(gcp('nocreate'))
                 success = 0;
             else
                 rethrow(ME)
@@ -148,12 +193,19 @@ if ~any(strcmp(p.Results.skipStage,'bayesFitPupilPerimeter'))
     while ~success
         try
             bayesFitPupilPerimeter(correctedPerimeterFileName, ellipseFitFileName, varargin{:});
+            success = 1;
         catch ME
             % if there is a corruption error clear matlabprefs.mat and try again
             if (strcmp(ME.message, ...
                     'Unable to read MAT-file /Users/giulia/Library/Application Support/MathWorks/MATLAB/R2016b/matlabprefs.mat. File might be corrupt.'))
                 warning ('File matlabprefs.mat corrupt during execution. Cleaning up and trying again.')
                 matlabprefsCleanup;
+                success = 0;
+                % if a parpool is already open, close it and try again
+            elseif (strcmp(ME.message, ...
+                    'Found an interactive session. You cannot have multiple interactive sessions open simultaneously. To terminate the existing session, use ''delete(gcp(''nocreate''))''.'))
+                warning ('Found an parpool already open. Closing it and trying again.')
+                delete(gcp('nocreate'))
                 success = 0;
             else
                 rethrow(ME)
@@ -177,12 +229,19 @@ if ~any(strcmp(p.Results.skipStage,'makePupilFitVideo'))
                 'glintFileName', glintFileName, 'perimeterFileName', correctedPerimeterFileName,...
                 'ellipseFitFileName', ellipseFitFileName, 'whichFieldToPlot', 'pPosteriorMeanTransparent', ...
                 'controlFileName',controlFileName,varargin{:});
+            success = 1;
         catch ME
             % if there is a corruption error clear matlabprefs.mat and try again
             if (strcmp(ME.message, ...
                     'Unable to read MAT-file /Users/giulia/Library/Application Support/MathWorks/MATLAB/R2016b/matlabprefs.mat. File might be corrupt.'))
                 warning ('File matlabprefs.mat corrupt during execution. Cleaning up and trying again.')
                 matlabprefsCleanup;
+                success = 0;
+                % if a parpool is already open, close it and try again
+            elseif (strcmp(ME.message, ...
+                    'Found an interactive session. You cannot have multiple interactive sessions open simultaneously. To terminate the existing session, use ''delete(gcp(''nocreate''))''.'))
+                warning ('Found an parpool already open. Closing it and trying again.')
+                delete(gcp('nocreate'))
                 success = 0;
             else
                 rethrow(ME)
