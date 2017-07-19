@@ -39,55 +39,65 @@ perimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '
 controlFileName = fullfile(pathParams.controlFileDirFull, [pathParams.runName '_controlFile.csv']);
 correctedPerimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_correctedPerimeter.mat']);
 ellipseFitFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_pupil.mat']);
+irisFitFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_iris.mat']);
+palpebralFissureFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_palpebralFissure.mat']);
 finalFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_finalFit.mat']);
 
 
 %% Conduct the analysis
+% 
+% % Convert raw video to cropped, resized, 60Hz gray
+% if ~any(strcmp(p.Results.skipStage,'raw2gray'))
+%     raw2gray(rawVideoName,grayVideoName, varargin{:});
+%     if strcmp(p.Results.lastStage,'raw2gray')
+%         return
+%     end
+% end
+% 
+% % track the glint
+% if ~any(strcmp(p.Results.skipStage,'trackGlint'))
+%     trackGlint(grayVideoName, glintFileName, varargin{:});
+%     if strcmp(p.Results.lastStage,'trackGlint')
+%         return
+%     end
+% end
+% 
+% % extract pupil perimeter
+% if ~any(strcmp(p.Results.skipStage,'extractPupilPerimeter'))
+%     extractPupilPerimeter(grayVideoName, perimeterFileName, varargin{:});
+%     if strcmp(p.Results.lastStage,'extractPupilPerimeter')
+%         return
+%     end
+% end
+% 
+% % generate preliminary control file
+% if ~any(strcmp(p.Results.skipStage,'makePreliminaryControlFile'))
+%     makePreliminaryControlFile(controlFileName, perimeterFileName, glintFileName, varargin{:});
+%     if strcmp(p.Results.lastStage,'makePreliminaryControlFile')
+%         return
+%     end
+% end
+% 
+% % correct the perimeter video
+% if ~any(strcmp(p.Results.skipStage,'correctPupilPerimeter'))
+%     correctPupilPerimeter(perimeterFileName,controlFileName,correctedPerimeterFileName, varargin{:});
+%     if strcmp(p.Results.lastStage,'correctPupilPerimeter')
+%         return
+%     end
+% end
+% 
+% % bayesian fit of the pupil on the corrected perimeter video
+% if ~any(strcmp(p.Results.skipStage,'bayesFitPupilPerimeter'))
+%     bayesFitPupilPerimeter(correctedPerimeterFileName, ellipseFitFileName, varargin{:});
+%     if strcmp(p.Results.lastStage,'bayesFitPupilPerimeter')
+%         return
+%     end
+% end
 
-% Convert raw video to cropped, resized, 60Hz gray
-if ~any(strcmp(p.Results.skipStage,'raw2gray'))
-    raw2gray(rawVideoName,grayVideoName, varargin{:});
-    if strcmp(p.Results.lastStage,'raw2gray')
-        return
-    end
-end
-
-% track the glint
-if ~any(strcmp(p.Results.skipStage,'trackGlint'))
-    trackGlint(grayVideoName, glintFileName, varargin{:});
-    if strcmp(p.Results.lastStage,'trackGlint')
-        return
-    end
-end
-
-% extract pupil perimeter
-if ~any(strcmp(p.Results.skipStage,'extractPupilPerimeter'))
-    extractPupilPerimeter(grayVideoName, perimeterFileName, varargin{:});
-    if strcmp(p.Results.lastStage,'extractPupilPerimeter')
-        return
-    end
-end
-
-% generate preliminary control file
-if ~any(strcmp(p.Results.skipStage,'makePreliminaryControlFile'))
-    makePreliminaryControlFile(controlFileName, perimeterFileName, glintFileName, varargin{:});
-    if strcmp(p.Results.lastStage,'makePreliminaryControlFile')
-        return
-    end
-end
-
-% correct the perimeter video
-if ~any(strcmp(p.Results.skipStage,'correctPupilPerimeter'))
-    correctPupilPerimeter(perimeterFileName,controlFileName,correctedPerimeterFileName, varargin{:});
-    if strcmp(p.Results.lastStage,'correctPupilPerimeter')
-        return
-    end
-end
-
-% bayesian fit of the pupil on the corrected perimeter video
-if ~any(strcmp(p.Results.skipStage,'bayesFitPupilPerimeter'))
-    bayesFitPupilPerimeter(correctedPerimeterFileName, ellipseFitFileName, varargin{:});
-    if strcmp(p.Results.lastStage,'bayesFitPupilPerimeter')
+% fit Iris and palpebral fissure
+if ~any(strcmp(p.Results.skipStage,'fitIrisAndPalpebralFissure'))
+    fitIrisAndPalpebralFissure(grayVideoName, perimeterFileName, ellipseFitFileName, irisFitFileName, palpebralFissureFileName, varargin{:});
+    if strcmp(p.Results.lastStage,'fitIrisAndPalpebralFissure')
         return
     end
 end
@@ -97,6 +107,7 @@ if ~any(strcmp(p.Results.skipStage,'makePupilFitVideo'))
     makePupilFitVideo(grayVideoName, finalFitVideoName, ...
         'glintFileName', glintFileName, 'perimeterFileName', correctedPerimeterFileName,...
         'ellipseFitFileName', ellipseFitFileName, 'whichFieldToPlot', 'pPosteriorMeanTransparent', ...
+        'irisFitFileName', irisFitFileName, ...
         'controlFileName',controlFileName,varargin{:});
 end
 

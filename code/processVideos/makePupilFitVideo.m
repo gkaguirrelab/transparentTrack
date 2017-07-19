@@ -57,6 +57,8 @@ p.addParameter('perimeterColor','w',@isstring);
 p.addParameter('ellipseFitFileName',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('ellipseColor','green',@isstring);
 p.addParameter('whichFieldToPlot', [],@(x)(isempty(x) | ischar(x)));
+p.addParameter('irisFitFileName',[],@(x)(isempty(x) | ischar(x)));
+p.addParameter('irisColor','purple',@isstring);
 p.addParameter('controlFileName',[],@(x)(isempty(x) | ischar(x)));
 
 % parse
@@ -127,6 +129,14 @@ if ~isempty(p.Results.ellipseFitFileName)
     ellipseFitData = dataLoad.ellipseFitData;
     clear dataLoad
     ellipseFitParams = ellipseFitData.(p.Results.whichFieldToPlot);
+end
+
+% Read in the irisFitData file if passed
+if ~isempty(p.Results.irisFitFileName)
+    dataLoad = load(p.Results.irisFitFileName);
+    irisFitData = dataLoad.irisFitData;
+    clear dataLoad
+    meanIrisRadius = nanmean(irisFitData.radius);
 end
 
 % Read in and parse the control file if passed
@@ -203,6 +213,23 @@ for ii=1:nFrames
             else
                 plotHandle=ezplot(fh,[1, videoSizeY, 1, videoSizeX]);
                 set(plotHandle, 'Color', p.Results.ellipseColor)
+            end
+        end
+    end
+    
+    % add iris fit
+    if ~isempty(p.Results.irisFitFileName)
+        if ~isnan(irisFitData.X(ii))
+            % build circle impicit equation
+            fh=@(x,y) irisFitData.X(ii).*x.^2 +irisFitData.Y(ii).*y.^2 - meanIrisRadius;
+            % superimpose the ellipse using fimplicit or ezplot
+            if exist('fimplicit','file')==2
+                fimplicit(fh,[1, videoSizeY, 1, videoSizeX],'Color', p.Results.irisColor);
+                set(gca,'position',[0 0 1 1],'units','normalized')
+                axis off;
+            else
+                plotHandle=ezplot(fh,[1, videoSizeY, 1, videoSizeX]);
+                set(plotHandle, 'Color', p.Results.irisColor)
             end
         end
     end
