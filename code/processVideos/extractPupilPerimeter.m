@@ -1,6 +1,6 @@
 function extractPupilPerimeter(grayVideoName, perimeterFileName, varargin)
 % function extractPupilPerimeter(grayVideoName, perimeterVideoName,varargin)
-% 
+%
 % This function thresholds the video to extract the pupil perimeter.
 %
 % An initial search for the pupil border is performed with the circleFit
@@ -8,19 +8,19 @@ function extractPupilPerimeter(grayVideoName, perimeterFileName, varargin)
 % binarize the resulting "patch" image with a user determined threshold,
 % and extract the perimeter of the bigger region surviving the thresholding
 % process (believed to be the pupil).
-% 
+%
 % Output
 %   perimeter - structure with a 'data' field containing a 3D matrix
 %       (video height x video width x nFrames) containing the pupil
 %       perimeter, and a meta field with analysis and environment params.
-% 
+%
 % Input (required)
 %	grayVideoName - full path to  the gray video to track
 %	perimeterFileName - full path to the .mat file in which to save the
 %       output.
-%       
+%
 % Options (analysis)
-% 	gammaCorrection - gamma correction to be applied to the video frames 
+% 	gammaCorrection - gamma correction to be applied to the video frames
 %       (default 1, typical range [0.5 1.8])
 %   pupilCircleThresh - threshold value to locate the glint for circle
 %       fitting (default 0.06, typical range [0.04 0.09])
@@ -34,7 +34,7 @@ function extractPupilPerimeter(grayVideoName, perimeterFileName, varargin)
 %       will result in a masked region that is twice the size of the pupil
 %       radius.
 %   smallObjThresh - DEFINE HERE
-% 
+%
 % Options (verbosity and display)
 %   verbosity - controls console status updates
 %   displayMode - when set to true, displays the results of the boundary
@@ -48,8 +48,8 @@ function extractPupilPerimeter(grayVideoName, perimeterFileName, varargin)
 %   tbSnapshot - the passed tbSnapshot output that is to be saved along
 %      with the data
 %   timestamp / username / hostname - these are automatically derived and
-%      saved within the p.Results structure. 
-% 
+%      saved within the p.Results structure.
+%
 
 
 %% Parse input and define variables
@@ -62,14 +62,11 @@ p.addRequired('perimeterFileName',@isstr);
 % Optional analysis params
 p.addParameter('gammaCorrection', 1, @isnumeric);
 p.addParameter('pupilCircleThresh', 0.06, @isnumeric);
-p.addParameter('pupilRange', [30 90], @isnumeric);
+p.addParameter('pupilRange', [20 120], @isnumeric);
 p.addParameter('glintCircleThresh', 0.999, @isnumeric);
 p.addParameter('glintRange', [10 30], @isnumeric);
 p.addParameter('maskBox', [0.20 0.75], @isnumeric);
 p.addParameter('smallObjThresh', 500, @isnumeric);
-p.addParameter('adaptHisEq', true, @islogical);
-p.addParameter('localContrastEdgeThresh', 0.5, @isnumeric);
-p.addParameter('localContrastAmount', 0.5, @isnumeric);
 
 % circleFit routine params. Defined here for transparency
 p.addParameter('pupilOnly', false, @islogical);
@@ -126,10 +123,10 @@ clear videoInObj
 if p.Results.displayMode
     fprintf('** DISPLAY MODE **\n')
     fprintf('Results will not be saved. Press space at any time to quit routine.\n')
-
+    
     % create a figure for display
     figureHandle=figure();
-
+    
     % we will monitor the currentchar for a 'q'
     set(figureHandle,'currentchar','?')
 end
@@ -150,13 +147,13 @@ perimeter_data = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
 pupilRange= p.Results.pupilRange;
 
 % loop through gray frames
-for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
-
+for ii = p.Results.startFrame:nFrames
+    
     if p.Results.displayMode && strcmp(get(figureHandle,'currentchar'),' ')
         close(figureHandle)
         return
     end
-        
+    
     % increment the progress bar
     if strcmp(p.Results.verbosity,'full') && mod(ii-p.Results.startFrame+1,round(nFrames/50))==0
         fprintf('.');
@@ -164,7 +161,10 @@ for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
     
     % get the frame
     thisFrame = squeeze(grayVideo(:,:,ii));
-            
+    
+    % store the current pupilRange
+    initialPupilRange = pupilRange;    
+    
     % perform an initial search for the pupil with circleFit. Also extract
     % glint location and size information for later use.
     [pCenters, pRadii,~,gCenters, gRadii,~, pupilRange, ~] = ...
@@ -175,8 +175,33 @@ for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
         p.Results.glintRange,...
         p.Results.pupilOnly,p.Results.glintOut,p.Results.dilateGlint,p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust);
     
-    % If a pupil circle patch was found, get the perimeter, else write out
-    % a zero-filled frame
+    % If a pupile circle patch was not found, try again after expanding the
+    % pupil search range by 50%, then 100%. We limit the possible range for
+    % the pupil search to the passed default bounds
+    if isempty(pCenters) % try 50% increase
+        [pCenters, pRadii,~,gCenters, gRadii,~, pupilRange, ~] = ...
+            circleFit(thisFrame,...
+            p.Results.pupilCircleThresh,...
+            p.Results.glintCircleThresh,...
+            [max([ceil(initialPupilRange(1)/1.5) p.Results.pupilRange(1)]) min([round(initialPupilRange(2)*1.5) p.Results.pupilRange(2)])],...
+            p.Results.glintRange,...
+            p.Results.pupilOnly,p.Results.glintOut,p.Results.dilateGlint,p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust);
+        if isempty(pCenters) % still no circle? Try 100% increase
+            [pCenters, pRadii,~,gCenters, gRadii,~, pupilRange, ~] = ...
+                circleFit(thisFrame,...
+                p.Results.pupilCircleThresh,...
+                p.Results.glintCircleThresh,...
+                [max([ceil(initialPupilRange(1)/2) p.Results.pupilRange(1)]) min([round(initialPupilRange(2)*2) p.Results.pupilRange(2)])],...
+                p.Results.glintRange,...
+                p.Results.pupilOnly,p.Results.glintOut,p.Results.dilateGlint,p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust);
+            if isempty(pCenters) % STILL no circle? Give up and restore initialPupilRange
+                pupilRange = initialPupilRange;
+            end
+        end
+    end
+    
+    % If a pupil circle patch was ultimately found, get the perimeter, else
+    % write out a zero-filled frame
     if ~isempty(pCenters)
         
         % structuring element for pupil mask size. This is a rectangular
@@ -184,7 +209,7 @@ for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
         % initially found pupil circle. The proportional size of the
         % dilation box is set in the key value 'maskBox'.
         sep = strel('rectangle',round(pRadii(1).*p.Results.maskBox));
-
+        
         % generate mask
         pupilMask = zeros(size(thisFrame));
         pupilMask = insertShape(pupilMask,'FilledCircle',[pCenters(1,1) pCenters(1,2) pRadii(1)],'Color','white');
@@ -194,18 +219,18 @@ for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
         % apply mask to the complement of the image
         complementThisFrame = imcomplement(thisFrame);
         maskedPupil = immultiply(complementThisFrame,pupilMask);
-
+        
         % partition the image into three regions, corresponding (from
         % lightest to darkest) to the glint, iris, and pupil. We first NaN
         % out all points in the image that are not within the masked
-        % region, so that they do not influence the three region partition.        
+        % region, so that they do not influence the three region partition.
         maskedPupilNaN=double(maskedPupil);
         maskedPupilNaN(pupilMask==0)=NaN;
         otsuThresh = multithresh(maskedPupilNaN,2);
         
         % Set the glint and iris to zero, and the pupil to unity
         binP = imquantize(maskedPupil, otsuThresh, [0 0 1]);
-                
+        
         % remove small objects
         binP = bwareaopen(binP, p.Results.smallObjThresh);
         
@@ -235,6 +260,7 @@ for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
     else
         perimFrame = im2uint8(zeros(size(thisFrame)));
         perimeter_data(:,:,ii) = perimFrame;
+        pupilRange = initialPupilRange;
     end
     
     if p.Results.displayMode

@@ -46,16 +46,24 @@ function [pFitTransparent, pSD, e] = constrainedEllipseFit(x, y, lb, ub, nonlinc
 %    that c<=0 and ceq=0. This is an optional input or can be sent as
 %    empty.
 
-% compute a close-enough initial estimate
-pInitImplicit = quad2dfit_taubin(x,y);
-switch imconic(pInitImplicit,0)
-    case 'ellipse'  % use Taubin's fit, which has produced an ellipse
-    otherwise  % use direct least squares ellipse fit to obtain an initial estimate
-        pInitImplicit = ellipsefit_direct(x,y);
+% Compute a close-enough initial estimate. This attempt is placed in a
+% try-catch block, as the attempt can fail and return non-real numbers. If
+% this happens, we exit the fitting routine with nans.
+try
+    pInitImplicit = quad2dfit_taubin(x,y);
+    switch imconic(pInitImplicit,0)
+        case 'ellipse'  % use Taubin's fit, which has produced an ellipse
+        otherwise  % use direct least squares ellipse fit to obtain an initial estimate
+            pInitImplicit = ellipsefit_direct(x,y);
+    end
+    % convert the initial estimate from implicit form to transparent form
+    pInitTransparent = ellipse_ex2transparent(ellipse_im2ex(pInitImplicit));
+catch
+    pFitTransparent=nan(1,5);
+    pSD=nan;
+    e=nan;
+    return
 end
-
-% convert the initial estimate from implicit form to transparent form
-pInitTransparent = ellipse_ex2transparent(ellipse_im2ex(pInitImplicit));
 
 % Find the ellipse parameters (in transparent form) using a non-linear
 % search.

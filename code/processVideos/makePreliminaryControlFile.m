@@ -47,8 +47,21 @@ function makePreliminaryControlFile(controlFileName, perimeterFileName, glintFil
 %       block blinks.
 %   cutErrorThreshold - the distance error tolerated before attempting to
 %       cut
+%   pixelBoundaryThreshold - the number of pixels required to be on the
+%       pupil boundary (either originally or after cutting) to not be
+%       marked as bad
 %   ellipseTransparentLB/UB - the lower and upper bounds of the constrained
 %      ellipse fit that is used to judge the quality of different cuts.
+%   canidateThetas - A vector that gives the theta values at which to
+%       examine pupil cuts to improve the ellipse fit. pi/2 corresponds to
+%       the superior vertical medidian, while pi corresponds to the nasal
+%       horizontal vertical meridian. The default settings explore thetas
+%       in this range, accounting for intrusions on the pupil boundary from
+%       the eyelid, and from an IR shadow that is sometimes seen on the
+%       nasal border of the pupil.
+%   radiusDivisions - Controls how many divisions between the geometric
+%       center of the pupil perimeter and the outer edge are examined with
+%       a pupil cut.
 %
 % Optional key/value pairs (verbosity and I/O)
 %  'verbosity' - level of verbosity. [none, full]
@@ -82,6 +95,7 @@ p.addRequired('glintFileName',@isstr);
 
 % Optional analysis params
 p.addParameter('extendBlinkWindow', [4,7], @isnumeric);
+p.addParameter('pixelBoundaryThreshold', 50, @isnumeric);
 p.addParameter('cutErrorThreshold', 10, @isnumeric);
 p.addParameter('ellipseTransparentLB',[0, 0, 1000, 0, -0.5*pi],@isnumeric);
 p.addParameter('ellipseTransparentUB',[240,320,10000,0.417, 0.5*pi],@isnumeric);
@@ -208,6 +222,7 @@ end
 frameRadii=nan(nFrames,1);
 frameThetas=nan(nFrames,1);
 frameBads=nan(nFrames,1);
+frameErrors=nan(nFrames,1);
 
 % alert the user
 if strcmp(p.Results.verbosity,'full')
@@ -229,6 +244,9 @@ parfor (ii = 1:nFrames, nWorkers)
     binP = squeeze(perimeter.data(:,:,ii));
     [Yp, Xp] = ind2sub(size(binP),find(binP));
     
+    % calculate the number of pixels that make up the perimeter
+    numberPerimeterPixels = length(Yp);
+    
     % define these so that the parfor loop is not concerned that the values
     % will not carry from one loop to the next
     smallestFittingError = NaN;
@@ -236,57 +254,77 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % proceed if the frame is not empty and has not been tagged as a blink
     if ~ismember(ii,blinkFrames) && ~isempty(Xp)
-                
-        % fit an ellipse to the full perimeter using the constrainedEllipseFit
-        [~, ~, originalFittingError] = constrainedEllipseFit(Xp, Yp, ...
-            p.Results.ellipseTransparentLB, ...
-            p.Results.ellipseTransparentUB, []);
         
-        % if the fitting error is above the threshold, search over cuts
-        if originalFittingError > p.Results.cutErrorThreshold
-            smallestFittingError = originalFittingError;
-            stillSearching = true;
-        else
-            stillSearching = false;
-        end
-        
-        % We start with a cut radius that is one division below the maxium
-        % radius in the pupil boundary
-        maxRadius=round(max([max(Xp)-min(Xp),max(Yp)-min(Yp)])/2);
-        stepReducer = max([1,floor(maxRadius/p.Results.radiusDivisions)]);
-        candidateRadius=maxRadius - stepReducer;
-        
-        % Keep searching until we have a fit of accetable quality, or if
-        % the candidate radius drops below zero
-        while stillSearching && candidateRadius > 0
-
-            % Perform a grid search across thetas
-            [gridSearchRadii,gridSearchThetas] = ndgrid(candidateRadius,p.Results.candidateThetas);
-            myCutOptim = @(params) calcErrorForACut(binP, params(1), params(2), p.Results.ellipseTransparentLB, p.Results.ellipseTransparentUB);
-            gridSearchResults=arrayfun(@(k1,k2) myCutOptim([k1,k2]),gridSearchRadii,gridSearchThetas);
+        % add a try - catch here to prevent the code from breaking in case
+        % the ellipseFit/guess cut fails
+        try
+            % fit an ellipse to the full perimeter using the constrainedEllipseFit
+            [~, ~, originalFittingError] = constrainedEllipseFit(Xp, Yp, ...
+                p.Results.ellipseTransparentLB, ...
+                p.Results.ellipseTransparentUB, []);
             
-            % Store the best cut from this search
-            bestFitOnThisSearch=min(min(gridSearchResults));
-            
-            if bestFitOnThisSearch < smallestFittingError
-                smallestFittingError=bestFitOnThisSearch;
-                [~,col] = find(gridSearchResults==bestFitOnThisSearch);
-                frameRadii(ii)=candidateRadius;
-                frameThetas(ii)=p.Results.candidateThetas(col(1));
-            end
-            
-            % Are we done searching? If not, shrink the radius 
-            if bestFitOnThisSearch < p.Results.cutErrorThreshold
-                stillSearching = false;
+            % if the fitting error is above the threshold, search over cuts
+            if originalFittingError > p.Results.cutErrorThreshold
+                smallestFittingError = originalFittingError;
+                stillSearching = true;
             else
-                candidateRadius=candidateRadius - stepReducer;
+                stillSearching = false;
             end
-        end % search over cuts
+            
+            % We start with a cut radius that is one division below the maxium
+            % radius in the pupil boundary
+            maxRadius=round(max([max(Xp)-min(Xp),max(Yp)-min(Yp)])/2);
+            stepReducer = max([1,floor(maxRadius/p.Results.radiusDivisions)]);
+            candidateRadius=maxRadius - stepReducer;
+            
+            % Keep searching until we have a fit of accetable quality, or if
+            % the candidate radius drops below zero
+            while stillSearching && candidateRadius > 0
+                
+                % Perform a grid search across thetas
+                [gridSearchRadii,gridSearchThetas] = ndgrid(candidateRadius,p.Results.candidateThetas);
+                myCutOptim = @(params) calcErrorForACut(binP, params(1), params(2), p.Results.ellipseTransparentLB, p.Results.ellipseTransparentUB);
+                gridSearchResults=arrayfun(@(k1,k2) myCutOptim([k1,k2]),gridSearchRadii,gridSearchThetas);
+                
+                % Store the best cut from this search
+                bestFitOnThisSearch=min(min(gridSearchResults));
+                
+                if bestFitOnThisSearch < smallestFittingError
+                    smallestFittingError=bestFitOnThisSearch;
+                    [~,col] = find(gridSearchResults==bestFitOnThisSearch);
+                    frameRadii(ii)=candidateRadius;
+                    frameThetas(ii)=p.Results.candidateThetas(col(1));
+                    
+                    % determine the number of pixels that remain on the
+                    % pupil boundary for this cut
+                    binPcut = cutPupil (binP, frameRadii(ii), frameThetas(ii));
+                    [tmpY, ~] = ind2sub(size(binPcut),find(binPcut));
+                    numberPerimeterPixels = length(tmpY);
+                end
+                
+                % Are we done searching? If not, shrink the radius
+                if bestFitOnThisSearch < p.Results.cutErrorThreshold
+                    stillSearching = false;
+                else
+                    candidateRadius=candidateRadius - stepReducer;
+                end
+            end % search over cuts
+
+        catch
+            % If there is a fitting error, tag this frame error and
+            % continue with the parfor loop
+             frameErrors(ii)=1;
+             continue
+        end % try-catch
         
         % If, after finishing the search, the bestFitOnThisSearch is still
-        % larger than the error threshold, tag this frame bad
-        if bestFitOnThisSearch > p.Results.cutErrorThreshold
+        % larger than the error threshold, or there are too few pixels that 
+        % compose the boundary in this frame, then tag this frame bad. 
+        if bestFitOnThisSearch > p.Results.cutErrorThreshold || ...
+                numberPerimeterPixels < p.Results.pixelBoundaryThreshold
             frameBads(ii)=1;
+            frameThetas(ii)=nan;
+            frameRadii(ii)=nan;
         end
         
     end % not an empty frame
@@ -329,6 +367,16 @@ if ~isempty(badFrameIdx)
         clear instruction
     end
 end
+% write out error frames
+errorFrameIdx=find(~isnan(frameErrors));
+if ~isempty(errorFrameIdx)
+    for cc = 1 : length(errorFrameIdx)
+        frameIdx=errorFrameIdx(cc);
+        instruction = [num2str(frameIdx) ',' 'error' ];
+        fprintf(fid,'%s\n',instruction);
+        clear instruction
+    end
+end
 % finish and close the file
 instruction = ['%' ',' '%' ',' 'end of automatic instructions'];
 fprintf(fid,'%s\n',instruction);
@@ -353,7 +401,7 @@ end
 
 end % function
 
-function distanceError = calcErrorForACut(theFrame, radiusThresh, theta, lb, ub)
+function [distanceError] = calcErrorForACut(theFrame, radiusThresh, theta, lb, ub)
 [binPcut] = cutPupil (theFrame, radiusThresh, theta);
 [Yp, Xp] = ind2sub(size(binPcut),find(binPcut));
 [~, ~, distanceError] = constrainedEllipseFit(Xp, Yp, lb, ub, []);

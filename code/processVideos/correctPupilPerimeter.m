@@ -12,6 +12,9 @@ function correctPupilPerimeter(perimeterFileName, controlFileName, correctedPeri
 % - bad >> save out a black frame
 % - ellipse >> draw an ellipse with the given params into the frame
 % - cut >> cut the perimeter using radius and theta given
+% - error >> if any error occurred while compiling the automatic
+%       instructions the frame won't be corrected, but an error flag will be
+%       displayed for later inspection.
 % 
 % Note that each line of the control file is set of instructions for one
 % specifical video frame, identified by the FrameNumber. If there is no
@@ -80,8 +83,8 @@ clear dataLoad
 
 % Set up some variables to guide the analysis and hold the result
 nFrames=size(originalPerimeter.data,3);
-blankFrame=originalPerimeter.data(:,:,1)*0;
-perimeter=originalPerimeter;
+blankFrame=uint8(zeros(size(originalPerimeter.data,1), size(originalPerimeter.data,2)) );
+perimeter.data=uint8(zeros(size(originalPerimeter.data)));
 
 % alert the user
 if strcmp(p.Results.verbosity,'full')
@@ -99,19 +102,22 @@ for ii = 1:nFrames
     if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
         fprintf('.');
     end
+    
+    % Obtain this frame
+    img = squeeze(originalPerimeter.data(:,:,ii));
 
-    % Proceed if there areinstructions for this frame
+    % Proceed if there are instructions for this frame
     instructionIdx = find ([instructions.frame] == ii);    
     if ~isempty(instructionIdx)
         
-        % Obtain this frame
-        img = squeeze(originalPerimeter.data(:,:,ii));
 
         for dd=1:length(instructionIdx)
             switch instructions(instructionIdx(dd)).type
                 case 'blink'
                     img=blankFrame;
                 case 'bad'
+                    img=blankFrame;
+                case 'error'
                     img=blankFrame;
                 case 'ellipse'
                     % get the instruction params
@@ -133,10 +139,11 @@ for ii = 1:nFrames
                     warning(['Instruction ' instructions(instructionIdx(dd)).type ' for frame ' num2str(ii) ' is unrecognized.']);
             end % switch instruction types
         end % loop over instructions
-
-        % save modified frame
-        perimeter.data(:,:,ii)=img;
     end % we have instructions for this frame
+        
+    % save the frame, which may include modifications
+    perimeter.data(:,:,ii)=img;
+
 end % loop through frames
 
 % save mat file with the video and analysis details

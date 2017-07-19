@@ -253,81 +253,84 @@ else
         fprintf('| 0                      50                   100%% |\n');
         fprintf('.\n');
     end
-        
+    
     % Loop through the frames
     parfor (ii = 1:nFrames, nWorkers)
-
+        
         % Update progress
         if strcmp(p.Results.verbosity,'full')
             if mod(ii,round(nFrames/50))==0
                 fprintf('\b.\n');
             end
         end
-        
-        % get the data frame
-        thisFrame = squeeze(perimeter.data(:,:,ii));
-        
-        % get the boundary points
-        [Yc, Xc] = ind2sub(size(thisFrame),find(thisFrame));
-        
-        % fit an ellipse to the boundary (if any points exist)
-        if isempty(Xc) || isempty(Yc)
-            pInitialFitTransparent=NaN(1,nEllipseParams);
-            pInitialFitHessianSD=NaN(1,nEllipseParams);
-            pInitialFitSplitsSD=NaN(1,nEllipseParams);
-            pInitialFitBootsSD=NaN(1,nEllipseParams);
-        else
-            % Obtain the fit to the veridical data
-            [pInitialFitTransparent, pInitialFitHessianSD, ~] = ...
-                feval(obtainPupilLikelihood,Xc, Yc);
+        try % this is to have information on which frame caused an error
+            % get the data frame
+            thisFrame = squeeze(perimeter.data(:,:,ii));
             
-            % Re-calculate fit for splits of data points, if requested
-            if p.Results.nSplits == 0
+            % get the boundary points
+            [Yc, Xc] = ind2sub(size(thisFrame),find(thisFrame));
+            
+            % fit an ellipse to the boundary (if any points exist)
+            if isempty(Xc) || isempty(Yc)
+                pInitialFitTransparent=NaN(1,nEllipseParams);
+                pInitialFitHessianSD=NaN(1,nEllipseParams);
                 pInitialFitSplitsSD=NaN(1,nEllipseParams);
-            else
-                % Find the center of the pupil boundary points, place the boundary
-                % points in a matrix and shift them to the center position
-                xCenter=mean(Xc); yCenter=mean(Yc);
-                centerMatrix = repmat([xCenter'; yCenter'], 1, length(Xc));
-                
-                % Rotate the data and split in half through the center
-                pFitTransparentSplit=NaN(2,p.Results.nSplits,nEllipseParams);
-                for ss=1:p.Results.nSplits
-                    theta=((pi/2)/p.Results.nSplits)*ss;
-                    forwardPoints = feval(returnRotMat,theta) * ([Xc,Yc]' - centerMatrix) + centerMatrix;
-                    splitIdx1 = find((forwardPoints(1,:) < median(forwardPoints(1,:))))';
-                    splitIdx2 = find((forwardPoints(1,:) >= median(forwardPoints(1,:))))';
-                    
-                    pFitTransparentSplit(1,ss,:) = ...
-                        feval(obtainPupilLikelihood,Xc(splitIdx1), Yc(splitIdx1));
-                    pFitTransparentSplit(2,ss,:) = ...
-                        feval(obtainPupilLikelihood,Xc(splitIdx2), Yc(splitIdx2));
-                end % loop through splits
-                
-                % Calculate the SD of the parameters across splits, scaling by
-                % sqrt(2) to roughly account for our use of just half the data
-                pInitialFitSplitsSD=std(reshape(pFitTransparentSplit,ss*2,nEllipseParams))/sqrt(2);
-            end % check if we want to do splits
-            
-            % Obtain the SD of the parameters through a bootstrap resample
-            % of data points if requested
-            if p.Results.nBoots == 0
                 pInitialFitBootsSD=NaN(1,nEllipseParams);
             else
-                bootOptSet = statset('UseParallel',p.Results.useParallel);
-                pInitialFitBootsSD = std(bootstrp(p.Results.nBoots,obtainPupilLikelihood,Xc,Yc,'Options',bootOptSet));
-            end % check if we want to do bootstraps
+                % Obtain the fit to the veridical data
+                [pInitialFitTransparent, pInitialFitHessianSD, ~] = ...
+                    feval(obtainPupilLikelihood,Xc, Yc);
+                
+                % Re-calculate fit for splits of data points, if requested
+                if p.Results.nSplits == 0
+                    pInitialFitSplitsSD=NaN(1,nEllipseParams);
+                else
+                    % Find the center of the pupil boundary points, place the boundary
+                    % points in a matrix and shift them to the center position
+                    xCenter=mean(Xc); yCenter=mean(Yc);
+                    centerMatrix = repmat([xCenter'; yCenter'], 1, length(Xc));
+                    
+                    % Rotate the data and split in half through the center
+                    pFitTransparentSplit=NaN(2,p.Results.nSplits,nEllipseParams);
+                    for ss=1:p.Results.nSplits
+                        theta=((pi/2)/p.Results.nSplits)*ss;
+                        forwardPoints = feval(returnRotMat,theta) * ([Xc,Yc]' - centerMatrix) + centerMatrix;
+                        splitIdx1 = find((forwardPoints(1,:) < median(forwardPoints(1,:))))';
+                        splitIdx2 = find((forwardPoints(1,:) >= median(forwardPoints(1,:))))';
+                        
+                        pFitTransparentSplit(1,ss,:) = ...
+                            feval(obtainPupilLikelihood,Xc(splitIdx1), Yc(splitIdx1));
+                        pFitTransparentSplit(2,ss,:) = ...
+                            feval(obtainPupilLikelihood,Xc(splitIdx2), Yc(splitIdx2));
+                    end % loop through splits
+                    
+                    % Calculate the SD of the parameters across splits, scaling by
+                    % sqrt(2) to roughly account for our use of just half the data
+                    pInitialFitSplitsSD=nanstd(reshape(pFitTransparentSplit,ss*2,nEllipseParams))/sqrt(2);
+                end % check if we want to do splits
+                
+                % Obtain the SD of the parameters through a bootstrap resample
+                % of data points if requested
+                if p.Results.nBoots == 0
+                    pInitialFitBootsSD=NaN(1,nEllipseParams);
+                else
+                    bootOptSet = statset('UseParallel',p.Results.useParallel);
+                    pInitialFitBootsSD = nanstd(bootstrp(p.Results.nBoots,obtainPupilLikelihood,Xc,Yc,'Options',bootOptSet));
+                end % check if we want to do bootstraps
+                
+            end % check if there are pupil boundary data to be fit
             
-        end % check if there are pupil boundary data to be fit
-        
-        % store results
-        loopVar_pInitialFitTransparent(ii,:) = pInitialFitTransparent';
-        loopVar_pInitialFitHessianSD(ii,:) = pInitialFitHessianSD';
-        loopVar_pInitialFitSplitsSD(ii,:) = pInitialFitSplitsSD';
-        loopVar_pInitialFitBootsSD(ii,:) = pInitialFitBootsSD';
-        
+            % store results
+            loopVar_pInitialFitTransparent(ii,:) = pInitialFitTransparent';
+            loopVar_pInitialFitHessianSD(ii,:) = pInitialFitHessianSD';
+            loopVar_pInitialFitSplitsSD(ii,:) = pInitialFitSplitsSD';
+            loopVar_pInitialFitBootsSD(ii,:) = pInitialFitBootsSD';
+        catch ME
+            warning ('Error while processing frame: %d', ii)
+            rethrow(ME)
+        end % try catch
     end % loop over frames
-        
+    
     % gather the loop vars into the ellipse structure
     ellipseFitData.pInitialFitTransparent = loopVar_pInitialFitTransparent;
     ellipseFitData.pInitialFitHessianSD = loopVar_pInitialFitHessianSD;
@@ -383,7 +386,7 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 parfor (ii = 1:nFrames, nWorkers)
-
+    
     % update progress
     if strcmp(p.Results.verbosity,'full')
         if mod(ii,round(nFrames/50))==0
@@ -402,11 +405,12 @@ parfor (ii = 1:nFrames, nWorkers)
     pPriorMeanTransparent=NaN(1,nEllipseParams);
     pPriorSDTransparent=NaN(1,nEllipseParams);
     pLikelihoodMeanTransparent=NaN(1,nEllipseParams);
-    pLikelihoodSDTransparent=NaN(1,nEllipseParams);    
+    pLikelihoodSDTransparent=NaN(1,nEllipseParams);
     fitError=NaN;
     
-    % if this frame has data, calculate the posterior
-    if ~isempty(Xc) &&  ~isempty(Yc)
+    % if this frame has data, and the initial ellipse fit is not nan, 
+    % then proceed to calculate the posterior
+    if ~isempty(Xc) &&  ~isempty(Yc) && sum(isnan(ellipseFitData.pInitialFitTransparent(ii,:)))==0
         % Calculate the prior. The prior mean is given by the surrounding
         % fit values, weighted by a decaying exponential in time and the
         % inverse of the standard deviation of each measure. The prior
