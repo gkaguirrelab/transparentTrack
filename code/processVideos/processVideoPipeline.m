@@ -94,13 +94,13 @@ finalFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '
 %     end
 % end
 
-% fit Iris and palpebral fissure
-if ~any(strcmp(p.Results.skipStage,'fitIrisAndPalpebralFissure'))
-    fitIrisAndPalpebralFissure(grayVideoName, perimeterFileName, ellipseFitFileName, irisFitFileName, palpebralFissureFileName, varargin{:});
-    if strcmp(p.Results.lastStage,'fitIrisAndPalpebralFissure')
-        return
-    end
-end
+% % fit Iris and palpebral fissure
+% if ~any(strcmp(p.Results.skipStage,'fitIrisAndPalpebralFissure'))
+%     fitIrisAndPalpebralFissure(grayVideoName, perimeterFileName, ellipseFitFileName, irisFitFileName, palpebralFissureFileName, varargin{:});
+%     if strcmp(p.Results.lastStage,'fitIrisAndPalpebralFissure')
+%         return
+%     end
+% end
 
 % create a video of the final fit
 if ~any(strcmp(p.Results.skipStage,'makePupilFitVideo'))

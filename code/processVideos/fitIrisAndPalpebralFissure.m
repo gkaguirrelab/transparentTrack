@@ -76,7 +76,7 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % parse
-p.parse(grayVideoName, perimeterFileName, pupilFitFileName, irisFitFileName, varargin{:})
+p.parse(grayVideoName, perimeterFileName, pupilFitFileName, irisFitFileName, palpebralFissureFileName, varargin{:})
 
 
 %% Read files into memory
@@ -173,11 +173,10 @@ irisFitData_radius = nan(nFrames,1);
 palpebralFissure_data = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
 
 % loop through gray frames
-%parfor (ii = 1:nFrames, nWorkers)
-for ii = 1:nFrames
+parfor (ii = 1:nFrames, nWorkers)
     
     % increment the progress bar
-    if strcmp(p.Results.verbosity,'full') && mod(ii-p.Results.startFrame+1,round(nFrames/50))==0
+    if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
         fprintf('\b.\n');
     end
     
@@ -259,11 +258,7 @@ irisFitData.radius = irisFitData_radius;
 
 % save irisFitData
 irisFitData.meta = p.Results;
-if ~p.Results.displayMode
-    save(irisFitFileName,'irisFitData');
-else
-    close(figureHandle);
-end
+save(irisFitFileName,'irisFitData');
 
 % save palpebralMask
 palpebralFissure.data = palpebralFissure_data;

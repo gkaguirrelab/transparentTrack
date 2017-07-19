@@ -58,7 +58,7 @@ p.addParameter('ellipseFitFileName',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('ellipseColor','green',@isstring);
 p.addParameter('whichFieldToPlot', [],@(x)(isempty(x) | ischar(x)));
 p.addParameter('irisFitFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('irisColor','purple',@isstring);
+p.addParameter('irisColor','magenta',@isstring);
 p.addParameter('controlFileName',[],@(x)(isempty(x) | ischar(x)));
 
 % parse
@@ -169,7 +169,7 @@ clear videoInObj
 outputVideo=zeros(videoSizeY,videoSizeX,3,nFrames,'uint8');
 
 %% Loop through the frames
-for ii=1:nFrames
+parfor (ii = 1:nFrames, nWorkers)
     
     % Update the progress display
     if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
@@ -221,7 +221,7 @@ for ii=1:nFrames
     if ~isempty(p.Results.irisFitFileName)
         if ~isnan(irisFitData.X(ii))
             % build circle impicit equation
-            fh=@(x,y) irisFitData.X(ii).*x.^2 +irisFitData.Y(ii).*y.^2 - meanIrisRadius;
+            fh=@(x,y) (x-irisFitData.X(ii)).^2 +(y-irisFitData.Y(ii)).^2 - meanIrisRadius.^2;
             % superimpose the ellipse using fimplicit or ezplot
             if exist('fimplicit','file')==2
                 fimplicit(fh,[1, videoSizeY, 1, videoSizeX],'Color', p.Results.irisColor);
