@@ -57,6 +57,8 @@ p.addParameter('perimeterColor','w',@isstring);
 p.addParameter('ellipseFitFileName',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('ellipseColor','green',@isstring);
 p.addParameter('whichFieldToPlot', [],@(x)(isempty(x) | ischar(x)));
+p.addParameter('irisFitFileName',[],@(x)(isempty(x) | ischar(x)));
+p.addParameter('irisColor','magenta',@isstring);
 p.addParameter('controlFileName',[],@(x)(isempty(x) | ischar(x)));
 
 % parse
@@ -129,6 +131,14 @@ if ~isempty(p.Results.ellipseFitFileName)
     ellipseFitParams = ellipseFitData.(p.Results.whichFieldToPlot);
 end
 
+% Read in the irisFitData file if passed
+if ~isempty(p.Results.irisFitFileName)
+    dataLoad = load(p.Results.irisFitFileName);
+    irisFitData = dataLoad.irisFitData;
+    clear dataLoad
+    meanIrisRadius = nanmean(irisFitData.radius);
+end
+
 % Read in and parse the control file if passed
 if ~isempty(p.Results.controlFileName)
     instructions = importControlFile(p.Results.controlFileName);
@@ -159,7 +169,7 @@ clear videoInObj
 outputVideo=zeros(videoSizeY,videoSizeX,3,nFrames,'uint8');
 
 %% Loop through the frames
-for ii=1:nFrames
+parfor (ii = 1:nFrames, nWorkers)
     
     % Update the progress display
     if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
@@ -203,6 +213,23 @@ for ii=1:nFrames
             else
                 plotHandle=ezplot(fh,[1, videoSizeY, 1, videoSizeX]);
                 set(plotHandle, 'Color', p.Results.ellipseColor)
+            end
+        end
+    end
+    
+    % add iris fit
+    if ~isempty(p.Results.irisFitFileName)
+        if ~isnan(irisFitData.X(ii))
+            % build circle impicit equation
+            fh=@(x,y) (x-irisFitData.X(ii)).^2 +(y-irisFitData.Y(ii)).^2 - meanIrisRadius.^2;
+            % superimpose the ellipse using fimplicit or ezplot
+            if exist('fimplicit','file')==2
+                fimplicit(fh,[1, videoSizeY, 1, videoSizeX],'Color', p.Results.irisColor);
+                set(gca,'position',[0 0 1 1],'units','normalized')
+                axis off;
+            else
+                plotHandle=ezplot(fh,[1, videoSizeY, 1, videoSizeX]);
+                set(plotHandle, 'Color', p.Results.irisColor)
             end
         end
     end
