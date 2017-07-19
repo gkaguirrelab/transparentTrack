@@ -1,4 +1,22 @@
 function processVideoPipeline( pathParams, varargin )
+% 
+% this is the standard processing pipeline for eye tracking videos. 
+% 
+% The pipeline consists in the following stages:
+%   raw2gray
+%   trackGlint
+%   extractPupilPerimeter
+%   makePreliminaryControlFile
+%   correctPupilPerimeter
+%   bayesFitPupilPerimeter
+%   fitIrisAndPalpebralFissure
+%   makePupilFitVideo
+% 
+% The user can stop the execution after any of the stages with the optional
+% param 'lastStage', or skip any amount of stages listing them in a cell
+% under the optional param 'skipStage'. Every stage however requires the
+% existence of the output from the preceeding ones to be correctly
+% executed.
 
 %% Parse input and define variables
 p = inputParser; p.KeepUnmatched = true;
@@ -40,7 +58,8 @@ controlFileName = fullfile(pathParams.controlFileDirFull, [pathParams.runName '_
 correctedPerimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_correctedPerimeter.mat']);
 ellipseFitFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_pupil.mat']);
 finalFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_finalFit.mat']);
-
+irisFitFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_iris.mat']);
+palpebralFissureFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_palpebralFissure.mat']);
 
 %% Conduct the analysis
 % NOTE: some of the analysis steps are wrapped in a while+try/catch loop to
@@ -219,6 +238,37 @@ if ~any(strcmp(p.Results.skipStage,'bayesFitPupilPerimeter'))
     end
 end
 
+% fit Iris and palpebral fissure
+if ~any(strcmp(p.Results.skipStage,'fitIrisAndPalpebralFissure'))
+    % intialize while control
+    success = 0;
+    while ~success
+        try
+            fitIrisAndPalpebralFissure(grayVideoName, perimeterFileName, ellipseFitFileName, irisFitFileName, palpebralFissureFileName, varargin{:});
+            success = 1;
+        catch ME
+            % if there is a corruption error clear matlabprefs.mat and try again
+            if (strcmp(ME.message, ...
+                    'Unable to read MAT-file /Users/giulia/Library/Application Support/MathWorks/MATLAB/R2016b/matlabprefs.mat. File might be corrupt.'))
+                warning ('File matlabprefs.mat corrupt during execution. Cleaning up and trying again.')
+                matlabprefsCleanup;
+                success = 0;
+                % if a parpool is already open, close it and try again
+            elseif (strcmp(ME.message, ...
+                    'Found an interactive session. You cannot have multiple interactive sessions open simultaneously. To terminate the existing session, use ''delete(gcp(''nocreate''))''.'))
+                warning ('Found a parpool already open. Closing it and trying again.')
+                delete(gcp('nocreate'))
+                success = 0;
+            else
+                rethrow(ME)
+            end
+        end
+    end
+    if strcmp(p.Results.lastStage,'fitIrisAndPalpebralFissure')
+        return
+    end
+end
+
 % create a video of the final fit
 if ~any(strcmp(p.Results.skipStage,'makePupilFitVideo'))
     % intialize while control
@@ -226,9 +276,10 @@ if ~any(strcmp(p.Results.skipStage,'makePupilFitVideo'))
     while ~success
         try
             makePupilFitVideo(grayVideoName, finalFitVideoName, ...
-                'glintFileName', glintFileName, 'perimeterFileName', correctedPerimeterFileName,...
-                'ellipseFitFileName', ellipseFitFileName, 'whichFieldToPlot', 'pPosteriorMeanTransparent', ...
-                'controlFileName',controlFileName,varargin{:});
+        'glintFileName', glintFileName, 'perimeterFileName', correctedPerimeterFileName,...
+        'ellipseFitFileName', ellipseFitFileName, 'whichFieldToPlot', 'pPosteriorMeanTransparent', ...
+        'irisFitFileName', irisFitFileName, ...
+        'controlFileName',controlFileName,varargin{:});
             success = 1;
         catch ME
             % if there is a corruption error clear matlabprefs.mat and try again
