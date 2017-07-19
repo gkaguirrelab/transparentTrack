@@ -62,7 +62,7 @@ p.addRequired('perimeterFileName',@isstr);
 % Optional analysis params
 p.addParameter('gammaCorrection', 1, @isnumeric);
 p.addParameter('pupilCircleThresh', 0.06, @isnumeric);
-p.addParameter('pupilRange', [30 90], @isnumeric);
+p.addParameter('pupilRange', [20 120], @isnumeric);
 p.addParameter('glintCircleThresh', 0.999, @isnumeric);
 p.addParameter('glintRange', [10 30], @isnumeric);
 p.addParameter('maskBox', [0.20 0.75], @isnumeric);
@@ -162,127 +162,116 @@ for ii = p.Results.startFrame:nFrames
     % get the frame
     thisFrame = squeeze(grayVideo(:,:,ii));
     
-    % try/catch to report which frames causes an error, if any
-    try
-        
-        % check that pupilRange is legit
-        if ~all(pupilRange)
-            % if zero, set lower bound to 1
-            pupilRange(1) = max([pupilRange(1), 1]);
-            % check that the range is a positive value
-            if diff(pupilRange)<=0
-                pupilRange(2) = pupilRange(2)+1;
-            end
-        end
-        % perform an initial search for the pupil with circleFit. Also extract
-        % glint location and size information for later use.
+    % store the current pupilRange
+    initialPupilRange = pupilRange;    
+    
+    % perform an initial search for the pupil with circleFit. Also extract
+    % glint location and size information for later use.
+    [pCenters, pRadii,~,gCenters, gRadii,~, pupilRange, ~] = ...
+        circleFit(thisFrame,...
+        p.Results.pupilCircleThresh,...
+        p.Results.glintCircleThresh,...
+        pupilRange,...
+        p.Results.glintRange,...
+        p.Results.pupilOnly,p.Results.glintOut,p.Results.dilateGlint,p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust);
+    
+    % If a pupile circle patch was not found, try again after expanding the
+    % pupil search range by 50%, then 100%. We limit the possible range for
+    % the pupil search to the passed default bounds
+    if isempty(pCenters) % try 50% increase
         [pCenters, pRadii,~,gCenters, gRadii,~, pupilRange, ~] = ...
             circleFit(thisFrame,...
             p.Results.pupilCircleThresh,...
             p.Results.glintCircleThresh,...
-            pupilRange,...
+            [max([ceil(initialPupilRange(1)/1.5) p.Results.pupilRange(1)]) min([round(initialPupilRange(2)*1.5) p.Results.pupilRange(2)])],...
             p.Results.glintRange,...
             p.Results.pupilOnly,p.Results.glintOut,p.Results.dilateGlint,p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust);
-        
-        % If a pupile circle patch was not found, try again after expanding the
-        % pupil search range by 50%, then 100%
-        if isempty(pCenters) % try 50% increase
-            initialPupilRange = pupilRange;
+        if isempty(pCenters) % still no circle? Try 100% increase
             [pCenters, pRadii,~,gCenters, gRadii,~, pupilRange, ~] = ...
                 circleFit(thisFrame,...
                 p.Results.pupilCircleThresh,...
                 p.Results.glintCircleThresh,...
-                [ceil(pupilRange(1)/1.5) round(pupilRange(2)*1.5)],...
+                [max([ceil(initialPupilRange(1)/2) p.Results.pupilRange(1)]) min([round(initialPupilRange(2)*2) p.Results.pupilRange(2)])],...
                 p.Results.glintRange,...
                 p.Results.pupilOnly,p.Results.glintOut,p.Results.dilateGlint,p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust);
-            if isempty(pCenters) % still no circle? Try 100% increase
-                [pCenters, pRadii,~,gCenters, gRadii,~, pupilRange, ~] = ...
-                    circleFit(thisFrame,...
-                    p.Results.pupilCircleThresh,...
-                    p.Results.glintCircleThresh,...
-                    [ceil(pupilRange(1)/2) round(pupilRange(2)*2)],...
-                    p.Results.glintRange,...
-                    p.Results.pupilOnly,p.Results.glintOut,p.Results.dilateGlint,p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust);
-                if isempty(pCenters) % STILL no circle? Give up and restore initialPupilRange
-                    pupilRange = initialPupilRange;
-                end
+            if isempty(pCenters) % STILL no circle? Give up and restore initialPupilRange
+                pupilRange = initialPupilRange;
             end
+        end
+    end
+    
+    % If a pupil circle patch was ultimately found, get the perimeter, else
+    % write out a zero-filled frame
+    if ~isempty(pCenters)
+        
+        % structuring element for pupil mask size. This is a rectangular
+        % dilation box that is adapted to the size of the radius of the
+        % initially found pupil circle. The proportional size of the
+        % dilation box is set in the key value 'maskBox'.
+        sep = strel('rectangle',round(pRadii(1).*p.Results.maskBox));
+        
+        % generate mask
+        pupilMask = zeros(size(thisFrame));
+        pupilMask = insertShape(pupilMask,'FilledCircle',[pCenters(1,1) pCenters(1,2) pRadii(1)],'Color','white');
+        pupilMask = imdilate(pupilMask,sep);
+        pupilMask = im2bw(pupilMask);
+        
+        % apply mask to the complement of the image
+        complementThisFrame = imcomplement(thisFrame);
+        maskedPupil = immultiply(complementThisFrame,pupilMask);
+        
+        % partition the image into three regions, corresponding (from
+        % lightest to darkest) to the glint, iris, and pupil. We first NaN
+        % out all points in the image that are not within the masked
+        % region, so that they do not influence the three region partition.
+        maskedPupilNaN=double(maskedPupil);
+        maskedPupilNaN(pupilMask==0)=NaN;
+        otsuThresh = multithresh(maskedPupilNaN,2);
+        
+        % Set the glint and iris to zero, and the pupil to unity
+        binP = imquantize(maskedPupil, otsuThresh, [0 0 1]);
+        
+        % remove small objects
+        binP = bwareaopen(binP, p.Results.smallObjThresh);
+        
+        % fill the holes
+        binP = imfill(binP,'holes');
+        
+        % get perimeter of object
+        binP = bwperim(binP);
+        
+        if ~isempty(gCenters) && ~p.Results.pupilOnly
+            % black out any residual glint component on the perimeter. This
+            % step will have no effect if the glint location is well within the
+            % pupil boundary. It will however remove any distortion of the
+            % perimeter if the glint happens to sit right on the pupil boundary
+            % and survives the fill holes step
+            glintPatch = ones(size(thisFrame));
+            glintPatch = insertShape(glintPatch,'FilledCircle',[gCenters(1,1) gCenters(1,2) gRadii(1)],'Color','black');
+            glintPatch = im2bw(glintPatch);
+            
+            % apply glint patch
+            binP = immultiply(binP,glintPatch);
         end
         
-        % If a pupil circle patch was ultimately found, get the perimeter, else
-        % write out a zero-filled frame
-        if ~isempty(pCenters)
-            
-            % structuring element for pupil mask size. This is a rectangular
-            % dilation box that is adapted to the size of the radius of the
-            % initially found pupil circle. The proportional size of the
-            % dilation box is set in the key value 'maskBox'.
-            sep = strel('rectangle',round(pRadii(1).*p.Results.maskBox));
-            
-            % generate mask
-            pupilMask = zeros(size(thisFrame));
-            pupilMask = insertShape(pupilMask,'FilledCircle',[pCenters(1,1) pCenters(1,2) pRadii(1)],'Color','white');
-            pupilMask = imdilate(pupilMask,sep);
-            pupilMask = im2bw(pupilMask);
-            
-            % apply mask to the complement of the image
-            complementThisFrame = imcomplement(thisFrame);
-            maskedPupil = immultiply(complementThisFrame,pupilMask);
-            
-            % partition the image into three regions, corresponding (from
-            % lightest to darkest) to the glint, iris, and pupil. We first NaN
-            % out all points in the image that are not within the masked
-            % region, so that they do not influence the three region partition.
-            maskedPupilNaN=double(maskedPupil);
-            maskedPupilNaN(pupilMask==0)=NaN;
-            otsuThresh = multithresh(maskedPupilNaN,2);
-            
-            % Set the glint and iris to zero, and the pupil to unity
-            binP = imquantize(maskedPupil, otsuThresh, [0 0 1]);
-            
-            % remove small objects
-            binP = bwareaopen(binP, p.Results.smallObjThresh);
-            
-            % fill the holes
-            binP = imfill(binP,'holes');
-            
-            % get perimeter of object
-            binP = bwperim(binP);
-            
-            if ~isempty(gCenters) && ~p.Results.pupilOnly
-                % black out any residual glint component on the perimeter. This
-                % step will have no effect if the glint location is well within the
-                % pupil boundary. It will however remove any distortion of the
-                % perimeter if the glint happens to sit right on the pupil boundary
-                % and survives the fill holes step
-                glintPatch = ones(size(thisFrame));
-                glintPatch = insertShape(glintPatch,'FilledCircle',[gCenters(1,1) gCenters(1,2) gRadii(1)],'Color','black');
-                glintPatch = im2bw(glintPatch);
-                
-                % apply glint patch
-                binP = immultiply(binP,glintPatch);
-            end
-            
-            % save the perimeter
-            perimFrame = im2uint8(binP);
-            perimeter_data(:,:,ii) = perimFrame;
-        else
-            perimFrame = im2uint8(zeros(size(thisFrame)));
-            perimeter_data(:,:,ii) = perimFrame;
+        % save the perimeter
+        perimFrame = im2uint8(binP);
+        perimeter_data(:,:,ii) = perimFrame;
+    else
+        perimFrame = im2uint8(zeros(size(thisFrame)));
+        perimeter_data(:,:,ii) = perimFrame;
+        pupilRange = initialPupilRange;
+    end
+    
+    if p.Results.displayMode
+        displayFrame=thisFrame;
+        [Yp, Xp] = ind2sub(size(perimFrame),find(perimFrame));
+        if ~isempty(Xp)
+            displayFrame(sub2ind(size(perimFrame),Yp,Xp))=255;
         end
-        
-        if p.Results.displayMode
-            displayFrame=thisFrame;
-            [Yp, Xp] = ind2sub(size(perimFrame),find(perimFrame));
-            if ~isempty(Xp)
-                displayFrame(sub2ind(size(perimFrame),Yp,Xp))=255;
-            end
-            imshow(displayFrame, 'Border', 'tight');
-        end
-    catch ME
-        warning ('The following error occurred while processing frame %d',ii)
-        rethrow(ME)
-    end % diagnostic try/catch
+        imshow(displayFrame, 'Border', 'tight');
+    end
+    
 end % loop through gray frames
 
 %% Clean up and close
