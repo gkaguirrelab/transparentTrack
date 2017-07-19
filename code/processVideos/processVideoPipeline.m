@@ -72,7 +72,7 @@ if ~any(strcmp(p.Results.skipStage,'trackGlint'))
                 % if a parpool is already open, close it and try again
             elseif (strcmp(ME.message, ...
                     'Found an interactive session. You cannot have multiple interactive sessions open simultaneously. To terminate the existing session, use ''delete(gcp(''nocreate''))''.'))
-                warning ('Found an parpool already open. Closing it and trying again.')
+                warning ('Found a parpool already open. Closing it and trying again.')
                 delete(gcp('nocreate'))
                 success = 0;
             else
@@ -105,7 +105,7 @@ if ~any(strcmp(p.Results.skipStage,'extractPupilPerimeter'))
                 % if a parpool is already open, close it and try again
             elseif (strcmp(ME.message, ...
                     'Found an interactive session. You cannot have multiple interactive sessions open simultaneously. To terminate the existing session, use ''delete(gcp(''nocreate''))''.'))
-                warning ('Found an parpool already open. Closing it and trying again.')
+                warning ('Found a parpool already open. Closing it and trying again.')
                 delete(gcp('nocreate'))
                 success = 0;
             else
@@ -138,7 +138,7 @@ if ~any(strcmp(p.Results.skipStage,'makePreliminaryControlFile'))
                 % if a parpool is already open, close it and try again
             elseif (strcmp(ME.message, ...
                     'Found an interactive session. You cannot have multiple interactive sessions open simultaneously. To terminate the existing session, use ''delete(gcp(''nocreate''))''.'))
-                warning ('Found an parpool already open. Closing it and trying again.')
+                warning ('Found a parpool already open. Closing it and trying again.')
                 delete(gcp('nocreate'))
                 success = 0;
             else
@@ -171,7 +171,7 @@ if ~any(strcmp(p.Results.skipStage,'correctPupilPerimeter'))
                 % if a parpool is already open, close it and try again
             elseif (strcmp(ME.message, ...
                     'Found an interactive session. You cannot have multiple interactive sessions open simultaneously. To terminate the existing session, use ''delete(gcp(''nocreate''))''.'))
-                warning ('Found an parpool already open. Closing it and trying again.')
+                warning ('Found a parpool already open. Closing it and trying again.')
                 delete(gcp('nocreate'))
                 success = 0;
             else
@@ -204,7 +204,7 @@ if ~any(strcmp(p.Results.skipStage,'bayesFitPupilPerimeter'))
                 % if a parpool is already open, close it and try again
             elseif (strcmp(ME.message, ...
                     'Found an interactive session. You cannot have multiple interactive sessions open simultaneously. To terminate the existing session, use ''delete(gcp(''nocreate''))''.'))
-                warning ('Found an parpool already open. Closing it and trying again.')
+                warning ('Found a parpool already open. Closing it and trying again.')
                 delete(gcp('nocreate'))
                 success = 0;
             else
@@ -240,7 +240,7 @@ if ~any(strcmp(p.Results.skipStage,'makePupilFitVideo'))
                 % if a parpool is already open, close it and try again
             elseif (strcmp(ME.message, ...
                     'Found an interactive session. You cannot have multiple interactive sessions open simultaneously. To terminate the existing session, use ''delete(gcp(''nocreate''))''.'))
-                warning ('Found an parpool already open. Closing it and trying again.')
+                warning ('Found a parpool already open. Closing it and trying again.')
                 delete(gcp('nocreate'))
                 success = 0;
             else
