@@ -1,4 +1,4 @@
-function fitIrisAndPalpebralFissure(grayVideoName, perimeterFileName, pupilFitFileName, irisFitFileName, palpebralFissureFileName, varargin)
+function fitIrisCircleAndMask(grayVideoName, perimeterFileName, pupilFitFileName, irisFitFileName, varargin)
 % function fitIrisAndPalpebralFissure(grayVideoName, perimeterFileName, pupilFitFileName, irisFitFileName, palpebralFissureFileName, varargin)
 %
 % This function fits a circle to the outer border of the iris, and creates
@@ -55,7 +55,6 @@ p.addRequired('grayVideoName',@isstr);
 p.addRequired('perimeterFileName',@isstr);
 p.addRequired('pupilFitFileName',@isstr);
 p.addRequired('irisFitFileName',@isstr);
-p.addRequired('palpebralFissureFileName',@isstr);
 
 % Optional display params
 p.addParameter('verbosity','none',@ischar);
@@ -76,7 +75,7 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % parse
-p.parse(grayVideoName, perimeterFileName, pupilFitFileName, irisFitFileName, palpebralFissureFileName, varargin{:})
+p.parse(grayVideoName, perimeterFileName, pupilFitFileName, irisFitFileName, varargin{:})
 
 
 %% Read files into memory
@@ -158,21 +157,15 @@ end
 % alert the user
 if strcmp(p.Results.verbosity,'full')
     tic
-    fprintf(['Extracting iris perimeter. Started ' char(datetime('now')) '\n']);
+    fprintf(['Initial iris width detection. Started ' char(datetime('now')) '\n']);
     fprintf('| 0                      50                   100%% |\n');
     fprintf('.\n');
 end
 
-
 % initialize variables to hold the results
-irisFitData_X = nan(nFrames,1);
-irisFitData_Y = nan(nFrames,1);
-irisFitData_radius = nan(nFrames,1);
+irisInitialWidth = nan(nFrames,1);
 
-% initialize variable to hold the perimeter data
-palpebralFissure_data = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
-
-% loop through gray frames
+% Initial loop through gray frames to obtain an estimate of iris width
 parfor (ii = 1:nFrames, nWorkers)
     
     % increment the progress bar
@@ -204,11 +197,6 @@ parfor (ii = 1:nFrames, nWorkers)
             %% Code pulled from irisseg_main.m, part of the IrisSeg toolbox
             % https://github.com/cdac-cvml/IrisSeg
             
-            % Turn off warnings for nargchk being deprecated; we have
-            % communicated to the IrisSeg folks that this needs to be fixed
-            warningState = warning;
-            warning('off','MATLAB:nargchk:deprecated');
-            
             AngRadius1 = pRadius * 8;
             if ( (AngRadius1 > pCentreX) || (AngRadius1 > pCentreY) || (AngRadius1 > (M-pCentreX)) || (AngRadius1 < (N-pCentreY)))
                 AngRadius = round(max([pCentreX, pCentreY, (M-pCentreX), (N-pCentreY)]));
@@ -224,28 +212,11 @@ parfor (ii = 1:nFrames, nWorkers)
             polar_iris = shiftiris(polar_iris);
             
             % Localaize Iris Boundary
-            [iboundary,  flagger]= iris_boundary(polar_iris,pRadius);
-            irisWidth = round(iboundary / scale);
+            [iboundary,  ~]= iris_boundary(polar_iris,pRadius);
             
-            % Eyelid Occlusion Detection Module
-            [eyelidmask, adaptImage,Image2, flagger] = geteyelid(thisFrame, pCentreX, pCentreY, pRadius, irisWidth,pupil_height, scale);
+            % Store this initial estimate of iris width
+            irisInitialWidth(ii) = round(iboundary / scale);
             
-            % Iris Boundary Refinement Module
-            [final_CX, final_CY, Final_iRadius, irismask, flagger] = iris_boundary_actual_double(thisFrame,adaptImage, eyelidmask, pCentreX, pCentreY, pRadius, irisWidth, scale);
-            
-            x_iris = final_CX / scale;
-            y_iris = final_CY /scale;
-            iRadius = Final_iRadius / scale;
-            
-            % Restore the warning state
-            warning(warningState);
-            
-            % store the results
-            irisFitData_X(ii) = x_iris;
-            irisFitData_Y(ii) = y_iris;
-            irisFitData_radius(ii) = iRadius;
-            
-            palpebralFissure_data(:,:,ii) = eyelidmask;
         end % check defined pupil fit
     catch ME
         warning('Error processing frame %d',ii);
@@ -253,29 +224,110 @@ parfor (ii = 1:nFrames, nWorkers)
     end % try catch
 end % loop through gray frames
 
+% report completion of analysis
+if strcmp(p.Results.verbosity,'full')
+    toc
+    fprintf('\n');
+end
+
+% Calculate the mean irisWidth across the frames
+irisWidth = nanmean(irisInitialWidth);
+
+% initialize variables to hold the results in the next parfor loop
+irisFitData_X = nan(nFrames,1);
+irisFitData_Y = nan(nFrames,1);
+irisFitData_radius = nan(nFrames,1);
+irisFitData_mask = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
+
+%% Now refine iris size and obtain iris mask
+
+% alert the user
+if strcmp(p.Results.verbosity,'full')
+    tic
+    fprintf(['Refining iris width and extracting mask. Started ' char(datetime('now')) '\n']);
+    fprintf('| 0                      50                   100%% |\n');
+    fprintf('.\n');
+end
+
+% loop over frames
+parfor (ii = 1:nFrames, nWorkers)
+    
+    % increment the progress bar
+    if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
+        fprintf('\b.\n');
+    end
+    
+    % diagnostic try/catch
+    try
+        
+        % check if there is a defined pupil fit. If so, proceed
+        if ~isnan(pupilFitParams(ii,1))
+            
+            % get the frame
+            thisFrame = squeeze(grayVideo(:,:,ii));
+            
+            % Calculate the pupil height from the corrected pupil perimeter
+            pupil_height = min(find(~max(squeeze(pupilPerimeter.data(:,:,ii))')==0));
+            
+            % To maintain transparency with regard to the IrisSeg toolbox, we
+            % transfer values to variable names used by those routines
+            scale= 1;
+            pCentreX=pupilFitParams(ii,1);
+            pCentreY=pupilFitParams(ii,2);
+            pRadius=sqrt(pupilFitParams(ii,3)/pi);
+            
+            %% Code pulled from irisseg_main.m, part of the IrisSeg toolbox
+            % https://github.com/cdac-cvml/IrisSeg
+            
+            % Eyelid Occlusion Detection Module
+            [eyelidmask, adaptImage,~, ~] = geteyelid(thisFrame, pCentreX, pCentreY, pRadius, irisWidth, pupil_height, scale);
+            
+            % Turn off warnings for nargchk being deprecated; we have
+            % communicated to the IrisSeg folks that this needs to be fixed
+            warningState = warning;
+            warning('off','MATLAB:nargchk:deprecated');
+            
+            % Iris Boundary Refinement Module
+            [final_CX, final_CY, Final_iRadius, irismask, ~] = iris_boundary_actual_double(thisFrame,adaptImage, eyelidmask, pCentreX, pCentreY, pRadius, irisWidth, scale);
+            
+            % Restore the warning state
+            warning(warningState);
+            
+            % final adjustment for scale and store the results
+            x_iris = final_CX / scale;
+            y_iris = final_CY /scale;
+            iRadius = Final_iRadius / scale;
+            
+            irisFitData_X(ii) = x_iris;
+            irisFitData_Y(ii) = y_iris;
+            irisFitData_radius(ii) = iRadius;
+            irisFitData_mask(:,:,ii) = irismask;
+            
+        end % check defined pupil fit
+    catch ME
+        warning('Error processing frame %d',ii);
+        disp(ME.message)
+    end % try catch
+end % loop through gray frames
+
+
 %% Clean up and close
 
 % gather the loop vars into the irisFitData structure
 irisFitData.X = irisFitData_X;
 irisFitData.Y = irisFitData_Y;
 irisFitData.radius = irisFitData_radius;
+irisFitData.mask=irisFitData_mask;
 
 % save irisFitData
 irisFitData.meta = p.Results;
 save(irisFitFileName,'irisFitData');
 
-% save palpebralMask
-palpebralFissure.data = palpebralFissure_data;
-palpebralFissure.meta = p.Results;
-save(palpebralFissureFileName,'palpebralFissure');
-
 % report completion of analysis
 if strcmp(p.Results.verbosity,'full')
-    fprintf('\n');
     toc
     fprintf('\n');
 end
-
 
 %% Delete the parallel pool
 if strcmp(p.Results.verbosity,'full')
