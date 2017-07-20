@@ -83,12 +83,17 @@ if ~any(strcmp(p.Results.skipStage,'trackGlint'))
             success = 1;
         catch ME
             % if there is a corruption error clear matlabprefs.mat and try again
-            if (strcmp(ME.message, ...
-                    'Unable to read MAT-file /Users/giulia/Library/Application Support/MathWorks/MATLAB/R2016b/matlabprefs.mat. File might be corrupt.'))
+            if regexp(ME.message, ...
+                    regexptranslate('*matlabprefs.mat. File might be corrupt.'))
                 warning ('File matlabprefs.mat corrupt during execution. Cleaning up and trying again.')
                 matlabprefsCleanup;
                 success = 0;
-                % if a parpool is already open, close it and try again
+            elseif regexp(ME.message, ...
+                    regexptranslate('Error detected on workers*'))
+                warning ('Error detected on workers. Cleaning up matlabprefs and trying again.')
+                matlabprefsCleanup;
+                success = 0;
+            % if a parpool is already open, close it and try again
             elseif (strcmp(ME.message, ...
                     'Found an interactive session. You cannot have multiple interactive sessions open simultaneously. To terminate the existing session, use ''delete(gcp(''nocreate''))''.'))
                 warning ('Found a parpool already open. Closing it and trying again.')
@@ -116,12 +121,17 @@ if ~any(strcmp(p.Results.skipStage,'extractPupilPerimeter'))
             success = 1;
         catch ME
             % if there is a corruption error clear matlabprefs.mat and try again
-            if (strcmp(ME.message, ...
-                    'Unable to read MAT-file /Users/giulia/Library/Application Support/MathWorks/MATLAB/R2016b/matlabprefs.mat. File might be corrupt.'))
+            if regexp(ME.message, ...
+                    regexptranslate('*matlabprefs.mat. File might be corrupt.'))
                 warning ('File matlabprefs.mat corrupt during execution. Cleaning up and trying again.')
                 matlabprefsCleanup;
                 success = 0;
-                % if a parpool is already open, close it and try again
+            elseif regexp(ME.message, ...
+                    regexptranslate('Error detected on workers*'))
+                warning ('Error detected on workers. Cleaning up matlabprefs and trying again.')
+                matlabprefsCleanup;
+                success = 0;
+            % if a parpool is already open, close it and try again
             elseif (strcmp(ME.message, ...
                     'Found an interactive session. You cannot have multiple interactive sessions open simultaneously. To terminate the existing session, use ''delete(gcp(''nocreate''))''.'))
                 warning ('Found a parpool already open. Closing it and trying again.')
@@ -149,12 +159,17 @@ if ~any(strcmp(p.Results.skipStage,'makePreliminaryControlFile'))
             success = 1;
         catch ME
             % if there is a corruption error clear matlabprefs.mat and try again
-            if (strcmp(ME.message, ...
-                    'Unable to read MAT-file /Users/giulia/Library/Application Support/MathWorks/MATLAB/R2016b/matlabprefs.mat. File might be corrupt.'))
+            if regexp(ME.message, ...
+                    regexptranslate('*matlabprefs.mat. File might be corrupt.'))
                 warning ('File matlabprefs.mat corrupt during execution. Cleaning up and trying again.')
                 matlabprefsCleanup;
                 success = 0;
-                % if a parpool is already open, close it and try again
+            elseif regexp(ME.message, ...
+                    regexptranslate('Error detected on workers*'))
+                warning ('Error detected on workers. Cleaning up matlabprefs and trying again.')
+                matlabprefsCleanup;
+                success = 0;
+            % if a parpool is already open, close it and try again
             elseif (strcmp(ME.message, ...
                     'Found an interactive session. You cannot have multiple interactive sessions open simultaneously. To terminate the existing session, use ''delete(gcp(''nocreate''))''.'))
                 warning ('Found a parpool already open. Closing it and trying again.')
@@ -182,12 +197,17 @@ if ~any(strcmp(p.Results.skipStage,'correctPupilPerimeter'))
             success = 1;
         catch ME
             % if there is a corruption error clear matlabprefs.mat and try again
-            if (strcmp(ME.message, ...
-                    'Unable to read MAT-file /Users/giulia/Library/Application Support/MathWorks/MATLAB/R2016b/matlabprefs.mat. File might be corrupt.'))
+            if regexp(ME.message, ...
+                    regexptranslate('*matlabprefs.mat. File might be corrupt.'))
                 warning ('File matlabprefs.mat corrupt during execution. Cleaning up and trying again.')
                 matlabprefsCleanup;
                 success = 0;
-                % if a parpool is already open, close it and try again
+            elseif regexp(ME.message, ...
+                    regexptranslate('Error detected on workers*'))
+                warning ('Error detected on workers. Cleaning up matlabprefs and trying again.')
+                matlabprefsCleanup;
+                success = 0;
+            % if a parpool is already open, close it and try again
             elseif (strcmp(ME.message, ...
                     'Found an interactive session. You cannot have multiple interactive sessions open simultaneously. To terminate the existing session, use ''delete(gcp(''nocreate''))''.'))
                 warning ('Found a parpool already open. Closing it and trying again.')
@@ -215,12 +235,17 @@ if ~any(strcmp(p.Results.skipStage,'bayesFitPupilPerimeter'))
             success = 1;
         catch ME
             % if there is a corruption error clear matlabprefs.mat and try again
-            if (strcmp(ME.message, ...
-                    'Unable to read MAT-file /Users/giulia/Library/Application Support/MathWorks/MATLAB/R2016b/matlabprefs.mat. File might be corrupt.'))
+            if regexp(ME.message, ...
+                    regexptranslate('*matlabprefs.mat. File might be corrupt.'))
                 warning ('File matlabprefs.mat corrupt during execution. Cleaning up and trying again.')
                 matlabprefsCleanup;
                 success = 0;
-                % if a parpool is already open, close it and try again
+            elseif regexp(ME.message, ...
+                    regexptranslate('Error detected on workers*'))
+                warning ('Error detected on workers. Cleaning up matlabprefs and trying again.')
+                matlabprefsCleanup;
+                success = 0;
+            % if a parpool is already open, close it and try again
             elseif (strcmp(ME.message, ...
                     'Found an interactive session. You cannot have multiple interactive sessions open simultaneously. To terminate the existing session, use ''delete(gcp(''nocreate''))''.'))
                 warning ('Found a parpool already open. Closing it and trying again.')
@@ -248,12 +273,17 @@ if ~any(strcmp(p.Results.skipStage,'fitIrisAndPalpebralFissure'))
             success = 1;
         catch ME
             % if there is a corruption error clear matlabprefs.mat and try again
-            if (strcmp(ME.message, ...
-                    'Unable to read MAT-file /Users/giulia/Library/Application Support/MathWorks/MATLAB/R2016b/matlabprefs.mat. File might be corrupt.'))
+            if regexp(ME.message, ...
+                    regexptranslate('*matlabprefs.mat. File might be corrupt.'))
                 warning ('File matlabprefs.mat corrupt during execution. Cleaning up and trying again.')
                 matlabprefsCleanup;
                 success = 0;
-                % if a parpool is already open, close it and try again
+            elseif regexp(ME.message, ...
+                    regexptranslate('Error detected on workers*'))
+                warning ('Error detected on workers. Cleaning up matlabprefs and trying again.')
+                matlabprefsCleanup;
+                success = 0;
+            % if a parpool is already open, close it and try again
             elseif (strcmp(ME.message, ...
                     'Found an interactive session. You cannot have multiple interactive sessions open simultaneously. To terminate the existing session, use ''delete(gcp(''nocreate''))''.'))
                 warning ('Found a parpool already open. Closing it and trying again.')
@@ -283,12 +313,17 @@ if ~any(strcmp(p.Results.skipStage,'makePupilFitVideo'))
             success = 1;
         catch ME
             % if there is a corruption error clear matlabprefs.mat and try again
-            if (strcmp(ME.message, ...
-                    'Unable to read MAT-file /Users/giulia/Library/Application Support/MathWorks/MATLAB/R2016b/matlabprefs.mat. File might be corrupt.'))
+            if regexp(ME.message, ...
+                    regexptranslate('*matlabprefs.mat. File might be corrupt.'))
                 warning ('File matlabprefs.mat corrupt during execution. Cleaning up and trying again.')
                 matlabprefsCleanup;
                 success = 0;
-                % if a parpool is already open, close it and try again
+            elseif regexp(ME.message, ...
+                    regexptranslate('Error detected on workers*'))
+                warning ('Error detected on workers. Cleaning up matlabprefs and trying again.')
+                matlabprefsCleanup;
+                success = 0;
+            % if a parpool is already open, close it and try again
             elseif (strcmp(ME.message, ...
                     'Found an interactive session. You cannot have multiple interactive sessions open simultaneously. To terminate the existing session, use ''delete(gcp(''nocreate''))''.'))
                 warning ('Found a parpool already open. Closing it and trying again.')
