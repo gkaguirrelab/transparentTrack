@@ -58,12 +58,12 @@ p.addParameter('ellipseFitFileName',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('ellipseColor','green',@isstring);
 p.addParameter('whichFieldToPlot', [],@(x)(isempty(x) | ischar(x)));
 p.addParameter('irisFitFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('irisColor','magenta',@isstring);
+p.addParameter('irisCircleColor','magenta',@isstring);
+p.addParameter('irisMaskColor','yellow',@isstring);
 p.addParameter('controlFileName',[],@(x)(isempty(x) | ischar(x)));
 
 % parse
 p.parse(videoInFileName, videoOutFileName, varargin{:})
-
 
 
 %% Set up the parallel pool
@@ -136,7 +136,6 @@ if ~isempty(p.Results.irisFitFileName)
     dataLoad = load(p.Results.irisFitFileName);
     irisFitData = dataLoad.irisFitData;
     clear dataLoad
-    meanIrisRadius = nanmean(irisFitData.radius);
 end
 
 % Read in and parse the control file if passed
@@ -170,7 +169,7 @@ outputVideo=zeros(videoSizeY,videoSizeX,3,nFrames,'uint8');
 
 %% Loop through the frames
 parfor (ii = 1:nFrames, nWorkers)
-    
+
     % Update the progress display
     if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
         fprintf('\b.\n');
@@ -199,6 +198,16 @@ parfor (ii = 1:nFrames, nWorkers)
         plot(Xp,Yp,['.' p.Results.perimeterColor], 'MarkerSize', 1);
     end
     
+    % add irisMask
+    if ~isempty(p.Results.irisFitFileName)
+        binP = squeeze(irisFitData.mask(:,:,ii));
+        boundaryPointsCell = bwboundaries(binP);
+        if ~isempty(boundaryPointsCell)
+            boundaryPoints=boundaryPointsCell{1};
+            plot(boundaryPoints(:,2), boundaryPoints(:,1),['.' p.Results.irisMaskColor], 'MarkerSize', 1);
+        end
+    end
+        
     % add ellipse fit
     if ~isempty(p.Results.ellipseFitFileName)
         if sum(isnan(ellipseFitParams(ii,:)))==0
@@ -217,19 +226,19 @@ parfor (ii = 1:nFrames, nWorkers)
         end
     end
     
-    % add iris fit
+    % add iris circle fit
     if ~isempty(p.Results.irisFitFileName)
         if ~isnan(irisFitData.X(ii))
             % build circle impicit equation
-            fh=@(x,y) (x-irisFitData.X(ii)).^2 +(y-irisFitData.Y(ii)).^2 - meanIrisRadius.^2;
+            fh=@(x,y) (x-irisFitData.X(ii)).^2 +(y-irisFitData.Y(ii)).^2 - irisFitData.radius(ii).^2;
             % superimpose the ellipse using fimplicit or ezplot
             if exist('fimplicit','file')==2
-                fimplicit(fh,[1, videoSizeY, 1, videoSizeX],'Color', p.Results.irisColor);
+                fimplicit(fh,[1, videoSizeY, 1, videoSizeX],'Color', p.Results.irisCircleColor);
                 set(gca,'position',[0 0 1 1],'units','normalized')
                 axis off;
             else
                 plotHandle=ezplot(fh,[1, videoSizeY, 1, videoSizeX]);
-                set(plotHandle, 'Color', p.Results.irisColor)
+                set(plotHandle, 'Color', p.Results.irisCircleColor)
             end
         end
     end

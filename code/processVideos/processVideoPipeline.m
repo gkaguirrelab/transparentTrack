@@ -59,7 +59,6 @@ correctedPerimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.
 ellipseFitFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_pupil.mat']);
 finalFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_finalFit.mat']);
 irisFitFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_iris.mat']);
-palpebralFissureFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_palpebralFissure.mat']);
 
 %% Conduct the analysis
 % NOTE: some of the analysis steps are wrapped in a while+try/catch loop to
@@ -263,13 +262,13 @@ if ~any(strcmp(p.Results.skipStage,'bayesFitPupilPerimeter'))
     end
 end
 
-% fit Iris and palpebral fissure
-if ~any(strcmp(p.Results.skipStage,'fitIrisAndPalpebralFissure'))
+% fit iris circle and mask
+if ~any(strcmp(p.Results.skipStage,'fitIrisCircleAndMask'))
     % intialize while control
     success = 0;
     while ~success
         try
-            fitIrisAndPalpebralFissure(grayVideoName, perimeterFileName, ellipseFitFileName, irisFitFileName, palpebralFissureFileName, varargin{:});
+            fitIrisCircleAndMask(grayVideoName, perimeterFileName, ellipseFitFileName, irisFitFileName, varargin{:});
             success = 1;
         catch ME
             % if there is a corruption error clear matlabprefs.mat and try again
