@@ -180,74 +180,78 @@ parfor (ii = 1:nFrames, nWorkers)
         fprintf('\b.\n');
     end
     
-    % check if there is a defined pupil fit. If so, proceed
-    if ~isnan(pupilFitParams(ii,1))
+    % diagnostic try/catch
+    try
         
-    
-        % get the frame
-        thisFrame = squeeze(grayVideo(:,:,ii));
-        
-        % Calculate the pupil height from the corrected pupil perimeter
-        pupil_height = min(find(~max(squeeze(pupilPerimeter.data(:,:,ii))')==0));
-        
-        % To maintain transparency with regard to the IrisSeg toolbox, we
-        % transfer values to variable names used by those routines
-        scale= 1;
-        pCentreX=pupilFitParams(ii,1);
-        pCentreY=pupilFitParams(ii,2);
-        pRadius=sqrt(pupilFitParams(ii,3)/pi);
-        N = videoSizeY;
-        M = videoSizeX;
-        
-        %% Code pulled from irisseg_main.m, part of the IrisSeg toolbox
-        % https://github.com/cdac-cvml/IrisSeg
-        
-        % Turn off warnings for nargchk being deprecated; we have
-        % communicated to the IrisSeg folks that this needs to be fixed
-        warningState = warning;
-        warning('off','MATLAB:nargchk:deprecated');
-        
-        AngRadius1 = pRadius * 8;
-        if ( (AngRadius1 > pCentreX) || (AngRadius1 > pCentreY) || (AngRadius1 > (M-pCentreX)) || (AngRadius1 < (N-pCentreY)))
-            AngRadius = round(max([pCentreX, pCentreY, (M-pCentreX), (N-pCentreY)]));
-        else
-            AngRadius = AngRadius1;
-        end
-        polarheight= round((AngRadius-pRadius) * scale);
-        x_iris = pCentreX;
-        y_iris = pCentreY;
-        [polar_iris] = convert_to_polar(thisFrame, x_iris, y_iris, AngRadius, pCentreX, pCentreY, pRadius,  polarheight, 360);
-
-        % Shift IRIS
-        polar_iris = shiftiris(polar_iris);
-        
-        % Localaize Iris Boundary        
-        [iboundary,  flagger]= iris_boundary(polar_iris,pRadius);
-        irisWidth = round(iboundary / scale);
-        
-        % Eyelid Occlusion Detection Module        
-        [eyelidmask, adaptImage,Image2, flagger] = geteyelid(thisFrame, pCentreX, pCentreY, pRadius, irisWidth,pupil_height, scale);
-        
-        % Iris Boundary Refinement Module        
-        [final_CX, final_CY, Final_iRadius, irismask, flagger] = iris_boundary_actual_double(thisFrame,adaptImage, eyelidmask, pCentreX, pCentreY, pRadius, irisWidth, scale);
-        
-        x_iris = final_CX / scale;
-        y_iris = final_CY /scale;
-        iRadius = Final_iRadius / scale;
-        
-        % Restore the warning state
-        warning(warningState);
-        
-        % store the results
-        irisFitData_X(ii) = x_iris;
-        irisFitData_Y(ii) = y_iris;
-        irisFitData_radius(ii) = iRadius;
-
-        palpebralFissure_data(:,:,ii) = eyelidmask;
-    end
-    
+        % check if there is a defined pupil fit. If so, proceed
+        if ~isnan(pupilFitParams(ii,1))
+            
+            % get the frame
+            thisFrame = squeeze(grayVideo(:,:,ii));
+            
+            % Calculate the pupil height from the corrected pupil perimeter
+            pupil_height = min(find(~max(squeeze(pupilPerimeter.data(:,:,ii))')==0));
+            
+            % To maintain transparency with regard to the IrisSeg toolbox, we
+            % transfer values to variable names used by those routines
+            scale= 1;
+            pCentreX=pupilFitParams(ii,1);
+            pCentreY=pupilFitParams(ii,2);
+            pRadius=sqrt(pupilFitParams(ii,3)/pi);
+            N = videoSizeY;
+            M = videoSizeX;
+            
+            %% Code pulled from irisseg_main.m, part of the IrisSeg toolbox
+            % https://github.com/cdac-cvml/IrisSeg
+            
+            % Turn off warnings for nargchk being deprecated; we have
+            % communicated to the IrisSeg folks that this needs to be fixed
+            warningState = warning;
+            warning('off','MATLAB:nargchk:deprecated');
+            
+            AngRadius1 = pRadius * 8;
+            if ( (AngRadius1 > pCentreX) || (AngRadius1 > pCentreY) || (AngRadius1 > (M-pCentreX)) || (AngRadius1 < (N-pCentreY)))
+                AngRadius = round(max([pCentreX, pCentreY, (M-pCentreX), (N-pCentreY)]));
+            else
+                AngRadius = AngRadius1;
+            end
+            polarheight= round((AngRadius-pRadius) * scale);
+            x_iris = pCentreX;
+            y_iris = pCentreY;
+            [polar_iris] = convert_to_polar(thisFrame, x_iris, y_iris, AngRadius, pCentreX, pCentreY, pRadius,  polarheight, 360);
+            
+            % Shift IRIS
+            polar_iris = shiftiris(polar_iris);
+            
+            % Localaize Iris Boundary
+            [iboundary,  flagger]= iris_boundary(polar_iris,pRadius);
+            irisWidth = round(iboundary / scale);
+            
+            % Eyelid Occlusion Detection Module
+            [eyelidmask, adaptImage,Image2, flagger] = geteyelid(thisFrame, pCentreX, pCentreY, pRadius, irisWidth,pupil_height, scale);
+            
+            % Iris Boundary Refinement Module
+            [final_CX, final_CY, Final_iRadius, irismask, flagger] = iris_boundary_actual_double(thisFrame,adaptImage, eyelidmask, pCentreX, pCentreY, pRadius, irisWidth, scale);
+            
+            x_iris = final_CX / scale;
+            y_iris = final_CY /scale;
+            iRadius = Final_iRadius / scale;
+            
+            % Restore the warning state
+            warning(warningState);
+            
+            % store the results
+            irisFitData_X(ii) = x_iris;
+            irisFitData_Y(ii) = y_iris;
+            irisFitData_radius(ii) = iRadius;
+            
+            palpebralFissure_data(:,:,ii) = eyelidmask;
+        end % check defined pupil fit
+    catch ME
+        warning('Error processing frame %d',ii);
+        disp(ME.message)
+    end % try catch
 end % loop through gray frames
-
 
 %% Clean up and close
 
