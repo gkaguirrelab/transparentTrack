@@ -54,10 +54,10 @@ p.addParameter('glintFileName',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('glintColor','r',@isstring);
 p.addParameter('perimeterFileName',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('perimeterColor','w',@isstring);
-p.addParameter('ellipseFitFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('ellipseColor','green',@isstring);
+p.addParameter('pupilFileName',[],@(x)(isempty(x) | ischar(x)));
+p.addParameter('pupilColor','green',@isstring);
 p.addParameter('whichFieldToPlot', [],@(x)(isempty(x) | ischar(x)));
-p.addParameter('irisFitFileName',[],@(x)(isempty(x) | ischar(x)));
+p.addParameter('irisFileName',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('irisCircleColor','magenta',@isstring);
 p.addParameter('irisMaskColor','yellow',@isstring);
 p.addParameter('controlFileName',[],@(x)(isempty(x) | ischar(x)));
@@ -123,18 +123,18 @@ if ~isempty(p.Results.perimeterFileName)
     clear dataLoad
 end
 
-% Read in the ellipseFitData file if passed
-if ~isempty(p.Results.ellipseFitFileName)
-    dataLoad = load(p.Results.ellipseFitFileName);
-    ellipseFitData = dataLoad.ellipseFitData;
+% Read in the pupilData file if passed
+if ~isempty(p.Results.pupilFileName)
+    dataLoad = load(p.Results.pupilFileName);
+    pupilData = dataLoad.pupilData;
     clear dataLoad
-    ellipseFitParams = ellipseFitData.(p.Results.whichFieldToPlot);
+    pupilFitParams = pupilData.(p.Results.whichFieldToPlot);
 end
 
-% Read in the irisFitData file if passed
-if ~isempty(p.Results.irisFitFileName)
-    dataLoad = load(p.Results.irisFitFileName);
-    irisFitData = dataLoad.irisFitData;
+% Read in the irisData file if passed
+if ~isempty(p.Results.irisFileName)
+    dataLoad = load(p.Results.irisFileName);
+    irisData = dataLoad.irisData;
     clear dataLoad
 end
 
@@ -166,6 +166,7 @@ clear videoInObj
 
 % prepare the outputVideo
 outputVideo=zeros(videoSizeY,videoSizeX,3,nFrames,'uint8');
+
 
 %% Loop through the frames
 parfor (ii = 1:nFrames, nWorkers)
@@ -199,8 +200,8 @@ parfor (ii = 1:nFrames, nWorkers)
     end
     
     % add irisMask
-    if ~isempty(p.Results.irisFitFileName)
-        binP = squeeze(irisFitData.mask(:,:,ii));
+    if ~isempty(p.Results.irisFileName)
+        binP = squeeze(irisData.mask(:,:,ii));
         boundaryPointsCell = bwboundaries(binP);
         if ~isempty(boundaryPointsCell)
             boundaryPoints=boundaryPointsCell{1};
@@ -209,28 +210,28 @@ parfor (ii = 1:nFrames, nWorkers)
     end
         
     % add ellipse fit
-    if ~isempty(p.Results.ellipseFitFileName)
-        if sum(isnan(ellipseFitParams(ii,:)))==0
+    if ~isempty(p.Results.pupilFileName)
+        if sum(isnan(pupilFitParams(ii,:)))==0
             % build ellipse impicit equation
-            pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(ellipseFitParams(ii,:)));
+            pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(pupilFitParams(ii,:)));
             fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
             % superimpose the ellipse using fimplicit or ezplot
             if exist('fimplicit','file')==2
-                fimplicit(fh,[1, videoSizeY, 1, videoSizeX],'Color', p.Results.ellipseColor,'LineWidth',1.5);
+                fimplicit(fh,[1, videoSizeY, 1, videoSizeX],'Color', p.Results.pupilColor,'LineWidth',1.5);
                 set(gca,'position',[0 0 1 1],'units','normalized')
                 axis off;
             else
                 plotHandle=ezplot(fh,[1, videoSizeY, 1, videoSizeX]);
-                set(plotHandle, 'Color', p.Results.ellipseColor)
+                set(plotHandle, 'Color', p.Results.pupilColor)
             end
         end
     end
     
     % add iris circle fit
-    if ~isempty(p.Results.irisFitFileName)
-        if ~isnan(irisFitData.X(ii))
+    if ~isempty(p.Results.irisFileName)
+        if ~isnan(irisData.X(ii))
             % build circle impicit equation
-            fh=@(x,y) (x-irisFitData.X(ii)).^2 +(y-irisFitData.Y(ii)).^2 - irisFitData.radius(ii).^2;
+            fh=@(x,y) (x-irisData.X(ii)).^2 +(y-irisData.Y(ii)).^2 - irisData.radius(ii).^2;
             % superimpose the ellipse using fimplicit or ezplot
             if exist('fimplicit','file')==2
                 fimplicit(fh,[1, videoSizeY, 1, videoSizeX],'Color', p.Results.irisCircleColor,'LineWidth',1.5);

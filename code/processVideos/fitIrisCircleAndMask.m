@@ -1,4 +1,4 @@
-function fitIrisCircleAndMask(grayVideoName, perimeterFileName, pupilFitFileName, irisFitFileName, varargin)
+function fitIrisCircleAndMask(grayVideoName, perimeterFileName, pupilFileName, irisFileName, varargin)
 % function fitIrisAndPalpebralFissure(grayVideoName, perimeterFileName, pupilFitFileName, irisFitFileName, palpebralFissureFileName, varargin)
 %
 % This function fits a circle to the outer border of the iris, and creates
@@ -12,15 +12,17 @@ function fitIrisCircleAndMask(grayVideoName, perimeterFileName, pupilFitFileName
 %
 % Input (required)
 %	grayVideoName - full path to  the gray video to track
-%	ellipseFitDataFileName - full path to the .mat file that contains fits
+%   perimeterFileName
+%	pupilFileName - full path to the .mat file that contains fits
 %       to the border of the pupil
+%   irisFileName -
+%
+% Options (verbosity and display)
+%   verbosity - controls console status updates
 %
 % Options (analysis)
 % 	gammaCorrection - gamma correction to be applied to the video frames
 %       (default 1, typical range [0.5 1.8])
-%
-% Options (verbosity and display)
-%   verbosity - controls console status updates
 %
 % Optional key/value pairs (flow control)
 %
@@ -31,10 +33,6 @@ function fitIrisCircleAndMask(grayVideoName, perimeterFileName, pupilFitFileName
 %    undefined the default number will be used.
 %  'tbtbProjectName' - The workers in the parallel pool are configured by
 %    issuing a tbUseProject command for the project specified here.
-%  'developmentMode' - If set to true, the routine attempts to load a
-%    pre-existing set of initial ellipse measures (and SDs upon those
-%    params), rather than re-computing these. This allows more rapid
-%    exploration of parameter settigns that guide the Bayesian smoothing.
 %
 % Optional key/value pairs (Environment parameters)
 %  'tbSnapshot' - This should contain the output of the tbDeploymentSnapshot
@@ -53,14 +51,14 @@ p = inputParser; p.KeepUnmatched = true;
 % required input
 p.addRequired('grayVideoName',@isstr);
 p.addRequired('perimeterFileName',@isstr);
-p.addRequired('pupilFitFileName',@isstr);
-p.addRequired('irisFitFileName',@isstr);
+p.addRequired('pupilFileName',@isstr);
+p.addRequired('irisFileName',@isstr);
 
 % Optional display params
 p.addParameter('verbosity','none',@ischar);
 
 % Optional analysis params
-p.addParameter('gammaCorrection', 1, @isnumeric);
+p.addParameter('irisGammaCorrection', 1, @isnumeric);
 
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
@@ -75,7 +73,7 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % parse
-p.parse(grayVideoName, perimeterFileName, pupilFitFileName, irisFitFileName, varargin{:})
+p.parse(grayVideoName, perimeterFileName, pupilFileName, irisFileName, varargin{:})
 
 
 %% Read files into memory
@@ -96,22 +94,22 @@ grayVideo = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
 % read the video into memory, adjusting gamma and local contrast
 for ii = 1:min([floor(videoInObj.Duration*videoInObj.FrameRate) p.Results.nFrames])
     thisFrame = readFrame(videoInObj);
-    thisFrame = imadjust(thisFrame,[],[],p.Results.gammaCorrection);
+    thisFrame = imadjust(thisFrame,[],[],p.Results.irisGammaCorrection);
     grayVideo(:,:,ii) = rgb2gray (thisFrame);
 end
 % close the video object
 clear videoInObj
 
-% Read in the ellipseFitData
-dataLoad = load(pupilFitFileName);
-pupilFitData = dataLoad.ellipseFitData;
+% read in the pupil ellipse fit data
+dataLoad = load(pupilFileName);
+pupilData = dataLoad.pupilData;
 clear dataLoad
-pupilFitParams = pupilFitData.pPosteriorMeanTransparent;
+pupilFitParams = pupilData.pPosteriorMeanTransparent;
 
 % Load the pupil perimeter data. It will be a structure variable
 % "perimeter", with the fields .data and .meta
 dataLoad=load(perimeterFileName);
-pupilPerimeter=dataLoad.perimeter;
+perimeter=dataLoad.perimeter;
 clear dataLoad
 
 
@@ -152,8 +150,6 @@ end
 
 %% Fit iris perimeter
 
-% Detect display mode
-
 % alert the user
 if strcmp(p.Results.verbosity,'full')
     tic
@@ -165,7 +161,7 @@ end
 % initialize variables to hold the results
 irisInitialWidth = nan(nFrames,1);
 
-% Initial loop through gray frames to obtain an estimate of iris width
+% Initial loop through gray frames to estimate iris width
 parfor (ii = 1:nFrames, nWorkers)
     
     % increment the progress bar
@@ -183,7 +179,7 @@ parfor (ii = 1:nFrames, nWorkers)
             thisFrame = squeeze(grayVideo(:,:,ii));
             
             % Calculate the pupil height from the corrected pupil perimeter
-            pupil_height = min(find(~max(squeeze(pupilPerimeter.data(:,:,ii))')==0));
+            pupil_height = min(find(~max(squeeze(perimeter.data(:,:,ii))')==0));
             
             % To maintain transparency with regard to the IrisSeg toolbox, we
             % transfer values to variable names used by those routines
@@ -234,10 +230,11 @@ end
 irisWidth = nanmean(irisInitialWidth);
 
 % initialize variables to hold the results in the next parfor loop
-irisFitData_X = nan(nFrames,1);
-irisFitData_Y = nan(nFrames,1);
-irisFitData_radius = nan(nFrames,1);
-irisFitData_mask = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
+irisData_X = nan(nFrames,1);
+irisData_Y = nan(nFrames,1);
+irisData_radius = nan(nFrames,1);
+irisData_mask = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
+
 
 %% Now refine iris size and obtain iris mask
 
@@ -258,8 +255,7 @@ parfor (ii = 1:nFrames, nWorkers)
     end
     
     % diagnostic try/catch
-    try
-        
+    try        
         % check if there is a defined pupil fit. If so, proceed
         if ~isnan(pupilFitParams(ii,1))
             
@@ -267,7 +263,7 @@ parfor (ii = 1:nFrames, nWorkers)
             thisFrame = squeeze(grayVideo(:,:,ii));
             
             % Calculate the pupil height from the corrected pupil perimeter
-            pupil_height = min(find(~max(squeeze(pupilPerimeter.data(:,:,ii))')==0));
+            pupil_height = min(find(~max(squeeze(perimeter.data(:,:,ii))')==0));
             
             % To maintain transparency with regard to the IrisSeg toolbox, we
             % transfer values to variable names used by those routines
@@ -298,10 +294,10 @@ parfor (ii = 1:nFrames, nWorkers)
             y_iris = final_CY /scale;
             iRadius = Final_iRadius / scale;
             
-            irisFitData_X(ii) = x_iris;
-            irisFitData_Y(ii) = y_iris;
-            irisFitData_radius(ii) = iRadius;
-            irisFitData_mask(:,:,ii) = irismask;
+            irisData_X(ii) = x_iris;
+            irisData_Y(ii) = y_iris;
+            irisData_radius(ii) = iRadius;
+            irisData_mask(:,:,ii) = irismask;
             
         end % check defined pupil fit
     catch ME
@@ -314,14 +310,14 @@ end % loop through gray frames
 %% Clean up and close
 
 % gather the loop vars into the irisFitData structure
-irisFitData.X = irisFitData_X;
-irisFitData.Y = irisFitData_Y;
-irisFitData.radius = irisFitData_radius;
-irisFitData.mask=irisFitData_mask;
+irisData.X = irisData_X;
+irisData.Y = irisData_Y;
+irisData.radius = irisData_radius;
+irisData.mask=irisData_mask;
 
 % save irisFitData
-irisFitData.meta = p.Results;
-save(irisFitFileName,'irisFitData');
+irisData.meta = p.Results;
+save(irisFileName,'irisData');
 
 % report completion of analysis
 if strcmp(p.Results.verbosity,'full')
