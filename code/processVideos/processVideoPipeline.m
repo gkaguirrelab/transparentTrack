@@ -56,9 +56,9 @@ glintFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_gli
 perimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_perimeter.mat']);
 controlFileName = fullfile(pathParams.controlFileDirFull, [pathParams.runName '_controlFile.csv']);
 correctedPerimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_correctedPerimeter.mat']);
-ellipseFitFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_pupil.mat']);
-finalFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_finalFit.mat']);
-irisFitFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_iris.mat']);
+pupilFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_pupil.mat']);
+finalFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_finalFit.avi']);
+irisFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_iris.mat']);
 
 %% Conduct the analysis
 % NOTE: some of the analysis steps are wrapped in a while+try/catch loop to
@@ -230,7 +230,7 @@ if ~any(strcmp(p.Results.skipStage,'bayesFitPupilPerimeter'))
     success = 0;
     while ~success
         try
-            bayesFitPupilPerimeter(correctedPerimeterFileName, ellipseFitFileName, varargin{:});
+            bayesFitPupilPerimeter(correctedPerimeterFileName, pupilFileName, varargin{:});
             success = 1;
         catch ME
             % if there is a corruption error clear matlabprefs.mat and try again
@@ -268,7 +268,7 @@ if ~any(strcmp(p.Results.skipStage,'fitIrisCircleAndMask'))
     success = 0;
     while ~success
         try
-            fitIrisCircleAndMask(grayVideoName, perimeterFileName, ellipseFitFileName, irisFitFileName, varargin{:});
+            fitIrisCircleAndMask(grayVideoName, perimeterFileName, pupilFileName, irisFileName, varargin{:});
             success = 1;
         catch ME
             % if there is a corruption error clear matlabprefs.mat and try again
@@ -306,8 +306,8 @@ if ~any(strcmp(p.Results.skipStage,'makePupilFitVideo'))
         try
             makePupilFitVideo(grayVideoName, finalFitVideoName, ...
         'glintFileName', glintFileName, 'perimeterFileName', correctedPerimeterFileName,...
-        'ellipseFitFileName', ellipseFitFileName, 'whichFieldToPlot', 'pPosteriorMeanTransparent', ...
-        'irisFitFileName', irisFitFileName, ...
+        'pupilFileName', pupilFileName, 'whichFieldToPlot', 'pPosteriorMeanTransparent', ...
+        'irisFileName', irisFileName, ...
         'controlFileName',controlFileName,varargin{:});
             success = 1;
         catch ME

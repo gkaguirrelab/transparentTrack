@@ -1,4 +1,4 @@
-function [ellipseFitData] = bayesFitPupilPerimeter(perimeterFileName, ellipseFitDataFileName, varargin)
+function [pupilData] = bayesFitPupilPerimeter(perimeterFileName, pupilFileName, varargin)
 % [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varargin)
 %
 % This routine fits an ellipse to each frame of a video that contains the
@@ -42,7 +42,7 @@ function [ellipseFitData] = bayesFitPupilPerimeter(perimeterFileName, ellipseFit
 %     value of unity, and the frame should be otherwise zero-filled. A
 %     frame that has no information regarding the pupil (e.g., during a
 %     blink) should be zero-filled.
-%   ellipseFitDataFileName: full path to the .mat file in which to save
+%   pupilFileName: full path to the .mat file in which to save
 %     pupil tracking information.
 %
 % Optional key/value pairs (verbosity)
@@ -121,7 +121,7 @@ p = inputParser; p.KeepUnmatched = true;
 
 % Required
 p.addRequired('perimeterFileName',@ischar);
-p.addRequired('ellipseFitDataFileName',@ischar);
+p.addRequired('pupilFileName',@ischar);
 
 % Optional display and I/O params
 p.addParameter('verbosity','none',@ischar);
@@ -151,7 +151,7 @@ p.addParameter('priorCenterNaN',true,@islogical);
 p.addParameter('whichLikelihoodSD','pInitialFitSplitsSD',@ischar);
 
 %% Parse and check the parameters
-p.parse(perimeterFileName, ellipseFitDataFileName, varargin{:});
+p.parse(perimeterFileName, pupilFileName, varargin{:});
 
 nEllipseParams=5; % 5 params in the transparent ellipse form
 
@@ -243,7 +243,7 @@ end
 
 %% Load or calculate an initial ellipse fit for each video frame
 if p.Results.developmentMode
-    load(p.Results.ellipseFitDataFileName);
+    load(p.Results.pupilFileName);
 else
     
     % Alert the user
@@ -332,10 +332,10 @@ else
     end % loop over frames
     
     % gather the loop vars into the ellipse structure
-    ellipseFitData.pInitialFitTransparent = loopVar_pInitialFitTransparent;
-    ellipseFitData.pInitialFitHessianSD = loopVar_pInitialFitHessianSD;
-    ellipseFitData.pInitialFitSplitsSD = loopVar_pInitialFitSplitsSD;
-    ellipseFitData.pInitialFitBootsSD = loopVar_pInitialFitBootsSD;
+    pupilData.pInitialFitTransparent = loopVar_pInitialFitTransparent;
+    pupilData.pInitialFitHessianSD = loopVar_pInitialFitHessianSD;
+    pupilData.pInitialFitSplitsSD = loopVar_pInitialFitSplitsSD;
+    pupilData.pInitialFitBootsSD = loopVar_pInitialFitBootsSD;
     
     if strcmp(p.Results.verbosity,'full')
         toc
@@ -345,8 +345,8 @@ else
 end % developmentMode check
 
 % save the ellipse fit results if requested
-if ~isempty(p.Results.ellipseFitDataFileName)
-    save(p.Results.ellipseFitDataFileName,'ellipseFitData')
+if ~isempty(p.Results.pupilFileName)
+    save(p.Results.pupilFileName,'pupilData')
 end
 
 
@@ -410,7 +410,7 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % if this frame has data, and the initial ellipse fit is not nan, 
     % then proceed to calculate the posterior
-    if ~isempty(Xc) &&  ~isempty(Yc) && sum(isnan(ellipseFitData.pInitialFitTransparent(ii,:)))==0
+    if ~isempty(Xc) &&  ~isempty(Yc) && sum(isnan(pupilData.pInitialFitTransparent(ii,:)))==0
         % Calculate the prior. The prior mean is given by the surrounding
         % fit values, weighted by a decaying exponential in time and the
         % inverse of the standard deviation of each measure. The prior
@@ -425,14 +425,14 @@ parfor (ii = 1:nFrames, nWorkers)
         
         for jj=1:nEllipseParams
             % Get the dataVector, restricted to the window range
-            dataVector=squeeze(ellipseFitData.pInitialFitTransparent(:,jj))';
+            dataVector=squeeze(pupilData.pInitialFitTransparent(:,jj))';
             dataVector=dataVector(rangeLowSignal:rangeHiSignal);
             
             % Build the precisionVector as the inverse of the measurement
             % SD on each frame, scaled to range within the window from zero
             % to unity. Thus, the noisiest measurement will not influence
             % the prior.
-            precisionVector=squeeze(ellipseFitData.pInitialFitSplitsSD(:,jj))';
+            precisionVector=squeeze(pupilData.pInitialFitSplitsSD(:,jj))';
             precisionVector=precisionVector.^(-1);
             precisionVector=precisionVector(rangeLowSignal:rangeHiSignal);
             precisionVector=precisionVector-nanmin(precisionVector);
@@ -454,15 +454,15 @@ parfor (ii = 1:nFrames, nWorkers)
         end
         
         % Retrieve the initialFit for this frame
-        pLikelihoodMeanTransparent = ellipseFitData.pInitialFitTransparent(ii,:);
+        pLikelihoodMeanTransparent = pupilData.pInitialFitTransparent(ii,:);
         
         % There are different measures available for the SD of the
         % parameters of the initial fit. The parameter 'whichLikelihoodSD'
         % controls which one of these is used for the likelihood
-        if ~isfield(ellipseFitData,p.Results.whichLikelihoodSD)
+        if ~isfield(pupilData,p.Results.whichLikelihoodSD)
             error('The requested estimate of fit SD is not available in ellipseFitData');
         else
-            pLikelihoodSDTransparent = ellipseFitData.(p.Results.whichLikelihoodSD)(ii,:);
+            pLikelihoodSDTransparent = pupilData.(p.Results.whichLikelihoodSD)(ii,:);
         end
         
         % Raise the estimate of the SD from the initial fit to an
@@ -500,18 +500,18 @@ end % loop over frames to calculate the posterior
 %% Clean up and save the fit results
 
 % gather the loop vars into the ellipse structure
-ellipseFitData.pPriorMeanTransparent=loopVar_pPriorMeanTransparent;
-ellipseFitData.pPriorSDTransparent=loopVar_pPriorSDTransparent;
-ellipseFitData.pPosteriorMeanTransparent=loopVar_pPosteriorMeanTransparent;
-ellipseFitData.pPosteriorSDTransparent=loopVar_pPosteriorSDTransparent;
-ellipseFitData.fitError=loopVar_finalFitError';
+pupilData.pPriorMeanTransparent=loopVar_pPriorMeanTransparent;
+pupilData.pPriorSDTransparent=loopVar_pPriorSDTransparent;
+pupilData.pPosteriorMeanTransparent=loopVar_pPosteriorMeanTransparent;
+pupilData.pPosteriorSDTransparent=loopVar_pPosteriorSDTransparent;
+pupilData.fitError=loopVar_finalFitError';
 
 % add a meta field with analysis details
-ellipseFitData.meta = p.Results;
+pupilData.meta = p.Results;
 
 % save the ellipse fit results if requested
-if ~isempty(p.Results.ellipseFitDataFileName)
-    save(p.Results.ellipseFitDataFileName,'ellipseFitData')
+if ~isempty(p.Results.pupilFileName)
+    save(p.Results.pupilFileName,'pupilData')
 end
 
 % report completion of Bayesian analysis
