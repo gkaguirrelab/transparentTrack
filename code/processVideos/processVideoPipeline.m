@@ -76,35 +76,24 @@ end
 if ~any(strcmp(p.Results.skipStage,'trackGlint'))
     % intialize while control
     success = 0;
+    attempts = 0; % we will attempt to execute the instruction 3 times. If it does not work, the code will eventually break.
     while ~success
         try
             trackGlint(grayVideoName, glintFileName, varargin{:});
             success = 1;
         catch ME
-            % if there is a corruption error clear matlabprefs.mat and try again
-            if regexp(ME.message, ...
-                    regexptranslate('*matlabprefs.mat. File might be corrupt.'))
-                warning ('File matlabprefs.mat corrupt during execution. Cleaning up and trying again.')
+                warning ('There has been an error during execution. Cleaning matlabprefs.mat and trying again - attempt %d.',attempts)
                 matlabprefsCleanup;
                 success = 0;
-            elseif regexp(ME.message, ...
-                    regexptranslate('Error detected on workers*'))
-                warning ('Error detected on workers. Cleaning up matlabprefs and trying again.')
-                matlabprefsCleanup;
-                success = 0;
-            % if a parpool is already open, close it and try again
-            elseif (strcmp(ME.message, ...
-                    'Found an interactive session. You cannot have multiple interactive sessions open simultaneously. To terminate the existing session, use ''delete(gcp(''nocreate''))''.'))
-                warning ('Found a parpool already open. Closing it and trying again.')
-                delete(gcp('nocreate'))
-                success = 0;
-            else
-                rethrow(ME)
-            end
+                attempts = attempts +1;
+                if attempts > 3
+                    rethrow(ME)
+                end
         end
     end
-    % clear while control
+    % clear while and if control
     clear success
+    clear attempts
     if strcmp(p.Results.lastStage,'trackGlint')
         return
     end
@@ -114,35 +103,24 @@ end
 if ~any(strcmp(p.Results.skipStage,'extractPupilPerimeter'))
     % intialize while control
     success = 0;
+    attempts = 0; % we will attempt to execute the instruction 3 times. If it does not work, the code will eventually break.
     while ~success
         try
             extractPupilPerimeter(grayVideoName, perimeterFileName, varargin{:});
             success = 1;
         catch ME
-            % if there is a corruption error clear matlabprefs.mat and try again
-            if regexp(ME.message, ...
-                    regexptranslate('*matlabprefs.mat. File might be corrupt.'))
-                warning ('File matlabprefs.mat corrupt during execution. Cleaning up and trying again.')
+                warning ('There has been an error during execution. Cleaning matlabprefs.mat and trying again - attempt %d.',attempts)
                 matlabprefsCleanup;
                 success = 0;
-            elseif regexp(ME.message, ...
-                    regexptranslate('Error detected on workers*'))
-                warning ('Error detected on workers. Cleaning up matlabprefs and trying again.')
-                matlabprefsCleanup;
-                success = 0;
-            % if a parpool is already open, close it and try again
-            elseif (strcmp(ME.message, ...
-                    'Found an interactive session. You cannot have multiple interactive sessions open simultaneously. To terminate the existing session, use ''delete(gcp(''nocreate''))''.'))
-                warning ('Found a parpool already open. Closing it and trying again.')
-                delete(gcp('nocreate'))
-                success = 0;
-            else
-                rethrow(ME)
-            end
+                attempts = attempts +1;
+                if attempts > 3
+                    rethrow(ME)
+                end
         end
     end
-    % clear while control
+    % clear while and if control
     clear success
+    clear attempts
     if strcmp(p.Results.lastStage,'extractPupilPerimeter')
         return
     end
@@ -152,35 +130,24 @@ end
 if ~any(strcmp(p.Results.skipStage,'makePreliminaryControlFile'))
     % intialize while control
     success = 0;
+    attempts = 0; % we will attempt to execute the instruction 3 times. If it does not work, the code will eventually break.
     while ~success
         try
             makePreliminaryControlFile(controlFileName, perimeterFileName, glintFileName, varargin{:});
             success = 1;
         catch ME
-            % if there is a corruption error clear matlabprefs.mat and try again
-            if regexp(ME.message, ...
-                    regexptranslate('*matlabprefs.mat. File might be corrupt.'))
-                warning ('File matlabprefs.mat corrupt during execution. Cleaning up and trying again.')
+                warning ('There has been an error during execution. Cleaning matlabprefs.mat and trying again - attempt %d.',attempts)
                 matlabprefsCleanup;
                 success = 0;
-            elseif regexp(ME.message, ...
-                    regexptranslate('Error detected on workers*'))
-                warning ('Error detected on workers. Cleaning up matlabprefs and trying again.')
-                matlabprefsCleanup;
-                success = 0;
-            % if a parpool is already open, close it and try again
-            elseif (strcmp(ME.message, ...
-                    'Found an interactive session. You cannot have multiple interactive sessions open simultaneously. To terminate the existing session, use ''delete(gcp(''nocreate''))''.'))
-                warning ('Found a parpool already open. Closing it and trying again.')
-                delete(gcp('nocreate'))
-                success = 0;
-            else
-                rethrow(ME)
-            end
+                attempts = attempts +1;
+                if attempts > 3
+                    rethrow(ME)
+                end
         end
     end
-    % clear while control
+    % clear while and if control
     clear success
+    clear attempts
     if strcmp(p.Results.lastStage,'makePreliminaryControlFile')
         return
     end
@@ -190,35 +157,24 @@ end
 if ~any(strcmp(p.Results.skipStage,'correctPupilPerimeter'))
     % intialize while control
     success = 0;
+    attempts = 0; % we will attempt to execute the instruction 3 times. If it does not work, the code will eventually break.
     while ~success
         try
             correctPupilPerimeter(perimeterFileName,controlFileName,correctedPerimeterFileName, varargin{:});
             success = 1;
         catch ME
-            % if there is a corruption error clear matlabprefs.mat and try again
-            if regexp(ME.message, ...
-                    regexptranslate('*matlabprefs.mat. File might be corrupt.'))
-                warning ('File matlabprefs.mat corrupt during execution. Cleaning up and trying again.')
+                warning ('There has been an error during execution. Cleaning matlabprefs.mat and trying again - attempt %d.',attempts)
                 matlabprefsCleanup;
                 success = 0;
-            elseif regexp(ME.message, ...
-                    regexptranslate('Error detected on workers*'))
-                warning ('Error detected on workers. Cleaning up matlabprefs and trying again.')
-                matlabprefsCleanup;
-                success = 0;
-            % if a parpool is already open, close it and try again
-            elseif (strcmp(ME.message, ...
-                    'Found an interactive session. You cannot have multiple interactive sessions open simultaneously. To terminate the existing session, use ''delete(gcp(''nocreate''))''.'))
-                warning ('Found a parpool already open. Closing it and trying again.')
-                delete(gcp('nocreate'))
-                success = 0;
-            else
-                rethrow(ME)
-            end
+                attempts = attempts +1;
+                if attempts > 3
+                    rethrow(ME)
+                end
         end
     end
-    % clear while control
+    % clear while and if control
     clear success
+    clear attempts
     if strcmp(p.Results.lastStage,'correctPupilPerimeter')
         return
     end
@@ -228,35 +184,24 @@ end
 if ~any(strcmp(p.Results.skipStage,'bayesFitPupilPerimeter'))
     % intialize while control
     success = 0;
+    attempts = 0; % we will attempt to execute the instruction 3 times. If it does not work, the code will eventually break.
     while ~success
         try
             bayesFitPupilPerimeter(correctedPerimeterFileName, pupilFileName, varargin{:});
             success = 1;
         catch ME
-            % if there is a corruption error clear matlabprefs.mat and try again
-            if regexp(ME.message, ...
-                    regexptranslate('*matlabprefs.mat. File might be corrupt.'))
-                warning ('File matlabprefs.mat corrupt during execution. Cleaning up and trying again.')
+                warning ('There has been an error during execution. Cleaning matlabprefs.mat and trying again - attempt %d.',attempts)
                 matlabprefsCleanup;
                 success = 0;
-            elseif regexp(ME.message, ...
-                    regexptranslate('Error detected on workers*'))
-                warning ('Error detected on workers. Cleaning up matlabprefs and trying again.')
-                matlabprefsCleanup;
-                success = 0;
-            % if a parpool is already open, close it and try again
-            elseif (strcmp(ME.message, ...
-                    'Found an interactive session. You cannot have multiple interactive sessions open simultaneously. To terminate the existing session, use ''delete(gcp(''nocreate''))''.'))
-                warning ('Found a parpool already open. Closing it and trying again.')
-                delete(gcp('nocreate'))
-                success = 0;
-            else
-                rethrow(ME)
-            end
+                attempts = attempts +1;
+                if attempts > 3
+                    rethrow(ME)
+                end
         end
     end
-    % clear while control
+    % clear while and if control
     clear success
+    clear attempts
     if strcmp(p.Results.lastStage,'bayesFitPupilPerimeter')
         return
     end
@@ -266,33 +211,24 @@ end
 if ~any(strcmp(p.Results.skipStage,'fitIrisCircleAndMask'))
     % intialize while control
     success = 0;
+    attempts = 0; % we will attempt to execute the instruction 3 times. If it does not work, the code will eventually break.
     while ~success
         try
             fitIrisCircleAndMask(grayVideoName, perimeterFileName, pupilFileName, irisFileName, varargin{:});
             success = 1;
         catch ME
-            % if there is a corruption error clear matlabprefs.mat and try again
-            if regexp(ME.message, ...
-                    regexptranslate('*matlabprefs.mat. File might be corrupt.'))
-                warning ('File matlabprefs.mat corrupt during execution. Cleaning up and trying again.')
+                warning ('There has been an error during execution. Cleaning matlabprefs.mat and trying again - attempt %d.',attempts)
                 matlabprefsCleanup;
                 success = 0;
-            elseif regexp(ME.message, ...
-                    regexptranslate('Error detected on workers*'))
-                warning ('Error detected on workers. Cleaning up matlabprefs and trying again.')
-                matlabprefsCleanup;
-                success = 0;
-            % if a parpool is already open, close it and try again
-            elseif (strcmp(ME.message, ...
-                    'Found an interactive session. You cannot have multiple interactive sessions open simultaneously. To terminate the existing session, use ''delete(gcp(''nocreate''))''.'))
-                warning ('Found a parpool already open. Closing it and trying again.')
-                delete(gcp('nocreate'))
-                success = 0;
-            else
-                rethrow(ME)
-            end
+                attempts = attempts +1;
+                if attempts > 3
+                    rethrow(ME)
+                end
         end
     end
+    % clear while and if control
+    clear success
+    clear attempts
     if strcmp(p.Results.lastStage,'fitIrisAndPalpebralFissure')
         return
     end
@@ -302,6 +238,7 @@ end
 if ~any(strcmp(p.Results.skipStage,'makePupilFitVideo'))
     % intialize while control
     success = 0;
+    attempts = 0; % we will attempt to execute the instruction 3 times. If it does not work, the code will eventually break.
     while ~success
         try
             makePupilFitVideo(grayVideoName, finalFitVideoName, ...
@@ -311,30 +248,18 @@ if ~any(strcmp(p.Results.skipStage,'makePupilFitVideo'))
         'controlFileName',controlFileName,varargin{:});
             success = 1;
         catch ME
-            % if there is a corruption error clear matlabprefs.mat and try again
-            if regexp(ME.message, ...
-                    regexptranslate('*matlabprefs.mat. File might be corrupt.'))
-                warning ('File matlabprefs.mat corrupt during execution. Cleaning up and trying again.')
+                warning ('There has been an error during execution. Cleaning matlabprefs.mat and trying again - attempt %d.',attempts)
                 matlabprefsCleanup;
                 success = 0;
-            elseif regexp(ME.message, ...
-                    regexptranslate('Error detected on workers*'))
-                warning ('Error detected on workers. Cleaning up matlabprefs and trying again.')
-                matlabprefsCleanup;
-                success = 0;
-            % if a parpool is already open, close it and try again
-            elseif (strcmp(ME.message, ...
-                    'Found an interactive session. You cannot have multiple interactive sessions open simultaneously. To terminate the existing session, use ''delete(gcp(''nocreate''))''.'))
-                warning ('Found a parpool already open. Closing it and trying again.')
-                delete(gcp('nocreate'))
-                success = 0;
-            else
-                rethrow(ME)
-            end
+                attempts = attempts +1;
+                if attempts > 3
+                    rethrow(ME)
+                end
         end
     end
-    % clear while control
+    % clear while and if control
     clear success
+    clear attempts
 end
 
 end % function
