@@ -233,11 +233,11 @@ parfor (ii = 1:nFrames, nWorkers)
             fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
             % superimpose the ellipse using fimplicit or ezplot
             if exist('fimplicit','file')==2
-                fimplicit(fh,[1, videoSizeY, 1, videoSizeX],'Color', p.Results.pupilColor,'LineWidth',1.5);
+                fimplicit(fh,[1, max([videoSizeX videoSizeY]), 1, max([videoSizeX videoSizeY])],'Color', p.Results.pupilColor,'LineWidth',1.5);
                 set(gca,'position',[0 0 1 1],'units','normalized')
                 axis off;
             else
-                plotHandle=ezplot(fh,[1, videoSizeY, 1, videoSizeX]);
+                plotHandle=ezplot(fh,[1, max([videoSizeX videoSizeY]), 1, max([videoSizeX videoSizeY])]);
                 set(plotHandle, 'Color', p.Results.pupilColor)
             end
         end
