@@ -194,7 +194,7 @@ end
 
 % initialize variables to hold the results
 irisData_pInitialFitTransparent = nan(nFrames,nEllipseParams);
-irisData_pInitialFitHessianSD = nan(nFrames,1);
+irisData_pInitialFitHessianSD = nan(nFrames,nEllipseParams);
 irisData_mask = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
 
 % Initial loop through gray frames to estimate iris width
@@ -272,8 +272,8 @@ for ii = 1:nFrames
             bpTmp = bwboundaries(irismask);
             irisBoundary=bpTmp{1};
             nBoundaryPoints = size(irisBoundary,1);
-            pp1 = fit((1:1:nBoundaryPoints)',irisBoundary(:,1),'smoothingspline','SmoothingParam',0.2);
-            pp2 = fit((1:1:nBoundaryPoints)',irisBoundary(:,2),'smoothingspline','SmoothingParam',0.2);
+            pp1 = fit((1:1:nBoundaryPoints)',irisBoundary(:,1),'smoothingspline','SmoothingParam',0.4);
+            pp2 = fit((1:1:nBoundaryPoints)',irisBoundary(:,2),'smoothingspline','SmoothingParam',0.4);
             [peakLoc, peakMag] = peakfinder(diff(pp1(1:1:nBoundaryPoints),2).^2+diff(pp2(1:1:nBoundaryPoints),2).^2, [], [], 1, true);
             theCornerIdx = [];
             if length(peakLoc) >= 4
