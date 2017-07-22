@@ -109,11 +109,17 @@ if strcmp(p.Results.verbosity,'full')
     fprintf('.\n');
 end
 
+% Read in the variables to display. If not loaded, explicitly set the
+% variable to empty so that the parfor loop does not panic about uncalled
+% lines of code that make reference to non-existent variables.
+
 % Read in the glint file if passed
 if ~isempty(p.Results.glintFileName)
     dataLoad = load(p.Results.glintFileName);
     glintData = dataLoad.glintData;
     clear dataLoad
+else
+    glintData=[];
 end
 
 % Read in the perimeter file if passed
@@ -121,6 +127,8 @@ if ~isempty(p.Results.perimeterFileName)
     dataLoad = load(p.Results.perimeterFileName);
     perimeter = dataLoad.perimeter;
     clear dataLoad
+else
+    perimeter=[];
 end
 
 % Read in the pupilData file if passed
@@ -129,6 +137,8 @@ if ~isempty(p.Results.pupilFileName)
     pupilData = dataLoad.pupilData;
     clear dataLoad
     pupilFitParams = pupilData.(p.Results.whichFieldToPlot);
+else
+    pupilFitParams=[];
 end
 
 % Read in the irisData file if passed
@@ -136,17 +146,15 @@ if ~isempty(p.Results.irisFileName)
     dataLoad = load(p.Results.irisFileName);
     irisData = dataLoad.irisData;
     clear dataLoad
+else
+    irisData=[];
 end
 
 % Read in and parse the control file if passed
 if ~isempty(p.Results.controlFileName)
     instructions = importControlFile(p.Results.controlFileName);
 else
-    % Even if there are no instructions, we need to initialize this
-    % variable with some dummy info, otherwise the parfor loop freaks out
-    % that it cannot figure out the status of this variable (even though it
-    % is not accessed)
-    instructions(1).frame=nan;
+    instructions(1).frame=[];
     instructions(1).type=[];
     instructions(1).params=[];
 end
