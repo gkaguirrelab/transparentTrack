@@ -153,13 +153,16 @@ end
 % alert the user
 if strcmp(p.Results.verbosity,'full')
     tic
-    fprintf(['Initial iris width detection. Started ' char(datetime('now')) '\n']);
+    fprintf(['Finding iris. Started ' char(datetime('now')) '\n']);
     fprintf('| 0                      50                   100%% |\n');
     fprintf('.\n');
 end
 
 % initialize variables to hold the results
-irisInitialWidth = nan(nFrames,1);
+irisData_X = nan(nFrames,1);
+irisData_Y = nan(nFrames,1);
+irisData_radius = nan(nFrames,1);
+irisData_mask = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
 
 % Initial loop through gray frames to estimate iris width
 parfor (ii = 1:nFrames, nWorkers)
@@ -210,71 +213,9 @@ parfor (ii = 1:nFrames, nWorkers)
             % Localaize Iris Boundary
             [iboundary,  ~]= iris_boundary(polar_iris,pRadius);
             
-            % Store this initial estimate of iris width
-            irisInitialWidth(ii) = round(iboundary / scale);
-            
-        end % check defined pupil fit
-    catch ME
-        warning('Error processing frame %d',ii);
-        disp(ME.message)
-    end % try catch
-end % loop through gray frames
+            % Obtain the iris width
+            irisWidth = round(iboundary / scale);
 
-% report completion of analysis
-if strcmp(p.Results.verbosity,'full')
-    toc
-    fprintf('\n');
-end
-
-% Calculate the mean irisWidth across the frames
-irisWidth = nanmean(irisInitialWidth);
-
-% initialize variables to hold the results in the next parfor loop
-irisData_X = nan(nFrames,1);
-irisData_Y = nan(nFrames,1);
-irisData_radius = nan(nFrames,1);
-irisData_mask = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
-
-
-%% Now refine iris size and obtain iris mask
-
-% alert the user
-if strcmp(p.Results.verbosity,'full')
-    tic
-    fprintf(['Refining iris width and extracting mask. Started ' char(datetime('now')) '\n']);
-    fprintf('| 0                      50                   100%% |\n');
-    fprintf('.\n');
-end
-
-% loop over frames
-parfor (ii = 1:nFrames, nWorkers)
-    
-    % increment the progress bar
-    if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
-        fprintf('\b.\n');
-    end
-    
-    % diagnostic try/catch
-    try        
-        % check if there is a defined pupil fit. If so, proceed
-        if ~isnan(pupilFitParams(ii,1))
-            
-            % get the frame
-            thisFrame = squeeze(grayVideo(:,:,ii));
-            
-            % Calculate the pupil height from the corrected pupil perimeter
-            pupil_height = min(find(~max(squeeze(perimeter.data(:,:,ii))')==0));
-            
-            % To maintain transparency with regard to the IrisSeg toolbox, we
-            % transfer values to variable names used by those routines
-            scale= 1;
-            pCentreX=pupilFitParams(ii,1);
-            pCentreY=pupilFitParams(ii,2);
-            pRadius=sqrt(pupilFitParams(ii,3)/pi);
-            
-            %% Code pulled from irisseg_main.m, part of the IrisSeg toolbox
-            % https://github.com/cdac-cvml/IrisSeg
-            
             % Eyelid Occlusion Detection Module
             [eyelidmask, adaptImage,~, ~] = geteyelid(thisFrame, pCentreX, pCentreY, pRadius, irisWidth, pupil_height, scale);
             
