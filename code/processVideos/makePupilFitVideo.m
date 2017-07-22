@@ -228,21 +228,21 @@ parfor (ii = 1:nFrames, nWorkers)
     end
     
     % add iris circle fit
-    if ~isempty(p.Results.irisFileName)
-        if ~isnan(irisData.X(ii))
-            % build circle impicit equation
-            fh=@(x,y) (x-irisData.X(ii)).^2 +(y-irisData.Y(ii)).^2 - irisData.radius(ii).^2;
-            % superimpose the ellipse using fimplicit or ezplot
-            if exist('fimplicit','file')==2
-                fimplicit(fh,[1, videoSizeY, 1, videoSizeX],'Color', p.Results.irisCircleColor,'LineWidth',1.5);
-                set(gca,'position',[0 0 1 1],'units','normalized')
-                axis off;
-            else
-                plotHandle=ezplot(fh,[1, videoSizeY, 1, videoSizeX]);
-                set(plotHandle, 'Color', p.Results.irisCircleColor)
-            end
-        end
-    end
+%     if ~isempty(p.Results.irisFileName)
+%         if ~isnan(irisData.X(ii))
+%             % build circle impicit equation
+%             fh=@(x,y) (x-irisData.X(ii)).^2 +(y-irisData.Y(ii)).^2 - irisData.radius(ii).^2;
+%             % superimpose the ellipse using fimplicit or ezplot
+%             if exist('fimplicit','file')==2
+%                 fimplicit(fh,[1, videoSizeY, 1, videoSizeX],'Color', p.Results.irisCircleColor,'LineWidth',1.5);
+%                 set(gca,'position',[0 0 1 1],'units','normalized')
+%                 axis off;
+%             else
+%                 plotHandle=ezplot(fh,[1, videoSizeY, 1, videoSizeX]);
+%                 set(plotHandle, 'Color', p.Results.irisCircleColor)
+%             end
+%         end
+%     end
     
     % add an instruction label
     if ~isempty(p.Results.controlFileName)
