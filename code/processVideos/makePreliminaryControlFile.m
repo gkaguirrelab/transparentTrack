@@ -38,10 +38,6 @@ function makePreliminaryControlFile(controlFileName, perimeterFileName, glintFil
 %   glintFileName - 
 %
 % Options (analysis)
-%   glintDisplaceSTD - Glint displacemenet more than this number of
-%       standard deviations away from the mean glint position will be
-%       judged to be a reflection off the eyelid of the subject and thus
-%       part of a blink.
 %	extendBlinkWindow - a two element vector that defines the number of
 %       additional frames flagged as a blink before and after a continuous
 %       block blinks.
