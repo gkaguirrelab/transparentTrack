@@ -59,6 +59,10 @@ p.addParameter('verbosity','none',@ischar);
 
 % Optional analysis params
 p.addParameter('irisGammaCorrection', 1, @isnumeric);
+p.addParameter('ellipseTransparentLB',[0, 0, 10000, 0, -0.5*pi],@isnumeric);
+p.addParameter('ellipseTransparentUB',[240,320,30000,0.2, 0.5*pi],@isnumeric);
+p.addParameter('exponentialTauParams',[.25, .25, 5, 1, 1],@isnumeric);
+p.addParameter('constrainEccen_x_Theta',[0.2,0.2],@isnumeric);
 
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
@@ -72,8 +76,38 @@ p.addParameter('timestamp',char(datetime('now')),@ischar);
 p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischar);
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
-% parse
+%% Parse and check the parameters
 p.parse(grayVideoName, perimeterFileName, pupilFileName, irisFileName, varargin{:})
+
+nEllipseParams=5; % 5 params in the transparent ellipse form
+
+if length(p.Results.ellipseTransparentLB)~=nEllipseParams
+    error('Wrong number of elements in ellipseTransparentLB');
+end
+if length(p.Results.ellipseTransparentUB)~=nEllipseParams
+    error('Wrong number of elements in ellipseTransparentUB');
+end
+if length(p.Results.exponentialTauParams)~=nEllipseParams
+    error('Wrong number of elements in exponentialTauParams');
+end
+if sum(p.Results.ellipseTransparentUB>=p.Results.ellipseTransparentLB)~=nEllipseParams
+    error('Lower bounds must be equal to or less than upper bounds');
+end
+
+
+%% Prepare some anonymous functions 
+% Create a non-linear constraint for the ellipse fit. If no parameters are
+% given, then create an empty function handle (and thus have no non-linear
+% constraint)
+if isempty(p.Results.constrainEccen_x_Theta)
+    nonlinconst = [];
+else
+    nonlinconst = @(x) restrictEccenByTheta(x,p.Results.constrainEccen_x_Theta);
+end
+
+% Create an anonymous function for ellipse fitting
+obtainEllipseLikelihood = @(x,y) constrainedEllipseFit(x, y, ...
+    p.Results.ellipseTransparentLB, p.Results.ellipseTransparentUB, nonlinconst);
 
 
 %% Read files into memory
@@ -159,9 +193,8 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 % initialize variables to hold the results
-irisData_X = nan(nFrames,1);
-irisData_Y = nan(nFrames,1);
-irisData_radius = nan(nFrames,1);
+irisData_pInitialFitTransparent = nan(nFrames,nEllipseParams);
+irisData_pInitialFitHessianSD = nan(nFrames,1);
 irisData_mask = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
 
 % Initial loop through gray frames to estimate iris width
@@ -194,9 +227,10 @@ for ii = 1:nFrames
             N = videoSizeY;
             M = videoSizeX;
             
-            %% Code pulled from irisseg_main.m, part of the IrisSeg toolbox
-            % https://github.com/cdac-cvml/IrisSeg
-            
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % Code block from irisseg_main.m, part of the IrisSeg toolbox
+            %   https://github.com/cdac-cvml/IrisSeg
+            %
             AngRadius1 = pRadius * 8;
             if ( (AngRadius1 > pCentreX) || (AngRadius1 > pCentreY) || (AngRadius1 > (M-pCentreX)) || (AngRadius1 < (N-pCentreY)))
                 AngRadius = round(max([pCentreX, pCentreY, (M-pCentreX), (N-pCentreY)]));
@@ -226,11 +260,14 @@ for ii = 1:nFrames
             warning('off','MATLAB:nargchk:deprecated');
             
             % Iris Boundary Refinement Module
-            [final_CX, final_CY, Final_iRadius, irismask, ~] = iris_boundary_actual_double(thisFrame,adaptImage, eyelidmask, pCentreX, pCentreY, pRadius, irisWidth, scale);
+            [~, ~, ~, irismask, ~] = iris_boundary_actual_double(thisFrame,adaptImage, eyelidmask, pCentreX, pCentreY, pRadius, irisWidth, scale);
             
             % Restore the warning state
             warning(warningState);
-            
+            %
+            % END code block from IrisSeg
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
             % Find the corners of the irismask
             bpTmp = bwboundaries(irismask);
             irisBoundary=bpTmp{1};
@@ -244,8 +281,8 @@ for ii = 1:nFrames
                 theCornerIdx = peakLoc(peakIndexOrder(1:4));
             end
             
-            % Remove boundary points that are above and below lines
-            % drawn between the upper pair and lower pair of corners
+            % Remove boundary points that are horizontally between lines
+            % drawn between the left pair and right pair of corners
             [~,cornerHeightIdx] = sort(irisBoundary(theCornerIdx,1),'descend');
             
             % cut above the upper pair
@@ -262,27 +299,14 @@ for ii = 1:nFrames
             inRangeIdx=arrayfun(verticalExceedTest,irisBoundary(:,2),irisBoundary(:,1));
             irisBoundary=irisBoundary(inRangeIdx,:);
             
-            %% AT THIS STAGE WE HAVE THE BOUNDARY POINTS OF THE IRIS THAT DO NOT INCLUDE THE PORTION OBSCURED BY THE LIDS
-            
-            
-%             
-%             % Obtain a masked portion of the frame that contains the iris
-%             irisLeftEdge = min(find(max(irismask==1)));
-%             irisRightEdge = max(find(max(irismask==1)));
-%             eyeStripe = thisFrame(:,max([1 irisLeftEdge-horizStripeExpand]):min([irisRightEdge+horizStripeExpand videoSizeX]));
+            % fit an ellipse to the iris boundary points
+            [pInitialFitTransparent, pInitialFitHessianSD, ~] = ...
+                    feval(obtainEllipseLikelihood,irisBoundary(:,2),irisBoundary(:,1));
+                        
+            irisData_mask(:,:,ii) = irismask;
+            irisData_pInitialFitTransparent(ii,:) = pInitialFitTransparent';
+            irisData_pInitialFitHessianSD(ii,:) = pInitialFitHessianSD';
 
-            
-            
-            % final adjustment for scale and store the results
-%             x_iris = final_CX / scale;
-%             y_iris = final_CY /scale;
-%             iRadius = Final_iRadius / scale;
-%             
-%             irisData_X(ii) = x_iris;
-%             irisData_Y(ii) = y_iris;
-%             irisData_radius(ii) = iRadius;
-%             irisData_mask(:,:,ii) = irismask;
-            
         end % check defined pupil fit
     catch ME
         warning('Error processing frame %d',ii);
@@ -294,10 +318,9 @@ end % loop through gray frames
 %% Clean up and close
 
 % gather the loop vars into the irisFitData structure
-irisData.X = irisData_X;
-irisData.Y = irisData_Y;
-irisData.radius = irisData_radius;
 irisData.mask=irisData_mask;
+irisData.pInitialFitTransparent=irisData_pInitialFitTransparent;
+irisData.pInitialFitHessianSD=irisData_pInitialFitHessianSD;
 
 % save irisFitData
 irisData.meta = p.Results;
@@ -327,3 +350,28 @@ end
 
 
 end % function
+
+
+function [c, ceq]=restrictEccenByTheta(transparentEllipseParams, constrainEccen_x_Theta)
+% function [c, ceq]=restrictEccenByTheta(transparentEllipseParams,constrainEccen_x_Theta)
+%
+% This function implements a non-linear constraint upon the ellipse fit
+% to the pupil boundary. The goal of the limit is to constrain theta to the
+% cardinal axes, and more severely constrain eccentricity in the horizontal
+% as compared to the vertical direction.
+
+% First constraint (equality)
+%  - the theta is on a cardinal axis (i.e., theta is from the set [-pi/2,0,pi/2])
+ceq = mod(abs(transparentEllipseParams(5)),(pi/2));
+
+% Second constraint (inequality)
+%  - require the eccen to be less than constrainEccen_x_Theta, where this
+%    has one value for horizontal ellipses (i.e., abs(theta)<pi/2) and a
+%    second value for vertical ellipses.
+if abs(transparentEllipseParams(5))<(pi/4)
+    c = transparentEllipseParams(4) - constrainEccen_x_Theta(1);
+else
+    c = transparentEllipseParams(4) - constrainEccen_x_Theta(2);
+end
+
+end
