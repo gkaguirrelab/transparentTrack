@@ -165,7 +165,8 @@ irisData_radius = nan(nFrames,1);
 irisData_mask = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
 
 % Initial loop through gray frames to estimate iris width
-parfor (ii = 1:nFrames, nWorkers)
+%parfor (ii = 1:nFrames, nWorkers)
+for ii = 1:nFrames
     
     % increment the progress bar
     if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
@@ -230,15 +231,57 @@ parfor (ii = 1:nFrames, nWorkers)
             % Restore the warning state
             warning(warningState);
             
-            % final adjustment for scale and store the results
-            x_iris = final_CX / scale;
-            y_iris = final_CY /scale;
-            iRadius = Final_iRadius / scale;
+            % Find the corners of the irismask
+            bpTmp = bwboundaries(irismask);
+            irisBoundary=bpTmp{1};
+            nBoundaryPoints = size(irisBoundary,1);
+            pp1 = fit((1:1:nBoundaryPoints)',irisBoundary(:,1),'smoothingspline','SmoothingParam',0.2);
+            pp2 = fit((1:1:nBoundaryPoints)',irisBoundary(:,2),'smoothingspline','SmoothingParam',0.2);
+            [peakLoc, peakMag] = peakfinder(diff(pp1(1:1:nBoundaryPoints),2).^2+diff(pp2(1:1:nBoundaryPoints),2).^2, [], [], 1, true);
+            theCornerIdx = [];
+            if length(peakLoc) >= 4
+                [~,peakIndexOrder] = sort(peakMag,'descend');
+                theCornerIdx = peakLoc(peakIndexOrder(1:4));
+            end
             
-            irisData_X(ii) = x_iris;
-            irisData_Y(ii) = y_iris;
-            irisData_radius(ii) = iRadius;
-            irisData_mask(:,:,ii) = irismask;
+            % Remove boundary points that are above and below lines
+            % drawn between the upper pair and lower pair of corners
+            [~,cornerHeightIdx] = sort(irisBoundary(theCornerIdx,1),'descend');
+            
+            % cut above the upper pair
+            cornerPair = irisBoundary(theCornerIdx(cornerHeightIdx(1:2)),:);
+            riseRun = diff(cornerPair);
+            verticalExceedTest = @(x,y) y > ((x-min(cornerPair(:,2))) * (riseRun(1)/riseRun(2)) + min(cornerPair(:,1)));
+            inRangeIdx=~arrayfun(verticalExceedTest,irisBoundary(:,2),irisBoundary(:,1));
+            irisBoundary=irisBoundary(inRangeIdx,:);
+
+            % cut below the lower pair
+            cornerPair = irisBoundary(theCornerIdx(cornerHeightIdx(3:4)),:);
+            riseRun = diff(cornerPair);
+            verticalExceedTest = @(x,y) y > ((x-min(cornerPair(:,2))) * (riseRun(1)/riseRun(2)) + min(cornerPair(:,1)));
+            inRangeIdx=arrayfun(verticalExceedTest,irisBoundary(:,2),irisBoundary(:,1));
+            irisBoundary=irisBoundary(inRangeIdx,:);
+            
+            %% AT THIS STAGE WE HAVE THE BOUNDARY POINTS OF THE IRIS THAT DO NOT INCLUDE THE PORTION OBSCURED BY THE LIDS
+            
+            
+%             
+%             % Obtain a masked portion of the frame that contains the iris
+%             irisLeftEdge = min(find(max(irismask==1)));
+%             irisRightEdge = max(find(max(irismask==1)));
+%             eyeStripe = thisFrame(:,max([1 irisLeftEdge-horizStripeExpand]):min([irisRightEdge+horizStripeExpand videoSizeX]));
+
+            
+            
+            % final adjustment for scale and store the results
+%             x_iris = final_CX / scale;
+%             y_iris = final_CY /scale;
+%             iRadius = Final_iRadius / scale;
+%             
+%             irisData_X(ii) = x_iris;
+%             irisData_Y(ii) = y_iris;
+%             irisData_radius(ii) = iRadius;
+%             irisData_mask(:,:,ii) = irismask;
             
         end % check defined pupil fit
     catch ME
