@@ -141,6 +141,14 @@ end
 % Read in and parse the control file if passed
 if ~isempty(p.Results.controlFileName)
     instructions = importControlFile(p.Results.controlFileName);
+else
+    % Even if there are no instructions, we need to initialize this
+    % variable with some dummy info, otherwise the parfor loop freaks out
+    % that it cannot figure out the status of this variable (even though it
+    % is not accessed)
+    instructions(1).frame=nan;
+    instructions(1).type=[];
+    instructions(1).params=[];
 end
 
 % read video file into memory
