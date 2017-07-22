@@ -105,8 +105,6 @@ for ff = 1:length(funCalls)
         attempts = 1; % we will attempt to execute the instruction 3 times. If it does not work, the code will eventually break.
         while ~success
             try
-%                fprintf([num2str(ff) ': ' funCalls{ff} '\n']);
-%                fprintf([pathParams.runName '\n']);
                 eval(funCalls{ff});
                 success = 1;
             catch ME
