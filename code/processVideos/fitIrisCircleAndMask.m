@@ -95,7 +95,7 @@ if sum(p.Results.ellipseTransparentUB>=p.Results.ellipseTransparentLB)~=nEllipse
 end
 
 
-%% Prepare some anonymous functions 
+%% Prepare some anonymous functions
 % Create a non-linear constraint for the ellipse fit. If no parameters are
 % given, then create an empty function handle (and thus have no non-linear
 % constraint)
@@ -199,6 +199,7 @@ irisData_mask = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
 
 % Initial loop through gray frames to estimate iris width
 %parfor (ii = 1:nFrames, nWorkers)
+figure
 for ii = 1:nFrames
     
     % increment the progress bar
@@ -250,7 +251,7 @@ for ii = 1:nFrames
             
             % Obtain the iris width
             irisWidth = round(iboundary / scale);
-
+            
             % Eyelid Occlusion Detection Module
             [eyelidmask, adaptImage,~, ~] = geteyelid(thisFrame, pCentreX, pCentreY, pRadius, irisWidth, pupil_height, scale);
             
@@ -267,46 +268,82 @@ for ii = 1:nFrames
             %
             % END code block from IrisSeg
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-            % Find the corners of the irismask
+            
+            % Obtain the boundary of the irisMask
             bpTmp = bwboundaries(irismask);
             irisBoundary=bpTmp{1};
             nBoundaryPoints = size(irisBoundary,1);
-            pp1 = fit((1:1:nBoundaryPoints)',irisBoundary(:,1),'smoothingspline','SmoothingParam',0.4);
-            pp2 = fit((1:1:nBoundaryPoints)',irisBoundary(:,2),'smoothingspline','SmoothingParam',0.4);
-            [peakLoc, peakMag] = peakfinder(diff(pp1(1:1:nBoundaryPoints),2).^2+diff(pp2(1:1:nBoundaryPoints),2).^2, [], [], 1, true);
-            theCornerIdx = [];
-            if length(peakLoc) >= 4
-                [~,peakIndexOrder] = sort(peakMag,'descend');
-                theCornerIdx = peakLoc(peakIndexOrder(1:4));
+            
+            % Identify the sides of the boundary using the
+            % slope of change in vertical position around the boundary
+            movingSlopeSupportLength = 9;
+            verticalChangeBoundaryIdx=find(abs(movingslope(irisBoundary(:,1), movingSlopeSupportLength)) > 0.75);
+            if ~isempty(verticalChangeBoundaryIdx)
+                irisBoundary=irisBoundary(verticalChangeBoundaryIdx,:);
+                circleColor='red';
             end
             
-            % Remove boundary points that are horizontally between lines
-            % drawn between the left pair and right pair of corners
-            [~,cornerHeightIdx] = sort(irisBoundary(theCornerIdx,1),'descend');
-            
-            % cut above the upper pair
-            cornerPair = irisBoundary(theCornerIdx(cornerHeightIdx(1:2)),:);
-            riseRun = diff(cornerPair);
-            verticalExceedTest = @(x,y) y > ((x-min(cornerPair(:,2))) * (riseRun(1)/riseRun(2)) + min(cornerPair(:,1)));
-            inRangeIdx=~arrayfun(verticalExceedTest,irisBoundary(:,2),irisBoundary(:,1));
-            irisBoundary=irisBoundary(inRangeIdx,:);
-
-            % cut below the lower pair
-            cornerPair = irisBoundary(theCornerIdx(cornerHeightIdx(3:4)),:);
-            riseRun = diff(cornerPair);
-            verticalExceedTest = @(x,y) y > ((x-min(cornerPair(:,2))) * (riseRun(1)/riseRun(2)) + min(cornerPair(:,1)));
-            inRangeIdx=arrayfun(verticalExceedTest,irisBoundary(:,2),irisBoundary(:,1));
-            irisBoundary=irisBoundary(inRangeIdx,:);
-            
+%             % Alternative approach: find the corners of the irismask, and then
+%             % remove the points that fall above or below the corners
+%             pp1 = fit((1:1:nBoundaryPoints)',irisBoundary(:,1),'smoothingspline','SmoothingParam',0.4);
+%             pp2 = fit((1:1:nBoundaryPoints)',irisBoundary(:,2),'smoothingspline','SmoothingParam',0.4);
+%             [peakLoc, peakMag] = peakfinder(diff(pp1(1:1:nBoundaryPoints),2).^2+diff(pp2(1:1:nBoundaryPoints),2).^2, [], [], 1, true);
+%             theCornerIdx = [];
+%             if length(peakLoc) >= 4
+%                 [~,peakIndexOrder] = sort(peakMag,'descend');
+%                 theCornerIdx = peakLoc(peakIndexOrder(1:4));
+%                 
+%                 % Remove boundary points that are horizontally between lines
+%                 % drawn between the left pair and right pair of corners
+%                 [~,cornerHeightIdx] = sort(irisBoundary(theCornerIdx,1),'descend');
+%                 
+%                 % cut above the upper pair
+%                 cornerPair = irisBoundary(theCornerIdx(cornerHeightIdx(1:2)),:);
+%                 riseRun = diff(cornerPair);
+%                 verticalExceedTest = @(x,y) y > ((x-min(cornerPair(:,2))) * (riseRun(1)/riseRun(2)) + min(cornerPair(:,1)));
+%                 inRangeIdx=~arrayfun(verticalExceedTest,irisBoundary(:,2),irisBoundary(:,1));
+%                 irisBoundary=irisBoundary(inRangeIdx,:);
+%                 
+%                 % cut below the lower pair
+%                 cornerPair = irisBoundary(theCornerIdx(cornerHeightIdx(3:4)),:);
+%                 riseRun = diff(cornerPair);
+%                 verticalExceedTest = @(x,y) y > ((x-min(cornerPair(:,2))) * (riseRun(1)/riseRun(2)) + min(cornerPair(:,1)));
+%                 inRangeIdx=arrayfun(verticalExceedTest,irisBoundary(:,2),irisBoundary(:,1));
+%                 irisBoundary=irisBoundary(inRangeIdx,:);
+%                 circleColor='yellow';
+%             end
+                        
             % fit an ellipse to the iris boundary points
             [pInitialFitTransparent, pInitialFitHessianSD, ~] = ...
-                    feval(obtainEllipseLikelihood,irisBoundary(:,2),irisBoundary(:,1));
+                feval(obtainEllipseLikelihood,irisBoundary(:,2),irisBoundary(:,1));
                         
+                       
             irisData_mask(:,:,ii) = irismask;
             irisData_pInitialFitTransparent(ii,:) = pInitialFitTransparent';
             irisData_pInitialFitHessianSD(ii,:) = pInitialFitHessianSD';
+            
+            imshow(thisFrame)
+            hold on
+            plot(irisBoundary(:,2),irisBoundary(:,1),'.b');
+            pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(pInitialFitTransparent'));
+            
+            fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
+            fimplicit(fh,[1, max([videoSizeX videoSizeY]), 1, max([videoSizeX videoSizeY])],'Color', circleColor,'LineWidth',1.5);
+            drawnow
+             
+            % build the iris patch
+            irisPatch = thisFrame * 0;
+            [Ye, Xe] = ind2sub(size(thisFrame),find(irisPatch==0));
+            expandedIrisEllipseTransparent = pInitialFitTransparent';
+            expandedIrisEllipseTransparent(3) = expandedIrisEllipseTransparent(3)*1.5;
+            pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(expandedIrisEllipseTransparent));
+            [~,ellipseEdgeDistance] = ellipse_distance(Xe, Ye, pFitImplicit);
+            irisPatch(ellipseEdgeDistance<=0) = 1;
+            irisPatch = irisPatch .* thisFrame;
 
+
+            
+            
         end % check defined pupil fit
     catch ME
         warning('Error processing frame %d',ii);
@@ -375,3 +412,4 @@ else
 end
 
 end
+
