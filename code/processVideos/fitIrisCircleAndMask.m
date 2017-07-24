@@ -316,7 +316,6 @@ for ii = 1:nFrames
             % fit an ellipse to the iris boundary points
             [pInitialFitTransparent, pInitialFitHessianSD, ~] = ...
                 feval(obtainEllipseLikelihood,irisBoundary(:,2),irisBoundary(:,1));
-                        
                        
             irisData_mask(:,:,ii) = irismask;
             irisData_pInitialFitTransparent(ii,:) = pInitialFitTransparent';
@@ -331,17 +330,7 @@ for ii = 1:nFrames
             fimplicit(fh,[1, max([videoSizeX videoSizeY]), 1, max([videoSizeX videoSizeY])],'Color', circleColor,'LineWidth',1.5);
             drawnow
              
-            % build the iris patch
-            irisPatch = thisFrame * 0;
-            [Ye, Xe] = ind2sub(size(thisFrame),find(irisPatch==0));
-            expandedIrisEllipseTransparent = pInitialFitTransparent';
-            expandedIrisEllipseTransparent(3) = expandedIrisEllipseTransparent(3)*1.5;
-            pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(expandedIrisEllipseTransparent));
-            [~,ellipseEdgeDistance] = ellipse_distance(Xe, Ye, pFitImplicit);
-            irisPatch(ellipseEdgeDistance<=0) = 1;
-            irisPatch = irisPatch .* thisFrame;
-
-
+              findEyelidBounds(thisFrame, pInitialFitTransparent );
             
             
         end % check defined pupil fit
@@ -387,6 +376,8 @@ end
 
 
 end % function
+
+
 
 
 function [c, ceq]=restrictEccenByTheta(transparentEllipseParams, constrainEccen_x_Theta)
