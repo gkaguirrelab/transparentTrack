@@ -33,6 +33,10 @@ function extractPupilPerimeter(grayVideoName, perimeterFileName, varargin)
 %       zero will result in no dilation in that direction. A value of unity
 %       will result in a masked region that is twice the size of the pupil
 %       radius.
+%   frameMask - this option with add a light gray mask on the original gray video, 
+%       framing it by [nRows nColumns] on the borders. This is particularly 
+%       useful for size calibration videos in which appear partial black 
+%       dots that may throw off the circle finding mechanism.
 %   smallObjThresh - DEFINE HERE
 %
 % Options (verbosity and display)
@@ -66,6 +70,7 @@ p.addParameter('pupilRange', [20 120], @isnumeric);
 p.addParameter('glintCircleThresh', 0.999, @isnumeric);
 p.addParameter('glintRange', [10 30], @isnumeric);
 p.addParameter('maskBox', [0.20 0.75], @isnumeric);
+p.addParameter('frameMask',[] , @isnumeric);
 p.addParameter('smallObjThresh', 500, @isnumeric);
 
 % circleFit routine params. Defined here for transparency
@@ -161,6 +166,14 @@ for ii = p.Results.startFrame:nFrames
     
     % get the frame
     thisFrame = squeeze(grayVideo(:,:,ii));
+    
+    % apply a frame mask if requested
+    if ~isempty (p.Results.frameMask)
+        thisFrame((1:p.Results.frameMask(1)),:) = 220;
+        thisFrame((end - p.Results.frameMask(1):end),:) = 220;
+        thisFrame(:, (1:p.Results.frameMask(2))) = 220;
+        thisFrame(:, (end - p.Results.frameMask(2):end)) = 220;
+    end
     
     % store the current pupilRange
     initialPupilRange = pupilRange;    
