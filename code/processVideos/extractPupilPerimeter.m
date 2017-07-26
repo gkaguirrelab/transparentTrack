@@ -26,6 +26,8 @@ function extractPupilPerimeter(grayVideoName, perimeterFileName, varargin)
 %       fitting (default 0.06, typical range [0.04 0.09])
 %	pupilRange - initial radius range for circle fitting of the pupil
 %       (default [30 90]). This value gets dynamically updated.
+%   pupilOnly - when set to false the routine will not collect any glint
+%       information.
 %   glintCircleThresh - threshold value to locate the glint for circle
 %       fitting (default 0.99, usually does not need to be changed)
 %   glintRange - fixed radius range for circle fitting of the glint.
@@ -38,7 +40,8 @@ function extractPupilPerimeter(grayVideoName, perimeterFileName, varargin)
 %       framing it by [nRows nColumns] on the borders. This is particularly 
 %       useful for size calibration videos in which appear partial black 
 %       dots that may throw off the circle finding mechanism.
-%   smallObjThresh - DEFINE HERE
+%   smallObjThresh - maximum size of small objects to be removed to clean
+%       up the pupil perimeter.
 %
 % Options (verbosity and display)
 %   verbosity - controls console status updates
