@@ -22,12 +22,13 @@ function extractPupilPerimeter(grayVideoName, perimeterFileName, varargin)
 % Options (analysis)
 % 	gammaCorrection - gamma correction to be applied to the video frames
 %       (default 1, typical range [0.5 1.8])
-%   pupilCircleThresh - threshold value to locate the glint for circle
+%   pupilCircleThresh - threshold value to locate the pupil for circle
 %       fitting (default 0.06, typical range [0.04 0.09])
-%	pupilRange - initial radius range for circle fitting of the glint
+%	pupilRange - initial radius range for circle fitting of the pupil
 %       (default [30 90]). This value gets dynamically updated.
-%   glintCircleThresh - DEFINE HERE
-%   glintRange - DEFINE HERE
+%   glintCircleThresh - threshold value to locate the glint for circle
+%       fitting (default 0.99, usually does not need to be changed)
+%   glintRange - fixed radius range for circle fitting of the glint.
 %   maskBox - This is the proportion to dilate the pupil masked region in
 %       the vertical and horizontal directions respectively. A value of
 %       zero will result in no dilation in that direction. A value of unity
@@ -291,7 +292,8 @@ for ii = p.Results.startFrame:nFrames
         if ~isempty(Xp)
             displayFrame(sub2ind(size(perimFrame),Yp,Xp))=255;
         end
-        imshow(displayFrame, 'Border', 'tight');
+                imshow(perimFrame,'Border', 'tight')
+%         imshow(displayFrame, 'Border', 'tight');
     end
     
 end % loop through gray frames
