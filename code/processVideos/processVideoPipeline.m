@@ -16,7 +16,8 @@ function processVideoPipeline( pathParams, varargin )
 % param 'lastStage', or skip any amount of stages listing them in a cell
 % under the optional param 'skipStage'. Every stage however requires the
 % existence of the output from the preceeding ones to be correctly
-% executed.
+% executed. Setting the 'skipStage' flag to {'all'} won't do any processing
+% on the video.
 
 %% Parse input and define variables
 p = inputParser; p.KeepUnmatched = true;
@@ -66,10 +67,17 @@ irisFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_iris
 %  catch block. This is chiefly because a Matlab bug causes the matlab
 %  prefs file to sometimes become corrupted during parpool operations.
 %  If we detect an error, we delete the pref file and try again.
+
+%  check if 'skipStage' is set to 'all'
+if any(strcmp(p.Results.skipStage,'all'))
+    return
+end
+
+% define analysis pipelines.
 if p.Results.sizeCalFileFlag
     funCalls = {...
         'raw2gray(rawVideoName,grayVideoName, varargin{:});'...
-        'extractPupilPerimeter(grayVideoName, perimeterFileName, varargin{:});'...
+        'extractPupilPerimeter(grayVideoName, perimeterFileName, ''pupilOnly'', true, varargin{:});'...
         'bayesFitPupilPerimeter(perimeterFileName, pupilFileName, varargin{:});'...
         ['makePupilFitVideo(grayVideoName, finalFitVideoName,' ...
         ' ''perimeterFileName'', perimeterFileName,'...
