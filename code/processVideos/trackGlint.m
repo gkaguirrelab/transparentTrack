@@ -25,7 +25,7 @@ function [glintData] = trackGlint(grayVideoName, glintFileName, varargin)
 %       results.
 %
 % Options (analysis)
-%	gammaCorrection - gamma correction to be applied in current frame
+%	glintGammaCorrection - gamma correction to be applied in current frame
 %   glintCircleThresh - relative threshold value to locate the glint for
 %       circle fitting. The high number used reflects the fact that the
 %       glint should be the brightest point within the search region.
@@ -57,20 +57,25 @@ function [glintData] = trackGlint(grayVideoName, glintFileName, varargin)
 %% parse input and define variables
 
 p = inputParser; p.KeepUnmatched = true;
-% required input
+
+% Required input
 p.addRequired('grayVideoName',@isstr);
 p.addRequired('glintFileName',@isstr);
 
 % optional analysis parameters
-p.addParameter('gammaCorrection', 1, @isnumeric);
+p.addParameter('glintGammaCorrection', 1, @isnumeric);
 p.addParameter('glintCircleThresh', 0.999, @isnumeric);
 p.addParameter('glintRange', [10 30], @isnumeric);
 p.addParameter('glintEllipseThresh', 0.9, @isnumeric);
 p.addParameter('pupilRange', [30 90], @isnumeric);
 p.addParameter('pupilCircleThresh', 0.06, @isnumeric);
-p.addParameter('verbosity', 'none', @ischar);
+p.addParameter('frameMask',[] , @isnumeric);
 
-% circleFit routine params. Defined here for transparency
+% Optional display params
+p.addParameter('verbosity','none',@ischar);
+p.addParameter('displayMode',false,@islogical);
+
+% CircleFit routine params. Defined here for transparency
 p.addParameter('pupilOnly', false, @islogical);
 p.addParameter('glintOut', 0.15, @isnumeric);
 p.addParameter('dilateGlint', 6, @isnumeric);
@@ -110,7 +115,7 @@ grayVideo = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
 % read the video into memory, adjusting gamma if needed
 for ii = 1:nFrames
     thisFrame = readFrame(videoInObj);
-    thisFrame = imadjust(thisFrame,[],[],p.Results.gammaCorrection);
+    thisFrame = imadjust(thisFrame,[],[],p.Results.glintGammaCorrection);
     grayVideo(:,:,ii) = rgb2gray (thisFrame);
 end
 % close the video object
@@ -154,6 +159,18 @@ end
 
 %% Track the glint
 
+% Detect display mode
+if p.Results.displayMode && ~p.Results.useParallel
+    fprintf('** DISPLAY MODE **\n')
+    fprintf('Results will not be saved.\n')
+    
+    % create a figure for display
+    figureHandle=figure();
+    
+    % we will monitor the currentchar for a 'q'
+    set(figureHandle,'currentchar','?')
+end
+
 % alert the user
 if strcmp(p.Results.verbosity,'full')
     tic
@@ -169,6 +186,14 @@ glintData_ellipseFittingError = nan(nFrames,1);
 
 %loop through frames
 parfor (ii = 1:nFrames, nWorkers)
+% for ii = 1:nFrames
+
+% <!> this does not work in a parfor loop. Use the for loop instead.
+%     if p.Results.displayMode && strcmp(get(figureHandle,'currentchar'),' ')
+%         close(figureHandle)
+%         return
+%     end
+    
     % increment the progress bar
     if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
         fprintf('\b.\n');
@@ -181,6 +206,14 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % get the frame
     thisFrame = squeeze(grayVideo(:,:,ii));
+    
+    % apply a frame mask if requested
+    if ~isempty (p.Results.frameMask)
+        thisFrame((1:p.Results.frameMask(1)),:) = 220;
+        thisFrame((end - p.Results.frameMask(1):end),:) = 220;
+        thisFrame(:, (1:p.Results.frameMask(2))) = 220;
+        thisFrame(:, (end - p.Results.frameMask(2):end)) = 220;
+    end
     
     % track with circles (using the default options)
     [~,~,~, gCenters, gRadii,~, ~, ~] = circleFit(thisFrame, ...
@@ -210,13 +243,27 @@ parfor (ii = 1:nFrames, nWorkers)
                 glintData_Y(ii) = gCenters(1,2);
                 glintData_ellipseFittingError(ii) = 1;
             end
-        catch % "Index exceeds matrix dimensions" for ellipsefit_direct 
+        catch % "Index exceeds matrix dimensions" for ellipsefit_direct
             glintData_X(ii)= gCenters(1,1);
             glintData_Y(ii) = gCenters(1,2);
             glintData_ellipseFittingError(ii) = 1;
         end
         warning(origWarnState);
     end
+    
+    % display
+    if p.Results.displayMode && ~p.Results.useParallel
+        if ~isnan(glintData_X(ii)) && glintData_ellipseFittingError(ii)==1
+            dispFrame = insertShape(thisFrame,'FilledCircle', [glintData_X(ii),glintData_Y(ii), 2],'Color','yellow');
+        elseif ~isnan(glintData_X(ii)) && isnan(glintData_ellipseFittingError(ii))
+            dispFrame = insertShape(thisFrame,'FilledCircle', [glintData_X(ii),glintData_Y(ii), 2],'Color','red');
+        else
+            dispFrame = thisFrame;
+        end
+        
+        imshow(dispFrame,'Border', 'tight')
+    end
+    
 end
 
 %% Clean up, save, and close
@@ -230,7 +277,11 @@ glintData.ellipseFittingError = glintData_ellipseFittingError;
 glintData.meta = p.Results;
 
 % save out a mat file with the glint tracking data
-save (glintFileName, 'glintData')
+if ~p.Results.displayMode
+    save (glintFileName, 'glintData')
+else
+    close(figureHandle);
+end
 
 % report completion of analysis
 if strcmp(p.Results.verbosity,'full')

@@ -20,7 +20,7 @@ function extractPupilPerimeter(grayVideoName, perimeterFileName, varargin)
 %       output.
 %
 % Options (analysis)
-% 	gammaCorrection - gamma correction to be applied to the video frames
+% 	pupilGammaCorrection - gamma correction to be applied to the video frames
 %       (default 1, typical range [0.5 1.8])
 %   pupilCircleThresh - threshold value to locate the pupil for circle
 %       fitting (default 0.06, typical range [0.04 0.09])
@@ -68,7 +68,7 @@ p.addRequired('grayVideoName',@isstr);
 p.addRequired('perimeterFileName',@isstr);
 
 % Optional analysis params
-p.addParameter('gammaCorrection', 1, @isnumeric);
+p.addParameter('pupilGammaCorrection', 1, @isnumeric);
 p.addParameter('pupilCircleThresh', 0.06, @isnumeric);
 p.addParameter('pupilRange', [20 120], @isnumeric);
 p.addParameter('glintCircleThresh', 0.999, @isnumeric);
@@ -119,7 +119,7 @@ grayVideo = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
 % read the video into memory, adjusting gamma and local contrast
 for ii = 1:floor(videoInObj.Duration*videoInObj.FrameRate)
     thisFrame = readFrame(videoInObj);
-    thisFrame = imadjust(thisFrame,[],[],p.Results.gammaCorrection);
+    thisFrame = imadjust(thisFrame,[],[],p.Results.pupilGammaCorrection);
     grayVideo(:,:,ii) = rgb2gray (thisFrame);
 end
 % close the video object
@@ -295,8 +295,8 @@ for ii = p.Results.startFrame:nFrames
         if ~isempty(Xp)
             displayFrame(sub2ind(size(perimFrame),Yp,Xp))=255;
         end
-                imshow(perimFrame,'Border', 'tight')
-%         imshow(displayFrame, 'Border', 'tight');
+%                 imshow(perimFrame,'Border', 'tight')
+        imshow(displayFrame, 'Border', 'tight');
     end
     
 end % loop through gray frames
