@@ -57,7 +57,8 @@ function [glintData] = trackGlint(grayVideoName, glintFileName, varargin)
 %% parse input and define variables
 
 p = inputParser; p.KeepUnmatched = true;
-% required input
+
+% Required input
 p.addRequired('grayVideoName',@isstr);
 p.addRequired('glintFileName',@isstr);
 
@@ -68,9 +69,13 @@ p.addParameter('glintRange', [10 30], @isnumeric);
 p.addParameter('glintEllipseThresh', 0.9, @isnumeric);
 p.addParameter('pupilRange', [30 90], @isnumeric);
 p.addParameter('pupilCircleThresh', 0.06, @isnumeric);
-p.addParameter('verbosity', 'none', @ischar);
+p.addParameter('frameMask',[] , @isnumeric);
 
-% circleFit routine params. Defined here for transparency
+% Optional display params
+p.addParameter('verbosity','none',@ischar);
+p.addParameter('displayMode',false,@islogical);
+
+% CircleFit routine params. Defined here for transparency
 p.addParameter('pupilOnly', false, @islogical);
 p.addParameter('glintOut', 0.15, @isnumeric);
 p.addParameter('dilateGlint', 6, @isnumeric);
@@ -154,6 +159,18 @@ end
 
 %% Track the glint
 
+% Detect display mode
+if p.Results.displayMode && ~p.Results.useParallel
+    fprintf('** DISPLAY MODE **\n')
+    fprintf('Results will not be saved. Press space at any time to quit routine.\n')
+    
+    % create a figure for display
+    figureHandle=figure();
+    
+    % we will monitor the currentchar for a 'q'
+    set(figureHandle,'currentchar','?')
+end
+
 % alert the user
 if strcmp(p.Results.verbosity,'full')
     tic
@@ -181,6 +198,14 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % get the frame
     thisFrame = squeeze(grayVideo(:,:,ii));
+    
+    % apply a frame mask if requested
+    if ~isempty (p.Results.frameMask)
+        thisFrame((1:p.Results.frameMask(1)),:) = 220;
+        thisFrame((end - p.Results.frameMask(1):end),:) = 220;
+        thisFrame(:, (1:p.Results.frameMask(2))) = 220;
+        thisFrame(:, (end - p.Results.frameMask(2):end)) = 220;
+    end
     
     % track with circles (using the default options)
     [~,~,~, gCenters, gRadii,~, ~, ~] = circleFit(thisFrame, ...
@@ -217,6 +242,17 @@ parfor (ii = 1:nFrames, nWorkers)
         end
         warning(origWarnState);
     end
+    if p.Results.displayMode && ~p.Results.useParallel
+        imshow(thisFrame,'Border', 'tight')
+        hold on
+        if glintData_ellipseFittingError(ii)==1
+            plot(glintData_X(ii),glintData_Y(ii),'*y');
+        else
+            plot(glintData_X(ii),glintData_Y(ii),'*r');
+        end
+        hold off
+    end
+        
 end
 
 %% Clean up, save, and close
@@ -230,7 +266,11 @@ glintData.ellipseFittingError = glintData_ellipseFittingError;
 glintData.meta = p.Results;
 
 % save out a mat file with the glint tracking data
+if ~p.Results.displayMode
 save (glintFileName, 'glintData')
+else
+    close(figureHandle);
+end
 
 % report completion of analysis
 if strcmp(p.Results.verbosity,'full')
