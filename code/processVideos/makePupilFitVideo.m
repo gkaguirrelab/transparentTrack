@@ -51,15 +51,15 @@ p.addParameter('tbtbRepoName','LiveTrackAnalysisToolbox',@ischar);
 
 % Optional items to include in the video
 p.addParameter('glintFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('glintColor','r',@isstring);
+p.addParameter('glintColor','r',@ischar);
 p.addParameter('perimeterFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('perimeterColor','w',@isstring);
+p.addParameter('perimeterColor','w',@ischar);
 p.addParameter('pupilFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('pupilColor','green',@isstring);
+p.addParameter('pupilColor','green',@ischar);
 p.addParameter('whichFieldToPlot', [],@(x)(isempty(x) | ischar(x)));
 p.addParameter('irisFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('irisCircleColor','magenta',@isstring);
-p.addParameter('irisMaskColor','yellow',@isstring);
+p.addParameter('irisCircleColor','magenta',@ischar);
+p.addParameter('irisMaskColor','yellow',@ischar);
 p.addParameter('controlFileName',[],@(x)(isempty(x) | ischar(x)));
 
 % parse
