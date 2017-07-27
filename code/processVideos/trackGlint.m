@@ -25,7 +25,7 @@ function [glintData] = trackGlint(grayVideoName, glintFileName, varargin)
 %       results.
 %
 % Options (analysis)
-%	gammaCorrection - gamma correction to be applied in current frame
+%	glintGammaCorrection - gamma correction to be applied in current frame
 %   glintCircleThresh - relative threshold value to locate the glint for
 %       circle fitting. The high number used reflects the fact that the
 %       glint should be the brightest point within the search region.
@@ -63,7 +63,7 @@ p.addRequired('grayVideoName',@isstr);
 p.addRequired('glintFileName',@isstr);
 
 % optional analysis parameters
-p.addParameter('gammaCorrection', 1, @isnumeric);
+p.addParameter('glintGammaCorrection', 1, @isnumeric);
 p.addParameter('glintCircleThresh', 0.999, @isnumeric);
 p.addParameter('glintRange', [10 30], @isnumeric);
 p.addParameter('glintEllipseThresh', 0.9, @isnumeric);
@@ -115,7 +115,7 @@ grayVideo = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
 % read the video into memory, adjusting gamma if needed
 for ii = 1:nFrames
     thisFrame = readFrame(videoInObj);
-    thisFrame = imadjust(thisFrame,[],[],p.Results.gammaCorrection);
+    thisFrame = imadjust(thisFrame,[],[],p.Results.glintGammaCorrection);
     grayVideo(:,:,ii) = rgb2gray (thisFrame);
 end
 % close the video object
