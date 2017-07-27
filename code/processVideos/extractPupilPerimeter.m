@@ -295,8 +295,8 @@ for ii = p.Results.startFrame:nFrames
         if ~isempty(Xp)
             displayFrame(sub2ind(size(perimFrame),Yp,Xp))=255;
         end
-                imshow(perimFrame,'Border', 'tight')
-%         imshow(displayFrame, 'Border', 'tight');
+%                 imshow(perimFrame,'Border', 'tight')
+        imshow(displayFrame, 'Border', 'tight');
     end
     
 end % loop through gray frames
