@@ -162,7 +162,7 @@ end
 % Detect display mode
 if p.Results.displayMode && ~p.Results.useParallel
     fprintf('** DISPLAY MODE **\n')
-    fprintf('Results will not be saved. Press space at any time to quit routine.\n')
+    fprintf('Results will not be saved.\n')
     
     % create a figure for display
     figureHandle=figure();
@@ -186,6 +186,14 @@ glintData_ellipseFittingError = nan(nFrames,1);
 
 %loop through frames
 parfor (ii = 1:nFrames, nWorkers)
+% for ii = 1:nFrames
+
+% <!> this does not work in a parfor loop. Use the for loop instead.
+%     if p.Results.displayMode && strcmp(get(figureHandle,'currentchar'),' ')
+%         close(figureHandle)
+%         return
+%     end
+    
     % increment the progress bar
     if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
         fprintf('\b.\n');
@@ -235,24 +243,27 @@ parfor (ii = 1:nFrames, nWorkers)
                 glintData_Y(ii) = gCenters(1,2);
                 glintData_ellipseFittingError(ii) = 1;
             end
-        catch % "Index exceeds matrix dimensions" for ellipsefit_direct 
+        catch % "Index exceeds matrix dimensions" for ellipsefit_direct
             glintData_X(ii)= gCenters(1,1);
             glintData_Y(ii) = gCenters(1,2);
             glintData_ellipseFittingError(ii) = 1;
         end
         warning(origWarnState);
     end
+    
+    % display
     if p.Results.displayMode && ~p.Results.useParallel
-        imshow(thisFrame,'Border', 'tight')
-        hold on
-        if glintData_ellipseFittingError(ii)==1
-            plot(glintData_X(ii),glintData_Y(ii),'*y');
+        if ~isnan(glintData_X(ii)) && glintData_ellipseFittingError(ii)==1
+            dispFrame = insertShape(thisFrame,'FilledCircle', [glintData_X(ii),glintData_Y(ii), 2],'Color','yellow');
+        elseif ~isnan(glintData_X(ii)) && isnan(glintData_ellipseFittingError(ii))
+            dispFrame = insertShape(thisFrame,'FilledCircle', [glintData_X(ii),glintData_Y(ii), 2],'Color','red');
         else
-            plot(glintData_X(ii),glintData_Y(ii),'*r');
+            dispFrame = thisFrame;
         end
-        hold off
-    end
         
+        imshow(dispFrame,'Border', 'tight')
+    end
+    
 end
 
 %% Clean up, save, and close
@@ -267,7 +278,7 @@ glintData.meta = p.Results;
 
 % save out a mat file with the glint tracking data
 if ~p.Results.displayMode
-save (glintFileName, 'glintData')
+    save (glintFileName, 'glintData')
 else
     close(figureHandle);
 end
