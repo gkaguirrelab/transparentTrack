@@ -239,6 +239,7 @@ parfor (ii = 1:nFrames, nWorkers)
             else
                 plotHandle=ezplot(fh,[1, videoSizeX, 1, videoSizeY]);
                 set(plotHandle, 'Color', p.Results.pupilColor)
+                set(plotHandle,'LineWidth',1.5);
             end
         end
     end
