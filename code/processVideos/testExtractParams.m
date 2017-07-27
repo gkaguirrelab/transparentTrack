@@ -6,6 +6,8 @@ p = inputParser; p.KeepUnmatched = true;
 % required input
 p.addRequired('pathParams',@isstruct);
 
+p.addParameter('testGlint', false, @islogical);
+
 % parse
 p.parse(pathParams, varargin{:})
 pathParams=p.Results.pathParams;
@@ -31,8 +33,10 @@ if ~isempty(choice)
     end
 end
 
-extractPupilPerimeter(grayVideoName, '', 'displayMode', true, varargin{:});
-
+if ~p.Results.testGlint
+    extractPupilPerimeter(grayVideoName, '', 'displayMode', true, varargin{:});
+else
+    trackGlint(grayVideoName, '', 'displayMode', true, varargin{:});
 
 end % function
 
