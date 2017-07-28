@@ -1,5 +1,5 @@
 function fitIrisCircleAndMask(grayVideoName, perimeterFileName, pupilFileName, irisFileName, varargin)
-% function fitIrisAndPalpebralFissure(grayVideoName, perimeterFileName, pupilFitFileName, irisFitFileName, palpebralFissureFileName, varargin)
+% function fitIrisAndPalpebralFissure(grayVideoName, perimeterFileName, pupilFitFileName, irisFileName, varargin)
 %
 % This function fits a circle to the outer border of the iris, and creates
 % a palpebral fissure mask for each frame. The core of the routine makes
@@ -58,7 +58,7 @@ p.addRequired('irisFileName',@isstr);
 p.addParameter('verbosity','none',@ischar);
 
 % Optional analysis params
-p.addParameter('irisGammaCorrection', 1, @isnumeric);
+p.addParameter('irisGammaCorrection', .5, @isnumeric);
 p.addParameter('ellipseTransparentLB',[0, 0, 10000, 0, -0.5*pi],@isnumeric);
 p.addParameter('ellipseTransparentUB',[240,320,30000,0.2, 0.5*pi],@isnumeric);
 p.addParameter('exponentialTauParams',[.25, .25, 5, 1, 1],@isnumeric);
@@ -282,36 +282,6 @@ for ii = 1:nFrames
                 irisBoundary=irisBoundary(verticalChangeBoundaryIdx,:);
                 circleColor='red';
             end
-            
-%             % Alternative approach: find the corners of the irismask, and then
-%             % remove the points that fall above or below the corners
-%             pp1 = fit((1:1:nBoundaryPoints)',irisBoundary(:,1),'smoothingspline','SmoothingParam',0.4);
-%             pp2 = fit((1:1:nBoundaryPoints)',irisBoundary(:,2),'smoothingspline','SmoothingParam',0.4);
-%             [peakLoc, peakMag] = peakfinder(diff(pp1(1:1:nBoundaryPoints),2).^2+diff(pp2(1:1:nBoundaryPoints),2).^2, [], [], 1, true);
-%             theCornerIdx = [];
-%             if length(peakLoc) >= 4
-%                 [~,peakIndexOrder] = sort(peakMag,'descend');
-%                 theCornerIdx = peakLoc(peakIndexOrder(1:4));
-%                 
-%                 % Remove boundary points that are horizontally between lines
-%                 % drawn between the left pair and right pair of corners
-%                 [~,cornerHeightIdx] = sort(irisBoundary(theCornerIdx,1),'descend');
-%                 
-%                 % cut above the upper pair
-%                 cornerPair = irisBoundary(theCornerIdx(cornerHeightIdx(1:2)),:);
-%                 riseRun = diff(cornerPair);
-%                 verticalExceedTest = @(x,y) y > ((x-min(cornerPair(:,2))) * (riseRun(1)/riseRun(2)) + min(cornerPair(:,1)));
-%                 inRangeIdx=~arrayfun(verticalExceedTest,irisBoundary(:,2),irisBoundary(:,1));
-%                 irisBoundary=irisBoundary(inRangeIdx,:);
-%                 
-%                 % cut below the lower pair
-%                 cornerPair = irisBoundary(theCornerIdx(cornerHeightIdx(3:4)),:);
-%                 riseRun = diff(cornerPair);
-%                 verticalExceedTest = @(x,y) y > ((x-min(cornerPair(:,2))) * (riseRun(1)/riseRun(2)) + min(cornerPair(:,1)));
-%                 inRangeIdx=arrayfun(verticalExceedTest,irisBoundary(:,2),irisBoundary(:,1));
-%                 irisBoundary=irisBoundary(inRangeIdx,:);
-%                 circleColor='yellow';
-%             end
                         
             % fit an ellipse to the iris boundary points
             [pInitialFitTransparent, pInitialFitHessianSD, ~] = ...
@@ -330,7 +300,7 @@ for ii = 1:nFrames
             fimplicit(fh,[1, max([videoSizeX videoSizeY]), 1, max([videoSizeX videoSizeY])],'Color', circleColor,'LineWidth',1.5);
             drawnow
              
-              findEyelidBounds(thisFrame, pInitialFitTransparent );
+            findEyelidBounds(thisFrame, pInitialFitTransparent );
             
             
         end % check defined pupil fit
