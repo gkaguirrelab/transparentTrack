@@ -51,15 +51,15 @@ p.addParameter('tbtbRepoName','LiveTrackAnalysisToolbox',@ischar);
 
 % Optional items to include in the video
 p.addParameter('glintFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('glintColor','r',@isstring);
+p.addParameter('glintColor','r',@ischar);
 p.addParameter('perimeterFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('perimeterColor','w',@isstring);
+p.addParameter('perimeterColor','w',@ischar);
 p.addParameter('pupilFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('pupilColor','green',@isstring);
-p.addParameter('whichFieldToPlot', [],@(x)(isempty(x) | ischar(x)));
+p.addParameter('pupilColor','green',@ischar);
+p.addParameter('whichFieldToPlot', 'pPosteriorMeanTransparent',@(x)(isempty(x) | ischar(x)));
 p.addParameter('irisFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('irisCircleColor','magenta',@isstring);
-p.addParameter('irisMaskColor','yellow',@isstring);
+p.addParameter('irisCircleColor','magenta',@ischar);
+p.addParameter('irisMaskColor','yellow',@ischar);
 p.addParameter('controlFileName',[],@(x)(isempty(x) | ischar(x)));
 
 % parse
@@ -183,10 +183,9 @@ clear videoInObj
 % prepare the outputVideo
 outputVideo=zeros(videoSizeY,videoSizeX,3,nFrames,'uint8');
 
-
 %% Loop through the frames
 parfor (ii = 1:nFrames, nWorkers)
-
+    
     % Update the progress display
     if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
         fprintf('\b.\n');
@@ -194,7 +193,7 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % Create a figure
     frameFig = figure( 'Visible', 'off');
-
+    
     % show the initial frame
     imshow(squeeze(sourceVideo(:,:,ii)), 'Border', 'tight');
     hold on
@@ -214,7 +213,7 @@ parfor (ii = 1:nFrames, nWorkers)
         [Yp, Xp] = ind2sub(size(binP),find(binP));
         plot(Xp,Yp,['.' p.Results.perimeterColor], 'MarkerSize', 1);
     end
-    
+        
     % add irisMask
     if ~isempty(p.Results.irisFileName)
         binP = squeeze(irisData.mask(:,:,ii));
@@ -224,41 +223,44 @@ parfor (ii = 1:nFrames, nWorkers)
             plot(boundaryPoints(:,2), boundaryPoints(:,1),['.' p.Results.irisMaskColor], 'MarkerSize', 1);
         end
     end
-        
+    
     % add ellipse fit
     if ~isempty(p.Results.pupilFileName)
-        if sum(isnan(pupilFitParams(ii,:)))==0
-            % build ellipse impicit equation
-            pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(pupilFitParams(ii,:)));
-            fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
-            % superimpose the ellipse using fimplicit or ezplot
-            if exist('fimplicit','file')==2
-                fimplicit(fh,[1, max([videoSizeX videoSizeY]), 1, max([videoSizeX videoSizeY])],'Color', p.Results.pupilColor,'LineWidth',1.5);
-                set(gca,'position',[0 0 1 1],'units','normalized')
-                axis off;
-            else
-                plotHandle=ezplot(fh,[1, max([videoSizeX videoSizeY]), 1, max([videoSizeX videoSizeY])]);
-                set(plotHandle, 'Color', p.Results.pupilColor)
+        if ~isempty(pupilFitParams)
+            if sum(isnan(pupilFitParams(ii,:)))==0
+                % build ellipse impicit equation
+                pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(pupilFitParams(ii,:)));
+                fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
+                % superimpose the ellipse using fimplicit or ezplot
+                if exist('fimplicit','file')==2
+                    fimplicit(fh,[1, videoSizeX, 1, videoSizeY],'Color', p.Results.pupilColor,'LineWidth',1.5);
+                    set(gca,'position',[0 0 1 1],'units','normalized')
+                    axis off;
+                else
+                    plotHandle=ezplot(fh,[1, videoSizeX, 1, videoSizeY]);
+                    set(plotHandle, 'Color', p.Results.pupilColor)
+                    set(plotHandle,'LineWidth',1.5);
+                end
             end
         end
     end
     
     % add iris circle fit
-%     if ~isempty(p.Results.irisFileName)
-%         if ~isnan(irisData.X(ii))
-%             % build circle impicit equation
-%             fh=@(x,y) (x-irisData.X(ii)).^2 +(y-irisData.Y(ii)).^2 - irisData.radius(ii).^2;
-%             % superimpose the ellipse using fimplicit or ezplot
-%             if exist('fimplicit','file')==2
-%                 fimplicit(fh,[1, videoSizeY, 1, videoSizeX],'Color', p.Results.irisCircleColor,'LineWidth',1.5);
-%                 set(gca,'position',[0 0 1 1],'units','normalized')
-%                 axis off;
-%             else
-%                 plotHandle=ezplot(fh,[1, videoSizeY, 1, videoSizeX]);
-%                 set(plotHandle, 'Color', p.Results.irisCircleColor)
-%             end
-%         end
-%     end
+    %     if ~isempty(p.Results.irisFileName)
+    %         if ~isnan(irisData.X(ii))
+    %             % build circle impicit equation
+    %             fh=@(x,y) (x-irisData.X(ii)).^2 +(y-irisData.Y(ii)).^2 - irisData.radius(ii).^2;
+    %             % superimpose the ellipse using fimplicit or ezplot
+    %             if exist('fimplicit','file')==2
+    %                 fimplicit(fh,[1, videoSizeY, 1, videoSizeX],'Color', p.Results.irisCircleColor,'LineWidth',1.5);
+    %                 set(gca,'position',[0 0 1 1],'units','normalized')
+    %                 axis off;
+    %             else
+    %                 plotHandle=ezplot(fh,[1, videoSizeY, 1, videoSizeX]);
+    %                 set(plotHandle, 'Color', p.Results.irisCircleColor)
+    %             end
+    %         end
+    %     end
     
     % add an instruction label
     if ~isempty(p.Results.controlFileName)
@@ -279,12 +281,12 @@ parfor (ii = 1:nFrames, nWorkers)
                 'Color',[1 0 0]);
         end
     end
-
+    
     % Save the frame and close the figure
     tmp=getframe(frameFig);
     outputVideo(:,:,:,ii)=tmp.cdata;
     close(frameFig);
-
+    
 end
 
 %% Save and cleanup

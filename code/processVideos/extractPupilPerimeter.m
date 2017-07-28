@@ -20,20 +20,28 @@ function extractPupilPerimeter(grayVideoName, perimeterFileName, varargin)
 %       output.
 %
 % Options (analysis)
-% 	gammaCorrection - gamma correction to be applied to the video frames
+% 	pupilGammaCorrection - gamma correction to be applied to the video frames
 %       (default 1, typical range [0.5 1.8])
-%   pupilCircleThresh - threshold value to locate the glint for circle
+%   pupilCircleThresh - threshold value to locate the pupil for circle
 %       fitting (default 0.06, typical range [0.04 0.09])
-%	pupilRange - initial radius range for circle fitting of the glint
+%	pupilRange - initial radius range for circle fitting of the pupil
 %       (default [30 90]). This value gets dynamically updated.
-%   glintCircleThresh - DEFINE HERE
-%   glintRange - DEFINE HERE
+%   pupilOnly - when set to false the routine will not collect any glint
+%       information.
+%   glintCircleThresh - threshold value to locate the glint for circle
+%       fitting (default 0.99, usually does not need to be changed)
+%   glintRange - fixed radius range for circle fitting of the glint.
 %   maskBox - This is the proportion to dilate the pupil masked region in
 %       the vertical and horizontal directions respectively. A value of
 %       zero will result in no dilation in that direction. A value of unity
 %       will result in a masked region that is twice the size of the pupil
 %       radius.
-%   smallObjThresh - DEFINE HERE
+%   frameMask - this option with add a light gray mask on the original gray video, 
+%       framing it by [nRows nColumns] on the borders. This is particularly 
+%       useful for size calibration videos in which appear partial black 
+%       dots that may throw off the circle finding mechanism.
+%   smallObjThresh - maximum size of small objects to be removed to clean
+%       up the pupil perimeter.
 %
 % Options (verbosity and display)
 %   verbosity - controls console status updates
@@ -60,12 +68,13 @@ p.addRequired('grayVideoName',@isstr);
 p.addRequired('perimeterFileName',@isstr);
 
 % Optional analysis params
-p.addParameter('gammaCorrection', 1, @isnumeric);
+p.addParameter('pupilGammaCorrection', 1, @isnumeric);
 p.addParameter('pupilCircleThresh', 0.06, @isnumeric);
 p.addParameter('pupilRange', [20 120], @isnumeric);
 p.addParameter('glintCircleThresh', 0.999, @isnumeric);
 p.addParameter('glintRange', [10 30], @isnumeric);
 p.addParameter('maskBox', [0.20 0.75], @isnumeric);
+p.addParameter('frameMask',[] , @isnumeric);
 p.addParameter('smallObjThresh', 500, @isnumeric);
 
 % circleFit routine params. Defined here for transparency
@@ -110,7 +119,7 @@ grayVideo = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
 % read the video into memory, adjusting gamma and local contrast
 for ii = 1:floor(videoInObj.Duration*videoInObj.FrameRate)
     thisFrame = readFrame(videoInObj);
-    thisFrame = imadjust(thisFrame,[],[],p.Results.gammaCorrection);
+    thisFrame = imadjust(thisFrame,[],[],p.Results.pupilGammaCorrection);
     grayVideo(:,:,ii) = rgb2gray (thisFrame);
 end
 % close the video object
@@ -161,6 +170,14 @@ for ii = p.Results.startFrame:nFrames
     
     % get the frame
     thisFrame = squeeze(grayVideo(:,:,ii));
+    
+    % apply a frame mask if requested
+    if ~isempty (p.Results.frameMask)
+        thisFrame((1:p.Results.frameMask(1)),:) = 220;
+        thisFrame((end - p.Results.frameMask(1):end),:) = 220;
+        thisFrame(:, (1:p.Results.frameMask(2))) = 220;
+        thisFrame(:, (end - p.Results.frameMask(2):end)) = 220;
+    end
     
     % store the current pupilRange
     initialPupilRange = pupilRange;    
@@ -278,6 +295,7 @@ for ii = p.Results.startFrame:nFrames
         if ~isempty(Xp)
             displayFrame(sub2ind(size(perimFrame),Yp,Xp))=255;
         end
+%                 imshow(perimFrame,'Border', 'tight')
         imshow(displayFrame, 'Border', 'tight');
     end
     
