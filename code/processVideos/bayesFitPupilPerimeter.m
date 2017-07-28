@@ -57,10 +57,12 @@ function [pupilData] = bayesFitPupilPerimeter(perimeterFileName, pupilFileName, 
 %    undefined the default number will be used.
 %  'tbtbProjectName' - The workers in the parallel pool are configured by
 %    issuing a tbUseProject command for the project specified here.
-%  'developmentMode' - If set to true, the routine attempts to load a
+%  'skipInitialPupilFit' - If set to true, the routine attempts to load a
 %    pre-existing set of initial ellipse measures (and SDs upon those
 %    params), rather than re-computing these. This allows more rapid
 %    exploration of parameter settigns that guide the Bayesian smoothing.
+%  'skipPupilBayes' - If set to true, the routine exits after the initial
+%    ellipse fitting and prior to performing Bayesian smoothing
 %
 % Optional key/value pairs (Environment parameters)
 %  'tbSnapshot' - This should contain the output of the tbDeploymentSnapshot
@@ -131,7 +133,8 @@ p.addParameter('nFrames',Inf,@isnumeric);
 p.addParameter('useParallel',false,@islogical);
 p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('tbtbRepoName','LiveTrackAnalysisToolbox',@ischar);
-p.addParameter('developmentMode',false,@islogical);
+p.addParameter('skipInitialPupilFit',false,@islogical);
+p.addParameter('skipPupilBayes',false,@islogical);
 
 % Environment parameters
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
@@ -242,7 +245,7 @@ end
 
 
 %% Load or calculate an initial ellipse fit for each video frame
-if p.Results.developmentMode
+if p.Results.skipInitialPupilFit
     load(p.Results.pupilFileName);
 else
     
@@ -342,202 +345,204 @@ else
         fprintf('\n');
     end
     
-end % developmentMode check
+end % skipInitialPupilFit mode check
 
 % save the ellipse fit results if requested
 if ~isempty(p.Results.pupilFileName)
     save(p.Results.pupilFileName,'pupilData')
 end
 
-
-%% Conduct a Bayesian smoothing operation
-
-% Set up the decaying exponential weighting functions. The relatively large
-% window (8 times the biggest time constant) is used to handle the case in
-% which there is a stretch of missing data, in which case the long tails of
-% the exponential can provide the prior.
-window=max(p.Results.exponentialTauParams)*8;
-if p.Results.priorCenterNaN
-    windowSupport=1:1:window;
-else
-    windowSupport=1:1:window+1;
-end
-for jj=1:nEllipseParams
-    baseExpFunc=exp(-1/p.Results.exponentialTauParams(jj)*windowSupport);
+% If we are not skipping the Bayesian fitting, proceed
+if ~p.Results.skipPupilBayes
     
-    % The weighting function is symmetric about the current time point. A
-    % parameter flag switches the treatment of the current time point,
-    % either excluding it and weighting most heavily the immediately
-    % adjacent frames, or giving the current time point a weight of unity.
+    %% Conduct a Bayesian smoothing operation
+    
+    % Set up the decaying exponential weighting functions. The relatively large
+    % window (8 times the biggest time constant) is used to handle the case in
+    % which there is a stretch of missing data, in which case the long tails of
+    % the exponential can provide the prior.
+    window=max(p.Results.exponentialTauParams)*8;
     if p.Results.priorCenterNaN
-        exponentialWeights(jj,:)=[fliplr(baseExpFunc) NaN baseExpFunc];
+        windowSupport=1:1:window;
     else
-        exponentialWeights(jj,1:window+1)=fliplr(baseExpFunc);
-        exponentialWeights(jj,window+1:window*2+1)=baseExpFunc;
+        windowSupport=1:1:window+1;
     end
-end
-
-% Alert the user
-if strcmp(p.Results.verbosity,'full')
-    tic
-    fprintf(['Bayesian smoothing. Started ' char(datetime('now')) '\n']);
-    fprintf('| 0                      50                   100%% |\n');
-    fprintf('.\n');
-end
-
-parfor (ii = 1:nFrames, nWorkers)
-    
-    % update progress
-    if strcmp(p.Results.verbosity,'full')
-        if mod(ii,round(nFrames/50))==0
-            fprintf('\b.\n');
-        end
-    end
-    
-    % get the data frame
-    thisFrame = squeeze(perimeter.data(:,:,ii));
-    
-    % get the boundary points
-    [Yc, Xc] = ind2sub(size(thisFrame),find(thisFrame));
-    
-    pPosteriorMeanTransparent=NaN(1,nEllipseParams);
-    pPosteriorSDTransparent=NaN(1,nEllipseParams);
-    pPriorMeanTransparent=NaN(1,nEllipseParams);
-    pPriorSDTransparent=NaN(1,nEllipseParams);
-    pLikelihoodMeanTransparent=NaN(1,nEllipseParams);
-    pLikelihoodSDTransparent=NaN(1,nEllipseParams);
-    fitError=NaN;
-    
-    % if this frame has data, and the initial ellipse fit is not nan, 
-    % then proceed to calculate the posterior
-    if ~isempty(Xc) &&  ~isempty(Yc) && sum(isnan(pupilData.pInitialFitTransparent(ii,:)))==0
-        % Calculate the prior. The prior mean is given by the surrounding
-        % fit values, weighted by a decaying exponential in time and the
-        % inverse of the standard deviation of each measure. The prior
-        % standard deviation is weighted only by time.
+    for jj=1:nEllipseParams
+        baseExpFunc=exp(-1/p.Results.exponentialTauParams(jj)*windowSupport);
         
-        % A bit of fussing with the range here to handle the start and the
-        % end of the data vector
-        rangeLowSignal=max([ii-window,1]);
-        rangeHiSignal=min([ii+window,nFrames]);
-        restrictLowWindow= max([(ii-window-1)*-1,0]);
-        restrictHiWindow = max([(nFrames-ii-window)*-1,0]);
-        
-        for jj=1:nEllipseParams
-            % Get the dataVector, restricted to the window range
-            dataVector=squeeze(pupilData.pInitialFitTransparent(:,jj))';
-            dataVector=dataVector(rangeLowSignal:rangeHiSignal);
-            
-            % Build the precisionVector as the inverse of the measurement
-            % SD on each frame, scaled to range within the window from zero
-            % to unity. Thus, the noisiest measurement will not influence
-            % the prior.
-            precisionVector=squeeze(pupilData.pInitialFitSplitsSD(:,jj))';
-            precisionVector=precisionVector.^(-1);
-            precisionVector=precisionVector(rangeLowSignal:rangeHiSignal);
-            precisionVector=precisionVector-nanmin(precisionVector);
-            precisionVector=precisionVector/nanmax(precisionVector);
-            
-            % The temporal weight vector is simply the exponential weights,
-            % restricted to the available data widow
-            temporalWeightVector = ...
-                exponentialWeights(jj,1+restrictLowWindow:end-restrictHiWindow);
-            
-            % Combine the precision and time weights, and calculate the
-            % prior mean
-            combinedWeightVector=precisionVector.*temporalWeightVector;
-            pPriorMeanTransparent(jj) = nansum(dataVector.*combinedWeightVector,2)./ ...
-                nansum(combinedWeightVector(~isnan(dataVector)),2);
-            
-            % Obtain the standard deviation of the prior
-            pPriorSDTransparent(jj) = nanstd(dataVector,temporalWeightVector);
-        end
-        
-        % Retrieve the initialFit for this frame
-        pLikelihoodMeanTransparent = pupilData.pInitialFitTransparent(ii,:);
-        
-        % There are different measures available for the SD of the
-        % parameters of the initial fit. The parameter 'whichLikelihoodSD'
-        % controls which one of these is used for the likelihood
-        if ~isfield(pupilData,p.Results.whichLikelihoodSD)
-            error('The requested estimate of fit SD is not available in ellipseFitData');
+        % The weighting function is symmetric about the current time point. A
+        % parameter flag switches the treatment of the current time point,
+        % either excluding it and weighting most heavily the immediately
+        % adjacent frames, or giving the current time point a weight of unity.
+        if p.Results.priorCenterNaN
+            exponentialWeights(jj,:)=[fliplr(baseExpFunc) NaN baseExpFunc];
         else
-            pLikelihoodSDTransparent = pupilData.(p.Results.whichLikelihoodSD)(ii,:);
+            exponentialWeights(jj,1:window+1)=fliplr(baseExpFunc);
+            exponentialWeights(jj,window+1:window*2+1)=baseExpFunc;
+        end
+    end
+    
+    % Alert the user
+    if strcmp(p.Results.verbosity,'full')
+        tic
+        fprintf(['Bayesian smoothing. Started ' char(datetime('now')) '\n']);
+        fprintf('| 0                      50                   100%% |\n');
+        fprintf('.\n');
+    end
+    
+    parfor (ii = 1:nFrames, nWorkers)
+        
+        % update progress
+        if strcmp(p.Results.verbosity,'full')
+            if mod(ii,round(nFrames/50))==0
+                fprintf('\b.\n');
+            end
         end
         
-        % Raise the estimate of the SD from the initial fit to an
-        % exponent. This is used to adjust the relative weighting of
-        % the current frame realtive to the prior
-        pLikelihoodSDTransparent = pLikelihoodSDTransparent .^ p.Results.likelihoodErrorExponent;
+        % get the data frame
+        thisFrame = squeeze(perimeter.data(:,:,ii));
         
-        % Calculate the posterior values for the pupil fits, given the
-        % likelihood and the prior
-        pPosteriorMeanTransparent = pPriorSDTransparent.^2.*pLikelihoodMeanTransparent./(pPriorSDTransparent.^2+pLikelihoodSDTransparent.^2) + ...
-            pLikelihoodSDTransparent.^2.*pPriorMeanTransparent./(pPriorSDTransparent.^2+pLikelihoodSDTransparent.^2);
+        % get the boundary points
+        [Yc, Xc] = ind2sub(size(thisFrame),find(thisFrame));
         
-        pPosteriorSDTransparent = sqrt((pPriorSDTransparent.^2.*pLikelihoodSDTransparent.^2) ./ ...
-            (pPriorSDTransparent.^2+pLikelihoodSDTransparent.^2));
+        pPosteriorMeanTransparent=NaN(1,nEllipseParams);
+        pPosteriorSDTransparent=NaN(1,nEllipseParams);
+        pPriorMeanTransparent=NaN(1,nEllipseParams);
+        pPriorSDTransparent=NaN(1,nEllipseParams);
+        pLikelihoodMeanTransparent=NaN(1,nEllipseParams);
+        pLikelihoodSDTransparent=NaN(1,nEllipseParams);
+        fitError=NaN;
         
-        % refit the data points to deal with any NaNs in the posterior and
-        % to obtain a measure of the fit error
-        lb_pin = p.Results.ellipseTransparentLB;
-        ub_pin = p.Results.ellipseTransparentUB;
-        lb_pin(~isnan(pPosteriorMeanTransparent))=pPosteriorMeanTransparent(~isnan(pPosteriorMeanTransparent));
-        ub_pin(~isnan(pPosteriorMeanTransparent))=pPosteriorMeanTransparent(~isnan(pPosteriorMeanTransparent));
-        [pPosteriorMeanTransparent, ~, fitError] = constrainedEllipseFit(Xc,Yc, lb_pin, ub_pin, nonlinconst);
+        % if this frame has data, and the initial ellipse fit is not nan,
+        % then proceed to calculate the posterior
+        if ~isempty(Xc) &&  ~isempty(Yc) && sum(isnan(pupilData.pInitialFitTransparent(ii,:)))==0
+            % Calculate the prior. The prior mean is given by the surrounding
+            % fit values, weighted by a decaying exponential in time and the
+            % inverse of the standard deviation of each measure. The prior
+            % standard deviation is weighted only by time.
+            
+            % A bit of fussing with the range here to handle the start and the
+            % end of the data vector
+            rangeLowSignal=max([ii-window,1]);
+            rangeHiSignal=min([ii+window,nFrames]);
+            restrictLowWindow= max([(ii-window-1)*-1,0]);
+            restrictHiWindow = max([(nFrames-ii-window)*-1,0]);
+            
+            for jj=1:nEllipseParams
+                % Get the dataVector, restricted to the window range
+                dataVector=squeeze(pupilData.pInitialFitTransparent(:,jj))';
+                dataVector=dataVector(rangeLowSignal:rangeHiSignal);
+                
+                % Build the precisionVector as the inverse of the measurement
+                % SD on each frame, scaled to range within the window from zero
+                % to unity. Thus, the noisiest measurement will not influence
+                % the prior.
+                precisionVector=squeeze(pupilData.pInitialFitSplitsSD(:,jj))';
+                precisionVector=precisionVector.^(-1);
+                precisionVector=precisionVector(rangeLowSignal:rangeHiSignal);
+                precisionVector=precisionVector-nanmin(precisionVector);
+                precisionVector=precisionVector/nanmax(precisionVector);
+                
+                % The temporal weight vector is simply the exponential weights,
+                % restricted to the available data widow
+                temporalWeightVector = ...
+                    exponentialWeights(jj,1+restrictLowWindow:end-restrictHiWindow);
+                
+                % Combine the precision and time weights, and calculate the
+                % prior mean
+                combinedWeightVector=precisionVector.*temporalWeightVector;
+                pPriorMeanTransparent(jj) = nansum(dataVector.*combinedWeightVector,2)./ ...
+                    nansum(combinedWeightVector(~isnan(dataVector)),2);
+                
+                % Obtain the standard deviation of the prior
+                pPriorSDTransparent(jj) = nanstd(dataVector,temporalWeightVector);
+            end
+            
+            % Retrieve the initialFit for this frame
+            pLikelihoodMeanTransparent = pupilData.pInitialFitTransparent(ii,:);
+            
+            % There are different measures available for the SD of the
+            % parameters of the initial fit. The parameter 'whichLikelihoodSD'
+            % controls which one of these is used for the likelihood
+            if ~isfield(pupilData,p.Results.whichLikelihoodSD)
+                error('The requested estimate of fit SD is not available in ellipseFitData');
+            else
+                pLikelihoodSDTransparent = pupilData.(p.Results.whichLikelihoodSD)(ii,:);
+            end
+            
+            % Raise the estimate of the SD from the initial fit to an
+            % exponent. This is used to adjust the relative weighting of
+            % the current frame realtive to the prior
+            pLikelihoodSDTransparent = pLikelihoodSDTransparent .^ p.Results.likelihoodErrorExponent;
+            
+            % Calculate the posterior values for the pupil fits, given the
+            % likelihood and the prior
+            pPosteriorMeanTransparent = pPriorSDTransparent.^2.*pLikelihoodMeanTransparent./(pPriorSDTransparent.^2+pLikelihoodSDTransparent.^2) + ...
+                pLikelihoodSDTransparent.^2.*pPriorMeanTransparent./(pPriorSDTransparent.^2+pLikelihoodSDTransparent.^2);
+            
+            pPosteriorSDTransparent = sqrt((pPriorSDTransparent.^2.*pLikelihoodSDTransparent.^2) ./ ...
+                (pPriorSDTransparent.^2+pLikelihoodSDTransparent.^2));
+            
+            % refit the data points to deal with any NaNs in the posterior and
+            % to obtain a measure of the fit error
+            lb_pin = p.Results.ellipseTransparentLB;
+            ub_pin = p.Results.ellipseTransparentUB;
+            lb_pin(~isnan(pPosteriorMeanTransparent))=pPosteriorMeanTransparent(~isnan(pPosteriorMeanTransparent));
+            ub_pin(~isnan(pPosteriorMeanTransparent))=pPosteriorMeanTransparent(~isnan(pPosteriorMeanTransparent));
+            [pPosteriorMeanTransparent, ~, fitError] = constrainedEllipseFit(Xc,Yc, lb_pin, ub_pin, nonlinconst);
+            
+        end % check if there are any perimeter points to fit
         
-    end % check if there are any perimeter points to fit
+        % store results
+        loopVar_pPosteriorMeanTransparent(ii,:) = pPosteriorMeanTransparent';
+        loopVar_pPosteriorSDTransparent(ii,:) = pPosteriorSDTransparent';
+        loopVar_finalFitError(ii) = fitError;
+        loopVar_pPriorMeanTransparent(ii,:)= pPriorMeanTransparent';
+        loopVar_pPriorSDTransparent(ii,:)= pPriorSDTransparent';
+        
+    end % loop over frames to calculate the posterior
     
-    % store results
-    loopVar_pPosteriorMeanTransparent(ii,:) = pPosteriorMeanTransparent';
-    loopVar_pPosteriorSDTransparent(ii,:) = pPosteriorSDTransparent';
-    loopVar_finalFitError(ii) = fitError;
-    loopVar_pPriorMeanTransparent(ii,:)= pPriorMeanTransparent';
-    loopVar_pPriorSDTransparent(ii,:)= pPriorSDTransparent';
+    %% Clean up and save the fit results
     
-end % loop over frames to calculate the posterior
-
-%% Clean up and save the fit results
-
-% gather the loop vars into the ellipse structure
-pupilData.pPriorMeanTransparent=loopVar_pPriorMeanTransparent;
-pupilData.pPriorSDTransparent=loopVar_pPriorSDTransparent;
-pupilData.pPosteriorMeanTransparent=loopVar_pPosteriorMeanTransparent;
-pupilData.pPosteriorSDTransparent=loopVar_pPosteriorSDTransparent;
-pupilData.fitError=loopVar_finalFitError';
-
-% add a meta field with analysis details
-pupilData.meta = p.Results;
-
-% save the ellipse fit results if requested
-if ~isempty(p.Results.pupilFileName)
-    save(p.Results.pupilFileName,'pupilData')
-end
-
-% report completion of Bayesian analysis
-if strcmp(p.Results.verbosity,'full')
-    toc
-    fprintf('\n');
-end
-
-
-%% Delete the parallel pool
-if strcmp(p.Results.verbosity,'full')
-    tic
-    fprintf(['Closing parallel pool. Started ' char(datetime('now')) '\n']);
-end
-if p.Results.useParallel
-    poolObj = gcp;
-    if ~isempty(poolObj)
-        delete(poolObj);
+    % gather the loop vars into the ellipse structure
+    pupilData.pPriorMeanTransparent=loopVar_pPriorMeanTransparent;
+    pupilData.pPriorSDTransparent=loopVar_pPriorSDTransparent;
+    pupilData.pPosteriorMeanTransparent=loopVar_pPosteriorMeanTransparent;
+    pupilData.pPosteriorSDTransparent=loopVar_pPosteriorSDTransparent;
+    pupilData.fitError=loopVar_finalFitError';
+    
+    % add a meta field with analysis details
+    pupilData.meta = p.Results;
+    
+    % save the ellipse fit results if requested
+    if ~isempty(p.Results.pupilFileName)
+        save(p.Results.pupilFileName,'pupilData')
     end
-end
-if strcmp(p.Results.verbosity,'full')
-    toc
-    fprintf('\n');
-end
-
-
+    
+    % report completion of Bayesian analysis
+    if strcmp(p.Results.verbosity,'full')
+        toc
+        fprintf('\n');
+    end
+    
+    
+    %% Delete the parallel pool
+    if strcmp(p.Results.verbosity,'full')
+        tic
+        fprintf(['Closing parallel pool. Started ' char(datetime('now')) '\n']);
+    end
+    if p.Results.useParallel
+        poolObj = gcp;
+        if ~isempty(poolObj)
+            delete(poolObj);
+        end
+    end
+    if strcmp(p.Results.verbosity,'full')
+        toc
+        fprintf('\n');
+    end
+    
+end % check if we are skipping Bayesian smoothing
 
 end % function
 
