@@ -60,12 +60,11 @@ p.addParameter('verbosity','none',@ischar);
 % Optional analysis params
 p.addParameter('irisGammaCorrection', .5, @isnumeric);
 p.addParameter('irisTransparentLB',[0, 0, 10000, 0, -0.5*pi],@isnumeric);
-p.addParameter('irisTransparentUB',[240,320,30000,0.2, 0.5*pi],@isnumeric);
-p.addParameter('exponentialTauParams',[.25, .25, 5, 1, 1],@isnumeric);
+p.addParameter('irisTransparentUB',[240,320,30000,0.3, 0.5*pi],@isnumeric);
 
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
-p.addParameter('useParallel',false,@islogical);
+p.addParameter('useParallel',true,@islogical);
 p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('tbtbRepoName','LiveTrackAnalysisToolbox',@ischar);
 
@@ -86,12 +85,16 @@ end
 if length(p.Results.irisTransparentUB)~=nEllipseParams
     error('Wrong number of elements in irisTransparentUB');
 end
-if length(p.Results.exponentialTauParams)~=nEllipseParams
-    error('Wrong number of elements in exponentialTauParams');
-end
 if sum(p.Results.irisTransparentUB>=p.Results.irisTransparentLB)~=nEllipseParams
     error('Lower bounds must be equal to or less than upper bounds');
 end
+
+
+%% Prepare an anonymous function
+% Create a non-linear constraint for the ellipse fit. If no parameters are
+% given, then create an empty function handle (and thus have no non-linear
+% constraint)
+nonlinconst = @(x) restrictEccenByTheta(x,[p.Results.irisTransparentUB(4) p.Results.irisTransparentUB(4)]);
 
 
 %% Read files into memory
@@ -190,20 +193,20 @@ for pass=1:2
             lb = p.Results.irisTransparentLB;
             ub = p.Results.irisTransparentUB;
             obtainEllipseLikelihood = @(x,y) constrainedEllipseFit(x, y, ...
-                lb, ub, restrictEccenByTheta);
+                lb, ub, nonlinconst);
         case 2
             lb = p.Results.irisTransparentLB;
             ub = p.Results.irisTransparentUB;
-            medianIrisArea = median(irisData_pInitialFitTransparent(:,3));
+            medianIrisArea = nanmedian(irisData_pEllipseFitTransparent(:,3));
             lb(3) = medianIrisArea * 0.95;
             ub(3) = medianIrisArea * 1.05;
             obtainEllipseLikelihood = @(x,y) constrainedEllipseFit(x, y, ...
-                lb, ub, restrictEccenByTheta);
+                lb, ub, nonlinconst);
     end
     
     % initialize variables to hold the results
-    irisData_pInitialFitTransparent = nan(nFrames,nEllipseParams);
-    irisData_pInitialFitHessianSD = nan(nFrames,nEllipseParams);
+    irisData_pEllipseFitTransparent = nan(nFrames,nEllipseParams);
+    irisData_pEllipseFitHessianSD = nan(nFrames,nEllipseParams);
     
     
     % Loop through gray frames to find the iris
@@ -213,10 +216,7 @@ for pass=1:2
         if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
             fprintf('\b.\n');
         end
-        
-        % diagnostic try/catch
-        try
-            
+                    
             % check if there is a defined pupil fit. If so, proceed
             if ~isnan(pupilFitParams(ii,1))
                 
@@ -291,17 +291,13 @@ for pass=1:2
                 end
                 
                 % fit an ellipse to the iris boundary points
-                [pInitialFitTransparent, pInitialFitHessianSD, ~] = ...
+                [pEllipseFitTransparent, pInitialFitHessianSD, ~] = ...
                     feval(obtainEllipseLikelihood,irisBoundary(:,2),irisBoundary(:,1));
                 
-                irisData_pInitialFitTransparent(ii,:) = pInitialFitTransparent';
-                irisData_pInitialFitHessianSD(ii,:) = pInitialFitHessianSD';
+                irisData_pEllipseFitTransparent(ii,:) = pEllipseFitTransparent';
+                irisData_pEllipseFitHessianSD(ii,:) = pInitialFitHessianSD';
                 
             end % check defined pupil fit
-        catch ME
-            warning('Error processing frame %d',ii);
-            disp(ME.message)
-        end % try catch
     end % loop through gray frames
     
     % report completion of this pass analysis
@@ -315,8 +311,8 @@ end % loop through first and second pass
 
 %% Clean up and save
 % gather the loop vars into the irisFitData structure
-irisData.pInitialFitTransparent=irisData_pInitialFitTransparent;
-irisData.pInitialFitHessianSD=irisData_pInitialFitHessianSD;
+irisData.pEllipseFitTransparent=irisData_pEllipseFitTransparent;
+irisData.pEllipseFitHessianSD=irisData_pEllipseFitHessianSD;
 
 % save irisFitData
 irisData.meta = p.Results;
@@ -345,7 +341,7 @@ end % function
 
 
 
-function [c, ceq]=restrictEccenByTheta(transparentEllipseParams)
+function [c, ceq]=restrictEccenByTheta(transparentEllipseParams, constrainEccen_x_Theta)
 % function [c, ceq]=restrictEccenByTheta(transparentEllipseParams,constrainEccen_x_Theta)
 %
 % This function implements a non-linear constraint upon the ellipse fit
@@ -358,8 +354,13 @@ function [c, ceq]=restrictEccenByTheta(transparentEllipseParams)
 ceq = mod(abs(transparentEllipseParams(5)),(pi/2));
 
 % Second constraint (inequality)
-%  Not used
-c = [];
-
+%  - require the eccen to be less than constrainEccen_x_Theta, where this
+%    has one value for horizontal ellipses (i.e., abs(theta)<pi/2) and a
+%    second value for vertical ellipses.
+if abs(transparentEllipseParams(5))<(pi/4)
+    c = transparentEllipseParams(4) - constrainEccen_x_Theta(1);
+else
+    c = transparentEllipseParams(4) - constrainEccen_x_Theta(2);
 end
 
+end % restrictEccenByTheta func
