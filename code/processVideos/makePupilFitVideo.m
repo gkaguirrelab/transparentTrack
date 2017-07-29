@@ -145,8 +145,9 @@ if ~isempty(p.Results.irisFileName)
     dataLoad = load(p.Results.irisFileName);
     irisData = dataLoad.irisData;
     clear dataLoad
+    irisFitParams = irisData.pEllipseFitTransparent;
 else
-    irisData=[];
+    irisFitParams=[];
 end
 
 % Read in and parse the control file if passed
@@ -222,13 +223,13 @@ parfor (ii = 1:nFrames, nWorkers)
                 fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
                 % superimpose the ellipse using fimplicit or ezplot
                 if exist('fimplicit','file')==2
-                    fimplicit(fh,[1, videoSizeX, 1, videoSizeY],'Color', p.Results.pupilColor,'LineWidth',1.5);
+                    fimplicit(fh,[1, videoSizeX, 1, videoSizeY],'Color', p.Results.pupilColor,'LineWidth',1);
                     set(gca,'position',[0 0 1 1],'units','normalized')
                     axis off;
                 else
                     plotHandle=ezplot(fh,[1, videoSizeX, 1, videoSizeY]);
                     set(plotHandle, 'Color', p.Results.pupilColor)
-                    set(plotHandle,'LineWidth',1.5);
+                    set(plotHandle,'LineWidth',1);
                 end
             end
         end
@@ -236,20 +237,20 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % add iris ellipse fit
     if ~isempty(p.Results.irisFileName)
-        if ~isempty(irisData)
-            if sum(isnan(irisData.pEllipseFitTransparent(ii,:)))==0
+        if ~isempty(irisFitParams)
+            if sum(isnan(irisFitParams(ii,:)))==0
                 % build ellipse impicit equation
-                pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(irisData.pEllipseFitTransparent(ii,:)));
+                pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(irisFitParams(ii,:)));
                 fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
                 % superimpose the ellipse using fimplicit or ezplot
                 if exist('fimplicit','file')==2
-                    fimplicit(fh,[1, videoSizeX, 1, videoSizeY],'Color', p.Results.irisColor,'LineWidth',1);
+                    fimplicit(fh,[1, videoSizeX, 1, videoSizeY],'Color', p.Results.irisColor,'LineWidth',0.5);
                     set(gca,'position',[0 0 1 1],'units','normalized')
                     axis off;
                 else
                     plotHandle=ezplot(fh,[1, videoSizeX, 1, videoSizeY]);
                     set(plotHandle, 'Color', p.Results.irisColor)
-                    set(plotHandle,'LineWidth',1);
+                    set(plotHandle,'LineWidth',0.5);
                 end
             end
         end
