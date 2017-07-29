@@ -64,7 +64,7 @@ p.addParameter('irisTransparentUB',[240,320,30000,0.3, 0.5*pi],@isnumeric);
 
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
-p.addParameter('useParallel',true,@islogical);
+p.addParameter('useParallel',false,@islogical);
 p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('tbtbRepoName','LiveTrackAnalysisToolbox',@ischar);
 
