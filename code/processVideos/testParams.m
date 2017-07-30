@@ -1,4 +1,4 @@
-function testExtractParams( pathParams, varargin )
+function testParams( pathParams, varargin )
 
 %% Parse input and define variables
 p = inputParser; p.KeepUnmatched = true;
@@ -6,7 +6,7 @@ p = inputParser; p.KeepUnmatched = true;
 % required input
 p.addRequired('pathParams',@isstruct);
 
-p.addParameter('testGlint', false, @islogical);
+p.addParameter('stageToTest', 'glint', @islogical);
 
 % parse
 p.parse(pathParams, varargin{:})
@@ -33,10 +33,11 @@ if ~isempty(choice)
     end
 end
 
-if ~p.Results.testGlint
-    extractPupilPerimeter(grayVideoName, '', 'displayMode', true, varargin{:});
-else
+switch p.Results.stageToTest
+    case glint
     trackGlint(grayVideoName, '', 'displayMode', true, varargin{:});
+    case pupil
+    extractPupilPerimeter(grayVideoName, '', 'displayMode', true, varargin{:});
 
 end % function
 
