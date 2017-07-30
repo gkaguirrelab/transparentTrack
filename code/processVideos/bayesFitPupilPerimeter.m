@@ -525,24 +525,25 @@ if ~p.Results.skipPupilBayes
         fprintf('\n');
     end
     
-    
-    %% Delete the parallel pool
-    if strcmp(p.Results.verbosity,'full')
-        tic
-        fprintf(['Closing parallel pool. Started ' char(datetime('now')) '\n']);
-    end
-    if p.Results.useParallel
-        poolObj = gcp;
-        if ~isempty(poolObj)
-            delete(poolObj);
-        end
-    end
-    if strcmp(p.Results.verbosity,'full')
-        toc
-        fprintf('\n');
-    end
-    
 end % check if we are skipping Bayesian smoothing
+
+
+%% Delete the parallel pool
+if strcmp(p.Results.verbosity,'full')
+    tic
+    fprintf(['Closing parallel pool. Started ' char(datetime('now')) '\n']);
+end
+if p.Results.useParallel
+    poolObj = gcp;
+    if ~isempty(poolObj)
+        delete(poolObj);
+    end
+end
+if strcmp(p.Results.verbosity,'full')
+    toc
+    fprintf('\n');
+end
+
 
 end % function
 
