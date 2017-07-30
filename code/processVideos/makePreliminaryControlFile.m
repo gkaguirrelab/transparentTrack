@@ -61,8 +61,6 @@ function makePreliminaryControlFile(controlFileName, perimeterFileName, glintFil
 %
 % Optional key/value pairs (verbosity and I/O)
 %  'verbosity' - level of verbosity. [none, full]
-%  'ellipseFitDataFileName': full path to the .mat file in which to save
-%     pupil tracking information.
 %
 % Optional key/value pairs (flow control)
 %  'useParallel' - If set to true, use the Matlab parallel pool for the
