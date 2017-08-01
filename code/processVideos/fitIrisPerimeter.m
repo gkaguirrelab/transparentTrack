@@ -235,6 +235,7 @@ for pass=1:2
                 N = videoSizeY;
                 M = videoSizeX;
                 
+                try
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % Code block from irisseg_main.m, part of the IrisSeg toolbox
                 %   https://github.com/cdac-cvml/IrisSeg
@@ -296,6 +297,10 @@ for pass=1:2
                 
                 irisData_pEllipseFitTransparent(ii,:) = pEllipseFitTransparent';
                 irisData_pEllipseFitHessianSD(ii,:) = pInitialFitHessianSD';
+                catch
+                    warning ('Error fitting the iris for frame %d', ii)
+                    continue
+                end
                 
             end % check defined pupil fit
     end % loop through gray frames
