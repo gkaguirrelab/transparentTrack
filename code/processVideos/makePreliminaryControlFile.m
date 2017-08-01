@@ -124,6 +124,13 @@ if exist(controlFileName, 'file') == 2 && ~(p.Results.overwriteControlFile)
     return
 end
 
+% On the other hand, if we decided to overwrite an existing control file,
+% we remove the previous one to start fresh and avoid that new instructions
+% are appended after old ones.
+if exist(controlFileName, 'file') == 2 && (p.Results.overwriteControlFile)
+    warning(['Deleting old version of ' controlFileName ]);
+    delete (controlFileName)
+end
 
 %% Set up the parallel pool
 if p.Results.useParallel
