@@ -71,7 +71,7 @@ end
 % Create a cell array of candidate raw video nmaes with the runName and
 % each of the rawVideoSuffix choices
 candidateRawVideoNames = ...
-    cellfun(@(x) fullfile(pathParams.dataSourceDirFull,[pathParams.runName x]),rawVideoSuffix);
+    cellfun(@(x) fullfile(pathParams.dataSourceDirFull,[pathParams.runName x]),p.Results.rawVideoSuffix);
 
 % Test if each of these candidate video files exist
 existTest = cellfun(@(x) exist(x,'file')==2, candidateRawVideoNames);
@@ -102,7 +102,7 @@ irisFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_iris
 
 
 % define analysis pipelines.
-switch videoTypeChoice
+switch p.Results.videoTypeChoice
     case 'LiveTrackWithVTOP_sizeCal'
         funCalls = {...
             'convertRawToGray(rawVideoName,grayVideoName, varargin{:});'...
