@@ -1,5 +1,5 @@
 function [pFitTransparent, pSD, e] = constrainedEllipseFit(x, y, lb, ub, nonlinconst)
-% function [pFitTransparent, pSD, e] = constrainedEllipseFit(x, y, lb, ub, nonlinconst) 
+% constrainedEllipseFit(x, y, lb, ub, nonlinconst) 
 %
 % This routine is a modification of a non-linear ellipse fitting routine
 % that is found within the "quadfit" matlab central toolbox. This routine

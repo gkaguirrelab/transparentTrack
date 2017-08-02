@@ -1,5 +1,6 @@
-function [binPcut] = cutPupil(binP,radiusThresh,theta)
-
+function [binPcut] = applyPupilCut(binP,radiusThresh,theta)
+% applyPupilCut(binP,radiusThresh,theta)
+%
 % cuts the pupil perimeter according to the instructions in radius and
 % theta where:
 % radius = distance in pixels from the glint

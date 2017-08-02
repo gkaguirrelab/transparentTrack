@@ -1,4 +1,5 @@
-function [lidFitParams] = findEyelidBounds(thisFrame, irisEllipseFitTransparent )
+function [lidFitParams] = fitEyelidBounds(thisFrame, irisEllipseFitTransparent )
+% fitEyelidBounds(thisFrame, irisEllipseFitTransparent )
 
 %% Parse input and define variables
 p = inputParser;

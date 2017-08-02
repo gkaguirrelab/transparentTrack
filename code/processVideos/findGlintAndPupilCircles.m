@@ -1,5 +1,6 @@
-function [pCenters, pRadii,pMetric, gCenters, gRadii,gMetric, pupilRange, glintRange] = circleFit(I,pupilCircleThresh,glintCircleThresh,pupilRange,glintRange,pupilOnly,glintOut,dilateGlint,imfindcirclesSensitivity,rangeAdjust)
-
+function [pCenters, pRadii,pMetric, gCenters, gRadii,gMetric, pupilRange, glintRange] = findGlintAndPupilCircles(I,pupilCircleThresh,glintCircleThresh,pupilRange,glintRange,pupilOnly,glintOut,dilateGlint,imfindcirclesSensitivity,rangeAdjust)
+% findGlintAndPupilCircles(I,pupilCircleThresh,glintCircleThresh,pupilRange,glintRange,pupilOnly,glintOut,dilateGlint,imfindcirclesSensitivity,rangeAdjust)
+%
 % this function is used for both glint and pupil circle fitting.
 
 
@@ -20,13 +21,12 @@ p.addRequired('rangeAdjust', @isnumeric);
 % parse
 p.parse(I,pupilCircleThresh,glintCircleThresh,pupilRange,glintRange,pupilOnly,glintOut,dilateGlint,imfindcirclesSensitivity,rangeAdjust);
 
-
 %% circle fit
 
 % create blurring filter
 filtSize = round([0.01*min(size(I)) 0.01*min(size(I)) 0.01*min(size(I))]);
 
-% structuring element to dialate the glint
+% structuring element to dilate the glint
 se = strel('disk',dilateGlint);
 
 % Filter for pupil
@@ -85,7 +85,7 @@ end
 
 % adjust the pupil range (for quicker processing)
 if ~isempty(pCenters)
-    pupilRange(1)   = min(floor(pRadii(1)*(1-rangeAdjust)),pupilRange(2)); %%% CHECH THIS, it was params.pupilRange 
+    pupilRange(1)   = min(floor(pRadii(1)*(1-rangeAdjust)),pupilRange(2));  
     pupilRange(2)   = max(ceil(pRadii(1)*(1 + rangeAdjust)),pupilRange(1));
 else
     pupilRange(1)   = max(ceil(pupilRange(1)*(1 - rangeAdjust)),pupilRange(1));

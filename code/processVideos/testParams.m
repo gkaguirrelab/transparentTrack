@@ -6,7 +6,7 @@ p = inputParser; p.KeepUnmatched = true;
 % required input
 p.addRequired('pathParams',@isstruct);
 
-p.addParameter('stageToTest', 'glint', @islogical);
+p.addParameter('stageToTest', 'glint', @ischar);
 
 % parse
 p.parse(pathParams, varargin{:})
@@ -35,9 +35,10 @@ end
 
 switch p.Results.stageToTest
     case glint
-    trackGlint(grayVideoName, '', 'displayMode', true, varargin{:});
+        trackGlint(grayVideoName, '', 'displayMode', true, varargin{:});
     case pupil
-    extractPupilPerimeter(grayVideoName, '', 'displayMode', true, varargin{:});
+        findPupilPerimeter(grayVideoName, '', 'displayMode', true, varargin{:});
+end
 
 end % function
 
