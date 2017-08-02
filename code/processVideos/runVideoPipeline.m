@@ -71,7 +71,7 @@ end
 % Create a cell array of candidate raw video nmaes with the runName and
 % each of the rawVideoSuffix choices
 candidateRawVideoNames = ...
-    cellfun(@(x) fullfile(pathParams.dataSourceDirFull,[pathParams.runName x]),p.Results.rawVideoSuffix);
+    cellfun(@(x) fullfile(pathParams.dataSourceDirFull,[pathParams.runName x]),p.Results.rawVideoSuffix,'uniformoutput',false);
 
 % Test if each of these candidate video files exist
 existTest = cellfun(@(x) exist(x,'file')==2, candidateRawVideoNames);
