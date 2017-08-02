@@ -1,9 +1,12 @@
-function extractPupilPerimeter(grayVideoName, perimeterFileName, varargin)
-% function extractPupilPerimeter(grayVideoName, perimeterVideoName,varargin)
+function findPupilPerimeter(grayVideoName, perimeterFileName, varargin)
+% function findPupilPerimeter(grayVideoName, perimeterVideoName,varargin)
 %
-% This function thresholds the video to extract the pupil perimeter.
+% This function thresholds the video to find the pupil perimeter.
 %
-% An initial search for the pupil border is performed with the circleFit
+% An initial search for the pupil border is performed with the
+%
+%       findGlintAndPupilCircles
+%
 % function. If a candidate circle is found, the region is dilated. We then
 % binarize the resulting "patch" image with a user determined threshold,
 % and extract the perimeter of the bigger region surviving the thresholding
@@ -77,7 +80,7 @@ p.addParameter('maskBox', [0.20 0.75], @isnumeric);
 p.addParameter('frameMask',[] , @isnumeric);
 p.addParameter('smallObjThresh', 500, @isnumeric);
 
-% circleFit routine params. Defined here for transparency
+% findGlintAndPupilCircles routine params. Defined here for transparency
 p.addParameter('pupilOnly', false, @islogical);
 p.addParameter('glintOut', 0.15, @isnumeric);
 p.addParameter('dilateGlint', 6, @isnumeric);
@@ -182,10 +185,10 @@ for ii = p.Results.startFrame:nFrames
     % store the current pupilRange
     initialPupilRange = pupilRange;    
     
-    % perform an initial search for the pupil with circleFit. Also extract
+    % perform an initial search for the pupil with findGlintAndPupilCircles. Also extract
     % glint location and size information for later use.
     [pCenters, pRadii,~,gCenters, gRadii,~, pupilRange, ~] = ...
-        circleFit(thisFrame,...
+        findGlintAndPupilCircles(thisFrame,...
         p.Results.pupilCircleThresh,...
         p.Results.glintCircleThresh,...
         pupilRange,...
@@ -202,7 +205,7 @@ for ii = p.Results.startFrame:nFrames
             candidateRange = p.Results.pupilRange;
         end
         [pCenters, pRadii,~,gCenters, gRadii,~, pupilRange, ~] = ...
-            circleFit(thisFrame,...
+            findGlintAndPupilCircles(thisFrame,...
             p.Results.pupilCircleThresh,...
             p.Results.glintCircleThresh,...
             candidateRange,...
@@ -214,7 +217,7 @@ for ii = p.Results.startFrame:nFrames
                 candidateRange = p.Results.pupilRange;
             end
             [pCenters, pRadii,~,gCenters, gRadii,~, pupilRange, ~] = ...
-                circleFit(thisFrame,...
+                findGlintAndPupilCircles(thisFrame,...
                 p.Results.pupilCircleThresh,...
                 p.Results.glintCircleThresh,...
                 candidateRange,...
@@ -295,7 +298,6 @@ for ii = p.Results.startFrame:nFrames
         if ~isempty(Xp)
             displayFrame(sub2ind(size(perimFrame),Yp,Xp))=255;
         end
-%                 imshow(perimFrame,'Border', 'tight')
         imshow(displayFrame, 'Border', 'tight');
     end
     

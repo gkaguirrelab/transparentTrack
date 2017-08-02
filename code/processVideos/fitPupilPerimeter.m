@@ -1,5 +1,5 @@
-function [pupilData] = bayesFitPupilPerimeter(perimeterFileName, pupilFileName, varargin)
-% [ellipseFitData] = bayesFitPupilPerimeter(perimeterVideoFileName, varargin)
+function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varargin)
+% fitPupilPerimeter(perimeterVideoFileName, varargin)
 %
 % This routine fits an ellipse to each frame of a video that contains the
 % perimeter of the pupil. First, an ellipse is fit to each frame of the

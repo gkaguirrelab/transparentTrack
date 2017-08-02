@@ -1,6 +1,7 @@
-function instructions = importControlFile(controlFileName)
-
-% importControlFile: imports a csv control file in matlab.
+function instructions = loadControlFile(controlFileName)
+% function loadControlFile(controlFileName)
+%
+% Imports a csv control file into a matlab variable.
 % 
 % The control file format must be as specified in makeControlFile.m, i.e.
 % FRAME NUMBER, INSTRUCTION TYPE, INSTRUCTION PARAMS (variable number and

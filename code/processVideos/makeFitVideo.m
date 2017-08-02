@@ -1,5 +1,5 @@
-function makePupilFitVideo(videoInFileName, videoOutFileName, varargin)
-% function makePupilFitVideo(perimeterVideoFileName, varargin)
+function makeFitVideo(videoInFileName, videoOutFileName, varargin)
+% makeFitVideo(perimeterVideoFileName, varargin)
 %
 % This routine will superimpose ellipses on frames of a video file.
 %
@@ -152,7 +152,7 @@ end
 
 % Read in and parse the control file if passed
 if ~isempty(p.Results.controlFileName)
-    instructions = importControlFile(p.Results.controlFileName);
+    instructions = loadControlFile(p.Results.controlFileName);
 else
     instructions(1).frame=[];
     instructions(1).type=[];

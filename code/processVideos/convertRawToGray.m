@@ -1,5 +1,5 @@
-function raw2gray(inputVideoName,outputVideoName,varargin)
-% function raw2gray(inputVideoName,outputVideoName,varargin)
+function convertRawToGray(inputVideoName,outputVideoName,varargin)
+% convertRawToGray(inputVideoName,outputVideoName,varargin)
 %
 % This function converts the raw, RBG 30Hz video acquired with the V.top
 % device into a 60Hz, grayscale video. Additionally, the video is cropped
@@ -58,4 +58,7 @@ resizeAndCropVideo(deinterlacedVideoName, outputVideoName, 'nFrames', p.Results.
 
 %% remove the temporary 60Hz video
 delete (deinterlacedVideoName)
+
+end % main function
+
 

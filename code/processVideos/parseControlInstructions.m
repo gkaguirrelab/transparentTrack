@@ -1,5 +1,6 @@
-function [varargout] = parseInstructionParams (instructionLine,varargin)
-
+function [varargout] = parseControlInstructions(instructionLine,varargin)
+% parseControlInstructions(instructionLine,varargin)
+%
 % parseInstructionParams will output the necessary paramers to execute a
 % given instruction.
 

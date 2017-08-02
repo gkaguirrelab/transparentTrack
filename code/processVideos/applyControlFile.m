@@ -1,5 +1,6 @@
-function correctPupilPerimeter(perimeterFileName, controlFileName, correctedPerimeterFileName, varargin)
-
+function applyControlFile(perimeterFileName, controlFileName, correctedPerimeterFileName, varargin)
+% applyControlFile(perimeterFileName, controlFileName, correctedPerimeterFileName, varargin)
+%
 % correctPupilPerimeterVideo applies the instructions from the control file
 % on the pupil perimeter video. A new corrected perimeter video will be
 % saved out in the specified file.
@@ -73,7 +74,7 @@ if ~strcmp(ext,'.csv')
 end
 
 % load control file
-instructions = importControlFile(controlFileName);
+instructions = loadControlFile(controlFileName);
 
 % Load the pupil perimeter data. It will be a structure variable
 % "perimeter", with the fields .data and .meta
@@ -121,7 +122,7 @@ for ii = 1:nFrames
                     img=blankFrame;
                 case 'ellipse'
                     % get the instruction params
-                    [cx, cy, a, b, phi] = parseInstructionParams(instructions(instructionIdx(dd)));
+                    [cx, cy, a, b, phi] = parseControlInstructions(instructions(instructionIdx(dd)));
                     % start from back frame
                     img = blankFrame;
                     % find ellipse points
@@ -132,9 +133,9 @@ for ii = 1:nFrames
                     img(sub2ind(size(img),Ye(:),Xe(:))) = 1;
                 case 'cut'
                     % get cut params
-                    [radiusThresh,theta] = parseInstructionParams(instructions(instructionIdx(dd)));
+                    [radiusThresh,theta] = parseControlInstructions(instructions(instructionIdx(dd)));
                     % cut
-                    [img] = cutPupil(img,radiusThresh,theta);
+                    [img] = applyPupilCut(img,radiusThresh,theta);
                 otherwise
                     warning(['Instruction ' instructions(instructionIdx(dd)).type ' for frame ' num2str(ii) ' is unrecognized.']);
             end % switch instruction types

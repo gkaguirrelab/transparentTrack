@@ -1,4 +1,4 @@
-function matlabprefsCleanup    
+function cleanupMatlabPrefs    
 % this small function closes any open parallel pool and removes the
 % matlabprefs.mat file in case it is corrupt.
 % This file can get corrupt while using parallel pools because all of the

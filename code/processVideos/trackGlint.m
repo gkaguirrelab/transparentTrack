@@ -186,13 +186,6 @@ glintData_ellipseFittingError = nan(nFrames,1);
 
 %loop through frames
 parfor (ii = 1:nFrames, nWorkers)
-% for ii = 1:nFrames
-
-% <!> this does not work in a parfor loop. Use the for loop instead.
-%     if p.Results.displayMode && strcmp(get(figureHandle,'currentchar'),' ')
-%         close(figureHandle)
-%         return
-%     end
     
     % increment the progress bar
     if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
@@ -216,7 +209,7 @@ parfor (ii = 1:nFrames, nWorkers)
     end
     
     % track with circles (using the default options)
-    [~,~,~, gCenters, gRadii,~, ~, ~] = circleFit(thisFrame, ...
+    [~,~,~, gCenters, gRadii,~, ~, ~] = findGlintAndPupilCircles(thisFrame, ...
         p.Results.pupilCircleThresh, ...
         p.Results.glintCircleThresh, ...
         p.Results.pupilRange, ...
@@ -305,6 +298,27 @@ if strcmp(p.Results.verbosity,'full')
     fprintf('\n');
 end
 
+end % main function
 
-end % function
 
+function [binG] = getGlintPerimeter (I, gCenters, gRadii, glintEllipseThresh)
+% create a mask from circle fitting parameters (note: glint
+% is already dilated
+glintMask = zeros(size(I));
+glintMask = insertShape(glintMask,'FilledCircle',[gCenters(1,1) gCenters(1,2) gRadii(1)],'Color','white');
+glintMask = im2bw(glintMask);
+
+% apply mask to grey image
+maskedGlint = immultiply(I,glintMask);
+
+% convert back to gray
+gI = uint8(maskedGlint);
+
+% Binarize glint
+binG  = ones(size(gI));
+binG(gI<quantile(double(I(:)),glintEllipseThresh)) = 0;
+
+% get perimeter of glint
+binG = bwperim(binG);
+
+end % getGlintPerimeter

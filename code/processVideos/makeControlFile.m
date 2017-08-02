@@ -1,5 +1,5 @@
-function makePreliminaryControlFile(controlFileName, perimeterFileName, glintFileName, varargin)
-% function makePreliminaryControlFile(controlFileName, perimeterFileName, glintFileName, varargin)
+function makeControlFile(controlFileName, perimeterFileName, glintFileName, varargin)
+% makeControlFile(controlFileName, perimeterFileName, glintFileName, varargin)
 %
 % The routine creates and saves a "control file", which is a text (csv)
 % file that instruct subsequent routines as to how a perimeterFile may be
@@ -298,7 +298,7 @@ parfor (ii = 1:nFrames, nWorkers)
                     
                     % determine the number of pixels that remain on the
                     % pupil boundary for this cut
-                    binPcut = cutPupil (binP, frameRadii(ii), frameThetas(ii));
+                    binPcut = applyPupilCut (binP, frameRadii(ii), frameThetas(ii));
                     [tmpY, ~] = ind2sub(size(binPcut),find(binPcut));
                     numberPerimeterPixels = length(tmpY);
                 end
@@ -403,7 +403,7 @@ end
 end % function
 
 function [distanceError] = calcErrorForACut(theFrame, radiusThresh, theta, lb, ub)
-[binPcut] = cutPupil (theFrame, radiusThresh, theta);
+[binPcut] = applyPupilCut (theFrame, radiusThresh, theta);
 [Yp, Xp] = ind2sub(size(binPcut),find(binPcut));
 [~, ~, distanceError] = constrainedEllipseFit(Xp, Yp, lb, ub, []);
 end
