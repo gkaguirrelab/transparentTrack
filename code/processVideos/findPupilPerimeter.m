@@ -78,7 +78,7 @@ p.addParameter('glintCircleThresh', 0.999, @isnumeric);
 p.addParameter('glintRange', [10 30], @isnumeric);
 p.addParameter('maskBox', [0.20 0.75], @isnumeric);
 p.addParameter('frameMask',[] , @isnumeric);
-p.addParameter('smallObjThresh', 500, @isnumeric);
+p.addParameter('smallObjThresh', 200, @isnumeric);
 
 % findGlintAndPupilCircles routine params. Defined here for transparency
 p.addParameter('pupilOnly', false, @islogical);
