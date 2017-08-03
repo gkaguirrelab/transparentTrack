@@ -88,7 +88,7 @@ p.addRequired('perimeterFileName',@isstr);
 p.addRequired('glintFileName',@isstr);
 
 % Optional analysis params
-p.addParameter('extendBlinkWindow', [4,7], @isnumeric);
+p.addParameter('extendBlinkWindow', [5,10], @isnumeric);
 p.addParameter('pixelBoundaryThreshold', 50, @isnumeric);
 p.addParameter('cutErrorThreshold', 10, @isnumeric);
 p.addParameter('ellipseTransparentLB',[0, 0, 1000, 0, -0.5*pi],@isnumeric);
