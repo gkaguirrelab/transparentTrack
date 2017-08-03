@@ -25,7 +25,11 @@ function [glintData] = trackGlint(grayVideoName, glintFileName, varargin)
 %       results.
 %
 % Options (analysis)
-%	glintGammaCorrection - gamma correction to be applied in current frame
+%	glintGammaCorrection - gamma correction to be applied in current
+%       frame. An extremely high value will make almost all the frame black
+%       and only big bright spots will be white. This reduces the
+%       possibility of confusing the glint with some other smaller bright
+%       spot (default 5.5, decrease if no glint is found)
 %   glintCircleThresh - relative threshold value to locate the glint for
 %       circle fitting. The high number used reflects the fact that the
 %       glint should be the brightest point within the search region.
@@ -63,7 +67,7 @@ p.addRequired('grayVideoName',@isstr);
 p.addRequired('glintFileName',@isstr);
 
 % optional analysis parameters
-p.addParameter('glintGammaCorrection', 1, @isnumeric);
+p.addParameter('glintGammaCorrection', 5.5, @isnumeric);
 p.addParameter('glintCircleThresh', 0.999, @isnumeric);
 p.addParameter('glintRange', [10 30], @isnumeric);
 p.addParameter('glintEllipseThresh', 0.9, @isnumeric);
