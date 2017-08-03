@@ -34,9 +34,9 @@ if ~isempty(choice)
 end
 
 switch p.Results.stageToTest
-    case glint
+    case 'glint'
         trackGlint(grayVideoName, '', 'displayMode', true, varargin{:});
-    case pupil
+    case 'pupil'
         findPupilPerimeter(grayVideoName, '', 'displayMode', true, varargin{:});
 end
 
