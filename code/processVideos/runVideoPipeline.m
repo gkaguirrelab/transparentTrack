@@ -68,23 +68,24 @@ end
 
 %% Define input and output filenames
 
-% Create a cell array of candidate raw video nmaes with the runName and
-% each of the rawVideoSuffix choices
-candidateRawVideoNames = ...
-    cellfun(@(x) fullfile(pathParams.dataSourceDirFull,[pathParams.runName x]),p.Results.rawVideoSuffix,'uniformoutput',false);
-
-% Test if each of these candidate video files exist
-existTest = cellfun(@(x) exist(x,'file')==2, candidateRawVideoNames);
-
-switch (sum(existTest))
-    case 0
-        error('Cannot find a raw video with this run name and the specified suffix');
-    case 1
-        rawVideoName = candidateRawVideoNames{ existTest==1 };
-    otherwise
-        error('There is more than one raw video with this run name and the specified suffix');
+if ~any(strcmp(p.Results.skipStage,'convertRawToGray'))
+    % Create a cell array of candidate raw video nmaes with the runName and
+    % each of the rawVideoSuffix choices
+    candidateRawVideoNames = ...
+        cellfun(@(x) fullfile(pathParams.dataSourceDirFull,[pathParams.runName x]),p.Results.rawVideoSuffix,'uniformoutput',false);
+    
+    % Test if each of these candidate video files exist
+    existTest = cellfun(@(x) exist(x,'file')==2, candidateRawVideoNames);
+    
+    switch (sum(existTest))
+        case 0
+            error('Cannot find a raw video with this run name and the specified suffix');
+        case 1
+            rawVideoName = candidateRawVideoNames{ existTest==1 };
+        otherwise
+            error('There is more than one raw video with this run name and the specified suffix');
+    end
 end
-
 grayVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_gray.avi']);
 glintFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_glint.mat']);
 perimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_perimeter.mat']);
