@@ -94,8 +94,8 @@ end % loop through runs
     
 
 %% get the conversion factors as the mean of the individual ones
-sizeConversion.sizeFactorsMean = mean(singleRunFactors);
-sizeConversion.sizeFactorsStd = std(singleRunconversionFactors);
+sizeConversion.sizeFactorsMean = mean(sizeConversion.singleRunMedian);
+sizeConversion.sizeFactorsStd = std(sizeConversion.sizeFactorsMean);
 
 
 %% add a meta field
