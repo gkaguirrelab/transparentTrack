@@ -37,12 +37,22 @@ function calcSizeFactors(sizeDataFilesNames, sizeFactorsFileName, varargin)
 %           position = either 'before' or 'after' the reference string
 %           referenceString = key piece of string to locate the ground
 %               truth. Note that it is case insensitive.
-%   stdThreshold : 1x3 array with arbitrary thresholds for the standard
+%   stdThreshold: 1x3 array with arbitrary thresholds for the standard
 %       deviation of each calibration factor. If any of those values is
-%       exceeded, a warning is returned as a meta field.
+%       exceeded, a warning is returned and saved with the output.
+%   areaErrorThreshold: arbitrary threshold value in squarePx per squareMm
+%       to verify that the linear conversion factors are coherent with the
+%       area conversion factor. If this threshold is exceeded a warning is
+%       returned and saved with the output.
 % 
 % Optional key/value pairs (display and I/O)
 %  'verbosity' - level of verbosity. [none, full]
+%
+% Options (environment)
+%   tbSnapshot - the passed tbSnapshot output that is to be saved along
+%      with the data
+%   timestamp / username / hostname - these are automatically derived and
+%      saved within the p.Results structure.
 %
 %% Parse vargin for options passed here
 p = inputParser; p.KeepUnmatched = true;
@@ -54,7 +64,8 @@ p.addRequired('sizeFactorsFileName',@ischar);
 % Optional analysis parameters
 p.addParameter('sizeGroundTruths',[], @isnumeric)
 p.addParameter('groundTruthFinder', {1 'before' 'mm'}, @iscell)
-p.addParameter('stdThreshold', [0.1 0.1 4], @isnumeric)
+p.addParameter('stdThreshold', [0.5 0.5 4], @isnumeric)
+p.addParameter('areaErrorThreshold', 2, @isnumeric)
 
 % Optional display and I/O parameters
 p.addParameter('verbosity','none', @ischar);
@@ -132,11 +143,11 @@ for rr = 1: length(sizeGroundTruths)
    for ii = 1: size(explicitData{rr},1)
     % get the X and Y axis length according to orientation of the ellipse
     if round(cos(explicitData{rr}(ii,5))) == 1
-        horizontalAxis(ii) = explicitData{rr}(ii,3);
-        verticalAxis(ii) = explicitData{rr}(ii,4);
+        horizontalAxis(ii) = explicitData{rr}(ii,3) * 2;
+        verticalAxis(ii) = explicitData{rr}(ii,4) * 2;
     elseif round(cos(explicitData{rr}(ii,5))) == 0
-        horizontalAxis(ii) = explicitData{rr}(ii,4);
-        verticalAxis(ii) = explicitData{rr}(ii,3);
+        horizontalAxis(ii) = explicitData{rr}(ii,4) * 2;
+        verticalAxis(ii) = explicitData{rr}(ii,3) * 2;
     end
     % get ellipse area
     ellipseArea(ii) = transparentData{rr}(ii,3);
@@ -146,7 +157,7 @@ for rr = 1: length(sizeGroundTruths)
    % get an array for median value, std and conversion factor
    singleRunMedian(rr,:) = [nanmedian(horizontalAxis) nanmedian(verticalAxis) nanmedian(ellipseArea)];
    singleRunStd(rr,:) = [nanstd(horizontalAxis) nanstd(verticalAxis) nanstd(ellipseArea)];
-   realSize = [sizeGroundTruths(rr) sizeGroundTruths(rr) pi*(sizeGroundTruths(rr)/2)^2];
+   realSize = [sizeGroundTruths(rr) sizeGroundTruths(rr) pi*((sizeGroundTruths(rr)/2)^2)];
    singleRunFactors(rr,:) = singleRunMedian(rr,:) ./ realSize ;
    clear horizontalAxis
    clear verticalAxis
@@ -159,11 +170,22 @@ sizeFactorsMean = mean(singleRunFactors);
 sizeFactorsStd = std(singleRunFactors);
 
 
-%% check if the standard deviation of the mean is too big
-
+%% check if the calibration values are accurate
+warningCounter = 0;
+% check for standard deviation of the calibration factors
 if any(sizeFactorsStd > p.Results.stdThreshold)
-    warningMessage = 'High standard deviation for the calibration factors. The calibration might not be accurate.';
-    warning(warningMessage)
+    warningCounter = warningCounter +1;
+    warningMessages{warningCounter} = 'High standard deviation for the calibration factors. The calibration might not be accurate.';
+    warning(warningMessages{warningCounter})
+end
+
+% check if linear factors and area factor are coherent
+areaFromLinearFactors = sizeFactorsMean(1) * sizeFactorsMean(2);
+areaFactor = sizeFactorsMean(3);
+if abs(areaFactor - areaFromLinearFactors) > p.Results.areaErrorThreshold
+    warningCounter = warningCounter +1;
+    warningMessages{warningCounter} = 'The area conversion factor is not coherent with the linear conversion factors';
+    warning(warningMessages{warningCounter})
 end
 %% compose sizeFactor struct
 
@@ -173,8 +195,8 @@ sizeFactors.areaSqPxPerSqMm = sizeFactorsMean(3);
 
 % add a meta field
 sizeFactors.meta = p.Results;
-if exist('warningMessage','var')
-    sizeFactors.warning = warningMessage;
+if warningCounter > 0
+    sizeFactors.warnings = warningMessages;
     clear warningMessage
 end
 
