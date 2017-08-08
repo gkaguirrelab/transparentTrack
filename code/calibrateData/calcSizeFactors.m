@@ -1,9 +1,16 @@
 function calcSizeFactors(sizeDataFilesNames, sizeFactorsFileName, varargin)
 % calcSizeFactors(sizeDataFilesNames,sizeFactorsFileName)
 %
-% This routine will compute the size conversion factor from px to mm.
-% If more than a single size video is used, the size conversion factor will
-% be the median of the factors obtained by each of the size videos.
+% This routine computes the following size conversion factors:
+%   horizontalPxPerMm
+%   verticalPxPerMm
+%   areaSqPxPerSqMm
+% 
+% If more than a single size calibration dataset is used, the size
+% conversion factor will be the mean of the factors obtained by each of the
+% size videos. The routine automatically checks for the quality of the data
+% and returns warnings if the standard deviation exceedes a set of
+% arbitrary thresholds.
 %
 % OUTPUTS:
 %   sizeConversionFactor: 3 element vector of conversion factors for pupil
@@ -19,10 +26,20 @@ function calcSizeFactors(sizeDataFilesNames, sizeFactorsFileName, varargin)
 % 
 % Optional params:
 %   sizeGroundTruths: array containing the ground truth for the dot size in
-%       mm. If left empty (default option), the routine will try to retrieve
-%       the ground truth from the sizeData files names.
-
-%
+%       mm. If left empty (default option), the routine will try to
+%       retrieve the ground truth from the sizeData files names following
+%       the instructions in the cell array groundTruthFinder.
+%   groundTruthFinder: cell array with instruction to retrieve the ground
+%       truths from the file name. It is composed as follows:
+%           { numOfDigits position referenceString} 
+%           where:
+%           numOfDigits = digits that compose the ground truth
+%           position = either 'before' or 'after' the reference string
+%           referenceString = key piece of string to locate the ground
+%               truth. Note that it is case insensitive.
+%   stdThreshold : 1x3 array with arbitrary thresholds for the standard
+%       deviation of each calibration factor. If any of those values is
+%       exceeded, a warning is returned as a meta field.
 % 
 % Optional key/value pairs (display and I/O)
 %  'verbosity' - level of verbosity. [none, full]
@@ -37,6 +54,7 @@ p.addRequired('sizeConversionFileName',@ischar);
 % Optional analysis parameters
 p.addParameter('sizeGroundTruths',[], @isnumeric)
 p.addParameter('groundTruthFinder', {1 'before' 'mm'}, @iscell)
+p.addParameter('stdThreshold', [0.2 0.2 1000], @isnumeric)
 
 % Optional display and I/O parameters
 p.addParameter('verbosity','none', @ischar);
@@ -124,12 +142,12 @@ for rr = 1: length(sizeGroundTruths)
     ellipseArea(ii) = transparentData{rr}(ii,3);
    end  % loop through frames
    % gather the all raw values
-   sizeConversion.rawValues{rr} = [horizontalAxis' verticalAxis' ellipseArea'];
+   rawValues{rr} = [horizontalAxis' verticalAxis' ellipseArea'];
    % get an array for median value, std and conversion factor
-   sizeConversion.singleRunMedian(rr,:) = [nanmedian(horizontalAxis) nanmedian(verticalAxis) nanmedian(ellipseArea)];
-   sizeConversion.singleRunStd(rr,:) = [nanstd(horizontalAxis) nanstd(verticalAxis) nanstd(ellipseArea)];
+   singleRunMedian(rr,:) = [nanmedian(horizontalAxis) nanmedian(verticalAxis) nanmedian(ellipseArea)];
+   singleRunStd(rr,:) = [nanstd(horizontalAxis) nanstd(verticalAxis) nanstd(ellipseArea)];
    realSize = [sizeGroundTruths(rr) sizeGroundTruths(rr) pi*(sizeGroundTruths(rr)/2)^2];
-   sizeConversion.singleRunFactors(rr,:) = sizeConversion.singleRunMedian(rr,:) ./ realSize ;
+   singleRunFactors(rr,:) = singleRunMedian(rr,:) ./ realSize ;
    clear horizontalAxis
    clear verticalAxis
    clear ellipseArea
@@ -137,15 +155,30 @@ end % loop through runs
     
 
 %% get the conversion factors as the mean of the individual ones
-sizeConversion.sizeFactorsMean = mean(sizeConversion.singleRunMedian);
-sizeConversion.sizeFactorsStd = std(sizeConversion.sizeFactorsMean);
+sizeFactorsMean = mean(singleRunFactors);
+sizeFactorsStd = std(sizeFactorsMean);
 
 
-%% add a meta field
-sizeConversion.meta = p.Results;
+%% check if the standard deviation of the mean is too big
+
+if any(sizeFactorsStd > p.Results.stdThreshold)
+    warningMessage = 'High standard deviation for the calibration factors. The calibration might not be accurate.';
+    warning(warningMessage)
+end
+%% compose sizeFactor struct
+
+sizeFactors.horizontalPxPerMm = sizeFactorsMean(1);
+sizeFactors.verticalPxPerMm = sizeFactorsMean(2);
+sizeFactors.areaSqPxPerSqMm = sizeFactorsMean(3);
+
+% add a meta field
+sizeFactors.meta = p.Results;
+if exist(warningMessage,'var')
+    sizeFactors.meta.warning = warningMessage;
+    clear warningMessage
+end
 
 
 %% save out data
-% add a meta field first
-sizeConversion.meta = p.Results;
-save(sizeFactorsFileName,'sizeConversion')
+
+save(sizeFactorsFileName,'sizeFactors')
