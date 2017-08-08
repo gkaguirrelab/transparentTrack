@@ -48,13 +48,13 @@ function calcSizeFactors(sizeDataFilesNames, sizeFactorsFileName, varargin)
 p = inputParser; p.KeepUnmatched = true;
 
 % Required
-p.addRequired('dotDataFilesNames',@(x) (iscell(x) | ischar(x)));
-p.addRequired('sizeConversionFileName',@ischar);
+p.addRequired('sizeDataFilesNames',@(x) (iscell(x) | ischar(x)));
+p.addRequired('sizeFactorsFileName',@ischar);
 
 % Optional analysis parameters
 p.addParameter('sizeGroundTruths',[], @isnumeric)
 p.addParameter('groundTruthFinder', {1 'before' 'mm'}, @iscell)
-p.addParameter('stdThreshold', [0.2 0.2 1000], @isnumeric)
+p.addParameter('stdThreshold', [0.1 0.1 4], @isnumeric)
 
 % Optional display and I/O parameters
 p.addParameter('verbosity','none', @ischar);
@@ -156,7 +156,7 @@ end % loop through runs
 
 %% get the conversion factors as the mean of the individual ones
 sizeFactorsMean = mean(singleRunFactors);
-sizeFactorsStd = std(sizeFactorsMean);
+sizeFactorsStd = std(singleRunFactors);
 
 
 %% check if the standard deviation of the mean is too big
@@ -173,8 +173,8 @@ sizeFactors.areaSqPxPerSqMm = sizeFactorsMean(3);
 
 % add a meta field
 sizeFactors.meta = p.Results;
-if exist(warningMessage,'var')
-    sizeFactors.meta.warning = warningMessage;
+if exist('warningMessage','var')
+    sizeFactors.warning = warningMessage;
     clear warningMessage
 end
 
