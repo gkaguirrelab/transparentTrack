@@ -12,11 +12,13 @@ function calcSizeFactors(sizeDataFilesNames, sizeFactorsFileName, varargin)
 % and returns warnings if the standard deviation exceedes a set of
 % arbitrary thresholds.
 %
-% OUTPUTS:
-%   sizeConversionFactor: 3 element vector of conversion factors for pupil
-%   size expressed for the horizontal dim, vertical dim and area as
-%   follows: [ hFactor vFactor aFactor]. The units are [ px/mm px/mm
-%   sqPx/sqMm] respectively.
+% OUTPUTS: (saved to file)
+%   sizeFactors: struct containing the conversion factors for pupil
+%       size expressed for the horizontal direction, vertical direction and
+%       area. In case the calibration is not accurate, a "warnings" field
+%       is created and saved to store warning texts about the accuracy
+%       problems. An additional meta field containing all input params is
+%       also saved.
 % 
 % INPUTS:
 %   dotDataFilesNames: cell array containing the names of the dot data
@@ -25,7 +27,7 @@ function calcSizeFactors(sizeDataFilesNames, sizeFactorsFileName, varargin)
 %       conversion factor.
 % 
 % Optional params:
-%   sizeGroundTruths: array containing the ground truth for the dot size in
+%   sizeGroundTruthsInput: array containing the ground truth for the dot size in
 %       mm. If left empty (default option), the routine will try to
 %       retrieve the ground truth from the sizeData files names following
 %       the instructions in the cell array groundTruthFinder.
@@ -40,10 +42,10 @@ function calcSizeFactors(sizeDataFilesNames, sizeFactorsFileName, varargin)
 %   stdThreshold: 1x3 array with arbitrary thresholds for the standard
 %       deviation of each calibration factor. If any of those values is
 %       exceeded, a warning is returned and saved with the output.
-%   areaErrorThreshold: arbitrary threshold value in squarePx per squareMm
-%       to verify that the linear conversion factors are coherent with the
-%       area conversion factor. If this threshold is exceeded a warning is
-%       returned and saved with the output.
+%   pctAreaDeviationThreshold: arbitrary percentage deviation allowed
+%       between the area factor and  the area derived from the
+%       linear conversion factors. If this threshold is exceeded a warning
+%       is returned and saved with the output.
 % 
 % Optional key/value pairs (display and I/O)
 %  'verbosity' - level of verbosity. [none, full]
@@ -62,10 +64,10 @@ p.addRequired('sizeDataFilesNames',@(x) (iscell(x) | ischar(x)));
 p.addRequired('sizeFactorsFileName',@ischar);
 
 % Optional analysis parameters
-p.addParameter('sizeGroundTruths',[], @isnumeric)
+p.addParameter('sizeGroundTruthsInput',[], @isnumeric)
 p.addParameter('groundTruthFinder', {1 'before' 'mm'}, @iscell)
 p.addParameter('stdThreshold', [0.5 0.5 4], @isnumeric)
-p.addParameter('areaErrorThreshold', 2, @isnumeric)
+p.addParameter('pctAreaDeviationThreshold', 1, @isnumeric)
 
 % Optional display and I/O parameters
 p.addParameter('verbosity','none', @ischar);
@@ -83,13 +85,13 @@ p.parse(sizeDataFilesNames, sizeFactorsFileName, varargin{:})
 
 % if the ground truths were input manually, check that they match the
 % number of calibration data files.
-if ~isempty (p.Results.sizeGroundTruths)
-    if iscell(sizeDataFilesNames) && length(sizeDataFilesNames)~=length(p.Results.sizeGroundTruths)
+if ~isempty (p.Results.sizeGroundTruthsInput)
+    if iscell(sizeDataFilesNames) && length(sizeDataFilesNames)~=length(p.Results.sizeGroundTruthsInput)
         error('The number of data files and ground truth values does not match')
-    elseif ~iscell(sizeDataFilesNames) && length(p.Results.sizeGroundTruths) ~=1
+    elseif ~iscell(sizeDataFilesNames) && length(p.Results.sizeGroundTruthsInput) ~=1
         error('The number of data files and ground truth values does not match')
     else
-        sizeGroundTruths = p.Results.sizeGroundTruths;
+        sizeGroundTruths = p.Results.sizeGroundTruthsInput;
     end
 else
     % if no ground truths were input, try parsing the file name for ground
@@ -182,7 +184,8 @@ end
 % check if linear factors and area factor are coherent
 areaFromLinearFactors = sizeFactorsMean(1) * sizeFactorsMean(2);
 areaFactor = sizeFactorsMean(3);
-if abs(areaFactor - areaFromLinearFactors) > p.Results.areaErrorThreshold
+pctAreaDeviationFromLinearFactors = abs(areaFactor - areaFromLinearFactors)/areaFactor;
+if pctAreaDeviationFromLinearFactors > p.Results.pctAreaDeviationThreshold
     warningCounter = warningCounter +1;
     warningMessages{warningCounter} = 'The area conversion factor is not coherent with the linear conversion factors';
     warning(warningMessages{warningCounter})
@@ -193,8 +196,11 @@ sizeFactors.horizontalPxPerMm = sizeFactorsMean(1);
 sizeFactors.verticalPxPerMm = sizeFactorsMean(2);
 sizeFactors.areaSqPxPerSqMm = sizeFactorsMean(3);
 
-% add a meta field
+% add meta fields
 sizeFactors.meta = p.Results;
+sizeFactors.meta.sizeGroundTruths = sizeGroundTruths;
+sizeFactors.meta.sizeFactorsStd = sizeFactorsStd;
+sizeFactors.meta.pctAreaDeviationFromLinearFactors = pctAreaDeviationFromLinearFactors;
 if warningCounter > 0
     sizeFactors.warnings = warningMessages;
     clear warningMessage
