@@ -2,30 +2,64 @@ function prepareGazeCalibrationData (LTdatFileName,gazeDataFileName,varargin)
 
 % prepareGazeCalibrationData
 
-% HEADER
+% gazeCalData 
+%       targets.X = location on X axes growing left to right espressed as mm on screen
+%       targets.Y = location on Y axes growing top to bottom espressed as mm on screen
+%       pupil.X = raw location of pupil center in pixels on the frame (origin top left corner)  
+%       pupil.Y = raw location of pupil center in pixels on the frame (origin top left corner)
+%       glint.X = raw location of glint center in pixels on the frame (origin top left corner)
+%       glint.Y = raw location of glint center in pixels on the frame (origin top left corner)
+%       viewingDistance = viewing distance from the screen in mm
+%       meta
+%           pupilRaw
+%           glintRaw
+%           targetOnsetTimes
+%           
 
 
 %% input parser
 
+p = inputParser; p.KeepUnmatched = true;
+
+% Required
+p.addRequired('LTdatFileName',@ischar);
+p.addRequired('gazeDataFileName',@ischar);
+
+% Optional analysis parameters
+p.addParameter('useLiveTrackGazeData',false, @islogical)
+p.addParameter('movingMeanWindow', 1/3, @isnumerc)
+p.addParameter('removeBoundaryFrames', 1/10, @isnumeric)
+p.addParameter('viewingDistance', 1065, @isnumeric)
+
+% Optional display and I/O parameters
+p.addParameter('verbosity','none', @ischar);
+
+% Environment parameters
+p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
+p.addParameter('timestamp',char(datetime('now')),@ischar);
+p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischar);
+p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
+
+% parse
+p.parse(sizeDataFilesNames, sizeFactorsFileName, varargin{:})
 
 
+%% load LTdat file
+LTdata = load(LTdatFileName);
 
+%% read data from ltDatFile and store them in gazeCalData
 
+% 1. get target location
+gazeCalData.targets.X     = LTdata.targets(:,1); % mm on screen, screen center = 0
+gazeCalData.targets.Y     = LTdata.targets(:,2); % mm on screen, screen center = 0
 
-
-
-
-%% load data from ltDatFile
-% get target location
-calParams.targets.X     = LTdata.targets(:,1); % mm on screen, screen center = 0
-calParams.targets.Y     = LTdata.targets(:,2); % mm on screen, screen center = 0
+% find and replace nan target, if any
 
 % if the livetrack failed to track one target, it will be a NaN. Replace
 % the NaN with the missing target location. NOTE THAT THIS ASSUMES THAT
 % ONLY ONE TARGET IS MISSING
 
-% find nan target
-nanIDX = find(isnan(calParams.targets.X));
+nanIDX = find(isnan(gazeCalData.targets.X));
 
 if ~isempty(nanIDX)
    if length(nanIDX) == 2
@@ -53,25 +87,52 @@ if ~isempty(nanIDX)
 
 %         allLocations = flipud(allLocations);
     
-    missingTarget = find(~ismember(allLocations,[calParams.targets.X calParams.targets.Y], 'rows'));
+    missingTarget = find(~ismember(allLocations,[gazeCalData.targets.X gazeCalData.targets.Y], 'rows'));
     
     % replace NaN target value with missing value
     
-    calParams.targets.X(nanIDX) = allLocations(missingTarget, 1);
-    calParams.targets.Y(nanIDX) = allLocations(missingTarget, 2);
+    gazeCalData.targets.X(nanIDX) = allLocations(missingTarget, 1);
+    gazeCalData.targets.Y(nanIDX) = allLocations(missingTarget, 2);
 end
 
 % get viewing distance
+gazeCalData.viewingDistance = p.Results.viewingDistace;
+
+% get pupil and glint coordinates as tracked by the LiveTrack
+if p.Results.useLiveTrackGazeData
+    gazeCalData.pupil.X = LTdata.pupil(:,1);
+    gazeCalData.pupil.Y = LTdata.pupil(:,2);
+    gazeCalData.glint.X = LTdata.glint(:,1);
+    gazeCalData.glint.Y = LTdata.glint(:,2);
+    
+else
+    % get dot times (if it was saved)
+    
+    % get raw pupil and glint data
+    
+    % align targets and raw data
+    
+    % get mean pupil and glint location
+    
+end
+
+% add meta fields
+
+gazeCalData.meta = p.Results;
+if ~p.Results.useLiveTrackGazeData
+%     gazeCal.meta.rawPupilX = 
+%     gazeCal.meta.rawPupilY =
+%     gazeCal.meta.rawGlintX = 
+%     gazeCal.meta.rawGlintY =
+end
 
 
-% get dot times (if it was saved)
 
 
 
-%% Switch cases
-% got raw data and dot times
 
-% FROM OLD FUNCTION
+
+%% FROM OLD FUNCTION
 % get each target duration on screen
 TarTimesFromStart  = (round(LTdata.dotTimes - rawVidStart) * fps - 40);
 
@@ -109,12 +170,3 @@ for ct = 1 :9
     meanG.Y(ct) = movMeanG.Y(Xidx);
 end
 
-
-
-
-% got raw data no dot times
-
-
-
-
-% no raw data at all
