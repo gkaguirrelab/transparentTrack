@@ -120,7 +120,7 @@ videoSizeY = videoInObj.Height;
 % initialize variable to hold the perimeter data
 grayVideo = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
 % read the video into memory, adjusting gamma and local contrast
-for ii = 1:floor(videoInObj.Duration*videoInObj.FrameRate)
+for ii = 1:nFrames
     thisFrame = readFrame(videoInObj);
     thisFrame = imadjust(thisFrame,[],[],p.Results.pupilGammaCorrection);
     grayVideo(:,:,ii) = rgb2gray (thisFrame);
