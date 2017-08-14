@@ -71,9 +71,9 @@ p.addRequired('grayVideoName',@isstr);
 p.addRequired('perimeterFileName',@isstr);
 
 % Optional analysis params
-p.addParameter('pupilGammaCorrection', 1, @isnumeric);
+p.addParameter('pupilGammaCorrection', 0.75, @isnumeric);
 p.addParameter('pupilCircleThresh', 0.06, @isnumeric);
-p.addParameter('pupilRange', [20 120], @isnumeric);
+p.addParameter('pupilRange', [20 180], @isnumeric);
 p.addParameter('glintCircleThresh', 0.999, @isnumeric);
 p.addParameter('glintRange', [10 30], @isnumeric);
 p.addParameter('maskBox', [0.20 0.75], @isnumeric);
@@ -174,7 +174,7 @@ for ii = p.Results.startFrame:nFrames
     % get the frame
     thisFrame = squeeze(grayVideo(:,:,ii));
     
-    % apply a frame mask if requested
+    % apply a neutral gray frame mask if requested
     if ~isempty (p.Results.frameMask)
         thisFrame((1:p.Results.frameMask(1)),:) = 220;
         thisFrame((end - p.Results.frameMask(1):end),:) = 220;
