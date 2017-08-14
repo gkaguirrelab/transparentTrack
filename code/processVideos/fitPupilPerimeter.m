@@ -257,6 +257,9 @@ else
         fprintf('.\n');
     end
     
+    % temporarily suppress singular matrix warnings
+    warning('off','MATLAB:singularMatrix')
+    
     % Loop through the frames
     parfor (ii = 1:nFrames, nWorkers)
         
@@ -352,6 +355,9 @@ if ~isempty(p.Results.pupilFileName)
     save(p.Results.pupilFileName,'pupilData')
 end
 
+% restore singular matrix warnings
+warning('on','MATLAB:singularMatrix')
+    
 % If we are not skipping the Bayesian fitting, proceed
 if ~p.Results.skipPupilBayes
     
