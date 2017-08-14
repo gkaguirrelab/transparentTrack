@@ -255,7 +255,14 @@ for ii = p.Results.startFrame:nFrames
         % region, so that they do not influence the three region partition.
         maskedPupilNaN=double(maskedPupil);
         maskedPupilNaN(pupilMask==0)=NaN;
+        
+        % temporarily suppress warnings
+        warning('off','all')
+        
         otsuThresh = multithresh(maskedPupilNaN,2);
+        
+        % restore warnings
+        warning('on','all')
         
         % Set the glint and iris to zero, and the pupil to unity
         binP = imquantize(maskedPupil, otsuThresh, [0 0 1]);
