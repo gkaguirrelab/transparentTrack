@@ -39,10 +39,13 @@ function findPupilPerimeter(grayVideoName, perimeterFileName, varargin)
 %       zero will result in no dilation in that direction. A value of unity
 %       will result in a masked region that is twice the size of the pupil
 %       radius.
-%   frameMask - this option with add a light gray mask on the original gray video, 
+%   frameMask - this option with add a mask on the original gray video, 
 %       framing it by [nRows nColumns] on the borders. This is particularly 
 %       useful for size calibration videos in which appear partial black 
 %       dots that may throw off the circle finding mechanism.
+%   frameMaskValue - the image value that is assigned to the region that is
+%       masked by frameMask. This should be a gray that is neither pupil
+%       nor glint.
 %   smallObjThresh - maximum size of small objects to be removed to clean
 %       up the pupil perimeter.
 %
@@ -77,7 +80,8 @@ p.addParameter('pupilRange', [20 180], @isnumeric);
 p.addParameter('glintCircleThresh', 0.999, @isnumeric);
 p.addParameter('glintRange', [10 30], @isnumeric);
 p.addParameter('maskBox', [0.20 0.75], @isnumeric);
-p.addParameter('frameMask',[] , @isnumeric);
+p.addParameter('frameMask', [], @isnumeric);
+p.addParameter('frameMaskValue', 220, @isnumeric);
 p.addParameter('smallObjThresh', 200, @isnumeric);
 
 % findGlintAndPupilCircles routine params. Defined here for transparency
@@ -174,12 +178,12 @@ for ii = p.Results.startFrame:nFrames
     % get the frame
     thisFrame = squeeze(grayVideo(:,:,ii));
     
-    % apply a neutral gray frame mask if requested
+    % apply the frameMaskValue to the frame region (if so requested)
     if ~isempty (p.Results.frameMask)
-        thisFrame((1:p.Results.frameMask(1)),:) = 220;
-        thisFrame((end - p.Results.frameMask(1):end),:) = 220;
-        thisFrame(:, (1:p.Results.frameMask(2))) = 220;
-        thisFrame(:, (end - p.Results.frameMask(2):end)) = 220;
+        thisFrame((1:p.Results.frameMask(1)),:) = p.Results.frameMaskValue;
+        thisFrame((end - p.Results.frameMask(1):end),:) = p.Results.frameMaskValue;
+        thisFrame(:, (1:p.Results.frameMask(2))) = p.Results.frameMaskValue;
+        thisFrame(:, (end - p.Results.frameMask(2):end)) = p.Results.frameMaskValue;
     end
     
     % store the current pupilRange
@@ -256,14 +260,17 @@ for ii = p.Results.startFrame:nFrames
         maskedPupilNaN=double(maskedPupil);
         maskedPupilNaN(pupilMask==0)=NaN;
         
-        % temporarily suppress warnings
-        warning('off','all')
+        % save the warning state, then turn off the warning that can occur
+        % if multiThresh is unable to find three regions
+        warningState = warning;
+        warning('off','images:multithresh:degenerateInput');
         
+        % perform the multi thresh
         otsuThresh = multithresh(maskedPupilNaN,2);
         
-        % restore warnings
-        warning('on','all')
-        
+        % restore warning state
+        warning(warningState);
+                
         % Set the glint and iris to zero, and the pupil to unity
         binP = imquantize(maskedPupil, otsuThresh, [0 0 1]);
         
