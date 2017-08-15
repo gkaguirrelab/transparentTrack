@@ -351,7 +351,7 @@ end % skipInitialPupilFit mode check
 if ~isempty(p.Results.pupilFileName)
     save(p.Results.pupilFileName,'pupilData')
 end
-
+    
 % If we are not skipping the Bayesian fitting, proceed
 if ~p.Results.skipPupilBayes
     

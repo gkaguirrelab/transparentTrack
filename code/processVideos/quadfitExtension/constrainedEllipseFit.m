@@ -52,9 +52,21 @@ function [pFitTransparent, pSD, e] = constrainedEllipseFit(x, y, lb, ub, nonlinc
 try
     pInitImplicit = quad2dfit_taubin(x,y);
     switch imconic(pInitImplicit,0)
-        case 'ellipse'  % use Taubin's fit, which has produced an ellipse
-        otherwise  % use direct least squares ellipse fit to obtain an initial estimate
+        case 'ellipse'
+            % the initial fit returned an ellipse using Taubin's method. No
+            % further action is required.
+        otherwise
+            % The initial fit with Taubin's method didn't work, so try a
+            % direct ellipse fit
+
+            % We someties obtain a singular matrix warning here; turn it
+            % off temporarily
+            warningState = warning;
+            warning('off','MATLAB:singularMatrix');
+            % use direct least squares ellipse fit to obtain an initial estimate
             pInitImplicit = ellipsefit_direct(x,y);
+            % Restore the warning state
+            warning(warningState);
     end
     % convert the initial estimate from implicit form to transparent form
     pInitTransparent = ellipse_ex2transparent(ellipse_im2ex(pInitImplicit));
@@ -68,6 +80,7 @@ end
 % Find the ellipse parameters (in transparent form) using a non-linear
 % search.
 
+% define some search options
 options = optimset('fmincon');
 options = optimset(options,'Diagnostics','off','Display','off','LargeScale','off','Algorithm','interior-point');
 
