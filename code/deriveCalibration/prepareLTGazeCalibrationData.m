@@ -1,7 +1,12 @@
-function prepareGazeCalibrationData (LTdatFileName,gazeDataFileName,varargin)
+function prepareLTGazeCalibrationData (LTdatFileName,gazeDataFileName,varargin)
 
 % prepareGazeCalibrationData
 
+% this function is to use for gaze calibration data collected with the
+% LiveTrack device alone or with the Livetrack+VTop eye tracking system. It
+% will export a gazeData file containing all information needed to
+% calculate the gaze calibration conversion factors.
+% 
 % gazeCalData 
 %       targets.X = location on X axes growing left to right espressed as mm on screen
 %       targets.Y = location on Y axes growing top to bottom espressed as mm on screen
@@ -13,7 +18,7 @@ function prepareGazeCalibrationData (LTdatFileName,gazeDataFileName,varargin)
 %       meta
 %           pupilRaw
 %           glintRaw
-%           targetOnsetTimes
+%           fixDurationSec
 %           
 
 
@@ -27,6 +32,7 @@ p.addRequired('gazeDataFileName',@ischar);
 
 % Optional analysis parameters
 p.addParameter('useLiveTrackGazeData',false, @islogical)
+p.addParameter('ltFileSuffixLength', 10, @isnumeric)
 p.addParameter('movingMeanWindow', 1/3, @isnumerc)
 p.addParameter('removeBoundaryFrames', 1/10, @isnumeric)
 p.addParameter('viewingDistance', 1065, @isnumeric)
@@ -46,6 +52,7 @@ p.parse(sizeDataFilesNames, sizeFactorsFileName, varargin{:})
 
 %% load LTdat file
 LTdata = load(LTdatFileName);
+
 
 %% read data from ltDatFile and store them in gazeCalData
 
@@ -84,13 +91,9 @@ if ~isempty(nanIDX)
     
     % find value of the nan target (is the one missing when comparing the
     % targets to allLocations)
-
-%         allLocations = flipud(allLocations);
-    
     missingTarget = find(~ismember(allLocations,[gazeCalData.targets.X gazeCalData.targets.Y], 'rows'));
     
     % replace NaN target value with missing value
-    
     gazeCalData.targets.X(nanIDX) = allLocations(missingTarget, 1);
     gazeCalData.targets.Y(nanIDX) = allLocations(missingTarget, 2);
 end
@@ -98,32 +101,52 @@ end
 % get viewing distance
 gazeCalData.viewingDistance = p.Results.viewingDistace;
 
-% get pupil and glint coordinates as tracked by the LiveTrack
+
+%%  If so requested, get pupil and glint coordinates as tracked by the LiveTrack and exit.
 if p.Results.useLiveTrackGazeData
     gazeCalData.pupil.X = LTdata.pupil(:,1);
     gazeCalData.pupil.Y = LTdata.pupil(:,2);
     gazeCalData.glint.X = LTdata.glint(:,1);
     gazeCalData.glint.Y = LTdata.glint(:,2);
     
-else
-    % get dot times (if it was saved)
+    % add metadata
+    gazeCalData.meta = p.Results;
     
-    % get raw pupil and glint data
+    % save results 
+    save (gazeDataFileName , 'gazeCalData')
     
-    % align targets and raw data
-    
-    % get mean pupil and glint location
-    
+    % no other further step is necessary
+    return
 end
+
+
+%% Proceed with raw data
+
+% get dot times (if available)
+if isfield(LTdata,'dotTimes')
+    gazeCalData.fixDurationSec = diff(LTdata.dotTimes);
+    dotTimesRecorded  = true;
+else
+    % we will need to estimate these duration of each fixation by the raw data
+    dotTimesRecorded = false;
+end
+% get calibration file root name
+calFileRoot = ltDatFileName(1:end-p.Results.ltFileSuffixLength);
+% get raw pupil and glint data
+rawPupilData = load ([calFileRoot '_pupil.mat']);
+rawGlintData = load ([calFileRoot '_glint.mat']);
+gazeCal.meta.rawPupil = rawPupilData;
+gazeCal.meta.rawGlint = rawGlintData;
+
 
 % add meta fields
 
 gazeCalData.meta = p.Results;
 if ~p.Results.useLiveTrackGazeData
-%     gazeCal.meta.rawPupilX = 
-%     gazeCal.meta.rawPupilY =
-%     gazeCal.meta.rawGlintX = 
-%     gazeCal.meta.rawGlintY =
+    %     gazeCal.meta.rawPupilX =
+    %     gazeCal.meta.rawPupilY =
+    %     gazeCal.meta.rawGlintX =
+    %     gazeCal.meta.rawGlintY =
 end
 
 
