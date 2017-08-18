@@ -91,7 +91,7 @@ p.addParameter('centroidsAllocation', 5, @isnumeric);
 
 % Optional display params
 p.addParameter('verbosity','none',@ischar);
-p.addParameter('displayMode',true,@islogical);
+p.addParameter('displayMode',false,@islogical);
 
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
@@ -301,9 +301,9 @@ end
 %% save out all data in glintData struct
 glintData.X = glintData_X;
 glintData.Y = glintData_Y;
+glintData.meta = p.Results;
 glintData.meta.centroidsByFrame.X = centroidsByFrame_X;
 glintData.meta.centroidsByFrame.Y = centroidsByFrame_Y;
-glintData.meta = p.Results;
 
 
 % save out a mat file with the glint tracking data
