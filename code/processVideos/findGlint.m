@@ -4,7 +4,7 @@ function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 % This function tracks one or more glints in the eye video using a simple
 % thresholding and region property identification approach.
 %
-% Every frame is firstly corrected with an elevated gamma value, so that
+% Every frame is firstly corrected with gamma value greater than 1, so that
 % glints and other large bright spot are enhanced. The image is then
 % binarized with a relatively high threshold, so that only the brights spot
 % and their immediate surroundings results as non-zero values. The
@@ -12,7 +12,7 @@ function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 % matlab's function "regionpros". The centroid location is weighted with
 % the actual brightness value of each pixel in the gray gamma-corrected
 % image.
-% 
+%
 % After all centroids location are extracted, data is refined according to
 % the expected number of glints and average centroid location throughout
 % the video. Firstly, we calculate the median location of the glints from
@@ -22,8 +22,8 @@ function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 % of the regions identified are indeed the desired glints. In frames where
 % less than the desired number of glints is located, the missing centroids
 % locations will be set as NaNs.
-% 
-% If the refineGlintLocation flag is set to true, the data is further
+%
+% TO BE DEVELOPED: If the refineGlintLocation flag is set to true, the data is further
 % cleaned up to exclude glint values that deviate from the median value
 % more than the custom threshold maxGlintDeviation.
 %
@@ -48,8 +48,11 @@ function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 %   glintThreshold : threshold value to binarize the glint gray image.
 %       Should be set to preserve both the glints and any "halo" around
 %       them.(default value 0.8)
-%   frameMask : 
+%   frameMask :
+%   frameMaskValue :
 %   centroidsAllocation : max number of centroids to be saved in memory
+%   refineGlintLocation :
+%   maxGlintDeviation :
 
 % Optional key/value pairs (flow control)
 %  'nFrames' - analyze fewer than the total number of frames.
@@ -76,15 +79,19 @@ p.addRequired('grayVideoName',@isstr);
 p.addRequired('glintFileName',@isstr);
 
 % optional analysis parameters
-p.addParameter('numberOfGlints', 1, @isnumeric);
-p.addParameter('glintGammaCorrection', 4, @isnumeric);
+p.addParameter('numberOfGlints', 1, @isnumeric); %% MORE THAN 1 TO BE DEVELOPED
+p.addParameter('glintGammaCorrection', 1.5, @isnumeric);
 p.addParameter('glintThreshold', 0.8, @isnumeric);
 p.addParameter('frameMask',[] , @isnumeric);
+p.addParameter('frameMaskValue', 220, @isnumeric);
 p.addParameter('centroidsAllocation', 5, @isnumeric);
+
+% p.addParameter('refineGlintLocation', true, @islogical);  %% TO BE DEVELOPED
+% p.addParameter('maxGlintDeviation', 5, @isnumeric); %% TO BE DEVELOPED
 
 % Optional display params
 p.addParameter('verbosity','none',@ischar);
-p.addParameter('displayMode',false,@islogical);
+p.addParameter('displayMode',true,@islogical);
 
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
@@ -206,10 +213,10 @@ for   ii = 1:nFrames
     
     % apply a frame mask if required
     if ~isempty (p.Results.frameMask)
-        thisFrame((1:p.Results.frameMask(1)),:) = 220;
-        thisFrame((end - p.Results.frameMask(1):end),:) = 220;
-        thisFrame(:, (1:p.Results.frameMask(2))) = 220;
-        thisFrame(:, (end - p.Results.frameMask(2):end)) = 220;
+        thisFrame((1:p.Results.frameMask(1)),:) = p.Results.frameMaskValue;
+        thisFrame((end - p.Results.frameMask(1):end),:) = p.Results.frameMaskValue;
+        thisFrame(:, (1:p.Results.frameMask(2))) = p.Results.frameMaskValue;
+        thisFrame(:, (end - p.Results.frameMask(2):end)) = p.Results.frameMaskValue;
     end
     
     % binarize glint image according to glintThreshold
@@ -231,7 +238,7 @@ for   ii = 1:nFrames
             if p.Results.displayMode && ~p.Results.useParallel
                 thisFrame = insertShape(thisFrame,'FilledCircle', [centroids(cc,1),centroids(cc,2),2], 'Color','red');
             end
-        end  
+        end
     end
     
     % display the frame if requested
@@ -240,4 +247,92 @@ for   ii = 1:nFrames
     end
 end
 
-%% Refine data
+%% Get glint data
+
+% get the number of centroids found for each frame
+centroidsInEachFrame = sum(~isnan(centroidsByFrame_X),2);
+
+% first, save out data for the frames with the expected amount of glints
+framesWithExpectedCentroids = find (centroidsInEachFrame==p.Results.numberOfGlints);
+
+for ii = 1: length(framesWithExpectedCentroids)
+    switch p.Results.numberOfGlints
+        case 1 % this case is simple and does not require clustering of the centroids
+            glintData_X(framesWithExpectedCentroids(ii)) = centroidsByFrame_X(framesWithExpectedCentroids(ii),1);
+            glintData_Y(framesWithExpectedCentroids(ii)) = centroidsByFrame_Y(framesWithExpectedCentroids(ii),1);
+            
+        otherwise % MORE GLINTS CASE TO BE DEVELOPED
+            % if more than 1 glint is expected, data needs to be
+            % clustered so that Glint1, Glint2.. GlintN are correctly
+            % identified.
+            
+    end
+end
+
+% now, find frames with more centroids than expected
+framesWithMoreCentroids = find (centroidsInEachFrame>p.Results.numberOfGlints);
+
+% select the centroids that are most likely to be glints
+if ~isempty(framesWithMoreCentroids)
+    
+    switch p.Results.numberOfGlints
+        case 1 % this case is simple and does not require clustering of the centroids
+            % get median position of the centroids
+            centroidMedian_X = nanmedian(centroidsByFrame_X(:));
+            centroidMedian_Y = nanmedian(centroidsByFrame_Y(:));
+            
+            % loop through the frames with too many centroids and check
+            % which value is closer to the median.
+            for ii = 1:length(framesWithMoreCentroids)
+                % find the centroid closest to the median
+                [~,glintIDX] = min(sqrt((centroidsByFrame_X(framesWithMoreCentroids(ii),:) - centroidMedian_X).^2 + (centroidsByFrame_Y(framesWithMoreCentroids(ii),:)- centroidMedian_Y).^2));
+                % store values for that centroid as glint
+                glintData_X(framesWithMoreCentroids(ii)) = centroidsByFrame_X(framesWithMoreCentroids(ii),glintIDX);
+                glintData_Y(framesWithMoreCentroids(ii)) = centroidsByFrame_Y(framesWithMoreCentroids(ii),glintIDX);
+            end
+            
+            
+        otherwise % MORE GLINTS CASE TO BE DEVELOPED
+            
+    end
+end
+
+
+%% save out all data in glintData struct
+glintData.X = glintData_X;
+glintData.Y = glintData_Y;
+glintData.meta.centroidsByFrame.X = centroidsByFrame_X;
+glintData.meta.centroidsByFrame.Y = centroidsByFrame_Y;
+glintData.meta = p.Results;
+
+
+% save out a mat file with the glint tracking data
+if ~p.Results.displayMode
+    save (glintFileName, 'glintData')
+else
+    close(figureHandle);
+end
+
+% report completion of analysis
+if strcmp(p.Results.verbosity,'full')
+    toc
+    fprintf('\n');
+end
+
+% Delete the parallel pool
+if strcmp(p.Results.verbosity,'full')
+    tic
+    fprintf(['Closing parallel pool. Started ' char(datetime('now')) '\n']);
+end
+if p.Results.useParallel
+    poolObj = gcp;
+    if ~isempty(poolObj)
+        delete(poolObj);
+    end
+end
+if strcmp(p.Results.verbosity,'full')
+    toc
+    fprintf('\n');
+end
+
+end % main function
