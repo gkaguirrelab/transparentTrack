@@ -69,7 +69,7 @@ switch instructionType
         else
             varargout{1} = params(1); % glint X
             varargout{2} = params(2); % glint Y
-            varargout{3} = params(2); % glint patch radius
+            varargout{3} = params(3); % glint patch radius
             clear params
         end
     case 'reset'
