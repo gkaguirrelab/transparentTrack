@@ -9,7 +9,7 @@ function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 % binarized with a relatively high threshold, so that only the brights spot
 % and their immediate surroundings results as non-zero values. The
 % centroids of each surviving region in the binary image are extracted using
-% matlab's function "regionpros". The centroid location is weighted with
+% matlab's function "regionprops". The centroid location is weighted with
 % the actual brightness value of each pixel in the gray gamma-corrected
 % image.
 %
@@ -22,13 +22,13 @@ function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 % of the regions identified are indeed the desired glints. In frames where
 % less than the desired number of glints is located, the missing centroids
 % locations will be set as NaNs.
-%
-% TO BE DEVELOPED: If the refineGlintLocation flag is set to true, the data is further
-% cleaned up to exclude glint values that deviate from the median value
-% more than the custom threshold maxGlintDeviation.
+% 
+% DEVELOPMENT PLACEHOLDER: if the expected nuber of glints is greater than
+% 1, the centroids will be sorted in the N more likely glints subgroups,
+% where N = number of expected glints.
 %
 % Output
-%	glintData - structure with fields that contain the X and Y location of
+%	glintData : structure with fields that contain the X and Y location of
 %       the center of the glint (in units of pixels), and a meta field with
 %       additional analysis params and intermediate results.
 %
@@ -39,29 +39,25 @@ function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 %       results.
 %
 % Options (analysis)
-%   numberOfGlints : desired number of glint to find
+%   numberOfGlints : desired number of glint to find % >1 TO BE DEVELOPED
 %	glintGammaCorrection : gamma correction to be applied in current
 %       frame. An extremely high value will make almost all the frame black
 %       and only big bright spots will be white. This reduces the
 %       possibility of confusing the glint with some other smaller bright
-%       spot (default 4, decrease if no glint is found)
+%       spot (default 1.5, decrease if no glint is found, increase if too 
+%       many glints are found)
 %   glintThreshold : threshold value to binarize the glint gray image.
 %       Should be set to preserve both the glints and any "halo" around
 %       them.(default value 0.8)
-%   frameMask :
-%   frameMaskValue :
+%   frameMask : this option with add a mask on the original gray video, 
+%       framing it by [nRows nColumns] on the borders.
+%   frameMaskValue : the image value that is assigned to the region that is
+%       masked by frameMask. This should be a gray that is neither pupil
+%       nor glint.
 %   centroidsAllocation : max number of centroids to be saved in memory
-%   refineGlintLocation :
-%   maxGlintDeviation :
 
 % Optional key/value pairs (flow control)
 %  'nFrames' - analyze fewer than the total number of frames.
-%  'useParallel' - If set to true, use the Matlab parallel pool for the
-%    initial ellipse fitting.
-%  'nWorkers' - Specify the number of workers in the parallel pool. If
-%    undefined the default number will be used.
-%  'tbtbProjectName' - The workers in the parallel pool are configured by
-%    issuing a tbUseProject command for the project specified here.
 %
 % Options (environment)
 %   tbSnapshot - the passed tbSnapshot output that is to be saved along
@@ -86,18 +82,12 @@ p.addParameter('frameMask',[] , @isnumeric);
 p.addParameter('frameMaskValue', 220, @isnumeric);
 p.addParameter('centroidsAllocation', 5, @isnumeric);
 
-% p.addParameter('refineGlintLocation', true, @islogical);  %% TO BE DEVELOPED
-% p.addParameter('maxGlintDeviation', 5, @isnumeric); %% TO BE DEVELOPED
-
 % Optional display params
 p.addParameter('verbosity','none',@ischar);
 p.addParameter('displayMode',false,@islogical);
 
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
-p.addParameter('useParallel',false,@islogical);
-p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('tbtbRepoName','LiveTrackAnalysisToolbox',@ischar);
 
 % Environment parameters
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
@@ -133,39 +123,6 @@ end
 % close the video object
 clear videoInObj
 
-%% Set up the parallel pool
-if p.Results.useParallel
-    if strcmp(p.Results.verbosity,'full')
-        tic
-        fprintf(['Opening parallel pool. Started ' char(datetime('now')) '\n']);
-    end
-    if isempty(p.Results.nWorkers)
-        parpool;
-    else
-        parpool(p.Results.nWorkers);
-    end
-    poolObj = gcp;
-    if isempty(poolObj)
-        nWorkers=0;
-    else
-        nWorkers = poolObj.NumWorkers;
-        % Use TbTb to configure the workers.
-        if ~isempty(p.Results.tbtbRepoName)
-            spmd
-                tbUse(p.Results.tbtbRepoName,'reset','full','verbose',false,'online',false);
-            end
-            if strcmp(p.Results.verbosity,'full')
-                fprintf('CAUTION: Any TbTb messages from the workers will not be shown.\n');
-            end
-        end
-    end
-    if strcmp(p.Results.verbosity,'full')
-        toc
-        fprintf('\n');
-    end
-else
-    nWorkers=0;
-end
 
 %% Initialize variables
 % Initialize glint variables
@@ -201,8 +158,13 @@ end
 
 
 % loop through frames
-% parfor (ii = 1:nFrames, nWorkers)
 for   ii = 1:nFrames
+    
+    if p.Results.displayMode && strcmp(get(figureHandle,'currentchar'),' ')
+        close(figureHandle)
+        return
+    end
+    
     % increment the progress bar
     if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
         fprintf('\b.\n');
@@ -290,8 +252,7 @@ if ~isempty(framesWithMoreCentroids)
                 glintData_X(framesWithMoreCentroids(ii)) = centroidsByFrame_X(framesWithMoreCentroids(ii),glintIDX);
                 glintData_Y(framesWithMoreCentroids(ii)) = centroidsByFrame_Y(framesWithMoreCentroids(ii),glintIDX);
             end
-            
-            
+
         otherwise % MORE GLINTS CASE TO BE DEVELOPED
             
     end
@@ -319,20 +280,5 @@ if strcmp(p.Results.verbosity,'full')
     fprintf('\n');
 end
 
-% Delete the parallel pool
-if strcmp(p.Results.verbosity,'full')
-    tic
-    fprintf(['Closing parallel pool. Started ' char(datetime('now')) '\n']);
-end
-if p.Results.useParallel
-    poolObj = gcp;
-    if ~isempty(poolObj)
-        delete(poolObj);
-    end
-end
-if strcmp(p.Results.verbosity,'full')
-    toc
-    fprintf('\n');
-end
 
 end % main function
