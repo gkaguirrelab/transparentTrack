@@ -259,7 +259,7 @@ parfor (ii = 1:nFrames, nWorkers)
     binP = squeeze(perimeter.data(:,:,ii));
     
     % make glint patch
-    if ~isnan(glintData_X)
+    if ~isnan(glintData_X(ii))
         glintPatch = ones(size(binP));
         glintPatch = insertShape(glintPatch,'FilledCircle',[glintData_X(ii,:) glintData_Y(ii,:) p.Results.glintPatchRadius],'Color','black');
         glintPatch = im2bw(glintPatch);
