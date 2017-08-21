@@ -200,11 +200,7 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % add glint
     if ~isempty(p.Results.glintFileName)
-        if glintData.ellipseFittingError(ii)==1
-            plot(glintData.X(ii),glintData.Y(ii),'*y');
-        else
             plot(glintData.X(ii),glintData.Y(ii),['*' p.Results.glintColor]);
-        end
     end
     
     % add pupil perimeter

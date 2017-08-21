@@ -5,7 +5,7 @@ function findPupilPerimeter(grayVideoName, perimeterFileName, varargin)
 %
 % An initial search for the pupil border is performed with the
 %
-%       findGlintAndPupilCircles
+%       findPupilCircle
 %
 % function. If a candidate circle is found, the region is dilated. We then
 % binarize the resulting "patch" image with a user determined threshold,
@@ -29,11 +29,6 @@ function findPupilPerimeter(grayVideoName, perimeterFileName, varargin)
 %       fitting (default 0.06, typical range [0.04 0.09])
 %	pupilRange - initial radius range for circle fitting of the pupil
 %       (default [30 90]). This value gets dynamically updated.
-%   pupilOnly - when set to false the routine will not collect any glint
-%       information.
-%   glintCircleThresh - threshold value to locate the glint for circle
-%       fitting (default 0.99, usually does not need to be changed)
-%   glintRange - fixed radius range for circle fitting of the glint.
 %   maskBox - This is the proportion to dilate the pupil masked region in
 %       the vertical and horizontal directions respectively. A value of
 %       zero will result in no dilation in that direction. A value of unity
@@ -75,19 +70,14 @@ p.addRequired('perimeterFileName',@isstr);
 
 % Optional analysis params
 p.addParameter('pupilGammaCorrection', 0.75, @isnumeric);
-p.addParameter('pupilCircleThresh', 0.06, @isnumeric);
-p.addParameter('pupilRange', [20 180], @isnumeric);
-p.addParameter('glintCircleThresh', 0.999, @isnumeric);
-p.addParameter('glintRange', [10 30], @isnumeric);
 p.addParameter('maskBox', [0.20 0.75], @isnumeric);
 p.addParameter('frameMask', [], @isnumeric);
 p.addParameter('frameMaskValue', 220, @isnumeric);
 p.addParameter('smallObjThresh', 200, @isnumeric);
 
-% findGlintAndPupilCircles routine params. Defined here for transparency
-p.addParameter('pupilOnly', false, @islogical);
-p.addParameter('glintOut', 0.15, @isnumeric);
-p.addParameter('dilateGlint', 6, @isnumeric);
+% findPupilCircle routine params. Defined here for transparency
+p.addParameter('pupilCircleThresh', 0.06, @isnumeric);
+p.addParameter('pupilRange', [20 180], @isnumeric);
 p.addParameter('imfindcirclesSensitivity', 0.99, @isnumeric);
 p.addParameter('rangeAdjust', 0.05, @isnumeric);
 
@@ -191,13 +181,11 @@ for ii = p.Results.startFrame:nFrames
     
     % perform an initial search for the pupil with findGlintAndPupilCircles. Also extract
     % glint location and size information for later use.
-    [pCenters, pRadii,~,gCenters, gRadii,~, pupilRange, ~] = ...
-        findGlintAndPupilCircles(thisFrame,...
+    [pCenters, pRadii,~,pupilRange] = ...
+        findPupilCircle(thisFrame,...
         p.Results.pupilCircleThresh,...
-        p.Results.glintCircleThresh,...
         pupilRange,...
-        p.Results.glintRange,...
-        p.Results.pupilOnly,p.Results.glintOut,p.Results.dilateGlint,p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust);
+        p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust);
     
     % If a pupile circle patch was not found, try again after expanding the
     % pupil search range by 50%, then 100%. We limit the possible range for
@@ -208,25 +196,21 @@ for ii = p.Results.startFrame:nFrames
         if candidateRange(1) < p.Results.pupilRange(1) || candidateRange(2) > p.Results.pupilRange(2)
             candidateRange = p.Results.pupilRange;
         end
-        [pCenters, pRadii,~,gCenters, gRadii,~, pupilRange, ~] = ...
-            findGlintAndPupilCircles(thisFrame,...
+        [pCenters, pRadii,~,pupilRange] = ...
+            findPupilCircle(thisFrame,...
             p.Results.pupilCircleThresh,...
-            p.Results.glintCircleThresh,...
             candidateRange,...
-            p.Results.glintRange,...
-            p.Results.pupilOnly,p.Results.glintOut,p.Results.dilateGlint,p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust);
+            p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust);
         if isempty(pCenters) % still no circle? Try 100% increase
             candidateRange = [ceil(initialPupilRange(1)/2) round(initialPupilRange(2)*2)];
             if candidateRange(1) < p.Results.pupilRange(1) || candidateRange(2) > p.Results.pupilRange(2)
                 candidateRange = p.Results.pupilRange;
             end
-            [pCenters, pRadii,~,gCenters, gRadii,~, pupilRange, ~] = ...
-                findGlintAndPupilCircles(thisFrame,...
+            [pCenters, pRadii,~,pupilRange] = ...
+                findPupilCircle(thisFrame,...
                 p.Results.pupilCircleThresh,...
-                p.Results.glintCircleThresh,...
                 candidateRange,...
-                p.Results.glintRange,...
-                p.Results.pupilOnly,p.Results.glintOut,p.Results.dilateGlint,p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust);
+                p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust);
             if isempty(pCenters) % STILL no circle? Give up and restore initialPupilRange
                 pupilRange = initialPupilRange;
             end
@@ -282,20 +266,6 @@ for ii = p.Results.startFrame:nFrames
         
         % get perimeter of object
         binP = bwperim(binP);
-        
-        if ~isempty(gCenters) && ~p.Results.pupilOnly
-            % black out any residual glint component on the perimeter. This
-            % step will have no effect if the glint location is well within the
-            % pupil boundary. It will however remove any distortion of the
-            % perimeter if the glint happens to sit right on the pupil boundary
-            % and survives the fill holes step
-            glintPatch = ones(size(thisFrame));
-            glintPatch = insertShape(glintPatch,'FilledCircle',[gCenters(1,1) gCenters(1,2) gRadii(1)],'Color','black');
-            glintPatch = im2bw(glintPatch);
-            
-            % apply glint patch
-            binP = immultiply(binP,glintPatch);
-        end
         
         % save the perimeter
         perimFrame = im2uint8(binP);

@@ -13,7 +13,12 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 % glint is at a non-plausible location when compared to the average glint
 % location, are marked as blinks. Frames that are adjacent to blinks may
 % also be excluded.
-% 2) A more time-consuming step examines if removing a portion of the
+% 2a) Glint patching. In case the glint is sitting right on the pupil 
+% boundary, the pupil perimeter might be distorted. This step will apply a
+% black circular patch on the glint location to prevent that. This will
+% have no effect if the glint location is well within (or outside) the
+% pupil boudary. This routine operates in a parfor loop.
+% 2b) A more time-consuming step examines if removing a portion of the
 % perimeter of the pupil boundary produces an improvement in an initial
 % ellipse fit. This routine operates in a parfor loop.
 %
@@ -40,7 +45,8 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 % Options (analysis)
 %	extendBlinkWindow - a two element vector that defines the number of
 %       additional frames flagged as a blink before and after a continuous
-%       block blinks.
+%       block blinks
+%   glintPatchRadius - the radius of the glint patch
 %   cutErrorThreshold - the distance error tolerated before attempting to
 %       cut
 %   pixelBoundaryThreshold - the number of pixels required to be on the
@@ -89,6 +95,7 @@ p.addRequired('glintFileName',@isstr);
 
 % Optional analysis params
 p.addParameter('extendBlinkWindow', [5,10], @isnumeric);
+p.addParameter('glintPatchRadius', 10, @isnumeric);
 p.addParameter('pixelBoundaryThreshold', 50, @isnumeric);
 p.addParameter('cutErrorThreshold', 10, @isnumeric);
 p.addParameter('ellipseTransparentLB',[0, 0, 1000, 0, -0.5*pi],@isnumeric);
@@ -217,9 +224,13 @@ if ~isempty(blinkFrames)
 end
 
 
-%% Guess pupil cuts
+
+%% Apply glint patch and guess pupil cuts
 
 % Intialize some variables
+glintPatchX = nan(nFrames,1);
+glintPatchY = nan(nFrames,1);
+glintPatchRadius = nan(nFrames,1);
 frameRadii=nan(nFrames,1);
 frameThetas=nan(nFrames,1);
 frameBads=nan(nFrames,1);
@@ -233,6 +244,9 @@ if strcmp(p.Results.verbosity,'full')
     fprintf('.\n');
 end
 
+% get glintData ready for the parfor
+glintData_X = glintData.X;
+glintData_Y = glintData.Y;
 % Loop through the video frames
 parfor (ii = 1:nFrames, nWorkers)
     
@@ -243,6 +257,29 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % get the data frame
     binP = squeeze(perimeter.data(:,:,ii));
+    
+    % make glint patch
+    if ~isnan(glintData_X(ii))
+        glintPatch = ones(size(binP));
+        glintPatch = insertShape(glintPatch,'FilledCircle',[glintData_X(ii,:) glintData_Y(ii,:) p.Results.glintPatchRadius],'Color','black');
+        glintPatch = im2bw(glintPatch);
+        
+        % apply glint patch
+        patchedBinP = immultiply(binP,glintPatch);
+        
+        % check if glint patch had an effect. If so, save out glintPatch
+        % instruction for this frame
+        if ~isempty(find(binP - patchedBinP))
+            glintPatchX(ii) = glintData_X(ii,:);
+            glintPatchY(ii) = glintData_Y(ii,:);
+            glintPatchRadius(ii) = p.Results.glintPatchRadius;
+            
+            % also, use the patched frame to search for the cut
+            binP = patchedBinP;
+        end
+    end
+    
+    % index perimeter points
     [Yp, Xp] = ind2sub(size(binP),find(binP));
     
     % calculate the number of pixels that make up the perimeter
@@ -348,6 +385,18 @@ if ~isempty(blinkFrames)
         clear instruction
     end
 end
+
+% write out glint patches
+glintPatchFrames=find(~isnan(glintPatchX));
+if ~isempty(glintPatchFrames)
+    for cc = 1 : length(glintPatchFrames)
+        frameIdx=glintPatchFrames(cc);
+        instruction = [num2str(frameIdx) ',' 'glintPatch' ',' num2str(glintPatchX(frameIdx)) ',' num2str(glintPatchY(frameIdx)) ',' num2str(glintPatchRadius(frameIdx))];
+        fprintf(fid,'%s\n',instruction);
+        clear instruction
+    end
+end
+
 % write out cuts
 cutFrames=find(~isnan(frameThetas));
 if ~isempty(cutFrames)
@@ -358,6 +407,7 @@ if ~isempty(cutFrames)
         clear instruction
     end
 end
+
 % write out bad frames
 badFrameIdx=find(~isnan(frameBads));
 if ~isempty(badFrameIdx)
@@ -368,6 +418,7 @@ if ~isempty(badFrameIdx)
         clear instruction
     end
 end
+
 % write out error frames
 errorFrameIdx=find(~isnan(frameErrors));
 if ~isempty(errorFrameIdx)

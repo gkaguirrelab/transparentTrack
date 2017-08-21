@@ -12,6 +12,7 @@ function applyControlFile(perimeterFileName, controlFileName, correctedPerimeter
 % - blink >> save out a black frame
 % - bad >> save out a black frame
 % - ellipse >> draw an ellipse with the given params into the frame
+% - glintPatch >> cut the portion of the perimeter that intersects the glint
 % - cut >> cut the perimeter using radius and theta given
 % - error >> if any error occurred while compiling the automatic
 %       instructions the frame won't be corrected, but an error flag will be
@@ -134,8 +135,15 @@ for ii = 1:nFrames
                 case 'cut'
                     % get cut params
                     [radiusThresh,theta] = parseControlInstructions(instructions(instructionIdx(dd)));
-                    % cut
                     [img] = applyPupilCut(img,radiusThresh,theta);
+                case 'glintPatch'
+                    % get cut params
+                    [glintX,glintY,glintPatchRadius] = parseControlInstructions(instructions(instructionIdx(dd)));
+                    % apply patch
+                    glintPatch = ones(size(img));
+                    glintPatch = insertShape(glintPatch,'FilledCircle',[glintX glintY glintPatchRadius],'Color','black');
+                    glintPatch = im2bw(glintPatch);
+                    img = immultiply(img,glintPatch);
                 otherwise
                     warning(['Instruction ' instructions(instructionIdx(dd)).type ' for frame ' num2str(ii) ' is unrecognized.']);
             end % switch instruction types
