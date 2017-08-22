@@ -61,6 +61,17 @@ switch instructionType
             
             clear params
         end
+    case 'glintPatch'
+        % parse the glintPatch params
+        params = str2num(instructionLine.params);
+        if length(params) ~= 3
+            error ('Invalid number of params for instruction type "glintPatch" (3 expected)')
+        else
+            varargout{1} = params(1); % glint X
+            varargout{2} = params(2); % glint Y
+            varargout{3} = params(3); % glint patch radius
+            clear params
+        end
     case 'reset'
          % just make sure that the param field is empty
          params = str2num(instructionLine.params);
