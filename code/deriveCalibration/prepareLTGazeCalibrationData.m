@@ -1,6 +1,6 @@
 function prepareLTGazeCalibrationData (LTdatFileName,gazeDataFileName,varargin)
 
-% prepareGazeCalibrationData
+% prepareGazeCalibrationData (LTdatFileName,gazeDataFileName)
 
 % this function is to use for gaze calibration data collected with the
 % LiveTrack device alone or with the Livetrack+VTop eye tracking system. It
@@ -8,8 +8,10 @@ function prepareLTGazeCalibrationData (LTdatFileName,gazeDataFileName,varargin)
 % calculate the gaze calibration conversion factors.
 % 
 % gazeCalData 
-%       targets.X = location on X axes growing left to right espressed as mm on screen
-%       targets.Y = location on Y axes growing top to bottom espressed as mm on screen
+%       targets.X = location on X axes with origin in the center of the 
+%           screen and growing left to right espressed as mm on screen
+%       targets.Y = location on Y axes with origin in the center of the 
+%           screen and growing top to bottom espressed as mm on screen
 %       pupil.X = raw location of pupil center in pixels on the frame (origin top left corner)  
 %       pupil.Y = raw location of pupil center in pixels on the frame (origin top left corner)
 %       glint.X = raw location of glint center in pixels on the frame (origin top left corner)
@@ -33,6 +35,7 @@ p.addRequired('gazeDataFileName',@ischar);
 % Optional analysis parameters
 p.addParameter('useLiveTrackGazeData',false, @islogical)
 p.addParameter('ltFileSuffixLength', 10, @isnumeric)
+p.addParameter('frameRate', 60, @isnumeric)
 p.addParameter('movingMeanWindow', 1/3, @isnumerc)
 p.addParameter('removeBoundaryFrames', 1/10, @isnumeric)
 p.addParameter('viewingDistance', 1065, @isnumeric)
@@ -69,24 +72,24 @@ gazeCalData.targets.Y     = LTdata.targets(:,2); % mm on screen, screen center =
 nanIDX = find(isnan(gazeCalData.targets.X));
 
 if ~isempty(nanIDX)
-   if length(nanIDX) == 2
-       warning ('There is more than one NaN target! Calibration might fail.')
+   if length(nanIDX) > 1
+       error ('There is more than one NaN target! Calibration might fail.')
    end
     % available targets locations
-    high = max(LTdata.targets(:,1));
-    center = 0;
-    low = min(LTdata.targets(:,1));
+    highTRG = max(LTdata.targets(:,1));
+    centerTRG = 0;
+    lowTRG = min(LTdata.targets(:,1));
     
     allLocations = [...
-        high high; ...
-        high center; ...
-        high low; ...
-        center high; ...
-        center center; ...
-        center low; ...
-        low high; ...
-        low center; ...
-        low low; ...
+        highTRG highTRG; ...
+        highTRG centerTRG; ...
+        highTRG lowTRG; ...
+        centerTRG highTRG; ...
+        centerTRG centerTRG; ...
+        centerTRG lowTRG; ...
+        lowTRG highTRG; ...
+        lowTRG centerTRG; ...
+        lowTRG lowTRG; ...
         ];
     
     % find value of the nan target (is the one missing when comparing the
@@ -99,7 +102,7 @@ if ~isempty(nanIDX)
 end
 
 % get viewing distance
-gazeCalData.viewingDistance = p.Results.viewingDistace;
+gazeCalData.viewingDistance = p.Results.viewingDistance;
 
 
 %%  If so requested, get pupil and glint coordinates as tracked by the LiveTrack and exit.
@@ -120,34 +123,132 @@ if p.Results.useLiveTrackGazeData
 end
 
 
-%% Proceed with raw data
+%% Load raw data and dot times
 
 % get dot times (if available)
 if isfield(LTdata,'dotTimes')
     gazeCalData.fixDurationSec = diff(LTdata.dotTimes);
     dotTimesRecorded  = true;
 else
-    % we will need to estimate these duration of each fixation by the raw data
+    % we will need to estimate the duration of each fixation by the raw data
     dotTimesRecorded = false;
 end
+
 % get calibration file root name
 calFileRoot = ltDatFileName(1:end-p.Results.ltFileSuffixLength);
+
 % get raw pupil and glint data
 rawPupilData = load ([calFileRoot '_pupil.mat']);
 rawGlintData = load ([calFileRoot '_glint.mat']);
+
+% extract X and Y pupil timeseries from the posterior
+pupil.X = rawPupilData.pupilData.pPosteriorMeanTransparent(:,1);
+pupil.Y = rawPupilData.pupilData.pPosteriorMeanTransparent(:,2);
+
+
+%% convert target locations to pseudo-pixel coordinates
+% This conversion is necessary to cross correlate pupil and target signals
+% and align them. The "pseudo pixel" values are based on the assumption
+% that the central target would be "seen" on the frame in the central
+% position [180 120] (if res [320, 240]), and all other targets would be
+% displaced 20 pixels around it according to their location.
+
+% conversion table (note that the X must be flipped because the high res
+% video is acquired mirrored).
+centerPPX = [180 120];
+highPPX = [160 140];
+lowPPX = [200 100];
+
+targetPPX_X = gazeCalData.targets.X;
+targetPPX_X(targetPPX_X == centerTRG) = centerPPX(1);
+targetPPX_X(targetPPX_X == highTRG) = highPPX(1);
+targetPPX_X(targetPPX_X == lowTRG) = lowPPX(1);
+
+targetPPX_Y = gazeCalData.targets.Y;
+targetPPX_Y(targetPPX_Y == centerTRG) = centerPPX(2);
+targetPPX_Y(targetPPX_Y == highTRG) = highPPX(2);
+targetPPX_Y(targetPPX_Y == lowTRG) = lowPPX(2);
+
+
+%% align target and pupil timeseries
+
+% extract pupil position and velocity
+pupilPosition = sqrt((pupil.X).^2 + (pupil.Y).^2);
+pupilVelocity = diff(sqrt((pupil.X).^2 + (pupil.Y).^2));
+
+% remove nan from pupil position and velocity
+pupilPosition = fillmissing(pupilPosition,'linear');
+pupilVelocity = fillmissing(pupilVelocity,'linear');
+
+% if the dot times were recorded, we build the target timeseries in
+% pseudo-pixels and do a 2 steps cross correlation using position and
+% velocity.
+if dotTimesRecorded
+    % build targets timeseries
+    target.X = [];
+    target.Y = [];
+    for cc = 1 : length(targetPPX_X)
+        target.X = [target.X; targetPPX_X(cc) .* ones(round(gazeCalData.fixDurationSec(cc) * p.Results.frameRate),1)];
+        target.Y = [target.Y; targetPPX_Y(cc) .* ones(round(gazeCalData.fixDurationSec(cc) * p.Results.frameRate),1)];
+    end
+    
+    % extract target position and velocity
+    targetPosition = sqrt((target.X).^2 + (target.Y).^2);
+    targetVelocity = diff(sqrt((target.X).^2 + (target.Y).^2));
+    
+    % first pass: cross correlate positions with a lag window length of
+    % half the target timeseries length. 
+    [r,lag]= xcorr(pupilPosition,targetPosition, round(length(targetPosition)/2));
+    [~,I]= max(abs(r));
+    delayP = lag(I);
+    
+    % trim the pupilPosition and the pupil velocity
+    pupilPositionTrim = pupilPosition(delayP:delayP+length(targetPosition));
+    pupilVelocityTrim = diff(pupilPositionTrim);
+    
+    % second pass: cross correlate the velocity profile to refine the
+    % results
+    [r,lag]= xcorr(pupilVelocityTrim,targetVelocity);
+    [~,I]= max(abs(r));
+    delayV = lag(I);
+    
+    % refine pupil data
+    delay = delayP + delayV;
+    pupil.X = pupil.X(delay:delay+length(target.X));
+    pupil.Y = pupil.Y(delay:delay+length(target.Y));
+end
+
+
+% if the dot times were not recorded...
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+%%  add meta fields and save results
+gazeCalData.meta = p.Results;
 gazeCal.meta.rawPupil = rawPupilData;
 gazeCal.meta.rawGlint = rawGlintData;
 
 
-% add meta fields
-
-gazeCalData.meta = p.Results;
-if ~p.Results.useLiveTrackGazeData
-    %     gazeCal.meta.rawPupilX =
-    %     gazeCal.meta.rawPupilY =
-    %     gazeCal.meta.rawGlintX =
-    %     gazeCal.meta.rawGlintY =
-end
 
 
 
@@ -156,14 +257,6 @@ end
 
 
 %% FROM OLD FUNCTION
-% get each target duration on screen
-TarTimesFromStart  = (round(LTdata.dotTimes - rawVidStart) * fps - 40);
-
-targetDurSec = diff(LTdata.dotTimes); % target duration in seconds
-
-targetDurFrames = round(targetDurSec * fps);
-videoStartFrames = round(LTdata.dotTimes(1) - rawVidStart) * fps;
-totalFrames = round(LTdata.dotTimes(end) - rawVidStart) * fps;
 
 
 % % remove some of the boundaries
