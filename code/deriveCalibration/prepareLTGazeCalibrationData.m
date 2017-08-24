@@ -33,11 +33,13 @@ p.addRequired('LTdatFileName',@ischar);
 p.addRequired('gazeDataFileName',@ischar);
 
 % Optional analysis parameters
+p.addParameter('rawDataPath',[],@ischar);
 p.addParameter('useLiveTrackGazeData',false, @islogical)
 p.addParameter('ltFileSuffixLength', 10, @isnumeric)
 p.addParameter('frameRate', 60, @isnumeric)
 p.addParameter('medFilterOrder', 150, @isnumeric)
 p.addParameter('saccadeDistance', 30, @isnumeric)
+p.addParameter('minDelay', 450, @isnumeric)
 p.addParameter('movingMeanWindow', 1/3, @isnumerc)
 p.addParameter('removeBoundaryFrames', 1/10, @isnumeric)
 p.addParameter('viewingDistance', 1065, @isnumeric)
@@ -137,7 +139,13 @@ else
 end
 
 % get calibration file root name
-calFileRoot = LTdatFileName(1:end-p.Results.ltFileSuffixLength);
+if isempty(p.Results.rawDataPath)
+    calFileRoot = LTdatFileName(1:end-p.Results.ltFileSuffixLength);
+else
+    [~,fname,fext] = fileparts(LTdatFileName);
+    ltFile = [fname fext];
+    calFileRoot = fullfile(p.Results.rawDataPath, ltFile(1:end-p.Results.ltFileSuffixLength));
+end
 
 % get raw pupil and glint data
 rawPupilData = load ([calFileRoot '_pupil.mat']);
@@ -230,10 +238,13 @@ if dotTimesRecorded
     
     % refine pupil and glint data
     delay = delayP + delayV;
-    pupil.X = pupil.X(delay:delay+length(target.X));
-    pupil.Y = pupil.Y(delay:delay+length(target.Y));
-    glint.X = rawGlintData.glintData.X(delay:delay+length(target.X));
-    glint.Y = rawGlintData.glintData.Y(delay:delay+length(target.Y));
+    firstTargetOnsetIDX = delay;
+    lastTargetOffsetIDX = delay+length(targetPosition);
+    pupil.X = pupil.X(firstTargetOnsetIDX:lastTargetOffsetIDX);
+    pupil.Y = pupil.Y(firstTargetOnsetIDX:lastTargetOffsetIDX);
+    glint.X = rawGlintData.glintData.X(firstTargetOnsetIDX:lastTargetOffsetIDX);
+    glint.Y = rawGlintData.glintData.Y(firstTargetOnsetIDX:lastTargetOffsetIDX);
+    
 end
 
 
@@ -247,16 +258,6 @@ if ~dotTimesRecorded
     try
         % extract target velocity peaks and valleys
         targetVelocityPeaks = diff(sqrt((targetPPX_X).^2 + (targetPPX_Y).^2));
-        
-%         % extract pupil position peaks
-%         [~, pPeaksIDX] = findpeaks(pupilPosition,'MinPeakHeight',std(pupilPosition),'MinPeakDistance',60);
-% %         invertedPupilPosition = - pupilPosition;
-% %         [~, pValleysIDX] = findpeaks(invertedPupilPosition,'MinPeakHeight',std(pupilPosition),'MinPeakDistance',30);
-% %         
-%         % build pupil position peak array
-%         pupilPositionPeakIDX = pPeaksIDX;%sort([pPeaksIDX; pValleysIDX]);
-%         pupilPositionPeaks = pupilPosition(pupilPositionPeakIDX);
-        
         
         % extract pupil velocity peaks and valleys indexes
         [~, vPeaksIDX] = findpeaks(pupilVelocity,'MinPeakHeight',std(pupilVelocity),'MinPeakDistance',p.Results.saccadeDistance);
@@ -282,43 +283,97 @@ if ~dotTimesRecorded
         % second target.
         [r,lag]= xcorr(pupilVelocityPeaks,targetVelocityPeaks);
         [~,I]= max(abs(r));
-        delay = lag(I);
-        firstTargetOnsetIDX = pupilVelocityPeakIDX(delay-1);
-        lastTargetOnsetIDX = pupilVelocityPeakIDX((delay-1)+length(targetVelocityPeaks));
+        delayV = lag(I);
         
-        % refine the tail of the pupilPosition, cropping it when the fixation
-        % reasonably ends.
-        pupilPositionTail = pupilPosition(lastTargetOnsetIDX:end);
+        alignementCorrect = 0;
         
-        % get an estimate of the previous targets duration on screen
-        averageTargetDur = round(mean(diff(pupilVelocityPeakIDX(delay:end))));
+        while ~alignementCorrect
+           
+            firstTargetOnsetIDX = pupilVelocityPeakIDX(delayV-1);
+            lastTargetOnsetIDX = pupilVelocityPeakIDX((delayV-1)+length(targetVelocityPeaks));
+            
+            % refine the tail of the pupilPosition, cropping it when the fixation
+            % reasonably ends.
+            pupilPositionTail = pupilPosition(lastTargetOnsetIDX:end);
+            
+            % get an estimate of the targets duration on screen based on the
+            % peaks
+            averageTargetDur = round(mean(diff(pupilVelocityPeakIDX((delayV-1):(delayV-1)+length(targetVelocityPeaks)))));
+            
+            % compute a moving std for the pupilPosition tail and select the most
+            % stable window
+            [~,minWindowIDX] = min(movstd(pupilPositionTail,averageTargetDur));
+            
+            tailIDX = round(minWindowIDX+(averageTargetDur/2));
+            
+            % get last target offset
+            lastTargetOffsetIDX = min(lastTargetOnsetIDX+tailIDX,length(pupilPosition));
+            
+            % get target durations in frames
+            if length(pupilVelocityPeakIDX) > (delayV)+length(targetVelocityPeaks)
+                tarDurFrames = diff(pupilVelocityPeakIDX((delayV-1):(delayV)+length(targetVelocityPeaks)));
+            else
+                tarDurFrames = diff([pupilVelocityPeakIDX((delayV-1):(delayV-1)+length(targetVelocityPeaks)); length(pupilVelocity)]);
+            end
+            
+            % build the candidate pseudo target timeseries
+            target.X = [];
+            target.Y = [];
+            for cc = 1 : length(targetPPX_X)
+                target.X = [target.X; targetPPX_X(cc) .* ones(tarDurFrames(cc),1)];
+                target.Y = [target.Y; targetPPX_Y(cc) .* ones(tarDurFrames(cc),1)];
+            end
+            
+            % extract target position
+            targetPosition = sqrt((target.X).^2 + (target.Y).^2);
+            
+            % check if these correlate well. If not, the alignement failed.
+            [r,lag]= xcorr(pupilPosition,targetPosition);
+            [~,I]= max(abs(r));
+            delayP = lag(I);
+            
+            if delayP <= 0 && length(pupilVelocityPeakIDX(delayV:end))  >= length(targetVelocityPeaks)
+                % remove first peak and shitft the delay to the next peak
+                delayV = delayV +1;
+            elseif delayP <= p.Results.minDelay && length(pupilVelocityPeakIDX(delayV:end))  >= length(targetVelocityPeaks)
+                delayV = delayV +1;
+            else
+                delay = delayP;
+                alignementCorrect = 1; % or stop trying
+            end
+        end
         
-        % compute a moving std for the pupilPosition tail and select the most
-        % stable window
-        [~,minWindowIDX] = min(movstd(pupilPositionTail,averageTargetDur));
-        
-        tailIDX = round(minWindowIDX+(averageTargetDur/2));
-        
-        % finally, get glint and pupil timeseries
-        pupil.X = pupil.X(firstTargetOnsetIDX:lastTargetOnsetIDX+tailIDX);
-        pupil.Y = pupil.Y(firstTargetOnsetIDX:lastTargetOnsetIDX+tailIDX);
-        glint.X = rawGlintData.glintData.X(firstTargetOnsetIDX:lastTargetOnsetIDX+tailIDX);
-        glint.Y = rawGlintData.glintData.Y(firstTargetOnsetIDX:lastTargetOnsetIDX+tailIDX);
+        % get the data
+        firstTargetOnsetIDX = delay;
+        lastTargetOffsetIDX = delay+length(targetPosition);
+        pupil.X = pupil.X(firstTargetOnsetIDX:lastTargetOffsetIDX);
+        pupil.Y = pupil.Y(firstTargetOnsetIDX:lastTargetOffsetIDX);
+        glint.X = rawGlintData.glintData.X(firstTargetOnsetIDX:lastTargetOffsetIDX);
+        glint.Y = rawGlintData.glintData.Y(firstTargetOnsetIDX:lastTargetOffsetIDX);
         
         % also, record the estimated target duration in seconds
-        tarDurFrames = [diff(pupilVelocityPeakIDX(delay:end)); tailIDX-lastTargetOnsetIDX];
-            gazeCalData.fixDurationSec = tarDurFrames ./p.Results.frameRate;
+        gazeCalData.fixDurationSec = tarDurFrames ./p.Results.frameRate;
+        
     catch ME
-        error ('Automatic alignement failed. Please check the calibration data manually.')
         figure
         plot(pupilPosition)
         title('Raw Pupil position timeseries')
         xlabel('Frames')
         ylabel('Position')
-        rethrow (ME)
+        error (['Automatic alignement failed. Please check the calibration data manually.' ME])
     end
 end
 
+% show the raw pupil position and the estimated fixation durations
+% to confirm they are correct
+figure
+plot(pupilPosition(firstTargetOnsetIDX:lastTargetOffsetIDX))
+hold on
+plot(targetPosition)
+legend('Pupil','Targets')
+title('Alignement of pupil center and targets timeseries')
+xlabel('Frames')
+ylabel('Position (pixels)')
 
 %% Get mean pupil and glint position for each target fixation
 
