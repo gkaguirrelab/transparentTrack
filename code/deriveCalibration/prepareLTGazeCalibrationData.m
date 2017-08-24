@@ -6,22 +6,91 @@ function prepareLTGazeCalibrationData (LTdatFileName,gazeDataFileName,varargin)
 % LiveTrack device alone or with the Livetrack+VTop eye tracking system. It
 % will export a gazeData file containing all information needed to
 % calculate the gaze calibration conversion factors.
+% 
+% If data was collected with the LiveTrack alone, or if the user wishes to
+% use the livetrack data for calibration, the 'useLiveTrackData' must be
+% set ot 'true'; the routine will then just export the data in a standard
+% format for later calibration steps.
+% 
+% If data was collected with the LiveTrack+VTop system, the routine will
+% align the raw pupil data with the target presentation times (see details
+% below) and extract the most stable median position of pupil and glint
+% center for each fixation using matlab movmedian function with a
+% predetermined window length.
 %
-% gazeCalData
-%       targets.X = location on X axes with origin in the center of the
-%           screen and growing left to right espressed as mm on screen
-%       targets.Y = location on Y axes with origin in the center of the
-%           screen and growing top to bottom espressed as mm on screen
-%       pupil.X = raw location of pupil center in pixels on the frame (origin top left corner)
-%       pupil.Y = raw location of pupil center in pixels on the frame (origin top left corner)
-%       glint.X = raw location of glint center in pixels on the frame (origin top left corner)
-%       glint.Y = raw location of glint center in pixels on the frame (origin top left corner)
+% 
+% TARGET ALIGNMENT 
+% 
+% If the presentation time of the target in each location was recorded
+% along with the dot locations, the routine will align the raw data with
+% the following strategy:
+% 1.build a target timeseries in pseudo-pixel units: map the target
+% positions as if they were position of an ideal pupil center on the frame.
+% 2. cross correlate the pupil and target position timeseries.
+% 3. cross correlate the pupil and target velocity timeseries to refine
+% the results.
+
+% If there is no information about the presentation time of the target, the
+% routine will attempt to automatically align the pupil timeseries with the
+% following strategy:
+% 1. get the pseudo-velocity peaks from the target locations
+% 2. extract velocity peaks from pupil timeseries
+% 3. attempt cross correlation of the peaks
+% 4. create a candidate target position timeseries
+% 5. attempt cross correlation between pupil and target timeseries
+% 6. if cross correlation is not good, try correcting the candidate target
+% position timeseries, shifting to the next available pupil velocity peak.
+% This strategy is not guaranteed to work, and it is recommended to review
+% the alignment results before proceeding. In case the automatic alignment
+% fails, it is usually possible to align the pupil timeseries by hand.
+% 
+%
+% OUTPUTS: (saved to file)
+%   gazeCalData
+%       targets = location of each target espressed as mm 
+%           on screen (origin center of the screen, X axis growing left to
+%           right, Y axis growing top to bottom)
+%       pupil = location of pupil center for each fixation in pixels (origin top left corner)
+%       glint = location of glint center for each fixation in pixels  
 %       viewingDistance = viewing distance from the screen in mm
 %       meta
+%           pupilTimeseries
+%           targetPseudoTimeseries
 %           pupilRaw
 %           glintRaw
 %           fixDurationSec
 %
+% INPUTS:
+%   LTdatFileName - name of the LiveTrack data file
+%   gazeDataFileName - name of the mat file to save the gaze calibration
+%       data
+% 
+%  Optional params:
+%   viewingDistance - distance of subject's eye from stimulus screen
+%   useLiveTrackGazeData - set to true to use LiveTrack data for calibration
+%   rawDataPath: string to the raw data path, if different from the
+%       location of the liveTrack data.
+%   ltFileSuffixLength - number of character appended after the "gaze
+%       calibration run" name (e.g. GazeCal4_LTdat.mat, suffix length = 10)
+%   frameRate - frameRate of the raw video data.
+%   medFilterOrder - order of the despiking filter applied to the pupil
+%       position timeseries. Should be above 100 to get a clean signal.
+%   saccadeDistance - estimate distance in frames between saccades. This is
+%       used to refine velocity peak extraction
+%   minDelay: minimum delay allowed for the alignement of pupil and target
+%       timeseries
+%  fixationWindowPct - percentage of the smallest fixation duration to
+%  consider for the moving median window.
+%   
+% 
+% Optional key/value pairs (display and I/O)
+%  'verbosity' - level of verbosity. [none, full]
+%
+% Options (environment)
+%   tbSnapshot - the passed tbSnapshot output that is to be saved along
+%      with the data
+%   timestamp / username / hostname - these are automatically derived and
+%      saved within the p.Results structure.
 
 
 %% input parser
@@ -33,15 +102,15 @@ p.addRequired('LTdatFileName',@ischar);
 p.addRequired('gazeDataFileName',@ischar);
 
 % Optional analysis parameters
-p.addParameter('rawDataPath',[],@ischar);
+p.addParameter('viewingDistance', 1065, @isnumeric)
 p.addParameter('useLiveTrackGazeData',false, @islogical)
+p.addParameter('rawDataPath',[],@ischar);
 p.addParameter('ltFileSuffixLength', 10, @isnumeric)
 p.addParameter('frameRate', 60, @isnumeric)
 p.addParameter('medFilterOrder', 150, @isnumeric)
 p.addParameter('saccadeDistance', 30, @isnumeric)
 p.addParameter('minDelay', 450, @isnumeric)
 p.addParameter('fixationWindowPct', 50, @isnumerc)
-p.addParameter('viewingDistance', 1065, @isnumeric)
 
 % Optional display and I/O parameters
 p.addParameter('verbosity','none', @ischar);
