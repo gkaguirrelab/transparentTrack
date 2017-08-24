@@ -40,8 +40,7 @@ p.addParameter('frameRate', 60, @isnumeric)
 p.addParameter('medFilterOrder', 150, @isnumeric)
 p.addParameter('saccadeDistance', 30, @isnumeric)
 p.addParameter('minDelay', 450, @isnumeric)
-p.addParameter('movingMeanWindow', 1/3, @isnumerc)
-p.addParameter('removeBoundaryFrames', 1/10, @isnumeric)
+p.addParameter('fixationWindowPct', 50, @isnumerc)
 p.addParameter('viewingDistance', 1065, @isnumeric)
 
 % Optional display and I/O parameters
@@ -207,9 +206,10 @@ if dotTimesRecorded
     % build targets timeseries
     target.X = [];
     target.Y = [];
+    targetDurFrames = round(gazeCalData.fixDurationSec .* p.Results.frameRate) ;
     for cc = 1 : length(targetPPX_X)
-        target.X = [target.X; targetPPX_X(cc) .* ones(round(gazeCalData.fixDurationSec(cc) * p.Results.frameRate),1)];
-        target.Y = [target.Y; targetPPX_Y(cc) .* ones(round(gazeCalData.fixDurationSec(cc) * p.Results.frameRate),1)];
+        target.X = [target.X; targetPPX_X(cc) .* ones(targetDurFrames(cc),1)];
+        target.Y = [target.Y; targetPPX_Y(cc) .* ones(targetDurFrames(cc),1)];
     end
     
     % extract target position and velocity
@@ -311,17 +311,17 @@ if ~dotTimesRecorded
             
             % get target durations in frames
             if length(pupilVelocityPeakIDX) > (delayV)+length(targetVelocityPeaks)
-                tarDurFrames = diff(pupilVelocityPeakIDX((delayV-1):(delayV)+length(targetVelocityPeaks)));
+                targetDurFrames = diff(pupilVelocityPeakIDX((delayV-1):(delayV)+length(targetVelocityPeaks)));
             else
-                tarDurFrames = diff([pupilVelocityPeakIDX((delayV-1):(delayV-1)+length(targetVelocityPeaks)); length(pupilVelocity)]);
+                targetDurFrames = diff([pupilVelocityPeakIDX((delayV-1):(delayV-1)+length(targetVelocityPeaks)); length(pupilVelocity)]);
             end
             
             % build the candidate pseudo target timeseries
             target.X = [];
             target.Y = [];
             for cc = 1 : length(targetPPX_X)
-                target.X = [target.X; targetPPX_X(cc) .* ones(tarDurFrames(cc),1)];
-                target.Y = [target.Y; targetPPX_Y(cc) .* ones(tarDurFrames(cc),1)];
+                target.X = [target.X; targetPPX_X(cc) .* ones(targetDurFrames(cc),1)];
+                target.Y = [target.Y; targetPPX_Y(cc) .* ones(targetDurFrames(cc),1)];
             end
             
             % extract target position
@@ -352,7 +352,7 @@ if ~dotTimesRecorded
         glint.Y = rawGlintData.glintData.Y(firstTargetOnsetIDX:lastTargetOffsetIDX);
         
         % also, record the estimated target duration in seconds
-        gazeCalData.fixDurationSec = tarDurFrames ./p.Results.frameRate;
+        gazeCalData.fixDurationSec = targetDurFrames ./p.Results.frameRate;
         
     catch ME
         figure
@@ -364,7 +364,7 @@ if ~dotTimesRecorded
     end
 end
 
-% show the raw pupil position and the estimated fixation durations
+%% show the raw pupil position and the estimated fixation durations
 % to confirm they are correct
 figure
 plot(pupilPosition(firstTargetOnsetIDX:lastTargetOffsetIDX))
@@ -375,51 +375,49 @@ title('Alignement of pupil center and targets timeseries')
 xlabel('Frames')
 ylabel('Position (pixels)')
 
+
 %% Get mean pupil and glint position for each target fixation
 
-%%%%%%%%%%%%%%%%%%%%% FROM OLD FUNCTION %%%%%%%%%%%%%%%%%%%%%%%
-
-% % remove some of the boundaries
-removeFrames = round(targetDurFrames ./10);
-
-% make moving mean on window with 1/3 of samples
-window = round(targetDurFrames ./3);
-for ct = 1 :9
-    movMeanP.X= movmedian(trackData.pupil.X(TarTimesFromStart(ct) + removeFrames(ct) :TarTimesFromStart(ct+1) - removeFrames(ct)), window(ct),'omitnan','Endpoints','discard');
-    movMeanP.Y = movmedian(trackData.pupil.Y(TarTimesFromStart(ct) + removeFrames(ct) :TarTimesFromStart(ct+1) - removeFrames(ct)), window(ct),'omitnan','Endpoints','discard');
-    movMeanG.X = movmedian(trackData.glint.X(TarTimesFromStart(ct) + removeFrames(ct) :TarTimesFromStart(ct+1) - removeFrames(ct)), window(ct),'omitnan','Endpoints','discard');
-    movMeanG.Y = movmedian(trackData.glint.Y(TarTimesFromStart(ct) + removeFrames(ct) :TarTimesFromStart(ct+1) - removeFrames(ct)), window(ct),'omitnan','Endpoints','discard');
-    
-    movStdP.X = movstd(trackData.pupil.X(TarTimesFromStart(ct) + removeFrames(ct) :TarTimesFromStart(ct+1) - removeFrames(ct)), window(ct),'omitnan','Endpoints','discard');
-    movStdP.Y = movstd(trackData.pupil.Y(TarTimesFromStart(ct) + removeFrames(ct) :TarTimesFromStart(ct+1) - removeFrames(ct)), window(ct),'omitnan','Endpoints','discard');
-    movStdG.X = movstd(trackData.glint.X(TarTimesFromStart(ct) + removeFrames(ct) :TarTimesFromStart(ct+1) - removeFrames(ct)), window(ct),'omitnan','Endpoints','discard');
-    movStdG.Y = movstd(trackData.glint.Y(TarTimesFromStart(ct) + removeFrames(ct) :TarTimesFromStart(ct+1) - removeFrames(ct)), window(ct),'omitnan','Endpoints','discard');
-    
-    % ger minimum std
-    [minPX,Xidx] = min(movStdP.X);
-    [minPY,Yidx] = min(movStdP.Y);
-    
-    % take according to x
-    meanP.X(ct) = movMeanP.X(Xidx);
-    meanP.Y(ct) = movMeanP.Y(Xidx);
-    meanG.X(ct) = movMeanG.X(Xidx);
-    meanG.Y(ct) = movMeanG.Y(Xidx);
+% make index vector based on target duration
+dataIDX = 1;
+for ct = 1 :length(gazeCalData.targets.X)
+    dataIDX(ct+1) = dataIDX(ct) + targetDurFrames(ct);
 end
 
+% make moving median on window with with a percentage of the frames for
+% each fixation
+windowDur = min(round(targetDurFrames ./100 .* p.Results.fixationWindowPct));
 
-
-
-
-
-
-
-
+% compute moving medians and standard deviations
+for ct = 1 :length(gazeCalData.targets.X)
+    % medians
+    movMedianP.X= movmedian(pupil.X(dataIDX(ct) :dataIDX(ct+1)), windowDur,'omitnan','Endpoints','discard');
+    movMedianP.Y = movmedian(pupil.Y(dataIDX(ct) :dataIDX(ct+1)), windowDur,'omitnan','Endpoints','discard');
+    movMedianG.X = movmedian(glint.X(dataIDX(ct) :dataIDX(ct+1)), windowDur,'omitnan','Endpoints','discard');
+    movMedianG.Y = movmedian(glint.Y(dataIDX(ct) :dataIDX(ct+1)), windowDur,'omitnan','Endpoints','discard');
+    % standard deviations
+    movStdP.X = movstd(pupil.X(dataIDX(ct) :dataIDX(ct+1)), windowDur,'omitnan','Endpoints','discard');
+    movStdP.Y = movstd(pupil.Y(dataIDX(ct) :dataIDX(ct+1)), windowDur,'omitnan','Endpoints','discard');
+    movStdG.X = movstd(glint.X(dataIDX(ct) :dataIDX(ct+1)), windowDur,'omitnan','Endpoints','discard');
+    movStdG.Y = movstd(glint.Y(dataIDX(ct) :dataIDX(ct+1)), windowDur,'omitnan','Endpoints','discard');
+    % get minimum std for the pupil
+    [minPstd,minPstdIDX] = min(abs(movStdP.X)+abs(movStdP.Y));
+    % get the window that minimizes the std for each target
+    gazeCalData.pupil.X(ct) = movMedianP.X(minPstdIDX);
+    gazeCalData.pupil.Y(ct) = movMedianP.Y(minPstdIDX);
+    gazeCalData.glint.X(ct) = movMedianG.X(minPstdIDX);
+    gazeCalData.glint.Y(ct) = movMedianG.Y(minPstdIDX);
+end
 
 
 %%  add meta fields and save results
 gazeCalData.meta = p.Results;
-gazeCal.meta.rawPupil = rawPupilData;
-gazeCal.meta.rawGlint = rawGlintData;
+gazeCalData.meta.pupilTimeseries = pupil;
+gazeCalData.meta.glintTimeseries = glint;
+gazeCalData.meta.targetPseudoTimeseries = target;
+gazeCalData.meta.pupilRaw.X = rawPupilData.pupilData.pPosteriorMeanTransparent(:,1);
+gazeCalData.meta.pupilRaw.Y = rawPupilData.pupilData.pPosteriorMeanTransparent(:,2);
+gazeCalData.meta.glintRaw = rawGlintData.glintData;
 
 % save results
 save (gazeDataFileName , 'gazeCalData')
