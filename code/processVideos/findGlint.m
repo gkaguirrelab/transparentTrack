@@ -50,7 +50,8 @@ function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 %       Should be set to preserve both the glints and any "halo" around
 %       them.(default value 0.8)
 %   frameMask : this option with add a mask on the original gray video, 
-%       framing it by [nRows nColumns] on the borders.
+%       framing it by [nRows nColumns] on the borders symmetrically or by
+%       [nRowsTop nColumnsRight nRowsBottom nColumnsLeft].
 %   frameMaskValue : the image value that is assigned to the region that is
 %       masked by frameMask. This should be a gray that is neither pupil
 %       nor glint.
@@ -175,10 +176,19 @@ for   ii = 1:nFrames
     
     % apply a frame mask if required
     if ~isempty (p.Results.frameMask)
-        thisFrame((1:p.Results.frameMask(1)),:) = p.Results.frameMaskValue;
-        thisFrame((end - p.Results.frameMask(1):end),:) = p.Results.frameMaskValue;
-        thisFrame(:, (1:p.Results.frameMask(2))) = p.Results.frameMaskValue;
-        thisFrame(:, (end - p.Results.frameMask(2):end)) = p.Results.frameMaskValue;
+        if length(p.Results.frameMask) == 2
+            thisFrame((1:p.Results.frameMask(1)),:) = p.Results.frameMaskValue;
+            thisFrame((end - p.Results.frameMask(1):end),:) = p.Results.frameMaskValue;
+            thisFrame(:, (1:p.Results.frameMask(2))) = p.Results.frameMaskValue;
+            thisFrame(:, (end - p.Results.frameMask(2):end)) = p.Results.frameMaskValue;
+        elseif length(p.Results.frameMask) == 4
+            thisFrame((end - p.Results.frameMask(1):end),:) = p.Results.frameMaskValue; %top
+            thisFrame(:, (1:p.Results.frameMask(2))) = p.Results.frameMaskValue; %right
+            thisFrame((1:p.Results.frameMask(3)),:) = p.Results.frameMaskValue; %bottom
+            thisFrame(:, (end - p.Results.frameMask(4):end)) = p.Results.frameMaskValue; %left
+        else
+            error ('invalid frameMask parameter. Frame mask must be defined as [nRows nColumns] or as [nRowsTop nColumnsRight nRowsBottom nColumnsLeft]')
+        end
     end
     
     % binarize glint image according to glintThreshold
