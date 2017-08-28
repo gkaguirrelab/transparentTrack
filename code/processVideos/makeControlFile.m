@@ -43,6 +43,12 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 %   glintFileName - 
 %
 % Options (analysis)
+%   glintZoneRadius - the radius (in pixel) of the circular zone in which
+%   the glint is allowed to be on the frame. Any candiate glint beyond this
+%   Radius will be disregarded.
+%   glintZoneCenter - [X Y] location of the glint zone center. If not
+%       specified, the glint zone Center will be the median value of the 
+%       candidate glint locations throughtout the run. 
 %	extendBlinkWindow - a two element vector that defines the number of
 %       additional frames flagged as a blink before and after a continuous
 %       block blinks
@@ -94,6 +100,8 @@ p.addRequired('perimeterFileName',@isstr);
 p.addRequired('glintFileName',@isstr);
 
 % Optional analysis params
+p.addParameter('glintZoneRadius', 20, @isnumeric);
+p.addParameter('glintZoneCenter', [], @isnumeric);
 p.addParameter('extendBlinkWindow', [5,10], @isnumeric);
 p.addParameter('glintPatchRadius', 10, @isnumeric);
 p.addParameter('pixelBoundaryThreshold', 50, @isnumeric);
@@ -193,6 +201,21 @@ clear dataLoad
 
 % locate all nans
 blinkFrames = find(isnan(glintData.X));
+
+% locate candidate glints outside the user defined glint zone
+% define center of glint zone
+if isempty(p.Results.glintZoneCenter)
+    glintZoneCenter = [nanmedian(glintData.X) nanmedian(glintData.Y)];
+else
+    glintZoneCenter = p.Results.glintZoneCenter;
+end
+
+% get distance of each glint from the glintZone center
+glintDistance = sqrt((glintData.X - glintZoneCenter(1)).^2 +(glintData.Y - glintZoneCenter(2)).^2);
+
+tooFarGlints = find(glintDistance(glintDistance>p.Results.glintZoneRadius));
+
+blinkFrames = [blinkFrames tooFarGlints];
 
 % extend the frames identified as blinks to before and after blocks of
 % blink frames
