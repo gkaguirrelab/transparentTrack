@@ -48,7 +48,7 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 %   Radius will be disregarded.
 %   glintZoneCenter - [X Y] location of the glint zone center. If not
 %       specified, the glint zone Center will be the median value of the 
-%       candidate glint locations throughtout the run. 
+%       candidate glint locations throughout the run. 
 %	extendBlinkWindow - a two element vector that defines the number of
 %       additional frames flagged as a blink before and after a continuous
 %       block blinks
@@ -213,7 +213,7 @@ end
 % get distance of each glint from the glintZone center
 glintDistance = sqrt((glintData.X - glintZoneCenter(1)).^2 +(glintData.Y - glintZoneCenter(2)).^2);
 
-tooFarGlints = find(glintDistance(glintDistance>p.Results.glintZoneRadius));
+tooFarGlints = find(glintDistance>p.Results.glintZoneRadius);
 
 blinkFrames = [blinkFrames tooFarGlints];
 
