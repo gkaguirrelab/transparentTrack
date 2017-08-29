@@ -34,10 +34,11 @@ function findPupilPerimeter(grayVideoName, perimeterFileName, varargin)
 %       zero will result in no dilation in that direction. A value of unity
 %       will result in a masked region that is twice the size of the pupil
 %       radius.
-%   frameMask - this option with add a mask on the original gray video, 
-%       framing it by [nRows nColumns] on the borders. This is particularly 
-%       useful for size calibration videos in which appear partial black 
-%       dots that may throw off the circle finding mechanism.
+%   frameMask : this option with add a mask on the original gray video,
+%       framing it by [nRows nColumns] on the borders symmetrically or by
+%       [nRowsTop nColumnsRight nRowsBottom nColumnsLeft]. This is
+%       particularly useful for size calibration videos in which appear
+%       partial black dots that may throw off the circle finding mechanism.
 %   frameMaskValue - the image value that is assigned to the region that is
 %       masked by frameMask. This should be a gray that is neither pupil
 %       nor glint.
@@ -168,12 +169,21 @@ for ii = p.Results.startFrame:nFrames
     % get the frame
     thisFrame = squeeze(grayVideo(:,:,ii));
     
-    % apply the frameMaskValue to the frame region (if so requested)
+   % apply a frame mask if required
     if ~isempty (p.Results.frameMask)
-        thisFrame((1:p.Results.frameMask(1)),:) = p.Results.frameMaskValue;
-        thisFrame((end - p.Results.frameMask(1):end),:) = p.Results.frameMaskValue;
-        thisFrame(:, (1:p.Results.frameMask(2))) = p.Results.frameMaskValue;
-        thisFrame(:, (end - p.Results.frameMask(2):end)) = p.Results.frameMaskValue;
+        if length(p.Results.frameMask) == 2
+            thisFrame((1:p.Results.frameMask(1)),:) = p.Results.frameMaskValue;
+            thisFrame((end - p.Results.frameMask(1):end),:) = p.Results.frameMaskValue;
+            thisFrame(:, (1:p.Results.frameMask(2))) = p.Results.frameMaskValue;
+            thisFrame(:, (end - p.Results.frameMask(2):end)) = p.Results.frameMaskValue;
+        elseif length(p.Results.frameMask) == 4
+            thisFrame((end - p.Results.frameMask(1):end),:) = p.Results.frameMaskValue; %top
+            thisFrame(:, (1:p.Results.frameMask(2))) = p.Results.frameMaskValue; %right
+            thisFrame((1:p.Results.frameMask(3)),:) = p.Results.frameMaskValue; %bottom
+            thisFrame(:, (end - p.Results.frameMask(4):end)) = p.Results.frameMaskValue; %left
+        else
+            error ('invalid frameMask parameter. Frame mask must be defined as [nRows nColumns] or as [nRowsTop nColumnsRight nRowsBottom nColumnsLeft]')
+        end
     end
     
     % store the current pupilRange
@@ -305,5 +315,65 @@ if strcmp(p.Results.verbosity,'full')
     fprintf('\n');
 end
 
+
+end %  main function
+
+
+function [pCenters, pRadii,pMetric, pupilRange] = findPupilCircle(I,pupilCircleThresh,pupilRange,imfindcirclesSensitivity,rangeAdjust)
+% findGlintAndPupilCircles(I,pupilCircleThresh,glintCircleThresh,pupilRange,glintRange,pupilOnly,glintOut,dilateGlint,imfindcirclesSensitivity,rangeAdjust)
+%
+% this function is used for pupil circle fitting.
+
+%% parse input and define variables
+p = inputParser;
+% required input
+p.addRequired('I');
+p.addRequired('pupilCircleThresh', @isnumeric)
+p.addRequired('pupilRange',@isnumeric);
+p.addRequired('imfindcirclesSensitivity', @isnumeric);
+p.addRequired('rangeAdjust', @isnumeric);
+
+% parse
+p.parse(I,pupilCircleThresh,pupilRange,imfindcirclesSensitivity,rangeAdjust);
+
+%% circle fit
+
+% create blurring filter
+filtSize = round([0.01*min(size(I)) 0.01*min(size(I)) 0.01*min(size(I))]);
+
+
+% Filter for pupil
+padP = padarray(I,[size(I,1)/2 size(I,2)/2], 128);
+h = fspecial('gaussian',[filtSize(1) filtSize(2)],filtSize(3));
+pI = imfilter(padP,h);
+pI = pI(size(I,1)/2+1:size(I,1)/2+size(I,1),size(I,2)/2+1:size(I,2)/2+size(I,2));
+% Binarize pupil
+binP = ones(size(pI));
+binP(pI<quantile(double(pI(:)),pupilCircleThresh)) = 0;
+
+
+% store the warning state
+origWarnState = warning;
+
+% Silence the imfindcircles warning regarding circle size
+warning('off','images:imfindcircles:warnForLargeRadiusRange');
+warning('off','images:imfindcircles:warnForSmallRadius');
+
+% Find the pupil
+[pCenters, pRadii,pMetric] = imfindcircles(binP,pupilRange,'ObjectPolarity','dark',...
+    'Sensitivity',imfindcirclesSensitivity);
+
+% Restore the warning state
+warning(origWarnState);
+
+
+% adjust the pupil range (for quicker processing)
+if ~isempty(pCenters)
+    pupilRange(1)   = min(floor(pRadii(1)*(1-rangeAdjust)),pupilRange(2));  
+    pupilRange(2)   = max(ceil(pRadii(1)*(1 + rangeAdjust)),pupilRange(1));
+else
+    pupilRange(1)   = max(ceil(pupilRange(1)*(1 - rangeAdjust)),pupilRange(1));
+    pupilRange(2)   = min(ceil(pupilRange(2)*(1 + rangeAdjust)),pupilRange(2));
+end
 
 end % function

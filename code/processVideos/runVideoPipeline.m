@@ -176,6 +176,8 @@ for ff = 1:length(funCalls)
         % clear while and if control
         clear success
         clear attempts
+        % clear all files (hopefully prevents 'too many files open' error)
+        fclose all ;
         if strcmp(p.Results.lastStage,funNames{ff})
             return
         end
