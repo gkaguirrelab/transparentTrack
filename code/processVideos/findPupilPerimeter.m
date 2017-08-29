@@ -72,7 +72,7 @@ p.addRequired('perimeterFileName',@isstr);
 % Optional analysis params
 p.addParameter('pupilGammaCorrection', 0.75, @isnumeric);
 p.addParameter('maskBox', [0.20 0.75], @isnumeric);
-p.addParameter('frameMask', [], @isnumeric);
+p.addParameter('pupilFrameMask', [], @isnumeric);
 p.addParameter('frameMaskValue', 220, @isnumeric);
 p.addParameter('smallObjThresh', 200, @isnumeric);
 
@@ -170,17 +170,17 @@ for ii = p.Results.startFrame:nFrames
     thisFrame = squeeze(grayVideo(:,:,ii));
     
    % apply a frame mask if required
-    if ~isempty (p.Results.frameMask)
-        if length(p.Results.frameMask) == 2
-            thisFrame((1:p.Results.frameMask(1)),:) = p.Results.frameMaskValue;
-            thisFrame((end - p.Results.frameMask(1):end),:) = p.Results.frameMaskValue;
-            thisFrame(:, (1:p.Results.frameMask(2))) = p.Results.frameMaskValue;
-            thisFrame(:, (end - p.Results.frameMask(2):end)) = p.Results.frameMaskValue;
-        elseif length(p.Results.frameMask) == 4
-            thisFrame((end - p.Results.frameMask(1):end),:) = p.Results.frameMaskValue; %top
-            thisFrame(:, (1:p.Results.frameMask(2))) = p.Results.frameMaskValue; %right
-            thisFrame((1:p.Results.frameMask(3)),:) = p.Results.frameMaskValue; %bottom
-            thisFrame(:, (end - p.Results.frameMask(4):end)) = p.Results.frameMaskValue; %left
+    if ~isempty (p.Results.pupilFrameMask)
+        if length(p.Results.pupilFrameMask) == 2
+            thisFrame((1:p.Results.pupilFrameMask(1)),:) = p.Results.frameMaskValue;
+            thisFrame((end - p.Results.pupilFrameMask(1):end),:) = p.Results.frameMaskValue;
+            thisFrame(:, (1:p.Results.pupilFrameMask(2))) = p.Results.frameMaskValue;
+            thisFrame(:, (end - p.Results.pupilFrameMask(2):end)) = p.Results.frameMaskValue;
+        elseif length(p.Results.pupilFrameMask) == 4
+            thisFrame((1:p.Results.pupilFrameMask(1)),:) = p.Results.frameMaskValue; %top
+            thisFrame(:, (end - p.Results.pupilFrameMask(2):end)) = p.Results.frameMaskValue; %left
+            thisFrame((end - p.Results.pupilFrameMask(3):end),:) = p.Results.frameMaskValue; %bottom
+            thisFrame(:, (1:p.Results.pupilFrameMask(4))) = p.Results.frameMaskValue; %right
         else
             error ('invalid frameMask parameter. Frame mask must be defined as [nRows nColumns] or as [nRowsTop nColumnsRight nRowsBottom nColumnsLeft]')
         end
