@@ -35,7 +35,7 @@ end
 
 switch p.Results.stageToTest
     case 'glint'
-        trackGlint(grayVideoName, '', 'displayMode', true, varargin{:});
+        findGlint(grayVideoName, '', 'displayMode', true, varargin{:});
     case 'pupil'
         findPupilPerimeter(grayVideoName, '', 'displayMode', true, varargin{:});
 end
