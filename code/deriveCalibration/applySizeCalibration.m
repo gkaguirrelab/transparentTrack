@@ -78,7 +78,7 @@ for ii = 1: size(rawPupilExplicit,1)
         verticalAxis(ii) = rawPupilExplicit(ii,3) * 2;
     end
     % get ellipse area
-    ellipseArea(ii) = rawPupilTransparent{rr}(ii,3);
+    ellipseArea(ii) = rawPupilTransparent(ii,3);
 end  % loop through frames
 % gather the all raw values
 pupilInPx = [horizontalAxis' verticalAxis' ellipseArea'];
