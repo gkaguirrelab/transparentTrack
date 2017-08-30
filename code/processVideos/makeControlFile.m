@@ -215,7 +215,7 @@ glintDistance = sqrt((glintData.X - glintZoneCenter(1)).^2 +(glintData.Y - glint
 
 tooFarGlints = find(glintDistance>p.Results.glintZoneRadius);
 
-blinkFrames = [blinkFrames tooFarGlints'];
+blinkFrames = sort([blinkFrames; tooFarGlints]);
 
 % extend the frames identified as blinks to before and after blocks of
 % blink frames
