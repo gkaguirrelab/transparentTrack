@@ -50,7 +50,8 @@ function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 %       Should be set to preserve both the glints and any "halo" around
 %       them.(default value 0.8)
 %   frameMask : this option with add a mask on the original gray video, 
-%       framing it by [nRows nColumns] on the borders.
+%       framing it by [nRows nColumns] on the borders symmetrically or by
+%       [nRowsTop nColumnsRight nRowsBottom nColumnsLeft].
 %   frameMaskValue : the image value that is assigned to the region that is
 %       masked by frameMask. This should be a gray that is neither pupil
 %       nor glint.
@@ -78,7 +79,7 @@ p.addRequired('glintFileName',@isstr);
 p.addParameter('numberOfGlints', 1, @isnumeric); %% MORE THAN 1 TO BE DEVELOPED
 p.addParameter('glintGammaCorrection', 1.5, @isnumeric);
 p.addParameter('glintThreshold', 0.8, @isnumeric);
-p.addParameter('frameMask',[] , @isnumeric);
+p.addParameter('glintFrameMask',[] , @isnumeric);
 p.addParameter('frameMaskValue', 220, @isnumeric);
 p.addParameter('centroidsAllocation', 5, @isnumeric);
 
@@ -137,7 +138,7 @@ centroidsByFrame_Y = nan(nFrames,p.Results.centroidsAllocation);
 %% Find all centroids
 
 % Detect display mode
-if p.Results.displayMode && ~p.Results.useParallel
+if p.Results.displayMode
     fprintf('** DISPLAY MODE **\n')
     fprintf('Results will not be saved.\n')
     
@@ -174,11 +175,20 @@ for   ii = 1:nFrames
     thisFrame = squeeze(grayVideo(:,:,ii));
     
     % apply a frame mask if required
-    if ~isempty (p.Results.frameMask)
-        thisFrame((1:p.Results.frameMask(1)),:) = p.Results.frameMaskValue;
-        thisFrame((end - p.Results.frameMask(1):end),:) = p.Results.frameMaskValue;
-        thisFrame(:, (1:p.Results.frameMask(2))) = p.Results.frameMaskValue;
-        thisFrame(:, (end - p.Results.frameMask(2):end)) = p.Results.frameMaskValue;
+    if ~isempty (p.Results.glintFrameMask)
+        if length(p.Results.glintFrameMask) == 2
+            thisFrame((1:p.Results.glintFrameMask(1)),:) = p.Results.frameMaskValue;
+            thisFrame((end - p.Results.glintFrameMask(1):end),:) = p.Results.frameMaskValue;
+            thisFrame(:, (1:p.Results.frameMask(2))) = p.Results.frameMaskValue;
+            thisFrame(:, (end - p.Results.glintFrameMask(2):end)) = p.Results.frameMaskValue;
+        elseif length(p.Results.glintFrameMask) == 4
+            thisFrame((1:p.Results.glintFrameMask(1)),:) = p.Results.frameMaskValue; %top
+            thisFrame(:, (end - p.Results.glintFrameMask(2):end)) = p.Results.frameMaskValue; %left
+            thisFrame((end - p.Results.glintFrameMask(3):end),:) = p.Results.frameMaskValue; %bottom
+            thisFrame(:, (1:p.Results.glintFrameMask(4))) = p.Results.frameMaskValue; %right
+        else
+            error ('invalid frameMask parameter. Frame mask must be defined as [nRows nColumns] or as [nRowsTop nColumnsRight nRowsBottom nColumnsLeft]')
+        end
     end
     
     % binarize glint image according to glintThreshold
@@ -197,14 +207,14 @@ for   ii = 1:nFrames
             centroidsByFrame_X(ii,cc) = centroids(cc,1);
             centroidsByFrame_Y(ii,cc) = centroids(cc,2);
             % also get the frame ready for display, if needed
-            if p.Results.displayMode && ~p.Results.useParallel
+            if p.Results.displayMode
                 thisFrame = insertShape(thisFrame,'FilledCircle', [centroids(cc,1),centroids(cc,2),2], 'Color','red');
             end
         end
     end
     
     % display the frame if requested
-    if p.Results.displayMode && ~p.Results.useParallel
+    if p.Results.displayMode
         imshow(thisFrame,'Border', 'tight', 'InitialMagnification', 200)
     end
 end
