@@ -1,7 +1,7 @@
 function prepareLTGazeCalibrationData (LTdatFileName,gazeDataFileName,varargin)
 
 % prepareGazeCalibrationData (LTdatFileName,gazeDataFileName)
-
+% 
 % this function is to use for gaze calibration data collected with the
 % LiveTrack device alone or with the Livetrack+VTop eye tracking system. It
 % will export a gazeData file containing all information needed to
