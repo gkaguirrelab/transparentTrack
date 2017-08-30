@@ -130,8 +130,8 @@ for i = 1:length(pupil.X)
 end
 
 %  pull out the X and Y values
-calibratedGaze.X                  = tmp(:,1);
-calibratedGaze.Y                  = tmp(:,2);
+calibratedGaze.X = tmp(:,1);
+calibratedGaze.Y = tmp(:,2);
 
 %% save out calibrated gaze and metadata
 calibratedGaze.meta = p.Results;
