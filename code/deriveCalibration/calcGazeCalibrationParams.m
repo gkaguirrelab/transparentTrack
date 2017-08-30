@@ -1,6 +1,6 @@
-function calcCalibrationMatrix (gazeDataFileName,gazeCalParamsFileName,varargin)
+function calcGazeCalibrationParams (gazeDataFileName,gazeCalParamsFileName,varargin)
 
-% calcCalibrationMatrix (gazeDataFileName,calMatrixFileName)
+% calcGazeCalibrationParams (gazeDataFileName,calMatrixFileName)
 % 
 % this function calculates the gaze calibration matrix starting from a set
 % of known targets observed at a known distance, and apparent gaze
