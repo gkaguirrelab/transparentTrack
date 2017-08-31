@@ -1,5 +1,5 @@
 function applyGazeCalibration(pupilFileName,glintFileName,gazeCalParamsFileName,calibratedGazeFileName,varargin)
-% applySizeCalibration(pupilFileName,sizeFactorsFileName,calibratedPupilFileName)
+% applyGazeCalibration(pupilFileName,glintFileName,gazeCalParamsFileName,calibratedGazeFileName)
 %
 % this function applies the gaze calibration parameters to the raw pupil
 % and glint data.
