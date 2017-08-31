@@ -180,19 +180,14 @@ for ff=1:p.Results.fminsearchCalls
     [X, f] = fminsearch(@(param) ...
         errfun(param,pupil,glint,targets,viewingDistance,Rpc),...
         X, options);
-    disp(['RSS error: ',num2str(f)])
+    if strcmp(p.Results.verbosity, 'full')
+        disp(['RSS error: ',num2str(f)])
+    end
 end
 
 % make the calibration matrix
 calMat = [X(1:4); X(5:8); X(9:12); X(13:16)];
 
-%% save out calibration matrix, Rpc and metadata in a file
-gazeCalibration.calMatrix = calMat;
-gazeCalibration.Rpc = Rpc;
-gazeCalibration.meta = p.Results;
-gazeCalibration.meta.RSSerror = f;
-
-save(gazeCalParamsFileName,'gazeCalibration')
 
 %% test the calibration if requested
 if p.Results.testCalibration
@@ -215,22 +210,36 @@ if p.Results.testCalibration
     calibratedGaze.X = tmp(:,1);
     calibratedGaze.Y = tmp(:,2);
     
-    % plot real target location and calibrated fixation location in screen
-    % units and show the error
-    figure; hold on;
-    for ff = 1:length(pupil.X)
-    plot(targets.X(ff), targets.Y(ff), 'bo')
-    plot(calibratedGaze.X(ff), calibratedGaze.Y(ff),'rx')
-    plot([targets.X(ff) calibratedGaze.X(ff)], [targets.Y(ff) calibratedGaze.Y(ff)],'k');
-    end
-    hold off;
-errors = sqrt((targets.X-calibratedGaze.X).^2+(targets.Y-calibratedGaze.Y).^2); 
-accuracy = mean(errors(~isnan(errors)));
-title(['Average error: ',num2str(accuracy),' mm'])
-xlabel('Horizontal position (mm)');ylabel('Vertical position (mm)');
-legend('Target position','Estimated gaze position')
-end
+    %get the calibration accuracy
+    errors = sqrt((targets.X-calibratedGaze.X).^2+(targets.Y-calibratedGaze.Y).^2);
+    accuracy = mean(errors(~isnan(errors)));
     
+    if strcmp(p.Results.verbosity, 'full')
+        % plot real target location and calibrated fixation location in screen
+        % units and show the error
+        figure; hold on;
+        for ff = 1:length(pupil.X)
+            plot(targets.X(ff), targets.Y(ff), 'bo')
+            plot(calibratedGaze.X(ff), calibratedGaze.Y(ff),'rx')
+            plot([targets.X(ff) calibratedGaze.X(ff)], [targets.Y(ff) calibratedGaze.Y(ff)],'k');
+        end
+        hold off;
+        title(['Average error: ',num2str(accuracy),' mm. (viewing distance: ' num2str(viewingDistance) ' mm)'])
+        xlabel('Horizontal position (mm)');ylabel('Vertical position (mm)');
+        legend('Target position','Estimated gaze position')
+    end
+end
+
+
+%% save out calibration matrix, Rpc and metadata in a file
+gazeCalibration.calMatrix = calMat;
+gazeCalibration.Rpc = Rpc;
+gazeCalibration.meta = p.Results;
+gazeCalibration.meta.RSSerror = f;
+if p.Results.testCalibration
+    gazeCalibration.meta.testedAccuracy = accuracy;
+end
+save(gazeCalParamsFileName,'gazeCalibration')
 
 end % main function
 
