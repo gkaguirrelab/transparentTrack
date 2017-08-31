@@ -55,10 +55,10 @@ function Rpc = calcRpc(targets,pupil,glint,viewingDistance)
 % 
 
 %% Find the corner target furthest from the center
-[~,I]           = max(nansum(abs(targets),2));
-cT              = targets(I, :);
-cP              = pupil(I, :);
-cG              = glint(I, :);
+[~,I] = max((abs(targets.X + targets.Y)));
+cT = [targets.X(I) targets.Y(I)];
+cP = [pupil.X(I) pupil.Y(I)];
+cG = [glint.X(I) glint.Y(I)];
 %% Calculate the perspective correction factor
-Rpc             = (sqrt((cT(1))^2 + (cT(2))^2 + viewingDistance^2) ...
+Rpc = (sqrt((cT(1))^2 + (cT(2))^2 + viewingDistance^2) ...
     / sqrt((cT(1))^2 + (cT(2))^2)) * sqrt((cP(1) - cG(1))^2 + (cP(2) - cG(2))^2);
