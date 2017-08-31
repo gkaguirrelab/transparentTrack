@@ -112,26 +112,33 @@ clear tmpData
 % intialize gaze variables
 calibratedGaze.X = nan(size(pupil.X));
 calibratedGaze.Y = nan(size(pupil.X));
-tmp = nan(length(pupil.X),3);
+screenCoords = nan(length(pupil.X),3);
+polarCoords = nan(length(pupil.X),2);
 
-for i = 1:length(pupil.X)
-    pX = pupil.X(i);
-    pY = pupil.Y(i);
-    gX = glint.X(i);
-    gY = glint.Y(i);
+for ii = 1:length(pupil.X)
+    pX = pupil.X(ii);
+    pY = pupil.Y(ii);
+    gX = glint.X(ii);
+    gY = glint.Y(ii);
     % calculate apparent gaze vector in homogeneous coordinates
     aXYZW = calMatrix * [...
         (pX-gX)/Rpc; ...
         (pY-gY)/Rpc; ...
         (1 - sqrt(((pX-gX)/Rpc)^2 + ((pY-gY)/Rpc)^2)); ...
         1];
-    % homogeneous divide (convert in 3-d)
-    tmp(i,:) = (aXYZW(1:3)/aXYZW(4))';
+    % homogeneous divide (convert in 3-d screen coordinates)
+    screenCoords(ii,:) = (aXYZW(1:3)/aXYZW(4))';
+    
+    % convert in polar coordinates (with same viewing distance)
+    [polarCoords(ii,1), polarCoords(ii,2)] = convertScreenCoordinatesToPolar(screenCoords(ii,1),screenCoords(ii,2),screenCoords(ii,3));
 end
 
-%  pull out the X and Y values
-calibratedGaze.X = tmp(:,1);
-calibratedGaze.Y = tmp(:,2);
+%  pull out the coordinates
+calibratedGaze.X = screenCoords(:,1);
+calibratedGaze.Y = screenCoords(:,2);
+calibratedGaze.ecc = polarCoords(:,1);
+calibratedGaze.pol = polarCoords(:,2);
+calibratedGaze.viewingDist = screenCoords(:,3);
 
 %% save out calibrated gaze and metadata
 calibratedGaze.meta = p.Results;
