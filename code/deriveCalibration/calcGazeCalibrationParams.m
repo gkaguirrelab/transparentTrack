@@ -94,6 +94,12 @@ function calcGazeCalibrationParams (gazeDataFileName,gazeCalParamsFileName,varar
 % 5. use fminsearch to find the matrix that minimizes the total distance
 % between the target location and the apparent gaze location for each
 % fixation.
+% 
+% References:
+% http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.17.1329
+% http://www.cse.psu.edu/~rtc12/CSE486/lecture12.pdf
+% http://www.cse.psu.edu/~rtc12/CSE486/lecture13.pdf
+% http://www.tomdalling.com/blog/modern-opengl/explaining-homogenous-coordinates-and-projective-geometry/
 
 
 %% input parser
