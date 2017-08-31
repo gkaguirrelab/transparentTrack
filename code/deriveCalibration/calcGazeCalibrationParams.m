@@ -111,7 +111,8 @@ p.addRequired('gazeDataFileName',@ischar);
 p.addRequired('gazeCalParamsFileName',@ischar);
 
 % Optional analysis parameters
-p.addParameter('fminsearchCalls',20, @isnumeric);
+p.addParameter('fminsearchCalls',20,@isnumeric);
+p.addParameter('testCalibration',true,@islogical);
 
 % Optional display and I/O parameters
 p.addParameter('verbosity','none', @ischar);
@@ -129,9 +130,12 @@ p.parse(gazeDataFileName, gazeCalParamsFileName, varargin{:})
 %% load gaze data
 gazeData = load(gazeDataFileName);
 
-targets = [gazeData.gazeCalData.targets.X, gazeData.gazeCalData.targets.Y];
-pupil = [gazeData.gazeCalData.pupil.X, gazeData.gazeCalData.pupil.Y];
-glint = [gazeData.gazeCalData.glint.X, gazeData.gazeCalData.glint.Y];
+targets.X = gazeData.gazeCalData.targets.X;
+targets.Y = gazeData.gazeCalData.targets.Y;
+pupil.X = gazeData.gazeCalData.pupil.X;
+pupil.Y =gazeData.gazeCalData.pupil.Y;
+glint.X = gazeData.gazeCalData.glint.X; 
+glint.Y = gazeData.gazeCalData.glint.Y;
 viewingDistance = gazeData.gazeCalData.viewingDistance;
 
 clear gazeData
@@ -170,9 +174,9 @@ targets.X = targets.X(~isnan(targets.X));
 targets.Y = targets.Y (~isnan(targets.X));
 
 % Loop through calls to fminsearch, changing tolerance
-for i=1:p.Results.fminsearchCalls
+for ff=1:p.Results.fminsearchCalls
     options = optimset('Display','off','MaxFunEvals', 10000,...
-        'MaxIter', 10000, 'TolX',10^(-i/2),'TolFun',10^(-i/2),'PlotFcns',[] );
+        'MaxIter', 10000, 'TolX',10^(-ff/2),'TolFun',10^(-ff/2),'PlotFcns',[] );
     [X, f] = fminsearch(@(param) ...
         errfun(param,pupil,glint,targets,viewingDistance,Rpc),...
         X, options);
@@ -189,6 +193,44 @@ gazeCalibration.meta = p.Results;
 gazeCalibration.meta.RSSerror = f;
 
 save(gazeCalParamsFileName,'gazeCalibration')
+
+%% test the calibration if requested
+if p.Results.testCalibration
+    % get the calibrated fixations
+    calibratedGaze.X = nan(size(pupil.X));
+    calibratedGaze.Y = nan(size(pupil.X));
+    tmp = nan(length(pupil.X),3);
+    for ff = 1:length(pupil.X)
+        pX = pupil.X(ff);
+        pY = pupil.Y(ff);
+        gX = glint.X(ff);
+        gY = glint.Y(ff);
+        aXYZW = calMat * [...
+            (pX-gX)/Rpc; ...
+            (pY-gY)/Rpc; ...
+            (1 - sqrt(((pX-gX)/Rpc)^2 + ((pY-gY)/Rpc)^2)); ...
+            1];
+        tmp(ff,:) = (aXYZW(1:3)/aXYZW(4))';
+    end
+    calibratedGaze.X = tmp(:,1);
+    calibratedGaze.Y = tmp(:,2);
+    
+    % plot real target location and calibrated fixation location in screen
+    % units and show the error
+    figure; hold on;
+    for ff = 1:length(pupil.X)
+    plot(targets.X(ff), targets.Y(ff), 'bo')
+    plot(calibratedGaze.X(ff), calibratedGaze.Y(ff),'rx')
+    plot([targets.X(ff) calibratedGaze.X(ff)], [targets.Y(ff) calibratedGaze.Y(ff)],'k');
+    end
+    hold off;
+errors = sqrt((targets.X-calibratedGaze.X).^2+(targets.Y-calibratedGaze.Y).^2); 
+accuracy = mean(errors(~isnan(errors)));
+title(['Average error: ',num2str(accuracy),' mm'])
+xlabel('Horizontal position (mm)');ylabel('Vertical position (mm)');
+legend('Target position','Estimated gaze position')
+end
+    
 
 end % main function
 
