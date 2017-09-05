@@ -1,5 +1,5 @@
-function calcSizeFactors(sizeDataFilesNames, sizeFactorsFileName, varargin)
-% calcSizeFactors(sizeDataFilesNames,sizeFactorsFileName)
+function calcSizeCalFactors(sizeDataFilesNames, sizeCalFactorsFileName, varargin)
+% calcSizeFactors(sizeDataFilesNames,sizeCalFactorsFileName)
 %
 % This routine computes the following size conversion factors:
 %   horizontalPxPerMm
@@ -61,7 +61,7 @@ p = inputParser; p.KeepUnmatched = true;
 
 % Required
 p.addRequired('sizeDataFilesNames',@(x) (iscell(x) | ischar(x)));
-p.addRequired('sizeFactorsFileName',@ischar);
+p.addRequired('sizeCalFactorsFileName',@ischar);
 
 % Optional analysis parameters
 p.addParameter('sizeGroundTruthsInput',[], @isnumeric)
@@ -79,7 +79,7 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % parse
-p.parse(sizeDataFilesNames, sizeFactorsFileName, varargin{:})
+p.parse(sizeDataFilesNames, sizeCalFactorsFileName, varargin{:})
 
 %% Check input and get ground truths
 
@@ -192,21 +192,21 @@ if pctAreaDeviationFromLinearFactors > p.Results.pctAreaDeviationThreshold
 end
 %% compose sizeFactor struct
 
-sizeFactors.horizontalPxPerMm = sizeFactorsMean(1);
-sizeFactors.verticalPxPerMm = sizeFactorsMean(2);
-sizeFactors.areaSqPxPerSqMm = sizeFactorsMean(3);
+sizeCalFactors.horizontalPxPerMm = sizeFactorsMean(1);
+sizeCalFactors.verticalPxPerMm = sizeFactorsMean(2);
+sizeCalFactors.areaSqPxPerSqMm = sizeFactorsMean(3);
 
 % add meta fields
-sizeFactors.meta = p.Results;
-sizeFactors.meta.sizeGroundTruths = sizeGroundTruths;
-sizeFactors.meta.sizeFactorsStd = sizeFactorsStd;
-sizeFactors.meta.pctAreaDeviationFromLinearFactors = pctAreaDeviationFromLinearFactors;
+sizeCalFactors.meta = p.Results;
+sizeCalFactors.meta.sizeGroundTruths = sizeGroundTruths;
+sizeCalFactors.meta.sizeFactorsStd = sizeFactorsStd;
+sizeCalFactors.meta.pctAreaDeviationFromLinearFactors = pctAreaDeviationFromLinearFactors;
 if warningCounter > 0
-    sizeFactors.warnings = warningMessages;
+    sizeCalFactors.warnings = warningMessages;
     clear warningMessage
 end
 
 
 %% save out data
 
-save(sizeFactorsFileName,'sizeFactors')
+save(sizeCalFactorsFileName,'sizeCalFactors')
