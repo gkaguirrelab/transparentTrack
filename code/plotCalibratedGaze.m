@@ -1,8 +1,10 @@
-function plotCalibratedGaze(gazeStruct,varargin)
+function [gazePlot] = plotCalibratedGaze(gazeStruct,varargin)
 
 % plotCalibratedGaze(gazeStruct)
 
-% got to write this
+% plots the calibrated gaze returning the figure handle for later figure
+% adjustments and saving. The gaze can be plotted as a scatter plot or a
+% timeseries in screen coordinates (mm on screen) or in polar coordinates.
 
 %% Parse vargin for options passed here
 p = inputParser; p.KeepUnmatched = true;
@@ -11,8 +13,9 @@ p = inputParser; p.KeepUnmatched = true;
 p.addRequired('gazeStruct',@isstruct);
 
 % Optional analysis parameters
-p.addParameter('whichCoordSystem','both', @ischar); % alternative: polar, both
+p.addParameter('whichCoordSystem','screen', @ischar); % alternative: polar
 p.addParameter('plotType','scatter', @ischar); % alternative: timeseries
+p.addParameter('customTitle',[], @ischar || @isempty); 
 p.addParameter('screenWidth',698.5, @isnumeric);
 p.addParameter('screenHeight',393.7, @isnumeric);
 p.addParameter('screenRatio',[16 9], @isnumeric);
@@ -34,11 +37,11 @@ p.parse(gazeStruct, varargin{:})
 
 
 %% plot data
-if strcmp(p.Results.whichCoordSystem,'both') || strcmp(p.Results.whichCoordSystem,'screen')
+gazePlot = figure;
+if strcmp(p.Results.whichCoordSystem,'screen')
     switch p.Results.plotType
         case 'scatter'
-            figure
-            %put a marker in the center
+            %put a marker in the center of the screen
             plot(0,0,'+k')
             hold on
             % plot the scatter
@@ -52,16 +55,28 @@ if strcmp(p.Results.whichCoordSystem,'both') || strcmp(p.Results.whichCoordSyste
             ylabel('Screen height in mm from the center')
             set(gca,'Ydir','reverse')
             pbaspect([p.Results.screenRatio 1])
-            title(['Scatter plot of gaze in screen coordinates (' p.Results.calibratedUnits ' on screen)'])
+            
         case 'timeseries'
-            % got to write this
+            subplot(2,1,1)
+            % plot X coordinate of gaze
+            xlabel('Frame')
+            ylabel('X position of the gaze')
+            subplot(2,1,2)
+            % plot Y coordinate of gaze
+            xlabel('Frame')
+            ylabel('Y position of the gaze')
+            title(['Timeseries plot of gaze in screen coordinates (' p.Results.calibratedUnits ' on screen)'])
+    end
+    if isempty(p.Results.customTitle)
+        title([p.Results.plotType 'plot of gaze in screen coordinates (' p.Results.calibratedUnits ' on screen)'])
+    else
+        title(p.Results.customTitle)
     end
 end
 
-if strcmp(p.Results.whichCoordSystem,'both') || strcmp(p.Results.whichCoordSystem,'polar')
+if strcmp(p.Results.whichCoordSystem,'polar')
     switch p.Results.plotType
         case 'scatter'
-            figure
             polarscatter(deg2rad(gazeStruct.pol),gazeStruct.ecc,6, 'filled', ...
                 'MarkerEdgeColor', 'none', ...
                 'MarkerFaceColor', [255 0 0]/255, ...
@@ -70,8 +85,20 @@ if strcmp(p.Results.whichCoordSystem,'both') || strcmp(p.Results.whichCoordSyste
             pax.ThetaDir = 'clockwise';
             pax.ThetaZeroLocation = 'top';
             pax.RLim = [0 10];
-            title('Scatter plot of gaze in polar coordinates')
         case 'timeseries'
-            % got to write this
+            subplot(2,1,1)
+            % plot eccentricity of gaze
+            xlabel('Frame')
+            ylabel('Eccentricity')
+            subplot(2,1,2)
+            % plot polar angle of gaze
+            xlabel('Frame')
+            ylabel('Polar Angle')
     end
+    if isempty(p.Results.customTitle)
+        title([p.Results.plotType 'plot of gaze in polar coordinates'])
+    else
+        title(p.Results.customTitle)
+    end
+end
 end
