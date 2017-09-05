@@ -137,18 +137,18 @@ if ~isempty(allTTLs)
 else
     timebase.lt = (timebaseTMP - 1) * (1/p.Results.rawVidFrameRate);
 end
-timeBaseGlintTMP = timebase.lt + delay * (1/p.Results.rawVidFrameRate); %pupilTrack timeBase in [sec]
+timebaseGlintTMP = timebase.lt + delay * (1/p.Results.rawVidFrameRate); %pupilTrack timeBase in [sec]
 
-% make timebase.pt as long as ptSignal
-if length(timeBaseGlintTMP)<length(glintSignal)
+% make timebase.rawVideo as long as ptSignal
+if length(timebaseGlintTMP)<length(glintSignal)
     %add missing values
-    glintPadding = timeBaseGlintTMP(end)+(1/p.Results.rawVidFrameRate): (1/p.Results.rawVidFrameRate) :timeBaseGlintTMP(end)+((length(glintSignal)-length(timeBaseGlintTMP)*(1/p.Results.rawVidFrameRate)));
-    timebase.rawVid = [timeBaseGlintTMP glintPadding];
-elseif length(timeBaseGlintTMP)>length(glintSignal)
+    glintPadding = timebaseGlintTMP(end)+(1/p.Results.rawVidFrameRate): (1/p.Results.rawVidFrameRate) :timebaseGlintTMP(end)+((length(glintSignal)-length(timebaseGlintTMP)*(1/p.Results.rawVidFrameRate)));
+    timebase.rawVideo = [timebaseGlintTMP glintPadding];
+elseif length(timebaseGlintTMP)>length(glintSignal)
     %trim timeBase.rawVid
-    timebase.rawVid = timeBaseGlintTMP(1:length(glintSignal));
+    timebase.rawVideo = timebaseGlintTMP(1:length(glintSignal));
 else
-    timebase.rawVid = timeBaseGlintTMP;
+    timebase.rawVideo = timebaseGlintTMP;
 end
 
 
@@ -181,7 +181,7 @@ end
 %% save out the timebase data
 % add some metafields first
 timebase.meta = p.Results;
-timebase.delay = delay;
+timebase.meta.delay = delay;
 
 save(timebaseFileName,'timebase');
 
