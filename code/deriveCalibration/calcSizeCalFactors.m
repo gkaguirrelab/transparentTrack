@@ -21,7 +21,7 @@ function calcSizeCalFactors(sizeDataFilesNames, sizeCalFactorsFileName, varargin
 %       also saved.
 % 
 % INPUTS:
-%   dotDataFilesNames: cell array containing the names of the dot data
+%   sizeDataFilesNames: cell array containing the names of the dot data
 %       files to be used.
 %   sizeFactorsFileName: name of the mat file to save the size
 %       conversion factor.
