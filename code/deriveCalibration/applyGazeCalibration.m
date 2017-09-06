@@ -103,8 +103,8 @@ clear tmpData
 %% load gaze calibration params
 tmpData = load(gazeCalFactorsFileName);
 
-calMatrix = tmpData.gazeCalibration.calMatrix;
-Rpc = tmpData.gazeCalibration.Rpc;
+calMatrix = tmpData.gazeCalFactors.calMatrix;
+Rpc = tmpData.gazeCalFactors.Rpc;
 
 clear tmpData
 %% apply calibration to data

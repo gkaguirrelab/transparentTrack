@@ -15,7 +15,7 @@ p.addRequired('gazeStruct',@isstruct);
 % Optional analysis parameters
 p.addParameter('whichCoordSystem','screen', @ischar); % alternative: polar
 p.addParameter('plotType','scatter', @ischar); % alternative: timeseries
-p.addParameter('customTitle',[], @ischar || @isempty); 
+p.addParameter('customTitle','', @ischar); 
 p.addParameter('screenWidth',698.5, @isnumeric);
 p.addParameter('screenHeight',393.7, @isnumeric);
 p.addParameter('screenRatio',[16 9], @isnumeric);
@@ -57,12 +57,14 @@ if strcmp(p.Results.whichCoordSystem,'screen')
             pbaspect([p.Results.screenRatio 1])
             
         case 'timeseries'
-            subplot(2,1,1)
             % plot X coordinate of gaze
+            subplot(2,1,1)
+            plot(gazeStruct.X)
             xlabel('Frame')
             ylabel('X position of the gaze')
-            subplot(2,1,2)
             % plot Y coordinate of gaze
+            subplot(2,1,2)
+            plot(gazeStruct.Y)
             xlabel('Frame')
             ylabel('Y position of the gaze')
             title(['Timeseries plot of gaze in screen coordinates (' p.Results.calibratedUnits ' on screen)'])
@@ -86,12 +88,14 @@ if strcmp(p.Results.whichCoordSystem,'polar')
             pax.ThetaZeroLocation = 'top';
             pax.RLim = [0 10];
         case 'timeseries'
-            subplot(2,1,1)
             % plot eccentricity of gaze
+            subplot(2,1,1)
+            plot(gazeStruct.ecc)
             xlabel('Frame')
             ylabel('Eccentricity')
-            subplot(2,1,2)
             % plot polar angle of gaze
+            subplot(2,1,2)
+            plot(gazeStruct.pol)
             xlabel('Frame')
             ylabel('Polar Angle')
     end
