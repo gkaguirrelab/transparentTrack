@@ -14,12 +14,12 @@ p.addRequired('ltReportFileName',@ischar);
 p.addRequired('timebaseFileName',@ischar);
 
 % Optional analysis parameters
-p.addParameter('maxLag',500, @isnumerical);
+p.addParameter('maxLag',500, @isnumeric);
 p.addParameter('reportSanityCheck',true, @islogical);
 p.addParameter('plotAlignment',false, @islogical);
 p.addParameter('numTRs',420, @isnumerical || @isempty);
-p.addParameter('rawVidFrameRate',60, @isnumerical);
-p.addParameter('ltDataThreshold',0.1, @isnumerical);
+p.addParameter('rawVidFrameRate',60, @isnumeric);
+p.addParameter('ltDataThreshold',0.1, @isnumeric);
 
 % Optional display and I/O parameters
 p.addParameter('verbosity','none', @ischar);
