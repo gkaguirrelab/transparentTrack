@@ -13,7 +13,7 @@ function calcSizeCalFactors(sizeDataFilesNames, sizeCalFactorsFileName, varargin
 % arbitrary thresholds.
 %
 % OUTPUTS: (saved to file)
-%   sizeFactors: struct containing the conversion factors for pupil
+%   sizeCalFactors: struct containing the conversion factors for pupil
 %       size expressed for the horizontal direction, vertical direction and
 %       area. In case the calibration is not accurate, a "warnings" field
 %       is created and saved to store warning texts about the accuracy
@@ -123,7 +123,7 @@ end
 %% load all calibration data in a matrix
 for rr = 1: length(sizeGroundTruths)
     % load in transparent form
-    tmpData = load (sizeDataFilesNames{rr});
+    tmpData = load ([sizeDataFilesNames{rr} '_pupil.mat']);
     tmpTransparent = tmpData.pupilData.pPosteriorMeanTransparent;
     transparentData{rr} = tmpTransparent;
     % load in explicit form

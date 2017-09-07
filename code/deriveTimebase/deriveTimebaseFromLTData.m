@@ -17,7 +17,7 @@ p.addRequired('timebaseFileName',@ischar);
 p.addParameter('maxLag',500, @isnumeric);
 p.addParameter('reportSanityCheck',true, @islogical);
 p.addParameter('plotAlignment',false, @islogical);
-p.addParameter('numTRs',420, @isnumerical || @isempty);
+p.addParameter('numTRs',420, @isnumerical);
 p.addParameter('rawVidFrameRate',60, @isnumeric);
 p.addParameter('ltDataThreshold',0.1, @isnumeric);
 
@@ -43,7 +43,9 @@ liveTrack = load(ltReportFileName);
 if p.Results.reportSanityCheck
     % check if the frameCount is progressive
     frameCountDiff = unique(diff([liveTrack.Report.frameCount]));
-    assert(numel(frameCountDiff)==1,'LiveTrack frame Count is not progressive!');
+    if numel(frameCountDiff)==1
+        warning('LiveTrack frame Count is not progressive!');
+    end
     % verify that the correct amount of TTLs has been recorded (for fMRI runs)
     if ~isempty(p.Results.numTRs)
         allPulses = find ([liveTrack.Report.Digital_IO1]);
@@ -88,7 +90,7 @@ switch p.Results.rawVidFrameRate
 end
 
 % extract glint X position
-glintSignal = glintData.glint.X;
+glintSignal = glintData.glintData.X;
 
 
 %% Cross correlate the signals to compute the delay
@@ -103,12 +105,12 @@ if length(glintCorr) > length(ltCorr)
     ltSignal = [ltSignal,zeros(1,(length(glintCorr) - length(ltCorr)))];
     ltCorr = [ltCorr,zeros(1,(length(glintCorr) - length(ltCorr)))];
 else
-    glintSignal = [glintSignal,zeros(1,(length(ltCorr) - length(glintCorr)))];
-    glintCorr = [glintCorr,zeros(1,(length(ltCorr) - length(glintCorr)))];
+    glintSignal = [glintSignal; zeros((length(ltCorr) - length(glintCorr)),1)];
+    glintCorr = [glintCorr; zeros((length(ltCorr) - length(glintCorr)),1)];
 end
 
 % calculate cross correlation and lag array
-[r,lag]  = xcorr(ltCorr,glintCorr,params.maxLag);
+[r,lag]  = xcorr(ltCorr,glintCorr,p.Results.maxLag);
 
 % when cross correlation of the signals is max the lag equals the delay
 [~,I] = max(abs(r));
@@ -117,7 +119,7 @@ delay = lag(I); % unit = [number of samples]
 % shift the signals by the 'delay' and replace the nans
 ltAligned = ltSignal; % lt is not shifted
 ltAligned(ltAligned==0) = nan;
-glintAligned = [zeros(1,delay),glintSignal(1:end-delay)];
+glintAligned = [zeros(delay,1);glintSignal(1:end-delay)];
 glintAligned(glintAligned==0) = nan;
 
 
@@ -146,15 +148,15 @@ if length(timebaseGlintTMP)<length(glintSignal)
     timebase.rawVideo = [timebaseGlintTMP glintPadding];
 elseif length(timebaseGlintTMP)>length(glintSignal)
     %trim timeBase.rawVid
-    timebase.rawVideo = timebaseGlintTMP(1:length(glintSignal));
+    timebase.rawVideo = timebaseGlintTMP(1:length(glintSignal))';
 else
-    timebase.rawVideo = timebaseGlintTMP;
+    timebase.rawVideo = timebaseGlintTMP';
 end
 
 
 %% If so requested, plot the cross correlation results for quick review
 if p.Results.plotAlignment
-    fullFigure;
+    figure;
     % before alignment
     subplot(2,1,1)
     plot(ltSignal, 'LineWidth',2);

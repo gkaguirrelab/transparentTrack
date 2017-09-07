@@ -23,7 +23,7 @@ p.addParameter('customFunCalls', {}, @iscell);
 p.addParameter('skipStage', {}, @iscell);
 p.addParameter('lastStage', '', @ischar);
 p.addParameter('sizeCalIdentifier', '*Scale*_pupil.mat', @ischar);
-p.addParameter('sizeCalSuffixLength', '10', @isnumeric);
+p.addParameter('sizeCalSuffixLength', 10, @isnumeric);
 p.addParameter('mostRecentGazeCal', 'before', @ischar); % alternative 'after'
 
 % parse
@@ -68,11 +68,7 @@ switch p.Results.variableNamingConvention
         
         % for gaze factors
         LTdatFileName = pickLTGazeData(pathParams,p.Results.mostRecentGazeCal);
-        if isempty(LTdatFileName)
-            % set last stage at apply size calibration
-            p.Results.lastStage = 'applySizeCalibration';
-        end
-            
+        rawDataPath =  pathParams.dataOutputDirFull;   
         gazeDataFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_gazeCalData.mat']);
         gazeCalFactorsFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_gazeCalFactors.mat']);
         
@@ -93,9 +89,9 @@ switch p.Results.videoTypeChoice
         funCalls = {...
             'deriveTimebaseFromLTData(glintFileName,ltReportFileName,timebaseFileName, varargin{:});'...
             'calcSizeCalFactors(sizeDataFilesNames, sizeCalFactorsFileName, varargin{:});'...
-            'applySizeCalibration(pupilFileName,sizeFactorsFileName,calibratedPupilFileName, varargin{:});'...
-            'prepareLTGazeCalibrationData (LTdatFileName,gazeDataFileName, varargin{:});'...
-            'calcGazeCalFactors (gazeDataFileName,gazeCalFactorsFileName, varargin{:});' ...
+            'applySizeCalibration(pupilFileName,sizeCalFactorsFileName,calibratedPupilFileName, varargin{:});'...
+            'prepareLTGazeCalibrationData(LTdatFileName,gazeDataFileName,''rawDataPath'',rawDataPath,varargin{:});'...
+            'calcGazeCalFactors(gazeDataFileName,gazeCalFactorsFileName, varargin{:});' ...
             'applyGazeCalibration(pupilFileName,glintFileName,gazeCalFactorsFileName,calibratedGazeFileName, varargin{:});' ...
             };
     case 'custom'
@@ -111,6 +107,9 @@ funNames = cellfun(@(x) strtok(x,'('),funCalls,'UniformOutput',false);
 % Loop through the function calls
 for ff = 1:length(funCalls)
     if ~any(strcmp(p.Results.skipStage,funNames{ff}))
+        if strcmp(funNames{ff},'prepareLTGazeCalibrationData') && isempty(LTdatFileName)
+            break 
+        end
         eval(funCalls{ff});
         if strcmp(p.Results.lastStage,funNames{ff})
             return
@@ -125,12 +124,12 @@ function [LTdatFileName] = pickLTGazeData(pathParams,mostRecentGazeCal)
 % this function will automatically select the calibration that is most
 % appropriate for the run
 
-GazeData = dir(pathParams.dataSourceDirFull,'*LTdat*.mat');
-if length(GazeCals) == 1
-    LTdatFileName = fullfile(pathParams.dataSourceDirFull,GazeData.name);
-elseif length(GazeCals) > 1
+gazeData = dir(fullfile(pathParams.dataSourceDirFull,'*LTdat*.mat'));
+if length(gazeData) == 1
+    LTdatFileName = fullfile(pathParams.dataSourceDirFull,gazeData.name);
+elseif length(gazeData) > 1
     % sort Gaze Data files by timestamp
-    [~,idx] = sort([GazeData.datenum]);
+    [~,idx] = sort([gazeData.datenum]);
     % get the timestamp for the current run from the corresponding
     % report
     reportFile = dir(fullfile(pathParams.dataSourceDirFull,[params.runName '_report.mat']));
@@ -148,6 +147,6 @@ elseif length(GazeCals) > 1
     end
 else
     warning('No gaze calibration found for this run. Skipping gaze calibration step')
-    LTdatFileName = [];
+    LTdatFileName = '';
 end
 end
