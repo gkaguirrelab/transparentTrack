@@ -40,6 +40,8 @@ function calcGazeCalFactors (gazeDataFileName,gazeCalFactorsFileName,varargin)
 % Optional params:
 %   fminsearchCalls: number of iteration for fminseach, changing the
 %       tolerance.
+%   showFigures: toggle on to show the figure with the results of the
+%       calibration test
 %
 % Optional key/value pairs (display and I/O)
 %  'verbosity' - level of verbosity. [none, full]
@@ -113,6 +115,7 @@ p.addRequired('gazeCalFactorsFileName',@ischar);
 % Optional analysis parameters
 p.addParameter('fminsearchCalls',20,@isnumeric);
 p.addParameter('testCalibration',true,@islogical);
+p.addParameter('showFigures',false,@islogical);
 
 % Optional display and I/O parameters
 p.addParameter('verbosity','none', @ischar);
@@ -214,7 +217,7 @@ if p.Results.testCalibration
     errors = sqrt((targets.X-calibratedGaze.X).^2+(targets.Y-calibratedGaze.Y).^2);
     accuracy = mean(errors(~isnan(errors)));
     
-    if strcmp(p.Results.verbosity, 'full')
+    if p.Results.showFigures
         % plot real target location and calibrated fixation location in screen
         % units and show the error
         figure; hold on;

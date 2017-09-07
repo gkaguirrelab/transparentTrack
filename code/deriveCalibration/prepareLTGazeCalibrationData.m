@@ -114,6 +114,7 @@ p.addParameter('fixationWindowPct', 50, @isnumerc)
 
 % Optional display and I/O parameters
 p.addParameter('verbosity','none', @ischar);
+p.addParameter('showFigures',false, @islogical);
 
 % Environment parameters
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
@@ -435,14 +436,16 @@ end
 
 %% show the raw pupil position and the estimated fixation durations
 % to confirm they are correct
-figure
-plot(pupilPosition(firstTargetOnsetIDX:lastTargetOffsetIDX))
-hold on
-plot(targetPosition)
-legend('Pupil','Targets')
-title('Alignement of pupil center and targets timeseries')
-xlabel('Frames')
-ylabel('Position (pixels)')
+if p.Results.showFigures
+    figure
+    plot(pupilPosition(firstTargetOnsetIDX:lastTargetOffsetIDX))
+    hold on
+    plot(targetPosition)
+    legend('Pupil','Targets')
+    title('Alignement of pupil center and targets timeseries')
+    xlabel('Frames')
+    ylabel('Position (pixels)')
+end
 
 
 %% Get mean pupil and glint position for each target fixation
