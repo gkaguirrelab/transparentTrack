@@ -66,7 +66,7 @@ p.addRequired('sizeCalFactorsFileName',@ischar);
 % Optional analysis parameters
 p.addParameter('sizeGroundTruthsInput',[], @isnumeric)
 p.addParameter('groundTruthFinder', {1 'before' 'mm'}, @iscell)
-p.addParameter('stdThreshold', [0.5 0.5 4], @isnumeric)
+p.addParameter('stdThreshold', [0.5 0.5 8], @isnumeric)
 p.addParameter('pctAreaDeviationThreshold', 1, @isnumeric)
 
 % Optional display and I/O parameters

@@ -73,7 +73,7 @@ switch p.Results.variableNamingConvention
         gazeCalFactorsFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_gazeCalFactors.mat']);
         
         % for gaze calibration
-        gazeCalFactorsFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_calibratedGaze.mat']);
+        calibratedGazeFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_calibratedGaze.mat']);
         
         % for timebase
         ltReportFileName = fullfile(pathParams.dataSourceDirFull, [pathParams.runName '_report.mat']);
@@ -132,14 +132,14 @@ elseif length(gazeData) > 1
     [~,idx] = sort([gazeData.datenum]);
     % get the timestamp for the current run from the corresponding
     % report
-    reportFile = dir(fullfile(pathParams.dataSourceDirFull,[params.runName '_report.mat']));
+    reportFile = dir(fullfile(pathParams.dataSourceDirFull,[pathParams.runName '_report.mat']));
     reportTime = reportFile.datenum;
     switch mostRecentGazeCal
         case 'before'
             % take the most recent calibration file acquired before the current run
             for ii = 1: length(idx)
-                if GazeCals(idx(ii)).datenum < reportTime && isGood(idx(ii))
-                    LTdatFileName = (fullfile(pathParams.dataSourceDirFull,GazeCals(idx(ii)).name));
+                if gazeData(idx(ii)).datenum < reportTime
+                    LTdatFileName = (fullfile(pathParams.dataSourceDirFull,gazeData(idx(ii)).name));
                 else
                     continue
                 end
