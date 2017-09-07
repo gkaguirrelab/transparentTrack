@@ -1,5 +1,5 @@
-function applyGazeCalibration(pupilFileName,glintFileName,gazeCalParamsFileName,calibratedGazeFileName,varargin)
-% applyGazeCalibration(pupilFileName,glintFileName,gazeCalParamsFileName,calibratedGazeFileName)
+function applyGazeCalibration(pupilFileName,glintFileName,gazeCalFactorsFileName,calibratedGazeFileName,varargin)
+% applyGazeCalibration(pupilFileName,glintFileName,gazeCalFactorsFileName,calibratedGazeFileName)
 %
 % this function applies the gaze calibration parameters to the raw pupil
 % and glint data.
@@ -38,7 +38,7 @@ function applyGazeCalibration(pupilFileName,glintFileName,gazeCalParamsFileName,
 %   pupilFileName: name of the file with the pupil data to be calibrated, 
 %       as it results from the pupil pipeline.
 %   glintFileName: name of the mat with glint data
-%   gazeCalParamsFileName: name of the mat file with the gaze calibration
+%   gazeCalFactorsFileName: name of the mat file with the gaze calibration
 %       params.
 %   calibratedGazeFileName: name of the output file containing the
 %       calibrated data
@@ -64,7 +64,7 @@ p = inputParser; p.KeepUnmatched = true;
 % Required
 p.addRequired('pupilFileName',@ischar);
 p.addRequired('glintFileName',@ischar);
-p.addRequired('gazeCalParamsFileName',@ischar);
+p.addRequired('gazeCalFactorsFileName',@ischar);
 p.addRequired('calibratedGazeFileName',@ischar);
 
 % Optional analysis parameters
@@ -81,7 +81,7 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % parse
-p.parse(pupilFileName, glintFileName, gazeCalParamsFileName,calibratedGazeFileName, varargin{:})
+p.parse(pupilFileName, glintFileName, gazeCalFactorsFileName,calibratedGazeFileName, varargin{:})
 
 %% load pupil data
 tmpData = load(pupilFileName);
@@ -101,10 +101,10 @@ glint.Y = tmpData.glintData.Y;
 
 clear tmpData
 %% load gaze calibration params
-tmpData = load(gazeCalParamsFileName);
+tmpData = load(gazeCalFactorsFileName);
 
-calMatrix = tmpData.gazeCalibration.calMatrix;
-Rpc = tmpData.gazeCalibration.Rpc;
+calMatrix = tmpData.gazeCalFactors.calMatrix;
+Rpc = tmpData.gazeCalFactors.Rpc;
 
 clear tmpData
 %% apply calibration to data

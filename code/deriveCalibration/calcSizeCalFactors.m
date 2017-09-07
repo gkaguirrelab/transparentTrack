@@ -1,5 +1,5 @@
-function calcSizeFactors(sizeDataFilesNames, sizeFactorsFileName, varargin)
-% calcSizeFactors(sizeDataFilesNames,sizeFactorsFileName)
+function calcSizeCalFactors(sizeDataFilesNames, sizeCalFactorsFileName, varargin)
+% calcSizeFactors(sizeDataFilesNames,sizeCalFactorsFileName)
 %
 % This routine computes the following size conversion factors:
 %   horizontalPxPerMm
@@ -13,7 +13,7 @@ function calcSizeFactors(sizeDataFilesNames, sizeFactorsFileName, varargin)
 % arbitrary thresholds.
 %
 % OUTPUTS: (saved to file)
-%   sizeFactors: struct containing the conversion factors for pupil
+%   sizeCalFactors: struct containing the conversion factors for pupil
 %       size expressed for the horizontal direction, vertical direction and
 %       area. In case the calibration is not accurate, a "warnings" field
 %       is created and saved to store warning texts about the accuracy
@@ -21,7 +21,7 @@ function calcSizeFactors(sizeDataFilesNames, sizeFactorsFileName, varargin)
 %       also saved.
 % 
 % INPUTS:
-%   dotDataFilesNames: cell array containing the names of the dot data
+%   sizeDataFilesNames: cell array containing the names of the dot data
 %       files to be used.
 %   sizeFactorsFileName: name of the mat file to save the size
 %       conversion factor.
@@ -61,12 +61,12 @@ p = inputParser; p.KeepUnmatched = true;
 
 % Required
 p.addRequired('sizeDataFilesNames',@(x) (iscell(x) | ischar(x)));
-p.addRequired('sizeFactorsFileName',@ischar);
+p.addRequired('sizeCalFactorsFileName',@ischar);
 
 % Optional analysis parameters
 p.addParameter('sizeGroundTruthsInput',[], @isnumeric)
 p.addParameter('groundTruthFinder', {1 'before' 'mm'}, @iscell)
-p.addParameter('stdThreshold', [0.5 0.5 4], @isnumeric)
+p.addParameter('stdThreshold', [0.5 0.5 8], @isnumeric)
 p.addParameter('pctAreaDeviationThreshold', 1, @isnumeric)
 
 % Optional display and I/O parameters
@@ -79,7 +79,7 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % parse
-p.parse(sizeDataFilesNames, sizeFactorsFileName, varargin{:})
+p.parse(sizeDataFilesNames, sizeCalFactorsFileName, varargin{:})
 
 %% Check input and get ground truths
 
@@ -123,7 +123,7 @@ end
 %% load all calibration data in a matrix
 for rr = 1: length(sizeGroundTruths)
     % load in transparent form
-    tmpData = load (sizeDataFilesNames{rr});
+    tmpData = load ([sizeDataFilesNames{rr} '_pupil.mat']);
     tmpTransparent = tmpData.pupilData.pPosteriorMeanTransparent;
     transparentData{rr} = tmpTransparent;
     % load in explicit form
@@ -192,21 +192,21 @@ if pctAreaDeviationFromLinearFactors > p.Results.pctAreaDeviationThreshold
 end
 %% compose sizeFactor struct
 
-sizeFactors.horizontalPxPerMm = sizeFactorsMean(1);
-sizeFactors.verticalPxPerMm = sizeFactorsMean(2);
-sizeFactors.areaSqPxPerSqMm = sizeFactorsMean(3);
+sizeCalFactors.horizontalPxPerMm = sizeFactorsMean(1);
+sizeCalFactors.verticalPxPerMm = sizeFactorsMean(2);
+sizeCalFactors.areaSqPxPerSqMm = sizeFactorsMean(3);
 
 % add meta fields
-sizeFactors.meta = p.Results;
-sizeFactors.meta.sizeGroundTruths = sizeGroundTruths;
-sizeFactors.meta.sizeFactorsStd = sizeFactorsStd;
-sizeFactors.meta.pctAreaDeviationFromLinearFactors = pctAreaDeviationFromLinearFactors;
+sizeCalFactors.meta = p.Results;
+sizeCalFactors.meta.sizeGroundTruths = sizeGroundTruths;
+sizeCalFactors.meta.sizeFactorsStd = sizeFactorsStd;
+sizeCalFactors.meta.pctAreaDeviationFromLinearFactors = pctAreaDeviationFromLinearFactors;
 if warningCounter > 0
-    sizeFactors.warnings = warningMessages;
+    sizeCalFactors.warnings = warningMessages;
     clear warningMessage
 end
 
 
 %% save out data
 
-save(sizeFactorsFileName,'sizeFactors')
+save(sizeCalFactorsFileName,'sizeCalFactors')

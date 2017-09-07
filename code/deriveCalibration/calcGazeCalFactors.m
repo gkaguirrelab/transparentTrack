@@ -1,6 +1,6 @@
-function calcGazeCalibrationParams (gazeDataFileName,gazeCalParamsFileName,varargin)
+function calcGazeCalFactors (gazeDataFileName,gazeCalFactorsFileName,varargin)
 
-% calcGazeCalibrationParams (gazeDataFileName,calMatrixFileName)
+% calcGazeCalFactors (gazeDataFileName,gazeCalFactorsFileName)
 % 
 % this function calculates the gaze calibration matrix starting from a set
 % of known targets observed at a known distance, and apparent gaze
@@ -28,7 +28,7 @@ function calcGazeCalibrationParams (gazeDataFileName,gazeCalParamsFileName,varar
 % distance between the observer and the screen.
 %
 % OUTPUTS: (saved to file)
-%   gazeCalibration: struct containing the calibration matrix and the
+%   gazeCalFactors: struct containing the calibration matrix and the
 %       perspective correction value to calibrate raw data as shown above.
 % 
 % INPUTS:
@@ -40,6 +40,8 @@ function calcGazeCalibrationParams (gazeDataFileName,gazeCalParamsFileName,varar
 % Optional params:
 %   fminsearchCalls: number of iteration for fminseach, changing the
 %       tolerance.
+%   showFigures: toggle on to show the figure with the results of the
+%       calibration test
 %
 % Optional key/value pairs (display and I/O)
 %  'verbosity' - level of verbosity. [none, full]
@@ -108,11 +110,12 @@ p = inputParser; p.KeepUnmatched = true;
 
 % Required
 p.addRequired('gazeDataFileName',@ischar);
-p.addRequired('gazeCalParamsFileName',@ischar);
+p.addRequired('gazeCalFactorsFileName',@ischar);
 
 % Optional analysis parameters
 p.addParameter('fminsearchCalls',20,@isnumeric);
 p.addParameter('testCalibration',true,@islogical);
+p.addParameter('showFigures',false,@islogical);
 
 % Optional display and I/O parameters
 p.addParameter('verbosity','none', @ischar);
@@ -124,7 +127,7 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % parse
-p.parse(gazeDataFileName, gazeCalParamsFileName, varargin{:})
+p.parse(gazeDataFileName, gazeCalFactorsFileName, varargin{:})
 
 
 %% load gaze data
@@ -214,7 +217,7 @@ if p.Results.testCalibration
     errors = sqrt((targets.X-calibratedGaze.X).^2+(targets.Y-calibratedGaze.Y).^2);
     accuracy = mean(errors(~isnan(errors)));
     
-    if strcmp(p.Results.verbosity, 'full')
+    if p.Results.showFigures
         % plot real target location and calibrated fixation location in screen
         % units and show the error
         figure; hold on;
@@ -232,14 +235,14 @@ end
 
 
 %% save out calibration matrix, Rpc and metadata in a file
-gazeCalibration.calMatrix = calMat;
-gazeCalibration.Rpc = Rpc;
-gazeCalibration.meta = p.Results;
-gazeCalibration.meta.RSSerror = f;
+gazeCalFactors.calMatrix = calMat;
+gazeCalFactors.Rpc = Rpc;
+gazeCalFactors.meta = p.Results;
+gazeCalFactors.meta.RSSerror = f;
 if p.Results.testCalibration
-    gazeCalibration.meta.testedAccuracy = accuracy;
+    gazeCalFactors.meta.testedAccuracy = accuracy;
 end
-save(gazeCalParamsFileName,'gazeCalibration')
+save(gazeCalFactorsFileName,'gazeCalFactors')
 
 end % main function
 

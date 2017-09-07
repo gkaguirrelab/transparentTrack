@@ -1,4 +1,4 @@
-function applySizeCalibration(pupilFileName,sizeFactorsFileName,calibratedPupilFileName,varargin)
+function applySizeCalibration(pupilFileName,sizeCalFactorsFileName,calibratedPupilFileName,varargin)
 % applySizeCalibration(pupilFileName,sizeFactorsFileName,calibratedPupilFileName)
 %
 % this function applies the size calibration factors to the pupil data.
@@ -12,7 +12,7 @@ function applySizeCalibration(pupilFileName,sizeFactorsFileName,calibratedPupilF
 % INPUTS:
 %   pupilFileName: name of the file with the pupil data to be calibrated, 
 %       as it results from the pupil pipeline.
-%   sizeFactorsFileName: name of the mat file to save the size
+%   sizeCalFactorsFileName: name of the mat file to save the size
 %       conversion factor.
 %   calibratedPupilFileName: name of the output file containing the
 %       calibrated data
@@ -37,7 +37,7 @@ p = inputParser; p.KeepUnmatched = true;
 
 % Required
 p.addRequired('pupilFileName',@ischar);
-p.addRequired('sizeFactorsFileName',@ischar);
+p.addRequired('sizeCalFactorsFileName',@ischar);
 p.addRequired('calibratedPupilFileName',@ischar);
 
 % Optional analysis parameters
@@ -54,7 +54,7 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % parse
-p.parse(pupilFileName, sizeFactorsFileName,calibratedPupilFileName, varargin{:})
+p.parse(pupilFileName, sizeCalFactorsFileName,calibratedPupilFileName, varargin{:})
 
 
 %% load pupil data
@@ -76,6 +76,9 @@ for ii = 1: size(rawPupilExplicit,1)
     elseif round(cos(rawPupilExplicit(ii,5))) == 0
         horizontalAxis(ii) = rawPupilExplicit(ii,4) * 2;
         verticalAxis(ii) = rawPupilExplicit(ii,3) * 2;
+    else
+        horizontalAxis(ii) = NaN;
+        verticalAxis(ii) = NaN;
     end
     % get ellipse area
     ellipseArea(ii) = rawPupilTransparent(ii,3);
@@ -90,14 +93,14 @@ clear rawPupilExplicit
 
 %% load calibration factors
 
-tmpSizeCal = load(sizeFactorsFileName);
-sizeFactors = tmpSizeCal.sizeFactors;
+tmpSizeCal = load(sizeCalFactorsFileName);
+sizeCalFactors = tmpSizeCal.sizeCalFactors;
 % check for warnings
-if isfield(sizeFactors,'warnings')
-    warning(sizeFactors.warnings);
+if isfield(sizeCalFactors,'warnings')
+    warning('There are some warnings for the size calibration factors, please check that the factors are legit');
 end
 % get the conversion factors
-conversionFactors = [sizeFactors.horizontalPxPerMm sizeFactors.verticalPxPerMm sizeFactors.areaSqPxPerSqMm];
+conversionFactors = [sizeCalFactors.horizontalPxPerMm sizeCalFactors.verticalPxPerMm sizeCalFactors.areaSqPxPerSqMm];
 
 clear tmpSizeCal
 
