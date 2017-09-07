@@ -3,12 +3,13 @@ function runCalibrationAndTimebasePipeline(pathParams, varargin )
 % header
 
 % steps:
+% deriveTimebaseFromLTData
 % calcSizeCalFactors
 % applySizeCalibration
 % prepareLTGazeCalibrationData
 % calcGazeCalFactors
 % applyGazeCalibration
-% deriveTimebaseFromLTData
+
 %% Parse input and define variables
 p = inputParser; p.KeepUnmatched = true;
 
@@ -20,6 +21,7 @@ p.addParameter('videoTypeChoice', 'LiveTrackWithVTOP', @ischar);
 p.addParameter('variableNamingConvention', 'LiveTrackWithVTOP', @ischar);
 p.addParameter('customFunCalls', {}, @iscell);
 p.addParameter('skipStage', {}, @iscell);
+p.addParameter('lastStage', '', @ischar);
 p.addParameter('sizeCalIdentifier', '*Scale*_pupil.mat', @ischar);
 p.addParameter('sizeCalSuffixLength', '10', @isnumeric);
 p.addParameter('mostRecentGazeCal', 'before', @ischar); % alternative 'after'
@@ -66,6 +68,11 @@ switch p.Results.variableNamingConvention
         
         % for gaze factors
         LTdatFileName = pickLTGazeData(pathParams,p.Results.mostRecentGazeCal);
+        if isempty(LTdatFileName)
+            % set last stage at apply size calibration
+            p.Results.lastStage = 'applySizeCalibration';
+        end
+            
         gazeDataFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_gazeCalData.mat']);
         gazeCalFactorsFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_gazeCalFactors.mat']);
         
