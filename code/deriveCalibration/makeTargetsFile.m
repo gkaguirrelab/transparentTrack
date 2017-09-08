@@ -38,8 +38,8 @@ targetsInfo = load(targetsInfoFile);
 %% pull the target data according to the type of target info file
 switch p.Results.targetsInfoFileType
     case 'LiveTrack'
-        targets.X     = targetsInfo.targets(:,1); % mm on screen, screen center = 0
-        targets.Y     = targetsInfo .targets(:,2); % mm on screen, screen center = 0
+        targets.X = targetsInfo.targets(:,1); % mm on screen, screen center = 0
+        targets.Y = targetsInfo.targets(:,2); % mm on screen, screen center = 0
         
         % if the livetrack failed to track one target, it will be a NaN. Replace
         % the NaN with the missing target location. NOTE THAT THIS ASSUMES THAT

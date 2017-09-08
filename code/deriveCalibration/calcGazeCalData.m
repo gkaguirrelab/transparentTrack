@@ -201,7 +201,7 @@ if ~p.Results.dataIsAligned
     % if the dot times were recorded, we build the target timeseries in
     % pseudo-pixels and do a 2 steps cross correlation using position and
     % velocity.
-    if dotTimesRecorded
+    if targetsTimesRecorded
         % build targets timeseries
         target.X = [];
         target.Y = [];
@@ -253,7 +253,7 @@ if ~p.Results.dataIsAligned
     % we know that the target moves only within a defined interval [minFixTime
     % maxFixTime]. This inteval is hardcoded in the gazeCalibration function.
     
-    if ~dotTimesRecorded
+    if ~targetsTimesRecorded
         try
             % extract target velocity peaks and valleys
             targetVelocityPeaks = diff(sqrt((targetPPX_X).^2 + (targetPPX_Y).^2));
@@ -420,9 +420,6 @@ gazeCalData.meta = p.Results;
 gazeCalData.meta.pupilTimeseries = pupil;
 gazeCalData.meta.glintTimeseries = glint;
 gazeCalData.meta.targetPseudoTimeseries = target;
-gazeCalData.meta.pupilRaw.X = rawPupilData.pupilData.pPosteriorMeanTransparent(:,1);
-gazeCalData.meta.pupilRaw.Y = rawPupilData.pupilData.pPosteriorMeanTransparent(:,2);
-gazeCalData.meta.glintRaw = rawGlintData.glintData;
 
 % save results
 save (gazeDataFileName , 'gazeCalData')
