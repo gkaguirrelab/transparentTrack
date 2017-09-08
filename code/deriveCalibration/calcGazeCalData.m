@@ -1,6 +1,6 @@
-function calcGazeData(pupilFileName,glintFileName,targetsFileName,gazeDataFileName,varargin)
+function calcGazeCalData(pupilFileName,glintFileName,targetsFileName,gazeDataFileName,varargin)
 
-% calcGazeData(pupilFileName,glintFileName,targetsFileName,gazeDataFileName)
+% calcGazeCalData(pupilFileName,glintFileName,targetsFileName,gazeDataFileName)
 %
 % this function will calculate the data necessary to compute the
 % gazeCalibration factors starting from pupil, glint and target files.
@@ -126,7 +126,7 @@ gazeCalData.targets.X = targetData.targets.X;
 gazeCalData.targets.Y = targetData.targets.Y;
 gazeCalData.targets.layout = targetData.targets.layout;
 gazeCalData.viewingDistance = targetData.targets.viewingDistance;
-if isfield(targetData.targets, 'onsetTimes')
+if isfield(targetData.targets, 'times')
     gazeCalData.targets.times = targetData.targets.times;
     gazeCalData.fixDurationSec = diff(targetData.targets.times);
     targetsTimesRecorded  = true;
@@ -162,9 +162,9 @@ if ~p.Results.dataIsAligned
             % displaced 20 pixels around it according to their location.
             
             % available targets locations
-            highTRG = max(LTdata.targets(:,1));
+            highTRG = max(gazeCalData.targets.X);
             centerTRG = 0;
-            lowTRG = min(LTdata.targets(:,1));
+            lowTRG = min(gazeCalData.targets.X);
             
             % conversion table (note that the X must be flipped because the high res
             % video is acquired mirrored).
