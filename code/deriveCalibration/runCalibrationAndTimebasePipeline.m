@@ -68,7 +68,10 @@ switch p.Results.variableNamingConvention
         
         % for gaze factors
         LTdatFileName = pickLTGazeData(pathParams,p.Results.mostRecentGazeCal);
-        rawDataPath =  pathParams.dataOutputDirFull;   
+        
+        pupilFileNameCAL = fullfile(pathParams.dataOutputDirFull, [GazeCalNameRoot '_pupil.mat']);
+        glintFileNameCAL = fullfile(pathParams.dataOutputDirFull, [GazeCalNameRoot '_glint.mat']);
+        targetsFileNameCAL = fullfile(pathParams.dataOutputDirFull, [GazeCalNameRoot '_targets.mat']);
         gazeDataFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_gazeCalData.mat']);
         gazeCalFactorsFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_gazeCalFactors.mat']);
         
@@ -79,6 +82,29 @@ switch p.Results.variableNamingConvention
         ltReportFileName = fullfile(pathParams.dataSourceDirFull, [pathParams.runName '_report.mat']);
         timebaseFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_timebase.mat']);
         
+    case 'LiveTrackOnlyForGaze'
+        % for size factors
+        allSizeRawFiles = dir(fullfile(pathParams.dataOutputDirFull, p.Results.sizeCalIdentifier));
+        for ii = 1:length(allSizeRawFiles)
+            sizeDataFilesNames{ii} = fullfile(pathParams.dataOutputDirFull,allSizeRawFiles(ii).name(1:end-p.Results.sizeCalSuffixLength));
+        end
+        
+        % for size calibration
+        sizeCalFactorsFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sizeCalFactors.mat']);
+        calibratedPupilFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_calibratedPupil.mat']);
+        
+        % for gaze factors
+        LTdatFileName = pickLTGazeData(pathParams,p.Results.mostRecentGazeCal);
+        rawDataPath =  pathParams.dataOutputDirFull;   
+        gazeDataFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_gazeCalData.mat']);
+        gazeCalFactorsFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_gazeCalFactors.mat']);
+        
+        % for gaze calibration
+        calibratedGazeFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_calibratedGaze.mat']);
+        
+        % for timebase
+        ltReportFileName = fullfile(pathParams.dataSourceDirFull, [pathParams.runName '_report.mat']);
+        timebaseFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_timebase.mat']);
     otherwise
         error('Variable names not defined for this variableNamingConvention')
 end
@@ -90,7 +116,17 @@ switch p.Results.videoTypeChoice
             'deriveTimebaseFromLTData(glintFileName,ltReportFileName,timebaseFileName, varargin{:});'...
             'calcSizeCalFactors(sizeDataFilesNames, sizeCalFactorsFileName, varargin{:});'...
             'applySizeCalibration(pupilFileName,sizeCalFactorsFileName,calibratedPupilFileName, varargin{:});'...
-            'prepareLTGazeCalibrationData(LTdatFileName,gazeDataFileName,''rawDataPath'',rawDataPath,varargin{:});'...
+            'makeTargetsFile(LTdatFileName,gazeDataFileName,varargin{:});'...
+            'calcGazeCalData(pupilFileNameCAL,glintFileNameCAL,targetsFileNameCAL,gazeDataFileName,varargin{:})' ...
+            'calcGazeCalFactors(gazeDataFileName,gazeCalFactorsFileName, varargin{:});' ...
+            'applyGazeCalibration(pupilFileName,glintFileName,gazeCalFactorsFileName,calibratedGazeFileName, varargin{:});' ...
+            };
+    case 'LiveTrackOnlyForGaze'
+        funCalls = {...
+            'deriveTimebaseFromLTData(glintFileName,ltReportFileName,timebaseFileName, varargin{:});'...
+            'calcSizeCalFactors(sizeDataFilesNames, sizeCalFactorsFileName, varargin{:});'...
+            'applySizeCalibration(pupilFileName,sizeCalFactorsFileName,calibratedPupilFileName, varargin{:});'...
+            'copyLTdatToGazeData(LTdatFileName,gazeDataFileName,varargin{:});'...
             'calcGazeCalFactors(gazeDataFileName,gazeCalFactorsFileName, varargin{:});' ...
             'applyGazeCalibration(pupilFileName,glintFileName,gazeCalFactorsFileName,calibratedGazeFileName, varargin{:});' ...
             };
@@ -120,7 +156,7 @@ end
 end % main function
 
 
-function [LTdatFileName] = pickLTGazeData(pathParams,mostRecentGazeCal)
+function [LTdatFileName,GazeCalNameRoot] = pickLTGazeData(pathParams,mostRecentGazeCal)
 % this function will automatically select the calibration that is most
 % appropriate for the run
 
@@ -140,6 +176,7 @@ elseif length(gazeData) > 1
             for ii = 1: length(idx)
                 if gazeData(idx(ii)).datenum < reportTime
                     LTdatFileName = (fullfile(pathParams.dataSourceDirFull,gazeData(idx(ii)).name));
+                    GazeCalNameRoot = gazeData(idx(ii)).name(1:end-10);
                 else
                     continue
                 end
