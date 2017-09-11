@@ -62,7 +62,7 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %    params), rather than re-computing these. This allows more rapid
 %    exploration of parameter settigns that guide the Bayesian smoothing.
 %  'skipPupilBayes' - If set to true, the routine exits after the initial
-%    ellipse fitting and prior to performing Bayesian smoothing
+%    ellipse fitting and prior to performing Bayesian smoothing 
 %
 % Optional key/value pairs (Environment parameters)
 %  'tbSnapshot' - This should contain the output of the tbDeploymentSnapshot
@@ -112,6 +112,13 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %       'pInitialFitHessianSD'
 %       'pInitialFitSplitsSD'
 %       'pInitialFitBootsSD'
+%   
+% Optional key/value pairs (coordinates system) 
+%   'coordinateSystem' - 'matlabIntrinsic'
+% 
+% REF for intrinsic coordinates explaination: 
+% https://blogs.mathworks.com/steve/2013/08/28/introduction-to-spatial-referencing/
+% 
 %
 % OUTPUTS:
 %   ellipseFitData: A structure with multiple fields corresponding to the
@@ -152,6 +159,9 @@ p.addParameter('nSplits',8,@isnumeric);
 p.addParameter('nBoots',0,@isnumeric);
 p.addParameter('priorCenterNaN',true,@islogical);
 p.addParameter('whichLikelihoodSD','pInitialFitSplitsSD',@ischar);
+
+% Optional coordinates system definition
+p.addParameter('coordinateSystem','matlabIntrinsic',@ischar);
 
 %% Parse and check the parameters
 p.parse(perimeterFileName, pupilFileName, varargin{:});
