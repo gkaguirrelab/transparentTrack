@@ -49,9 +49,9 @@ function calcGazeCalData(pupilFileName,glintFileName,targetsFileName,gazeDataFil
 %           units
 %
 % INPUTS:
-%   pupilFileName = name of the pupil file for the current calibration
-%   glintFileName = name of the glint file for the current calibration
-%   targetsFileName = name of the targets file for the current calibration.
+%   pupilFileName - name of the pupil file for the current calibration
+%   glintFileName - name of the glint file for the current calibration
+%   targetsFileName - name of the targets file for the current calibration.
 %       must contain target location in screen coordinates, should contain
 %       target onset times (the routine will attempt to align target and
 %       pupil data with no onset times, but it is not guaranteed to work).
@@ -60,20 +60,17 @@ function calcGazeCalData(pupilFileName,glintFileName,targetsFileName,gazeDataFil
 %
 %  Optional params:
 %   viewingDistance - distance of subject's eye from stimulus screen
-%   useLiveTrackGazeData - set to true to use LiveTrack data for calibration
-%   rawDataPath: string to the raw data path, if different from the
-%       location of the liveTrack data.
-%   ltFileSuffixLength - number of character appended after the "gaze
-%       calibration run" name (e.g. GazeCal4_LTdat.mat, suffix length = 10)
+%   dataIsAligned: if false, the routine will attempt to align the fixation
+%       data automatically.
 %   frameRate - frameRate of the raw video data.
 %   medFilterOrder - order of the despiking filter applied to the pupil
 %       position timeseries. Should be above 100 to get a clean signal.
 %   saccadeDistance - estimate distance in frames between saccades. This is
 %       used to refine velocity peak extraction
-%   minDelay: minimum delay allowed for the alignement of pupil and target
+%   minDelay - minimum delay allowed for the alignement of pupil and target
 %       timeseries
 %  fixationWindowPct - percentage of the smallest fixation duration to
-%  consider for the moving median window.
+%   consider for the moving median window.
 %
 %
 % Optional key/value pairs (display and I/O)

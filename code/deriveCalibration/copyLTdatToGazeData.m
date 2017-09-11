@@ -5,6 +5,39 @@ function copyLTdatToGazeData(LTdatFileName,gazeDataFileName,varargin)
 % LiveTrack device. If the user wishes to use the livetrack data for
 % calibration, this routine export the data in a standard format for later
 % calibration steps.
+% 
+% OUTPUTS: (saved to file)
+%   gazeCalData
+%       targets = location of each target espressed as mm
+%           on screen (origin center of the screen, X axis growing left to
+%           right, Y axis growing top to bottom)
+%       pupil = location of pupil center for each fixation in pixels (origin top left corner)
+%       glint = location of glint center for each fixation in pixels
+%       viewingDistance = viewing distance from the screen
+%       meta
+%           fixDurationSec
+%           units
+% 
+% INPUTS:
+%   LTdatFileName = name of the LiveTrack data file for the current
+%       calibration
+%   gazeDataFileName = name of the mat file to save the gaze calibration
+%       data
+% 
+%  Optional params:
+%   viewingDistance - distance of subject's eye from stimulus screen
+%   units
+% 
+%
+% Optional key/value pairs (display and I/O)
+%  'verbosity' - level of verbosity. [none, full]
+%
+% Options (environment)
+%   tbSnapshot - the passed tbSnapshot output that is to be saved along
+%      with the data
+%   timestamp / username / hostname - these are automatically derived and
+%      saved within the p.Results structure.
+
 
 %% input parser
 

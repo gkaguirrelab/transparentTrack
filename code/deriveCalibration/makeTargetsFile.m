@@ -1,8 +1,39 @@
 function makeTargetsFile(targetsInfoFile,targetsFileName,varargin)
 
 % makeTargetsFile(targetInfoFile,targetsFileName)
+% 
+%  This routine will extract the information about the location and timing
+%  of the target during the fixation task necessary for gaze calibration.
+% 
+% OUTPUTS: (saved to file)
+%   targets - struct containing the following target info
+%         X
+%         Y
+%         times
+%         viewingDistance
+%         layout
+%         meta
+% 
+% INPUTS:
+%   targetsInfoFile - name of the file containing targets information
+%   targetsFileName - name of the targets file for saving the output.
+% 
+%  Optional params:
+%   targetsInfoFileType - type of file from which to pull the target info
+%   targetsLayout: description of the target layout
+%   viewingDistance - frameRate of the raw video data.
+%   targetsUnits - units in which the target position is expressed.
+% 
+%
+% Optional key/value pairs (display and I/O)
+%  'verbosity' - level of verbosity. [none, full]
+%
+% Options (environment)
+%   tbSnapshot - the passed tbSnapshot output that is to be saved along
+%      with the data
+%   timestamp / username / hostname - these are automatically derived and
+%      saved within the p.Results structure.
 
-%  header
 
 %% input parser
 
@@ -16,7 +47,7 @@ p.addRequired('gazeDataFileName',@ischar);
 p.addParameter('targetsInfoFileType','LiveTrack', @ischar) % alternative '3secTarget'
 p.addParameter('targetsLayout','3x3grid',@ischar);
 p.addParameter('viewingDistance', 1065, @isnumeric)
-p.addParameter('targetsUnits','mm',@ischar);
+p.addParameter('targetsUnits','mmOnScreen',@ischar);
 
 % Optional display and I/O parameters
 p.addParameter('verbosity','none', @ischar);
