@@ -112,9 +112,6 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %       'pInitialFitHessianSD'
 %       'pInitialFitSplitsSD'
 %       'pInitialFitBootsSD'
-%   
-% Optional key/value pairs (coordinates system) 
-%   'coordinateSystem' - 'matlabIntrinsic'
 % 
 % REF for intrinsic coordinates explaination: 
 % https://blogs.mathworks.com/steve/2013/08/28/introduction-to-spatial-referencing/
@@ -346,8 +343,8 @@ else
     
     % convert to world coordinates  (if this is the last stage)
     if strcmp(p.Results.coordinateSystem, 'worldCoordinates') && p.Results.skipPupilBayes
-        loopVar_pInitialFitTransparent(:,1) = loopVar_pInitialFitTransparent(:,1) + 0.5;
-        loopVar_pInitialFitTransparent(:,2) = loopVar_pInitialFitTransparent(:,2) - 0.5;
+        loopVar_pInitialFitTransparent(:,1) = loopVar_pInitialFitTransparent(:,1) - 0.5;
+        loopVar_pInitialFitTransparent(:,2) = loopVar_pInitialFitTransparent(:,2) + 0.5;
     end
     % gather the loop vars into the ellipse structure    
     pupilData.pInitialFitTransparent = loopVar_pInitialFitTransparent;
@@ -521,13 +518,13 @@ if ~p.Results.skipPupilBayes
     %% convert to world coordinates
         % convert to world coordinates
     if strcmp(p.Results.coordinateSystem, 'worldCoordinates')
-        loopVar_pPriorMeanTransparent(:,1) = loopVar_pPriorMeanTransparent(:,1) + 0.5;
-        loopVar_pPriorMeanTransparent(:,2) = loopVar_pPriorMeanTransparent(:,2) - 0.5;
-        loopVar_pPosteriorMeanTransparent(:,1) = loopVar_pPosteriorMeanTransparent(:,1) + 0.5;
-        loopVar_pPosteriorMeanTransparent(:,2) = loopVar_pPosteriorMeanTransparent(:,2) - 0.5;
+        loopVar_pPriorMeanTransparent(:,1) = loopVar_pPriorMeanTransparent(:,1) - 0.5;
+        loopVar_pPriorMeanTransparent(:,2) = loopVar_pPriorMeanTransparent(:,2) + 0.5;
+        loopVar_pPosteriorMeanTransparent(:,1) = loopVar_pPosteriorMeanTransparent(:,1) - 0.5;
+        loopVar_pPosteriorMeanTransparent(:,2) = loopVar_pPosteriorMeanTransparent(:,2) + 0.5;
         if ~ p.Results.skipInitialPupilFit
-            pupilData.pInitialFitTransparent(:,1) = pupilData.pInitialFitTransparent(:,1) + 0.5;
-            pupilData.pInitialFitTransparent(:,2) = pupilData.pInitialFitTransparent(:,2) - 0.5;
+            pupilData.pInitialFitTransparent(:,1) = pupilData.pInitialFitTransparent(:,1) - 0.5;
+            pupilData.pInitialFitTransparent(:,2) = pupilData.pInitialFitTransparent(:,2) + 0.5;
         end
     end
     
