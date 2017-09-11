@@ -161,7 +161,7 @@ p.addParameter('priorCenterNaN',true,@islogical);
 p.addParameter('whichLikelihoodSD','pInitialFitSplitsSD',@ischar);
 
 % Optional coordinates system definition
-p.addParameter('coordinateSystem','matlabIntrinsic',@ischar);
+p.addParameter('coordinateSystem','worldCoordinates',@ischar);
 
 %% Parse and check the parameters
 p.parse(perimeterFileName, pupilFileName, varargin{:});
@@ -344,7 +344,12 @@ else
         end % try catch
     end % loop over frames
     
-    % gather the loop vars into the ellipse structure
+    % convert to world coordinates  (if this is the last stage)
+    if strcmp(p.Results.coordinateSystem, 'worldCoordinates') && p.Results.skipPupilBayes
+        loopVar_pInitialFitTransparent(:,1) = loopVar_pInitialFitTransparent(:,1) + 0.5;
+        loopVar_pInitialFitTransparent(:,2) = loopVar_pInitialFitTransparent(:,2) - 0.5;
+    end
+    % gather the loop vars into the ellipse structure    
     pupilData.pInitialFitTransparent = loopVar_pInitialFitTransparent;
     pupilData.pInitialFitHessianSD = loopVar_pInitialFitHessianSD;
     pupilData.pInitialFitSplitsSD = loopVar_pInitialFitSplitsSD;
@@ -511,6 +516,20 @@ if ~p.Results.skipPupilBayes
         loopVar_pPriorSDTransparent(ii,:)= pPriorSDTransparent';
         
     end % loop over frames to calculate the posterior
+    
+    
+    %% convert to world coordinates
+        % convert to world coordinates
+    if strcmp(p.Results.coordinateSystem, 'worldCoordinates')
+        loopVar_pPriorMeanTransparent(:,1) = loopVar_pPriorMeanTransparent(:,1) + 0.5;
+        loopVar_pPriorMeanTransparent(:,2) = loopVar_pPriorMeanTransparent(:,2) - 0.5;
+        loopVar_pPosteriorMeanTransparent(:,1) = loopVar_pPosteriorMeanTransparent(:,1) + 0.5;
+        loopVar_pPosteriorMeanTransparent(:,2) = loopVar_pPosteriorMeanTransparent(:,2) - 0.5;
+        if ~ p.Results.skipInitialPupilFit
+            pupilData.pInitialFitTransparent(:,1) = pupilData.pInitialFitTransparent(:,1) + 0.5;
+            pupilData.pInitialFitTransparent(:,2) = pupilData.pInitialFitTransparent(:,2) - 0.5;
+        end
+    end
     
     %% Clean up and save the fit results
     
