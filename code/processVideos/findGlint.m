@@ -23,6 +23,11 @@ function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 % less than the desired number of glints is located, the missing centroids
 % locations will be set as NaNs.
 % 
+% Note on the coordinate system: the function "regionprops" will save the
+% centroids in world coordinates (origin top left corner of the frame, xlim
+% = [0 horizontalRes], ylim = [0 verticalRes], therefore, the glint data
+% will also be expressed in world coordinates.
+% 
 % DEVELOPMENT PLACEHOLDER: if the expected nuber of glints is greater than
 % 1, the centroids will be sorted in the N more likely glints subgroups,
 % where N = number of expected glints.
@@ -275,6 +280,7 @@ glintData.Y = glintData_Y;
 glintData.meta = p.Results;
 glintData.meta.centroidsByFrame.X = centroidsByFrame_X;
 glintData.meta.centroidsByFrame.Y = centroidsByFrame_Y;
+glintData.meta.coordinatesSystem = 'worldCoordinates';
 
 
 % save out a mat file with the glint tracking data

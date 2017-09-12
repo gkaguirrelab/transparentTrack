@@ -20,6 +20,23 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %
 % We use this parameterization to allow us to constrain fits with regard to
 % these values (specifically area and eccentricity).
+% 
+% A note on the results coordinates: matlab's intrinsic coordinates system
+% is built so that the center of each pixel on the image cooresponds to the
+% integer indexed position on the pixel itself, that means that a 3x3
+% pixels image in intrisic coordinates will be represented in a grid with
+% xlim = [0.5 3.5] and ylim = [0.5 3.5], with the origin being the top left
+% corner of the image. This is done to facilitate the handling of images in
+% many of the built-in image processing functions. We are interested in
+% returning the results in "world units", which in our case correspond to
+% the cartesian system having the origin in the top left corner of the
+% frame and, referring to the above example, xlim = [0 3] and ylim = [0 3],
+% with the assumption of using square pixels. To apply this conversion, the
+% last stage before saving the pupil data is to subtract 0.5 pixels from
+% every X transparent coordinate and add 0.5 pixel to every Y transparent
+% coordinate.
+% REF for intrinsic coordinates explaination: 
+% https://blogs.mathworks.com/steve/2013/08/28/introduction-to-spatial-referencing/
 %
 % NOTES REGARDING USE OF PARALLEL POOL
 %
@@ -113,10 +130,7 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %       'pInitialFitSplitsSD'
 %       'pInitialFitBootsSD'
 % 
-% REF for intrinsic coordinates explaination: 
-% https://blogs.mathworks.com/steve/2013/08/28/introduction-to-spatial-referencing/
 % 
-%
 % OUTPUTS:
 %   ellipseFitData: A structure with multiple fields corresponding to the
 %     parameters, SDs, and errors of the initial and final ellipse fits.
@@ -157,8 +171,6 @@ p.addParameter('nBoots',0,@isnumeric);
 p.addParameter('priorCenterNaN',true,@islogical);
 p.addParameter('whichLikelihoodSD','pInitialFitSplitsSD',@ischar);
 
-% Optional coordinates system definition
-p.addParameter('coordinateSystem','worldCoordinates',@ischar);
 
 %% Parse and check the parameters
 p.parse(perimeterFileName, pupilFileName, varargin{:});
@@ -342,7 +354,7 @@ else
     end % loop over frames
     
     % convert to world coordinates  (if this is the last stage)
-    if strcmp(p.Results.coordinateSystem, 'worldCoordinates') && p.Results.skipPupilBayes
+    if p.Results.skipPupilBayes
         loopVar_pInitialFitTransparent(:,1) = loopVar_pInitialFitTransparent(:,1) - 0.5;
         loopVar_pInitialFitTransparent(:,2) = loopVar_pInitialFitTransparent(:,2) + 0.5;
     end
@@ -517,7 +529,6 @@ if ~p.Results.skipPupilBayes
     
     %% convert to world coordinates
         % convert to world coordinates
-    if strcmp(p.Results.coordinateSystem, 'worldCoordinates')
         loopVar_pPriorMeanTransparent(:,1) = loopVar_pPriorMeanTransparent(:,1) - 0.5;
         loopVar_pPriorMeanTransparent(:,2) = loopVar_pPriorMeanTransparent(:,2) + 0.5;
         loopVar_pPosteriorMeanTransparent(:,1) = loopVar_pPosteriorMeanTransparent(:,1) - 0.5;
@@ -526,7 +537,6 @@ if ~p.Results.skipPupilBayes
             pupilData.pInitialFitTransparent(:,1) = pupilData.pInitialFitTransparent(:,1) - 0.5;
             pupilData.pInitialFitTransparent(:,2) = pupilData.pInitialFitTransparent(:,2) + 0.5;
         end
-    end
     
     %% Clean up and save the fit results
     
@@ -539,6 +549,7 @@ if ~p.Results.skipPupilBayes
     
     % add a meta field with analysis details
     pupilData.meta = p.Results;
+    pupilData.meta.coordinatesSystem = 'worldCoordinates';
     
     % save the ellipse fit results if requested
     if ~isempty(p.Results.pupilFileName)
