@@ -184,7 +184,7 @@ for   ii = 1:nFrames
         if length(p.Results.glintFrameMask) == 2
             thisFrame((1:p.Results.glintFrameMask(1)),:) = p.Results.frameMaskValue;
             thisFrame((end - p.Results.glintFrameMask(1):end),:) = p.Results.frameMaskValue;
-            thisFrame(:, (1:p.Results.frameMask(2))) = p.Results.frameMaskValue;
+            thisFrame(:, (1:p.Results.glintFrameMask(2))) = p.Results.frameMaskValue;
             thisFrame(:, (end - p.Results.glintFrameMask(2):end)) = p.Results.frameMaskValue;
         elseif length(p.Results.glintFrameMask) == 4
             thisFrame((1:p.Results.glintFrameMask(1)),:) = p.Results.frameMaskValue; %top
