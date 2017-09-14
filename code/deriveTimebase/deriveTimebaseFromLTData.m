@@ -106,7 +106,7 @@ if p.Results.reportSanityCheck
             end
             TTLPulses = length (allPulses) - length (find(adjacent));
         end
-        assert(TTLPulses==params.numTRs,'LiveTrack TTLs do not match TRs!');
+        assert(TTLPulses==p.Results.numTRs,'LiveTrack TTLs do not match TRs!');
     end
 else
     warning ('No sanity check is being performed on the LiveTrack report.')
