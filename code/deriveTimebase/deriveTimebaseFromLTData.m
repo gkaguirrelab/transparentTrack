@@ -179,9 +179,9 @@ allTTLs = find([liveTrack.Report.Digital_IO1] == 1);
 % the first liveTrack sample collected.
 if ~isempty(allTTLs)
     firstTR = allTTLs(1);
-    timebase.lt = (timebaseTMP - firstTR) * (1/p.Results.rawVidFrameRate); %liveTrack timeBase in [sec]
+    timebase.lt = ((timebaseTMP - firstTR) * (1/p.Results.rawVidFrameRate))'; %liveTrack timeBase in [sec]
 else
-    timebase.lt = (timebaseTMP - 1) * (1/p.Results.rawVidFrameRate);
+    timebase.lt = ((timebaseTMP - 1) * (1/p.Results.rawVidFrameRate))';
 end
 timebaseGlintTMP = timebase.lt + delay * (1/p.Results.rawVidFrameRate); %pupilTrack timeBase in [sec]
 
@@ -192,9 +192,9 @@ if length(timebaseGlintTMP)<length(glintSignal)
     timebase.rawVideo = [timebaseGlintTMP glintPadding];
 elseif length(timebaseGlintTMP)>length(glintSignal)
     %trim timeBase.rawVid
-    timebase.rawVideo = timebaseGlintTMP(1:length(glintSignal))';
+    timebase.rawVideo = timebaseGlintTMP(1:length(glintSignal));
 else
-    timebase.rawVideo = timebaseGlintTMP';
+    timebase.rawVideo = timebaseGlintTMP;
 end
 
 
@@ -228,6 +228,7 @@ end
 % add some metafields first
 timebase.meta = p.Results;
 timebase.meta.delay = delay;
+timebase.meta.units = 'seconds';
 
 save(timebaseFileName,'timebase');
 
