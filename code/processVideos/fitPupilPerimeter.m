@@ -51,7 +51,6 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %
 % To use the parallel pool with TbTb, provide the identity of the repo
 % name in the 'tbtbRepoName', which is then used to configure the workers.
-
 %
 % INPUTS:
 %   perimeterFileName: full path to a .mat file that contains the perimeter
