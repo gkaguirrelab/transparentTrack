@@ -1,9 +1,53 @@
 function deriveTimebaseFromLTData(glintFileName,ltReportFileName,timebaseFileName,varargin)
 
 % deriveTimebaseFromLTData(glintFileName,ltReportFilename,timebaseFilename
-
-% header
-
+% 
+% this function is to be used with the LiveTrack+VTop setup and assignes a
+% timebase to the raw data by aligning the tracked glint position obtained
+% with the livetrack (which includes the TR times information) and the
+% tracked glint position obtained with the custom tracking algorithm.
+% As the X glint position is on average the best tracking results that the
+% livetrack can provide, we cross-correlate that timeseries with our own
+% tracked glint X position and determine the delay (in frames) between the
+% start of the datastream from the VTop device with respect to the
+% LiveTrack datastream.
+% 
+% Note that if no TR information is found in the LiveTrack Report file
+% (i.e. for anatomical runs), the alignment is not possible.
+% 
+% Output (saved to file)
+%	timebase : structure with fields that contain the rawVideo and
+%	livetrack timebase information in seconds, and a meta field.
+%
+% Input (required)
+%   glintFileName - full path to the matFile with the glint tracking
+%       results.
+%   ltReportFileName - full path to the livetrack generated "report file".
+%   timebaseFileName - full path to the file that will contain the timebase
+%       information.
+%
+% Options (analysis)
+%   maxLag - max lag allowed between the two glint timeseries
+%   numTRs -  number of expeted TR for this run. This is used only for
+%       sanity check purposes. In principle, just a single TTL syncing
+%       signal is enough to align a full run.
+%   rawVidFrameRate - framerate of the raw video in units of frames per
+%       second (fps).
+%   ltDataThreshold - threshold to clean up the livetrack signal before
+%       cross correlation.
+%   reportSanityCheck - if true, a sanity check on the livetrack report
+%       will be performed before starting the alignment. The sanity check
+%       verifies that the livetrack framecount is progressive and that the
+%       registered TR correspond to the expected amount.
+%   plotAlignment - if set to true, a plot to verify the alignement will be
+%       generated.
+%
+% Options (environment)
+%   tbSnapshot - the passed tbSnapshot output that is to be saved along
+%      with the data
+%   timestamp / username / hostname - these are automatically derived and
+%      saved within the p.Results structure.
+%
 %% input parser
 
 p = inputParser; p.KeepUnmatched = true;
@@ -15,11 +59,11 @@ p.addRequired('timebaseFileName',@ischar);
 
 % Optional analysis parameters
 p.addParameter('maxLag',500, @isnumeric);
-p.addParameter('reportSanityCheck',true, @islogical);
-p.addParameter('plotAlignment',false, @islogical);
 p.addParameter('numTRs',420, @isnumerical);
 p.addParameter('rawVidFrameRate',60, @isnumeric);
 p.addParameter('ltDataThreshold',0.1, @isnumeric);
+p.addParameter('reportSanityCheck',true, @islogical);
+p.addParameter('plotAlignment',false, @islogical);
 
 % Optional display and I/O parameters
 p.addParameter('verbosity','none', @ischar);
