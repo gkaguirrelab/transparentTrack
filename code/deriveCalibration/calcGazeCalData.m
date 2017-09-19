@@ -47,6 +47,7 @@ function calcGazeCalData(pupilFileName,glintFileName,targetsFileName,gazeDataFil
 %           glintRaw
 %           fixDurationSec
 %           units
+%           targetsLayout
 %
 % INPUTS:
 %   pupilFileName - name of the pupil file for the current calibration

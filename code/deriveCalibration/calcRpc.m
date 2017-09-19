@@ -1,5 +1,5 @@
-function Rpc = calcRpc(targets,pupil,glint,viewingDistance)
-% Rpc = calcRpc(targets,pupil,glint,viewingDistance)
+function perspectiveCorrection = calcPerspectiveCorrection(targets,pupil,glint,viewingDistance)
+% perspectiveCorrection = calcPerspectiveCorrection(targets,pupil,glint,viewingDistance)
 % 
 % This function calculates a plausible term to operate homogeneous divide
 % on the apparent gaze vector, so that it is "projected" on the same plane
@@ -60,5 +60,5 @@ cT = [targets.X(I) targets.Y(I)];
 cP = [pupil.X(I) pupil.Y(I)];
 cG = [glint.X(I) glint.Y(I)];
 %% Calculate the perspective correction factor
-Rpc = (sqrt((cT(1))^2 + (cT(2))^2 + viewingDistance^2) ...
+perspectiveCorrection = (sqrt((cT(1))^2 + (cT(2))^2 + viewingDistance^2) ...
     / sqrt((cT(1))^2 + (cT(2))^2)) * sqrt((cP(1) - cG(1))^2 + (cP(2) - cG(2))^2);

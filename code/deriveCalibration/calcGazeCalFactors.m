@@ -11,14 +11,14 @@ function calcGazeCalFactors (gazeDataFileName,gazeCalFactorsFileName,varargin)
 % The calibration matrix is a 4x4 matrix in homogeneous coordinates and can
 % be applied to the raw pupil and glint data as follows:
 % 
-% [aXYZW] = calMatrix * [(pX-gX)/Rpc; (pY-gY)/Rpc; (1 - sqrt(((pX-gX)/Rpc)^2 + ((pY-gY)/Rpc)^2)); 1];
+% [aXYZW] = calMatrix * [(pX-gX)/perspectiveCorrection; (pY-gY)/perspectiveCorrection; (1 - sqrt(((pX-gX)/perspectiveCorrection)^2 + ((pY-gY)/perspectiveCorrection)^2)); 1];
 % [calGazeX;calGazeY;viewingDistance] =    (aXYZW(1:3)/aXYZW(4))';
 % 
 % Where:
 %   aXYZW = calibrated Gaze Data in homogeneous screen coordinates
 %   [pX pY] = center of pupil in pixels
 %   [gX gY] = center of glint in pixels
-%   Rpc = relative perspective correction (between target and apparent gaze
+%   perspectiveCorrection = perspective correction (between target and apparent gaze
 %       vector)
 %   
 % Note that the first line applies the calMatrix to the 3-D projection of
@@ -76,11 +76,11 @@ function calcGazeCalFactors (gazeDataFileName,gazeCalFactorsFileName,varargin)
 % 
 % In this case we break the conversion problem in the following steps:
 % 
-% 1. estimate the relative perspective correction factor (Rpc) between the
-% appearance of the targets and of the apparent gaze vectors. Note that
-% this factor has nothing to do with the geometry of the eye! It solely
-% depends on the difference between the distance of targets and apparent
-% gaze from the camera plane.
+% 1. estimate the relative perspective correction factor
+% (perspectiveCorrection) between the appearance of the targets and of the
+% apparent gaze vectors. Note that this factor has nothing to do with the
+% geometry of the eye! It solely depends on the difference between the
+% distance of targets and apparent gaze from the camera plane.
 % 
 % 2. define the 3-D projection in pixel coordinates of the apparent gaze
 % vector, using an estimate of the distance from center of corneal
@@ -89,9 +89,9 @@ function calcGazeCalFactors (gazeDataFileName,gazeCalFactorsFileName,varargin)
 % 3. express both target and apparent gaze in homogeneous coordinates.
 % 
 % 4. Correct the apparent gaze vector in homogeneous coordinates applying a
-% perspective division using Rpc as divisor (this step is also called
+% perspective division using perspectiveCorrection as divisor (this step is also called
 % homogeneous divide). More info on perspective correction in the header of
-% calcRpc.
+% calcperspectiveCorrection.
 % 
 % 5. use fminsearch to find the matrix that minimizes the total distance
 % between the target location and the apparent gaze location for each
@@ -145,19 +145,19 @@ clear gazeData
 
 %% Estimate the relative perspective correction factor
 
-Rpc = calcRpc(targets,pupil,glint,viewingDistance);
+perspectiveCorrection = calcPerspectiveCorrection(targets,pupil,glint,viewingDistance);
 
 %% Define apparent gaze vector and apply perspective correction (will be used in the fminsearch)
 % theoretically, the Z term of the apparent gaze should include the
 % distance between the pupil center and the center of the corneal curvature
 % in pixels (is ranges between 50-200), and should look like this:
 % 
-%  apparentGaze = 1/Rpc *[(Px -Gx); (Py -Gy); distPupilCornea - sqrt((Px -Gx)^2 +(Py -Gy)^2)];
+%  apparentGaze = 1/perspectiveCorrection *[(Px -Gx); (Py -Gy); distPupilCornea - sqrt((Px -Gx)^2 +(Py -Gy)^2)];
 % 
-% Given the subsequent fminsearch step, we can set distancePupilCornea/Rpc
+% Given the subsequent fminsearch step, we can set distancePupilCornea/perspectiveCorrection
 % as 1 without loss of generality, so that:
 
-%  apparentGaze = [(pX-gX)/Rpc; (pY-gY)/Rpc; (1 - sqrt(((pX-gX)/Rpc)^2 + ((pY-gY)/Rpc)^2))]
+%  apparentGaze = [(pX-gX)/perspectiveCorrection; (pY-gY)/perspectiveCorrection; (1 - sqrt(((pX-gX)/perspectiveCorrection)^2 + ((pY-gY)/perspectiveCorrection)^2))]
 
 %% solve minimization problem
 % initialize the matrix
@@ -181,7 +181,7 @@ for ff=1:p.Results.fminsearchCalls
     options = optimset('Display','off','MaxFunEvals', 10000,...
         'MaxIter', 10000, 'TolX',10^(-ff/2),'TolFun',10^(-ff/2),'PlotFcns',[] );
     [X, f] = fminsearch(@(param) ...
-        errfun(param,pupil,glint,targets,viewingDistance,Rpc),...
+        errfun(param,pupil,glint,targets,viewingDistance,perspectiveCorrection),...
         X, options);
     if strcmp(p.Results.verbosity, 'full')
         disp(['RSS error: ',num2str(f)])
@@ -204,9 +204,9 @@ if p.Results.testCalibration
         gX = glint.X(ff);
         gY = glint.Y(ff);
         aXYZW = calMat * [...
-            (pX-gX)/Rpc; ...
-            (pY-gY)/Rpc; ...
-            (1 - sqrt(((pX-gX)/Rpc)^2 + ((pY-gY)/Rpc)^2)); ...
+            (pX-gX)/perspectiveCorrection; ...
+            (pY-gY)/perspectiveCorrection; ...
+            (1 - sqrt(((pX-gX)/perspectiveCorrection)^2 + ((pY-gY)/perspectiveCorrection)^2)); ...
             1];
         tmp(ff,:) = (aXYZW(1:3)/aXYZW(4))';
     end
@@ -234,9 +234,9 @@ if p.Results.testCalibration
 end
 
 
-%% save out calibration matrix, Rpc and metadata in a file
+%% save out calibration matrix, perspectiveCorrection and metadata in a file
 gazeCalFactors.calMatrix = calMat;
-gazeCalFactors.Rpc = Rpc;
+gazeCalFactors.perspectiveCorrection = perspectiveCorrection;
 gazeCalFactors.meta = p.Results;
 gazeCalFactors.meta.RSSerror = f;
 if p.Results.testCalibration
@@ -248,7 +248,7 @@ end % main function
 
 
 %% error function for fminsearch
-function errtot = errfun(param, pupil, glint, targets, viewingDistance, Rpc)
+function errtot = errfun(param, pupil, glint, targets, viewingDistance, perspectiveCorrection)
 
 err = nan(1,length(targets(:,1)));
 CalMatrix = [param(1:4); param(5:8); param(9:12); param(13:16)];
@@ -264,7 +264,7 @@ for i = 1:length(targets.X)
     z = viewingDistance;
     
     % calibrated apparent gaze vector in homogeneous coordinates
-    aXYZW = CalMatrix * [(pX-gX)/Rpc; (pY-gY)/Rpc; (1 - sqrt(((pX-gX)/Rpc)^2 + ((pY-gY)/Rpc)^2)); 1];
+    aXYZW = CalMatrix * [(pX-gX)/perspectiveCorrection; (pY-gY)/perspectiveCorrection; (1 - sqrt(((pX-gX)/perspectiveCorrection)^2 + ((pY-gY)/perspectiveCorrection)^2)); 1];
     
     % target vector in homogeneous coordinates
     oXYZW = [x; y; z; 1];
