@@ -35,19 +35,21 @@ function applyGazeCalibration(pupilFileName,glintFileName,gazeCalFactorsFileName
 % 
 % 
 % INPUTS:
-%   pupilFileName: name of the file with the pupil data to be calibrated, 
+%   pupilFileName - name of the file with the pupil data to be calibrated, 
 %       as it results from the pupil pipeline.
-%   glintFileName: name of the mat with glint data
-%   gazeCalFactorsFileName: name of the mat file with the gaze calibration
+%   glintFileName - name of the mat with glint data
+%   gazeCalFactorsFileName - name of the mat file with the gaze calibration
 %       params.
-%   calibratedGazeFileName: name of the output file containing the
+%   calibratedGazeFileName - name of the output file containing the
 %       calibrated data
 % 
 % Optional params:
-%   calibratedUnits: units in which the calibrated data is expressed
+%   calibratedUnits - units in which the calibrated data is expressed
 %       (default [mmOnScreen])
-%   whichFitToCalibrate: which of the pupil fit resulting from
+%   whichFitToCalibrate - which of the pupil fit resulting from
 %   fitPupilPerimeter to calibrate (default pPosteriorMeanTransparent).
+%   analysisPass - set the pass number in case calibration data undergoes
+%       some kind of iterative correction process.
 % 
 % Optional key/value pairs (display and I/O)
 %  'verbosity' - level of verbosity. [none, full]
@@ -70,6 +72,7 @@ p.addRequired('calibratedGazeFileName',@ischar);
 % Optional analysis parameters
 p.addParameter('calibratedUnits','mm', @ischar);
 p.addParameter('whichFitToCalibrate','pPosteriorMeanTransparent', @ischar);
+p.addParameter('analysisPass',1, @isnumeric);
 
 % Optional display and I/O parameters
 p.addParameter('verbosity','none', @ischar);
