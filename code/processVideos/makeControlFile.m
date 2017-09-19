@@ -70,6 +70,13 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 %   radiusDivisions - Controls how many divisions between the geometric
 %       center of the pupil perimeter and the outer edge are examined with
 %       a pupil cut.
+%   minRadiusProportion - This defines the stopping point for the amount of
+%       the pupil that can be cut. When set to zero (the default) the
+%       largest cut that will be considered is one that passes through the
+%       center of the pupil perimeter. A positive value (e.g., 0.5) limits
+%       the maximum cut to that proportion of the radisu. A negative
+%       proportion would allow a cut to remove more than half of the total
+%       pupil radius.
 %
 % Optional key/value pairs (verbosity and I/O)
 %  'verbosity' - level of verbosity. [none, full]
@@ -110,6 +117,8 @@ p.addParameter('ellipseTransparentLB',[0, 0, 1000, 0, -0.5*pi],@isnumeric);
 p.addParameter('ellipseTransparentUB',[240,320,10000,0.417, 0.5*pi],@isnumeric);
 p.addParameter('candidateThetas',pi/2:pi/16:pi,@isnumeric);
 p.addParameter('radiusDivisions',5,@isnumeric);
+p.addParameter('minRadiusProportion',0,@isnumeric);
+
 
 % Optional display params
 p.addParameter('verbosity','none',@ischar);
@@ -337,10 +346,11 @@ parfor (ii = 1:nFrames, nWorkers)
             maxRadius=round(max([max(Xp)-min(Xp),max(Yp)-min(Yp)])/2);
             stepReducer = max([1,floor(maxRadius/p.Results.radiusDivisions)]);
             candidateRadius=maxRadius - stepReducer;
+            minRadius = maxRadius * p.Results.minRadiusProportion;
             
             % Keep searching until we have a fit of accetable quality, or if
             % the candidate radius drops below zero
-            while stillSearching && candidateRadius > 0
+            while stillSearching && candidateRadius > minRadius
                 
                 % Perform a grid search across thetas
                 [gridSearchRadii,gridSearchThetas] = ndgrid(candidateRadius,p.Results.candidateThetas);
