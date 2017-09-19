@@ -9,9 +9,9 @@ function makeTargetsFile(targetsInfoFile,targetsFileName,varargin)
 %   targets - struct containing the following target info
 %         X
 %         Y
-%         times
-%         viewingDistance
-%         layout
+%         sysClockSecsOnsets
+%         sysClockSecsOffsets
+%         viewingDistanceMm
 %         meta
 % 
 % INPUTS:
@@ -45,9 +45,8 @@ p.addRequired('gazeDataFileName',@ischar);
 
 % Optional analysis parameters
 p.addParameter('targetsInfoFileType','LiveTrack', @ischar) % alternative '3secTarget'
-p.addParameter('targetsLayout','3x3grid',@ischar);
-p.addParameter('viewingDistance', 1065, @isnumeric)
-p.addParameter('targetsUnits','mmOnScreen',@ischar);
+p.addParameter('viewingDistanceMm', 1065, @isnumeric)
+p.addParameter('targetsPositionUnits','mmOnScreen',@ischar);
 
 % Optional display and I/O parameters
 p.addParameter('verbosity','none', @ischar);
@@ -109,7 +108,8 @@ switch p.Results.targetsInfoFileType
         
         % get dot times (if available)
         if isfield(targetsInfo,'dotTimes')
-            targets.times = targetsInfo.dotTimes;
+            targets.sysClockSecsOnsets = targetsInfo.dotTimes(1:end-1)';
+            targets.sysClockSecsOffsets = targetsInfo.dotTimes(2:end)';
         end
         
         
@@ -119,7 +119,8 @@ switch p.Results.targetsInfoFileType
         targets.Y     = targetsInfo .targets(:,2); % mm on screen, screen center = 0
            
         % get targets times
-        targets.times = targetsInfo.dotTimes;
+        targets.sysClockSecsOnsets = targetsInfo.dotTimes(1:end-1)';
+        targets.sysClockSecsOffsets = targetsInfo.dotTimes(2:end)';
         
     otherwise
         error('Unknown targetsInfoFileType')
@@ -127,8 +128,7 @@ end
 
 
 % get viewing distance and layout
-targets.viewingDistance = p.Results.viewingDistance;
-targets.layout = p.Results.targetsLayout;
+targets.viewingDistanceMm = p.Results.viewingDistance;
 
 %% add a meta field and save out the results
 
