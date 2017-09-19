@@ -121,11 +121,9 @@ p.parse(pupilFileName,glintFileName,targetsFileName,gazeDataFileName,varargin{:}
 targetData = load(targetsFileName);
 gazeCalData.targets.X = targetData.targets.X;
 gazeCalData.targets.Y = targetData.targets.Y;
-gazeCalData.targets.layout = targetData.targets.layout;
 gazeCalData.viewingDistance = targetData.targets.viewingDistance;
-if isfield(targetData.targets, 'times')
-    gazeCalData.targets.times = targetData.targets.times;
-    gazeCalData.fixDurationSec = diff(targetData.targets.times);
+if isfield(targetData.targets, 'sysClockSecsOnsets')
+    gazeCalData.meta.fixDurationSec = targetData.targets.sysClockSecsOffsets - targetData.targets.sysClockSecsOnsets ;
     targetsTimesRecorded  = true;
 else
     % we will need to estimate the duration of each fixation by the raw data
@@ -202,7 +200,7 @@ if ~p.Results.dataIsAligned
         % build targets timeseries
         target.X = [];
         target.Y = [];
-        targetDurFrames = round(gazeCalData.fixDurationSec .* p.Results.frameRate) ;
+        targetDurFrames = round(gazeCalData.meta.fixDurationSec .* p.Results.frameRate) ;
         for cc = 1 : length(targetPPX_X)
             target.X = [target.X; targetPPX_X(cc) .* ones(targetDurFrames(cc),1)];
             target.Y = [target.Y; targetPPX_Y(cc) .* ones(targetDurFrames(cc),1)];
@@ -348,7 +346,7 @@ if ~p.Results.dataIsAligned
             glint.Y = rawGlintData.glintData.Y(firstTargetOnsetIDX:lastTargetOffsetIDX);
             
             % also, record the estimated target duration in seconds
-            gazeCalData.fixDurationSec = targetDurFrames ./p.Results.frameRate;
+            gazeCalData.meta.fixDurationSec = targetDurFrames ./p.Results.frameRate;
             
         catch ME
             figure
@@ -375,7 +373,7 @@ if ~p.Results.dataIsAligned
     
 else
     % if all data is aligned, just pull the target duration in frames
-     targetDurFrames = round(gazeCalData.fixDurationSec .* p.Results.frameRate) ;
+     targetDurFrames = round(gazeCalData.meta.fixDurationSec .* p.Results.frameRate) ;
 end
 
 %% Get mean pupil and glint position for each target fixation

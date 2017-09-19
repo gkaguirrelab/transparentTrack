@@ -47,6 +47,7 @@ p.addRequired('gazeDataFileName',@ischar);
 p.addParameter('targetsInfoFileType','LiveTrack', @ischar) % alternative '3secTarget'
 p.addParameter('viewingDistanceMm', 1065, @isnumeric)
 p.addParameter('targetsPositionUnits','mmOnScreen',@ischar);
+p.addParameter('targetsLayout','3x3grid',@ischar);
 
 % Optional display and I/O parameters
 p.addParameter('verbosity','none', @ischar);
