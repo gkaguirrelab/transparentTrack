@@ -139,7 +139,7 @@ pupil.X = gazeData.gazeCalData.pupil.X;
 pupil.Y =gazeData.gazeCalData.pupil.Y;
 glint.X = gazeData.gazeCalData.glint.X; 
 glint.Y = gazeData.gazeCalData.glint.Y;
-viewingDistance = gazeData.gazeCalData.viewingDistance;
+viewingDistance = gazeData.gazeCalData.viewingDistanceMm;
 
 clear gazeData
 

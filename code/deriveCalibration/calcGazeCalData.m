@@ -122,7 +122,7 @@ p.parse(pupilFileName,glintFileName,targetsFileName,gazeDataFileName,varargin{:}
 targetData = load(targetsFileName);
 gazeCalData.targets.X = targetData.targets.X;
 gazeCalData.targets.Y = targetData.targets.Y;
-gazeCalData.viewingDistance = targetData.targets.viewingDistance;
+gazeCalData.viewingDistanceMm = targetData.targets.viewingDistanceMm;
 targetsLayout = targetData.targets.meta.targetsLayout;
 if isfield(targetData.targets, 'sysClockSecsOnsets')
     gazeCalData.meta.fixDurationSec = targetData.targets.sysClockSecsOffsets - targetData.targets.sysClockSecsOnsets ;

@@ -129,7 +129,7 @@ end
 
 
 % get viewing distance and layout
-targets.viewingDistanceMm = p.Results.viewingDistance;
+targets.viewingDistanceMm = p.Results.viewingDistanceMm;
 
 %% add a meta field and save out the results
 
