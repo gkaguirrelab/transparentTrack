@@ -122,6 +122,7 @@ targetData = load(targetsFileName);
 gazeCalData.targets.X = targetData.targets.X;
 gazeCalData.targets.Y = targetData.targets.Y;
 gazeCalData.viewingDistance = targetData.targets.viewingDistance;
+targetsLayout = targetData.targets.meta.targetsLayout;
 if isfield(targetData.targets, 'sysClockSecsOnsets')
     gazeCalData.meta.fixDurationSec = targetData.targets.sysClockSecsOffsets - targetData.targets.sysClockSecsOnsets ;
     targetsTimesRecorded  = true;
@@ -149,7 +150,7 @@ if ~p.Results.dataIsAligned
     % This conversion is necessary to cross correlate pupil and target signals
     % and align them. If the pupil and glint files are aligned in time with the
     % target presentation times, this might be skipped.
-    switch gazeCalData.targets.layout
+    switch targetsLayout
         case '3x3grid'
             % The "pseudo pixel" values are based on the assumption
             % that the central target would be "seen" on the frame in the central
@@ -415,6 +416,7 @@ gazeCalData.meta = p.Results;
 gazeCalData.meta.pupilTimeseries = pupil;
 gazeCalData.meta.glintTimeseries = glint;
 gazeCalData.meta.targetPseudoTimeseries = target;
+gazeCalData.meta.targetsLayout = targetsLayout;
 
 % save results
 save (gazeDataFileName , 'gazeCalData')
