@@ -179,25 +179,27 @@ allTTLs = find([liveTrack.Report.Digital_IO1] == 1);
 % the first liveTrack sample collected.
 if ~isempty(allTTLs)
     firstTR = allTTLs(1);
-    timebase.lt = ((timebaseTMP - firstTR) * (1/p.Results.rawVidFrameRate))'; %liveTrack timeBase in [sec]
+    liveTrackTimebase = ((timebaseTMP - firstTR) * (1/p.Results.rawVidFrameRate))'; %liveTrack timeBase in [sec]
 else
-    timebase.lt = ((timebaseTMP - 1) * (1/p.Results.rawVidFrameRate))';
+    liveTrackTimebase = ((timebaseTMP - 1) * (1/p.Results.rawVidFrameRate))';
 end
-timebaseGlintTMP = timebase.lt + delay * (1/p.Results.rawVidFrameRate); %pupilTrack timeBase in [sec]
+timebaseGlintTMP = liveTrackTimebase + delay * (1/p.Results.rawVidFrameRate); %pupilTrack timeBase in [sec]
 
-% make timebase.rawVideo as long as ptSignal
+% make timebase.timebase as long as ptSignal
 if length(timebaseGlintTMP)<length(glintSignal)
     %add missing values
     glintPadding = timebaseGlintTMP(end)+(1/p.Results.rawVidFrameRate): (1/p.Results.rawVidFrameRate) :timebaseGlintTMP(end)+((length(glintSignal)-length(timebaseGlintTMP)*(1/p.Results.rawVidFrameRate)));
-    timebase.rawVideo = [timebaseGlintTMP glintPadding];
+    timebase.timebase = [timebaseGlintTMP glintPadding];
 elseif length(timebaseGlintTMP)>length(glintSignal)
     %trim timeBase.rawVid
-    timebase.rawVideo = timebaseGlintTMP(1:length(glintSignal));
+    timebase.timebase = timebaseGlintTMP(1:length(glintSignal));
 else
-    timebase.rawVideo = timebaseGlintTMP;
+    timebase.timebase = timebaseGlintTMP;
 end
 
-
+% convert in milliseconds
+liveTrackTimebase = liveTrackTimebase * 1000;
+timebase.timebase = timebase.timebase * 1000;
 %% If so requested, plot the cross correlation results for quick review
 if p.Results.plotAlignment
     figure;
@@ -228,7 +230,8 @@ end
 % add some metafields first
 timebase.meta = p.Results;
 timebase.meta.delay = delay;
-timebase.meta.units = 'seconds';
+timebase.meta.units = 'milliseconds';
+timebase.meta.liveTrackTimebase = liveTrackTimebase;
 
 save(timebaseFileName,'timebase');
 
