@@ -1,5 +1,5 @@
-function applyGazeCalibration(pupilFileName,glintFileName,gazeCalFactorsFileName,calibratedGazeFileName,varargin)
-% applyGazeCalibration(pupilFileName,glintFileName,gazeCalFactorsFileName,calibratedGazeFileName)
+function [calibratedGaze] = applyGazeCalibration(pupilFileName,glintFileName,gazeCalFactorsFileName,varargin)
+% applyGazeCalibration(pupilFileName,glintFileName,gazeCalFactorsFileName)
 %
 % this function applies the gaze calibration parameters to the raw pupil
 % and glint data.
@@ -28,7 +28,7 @@ function applyGazeCalibration(pupilFileName,glintFileName,gazeCalFactorsFileName
 % More info about the calibration strategy can be found in the
 % calcCalibrationMatrix and calcRpc functions header.
 % 
-% OUTPUTS: (saved to file)
+% OUTPUTS:
 %   calibratedGaze: struct containing the calibrated pupil width, height
 %   and area. The calibrated units are dependent on the size calibration
 %   method used.
@@ -40,10 +40,10 @@ function applyGazeCalibration(pupilFileName,glintFileName,gazeCalFactorsFileName
 %   glintFileName - name of the mat with glint data
 %   gazeCalFactorsFileName - name of the mat file with the gaze calibration
 %       params.
-%   calibratedGazeFileName - name of the output file containing the
-%       calibrated data
 % 
 % Optional params:
+%  calibratedGazeFileName - name of the output file containing the
+%       calibrated data, if the user wishes to save it on file.
 %   calibratedUnits - units in which the calibrated data is expressed
 %       (default [mmOnScreen])
 %   whichFitToCalibrate - which of the pupil fit resulting from
@@ -67,9 +67,9 @@ p = inputParser; p.KeepUnmatched = true;
 p.addRequired('pupilFileName',@ischar);
 p.addRequired('glintFileName',@ischar);
 p.addRequired('gazeCalFactorsFileName',@ischar);
-p.addRequired('calibratedGazeFileName',@ischar);
 
 % Optional analysis parameters
+p.addParameter('calibratedGazeFileName','',@ischar);
 p.addParameter('calibratedUnits','mm', @ischar);
 p.addParameter('whichFitToCalibrate','pPosteriorMeanTransparent', @ischar);
 p.addParameter('analysisPass',1, @isnumeric);
@@ -84,7 +84,7 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % parse
-p.parse(pupilFileName, glintFileName, gazeCalFactorsFileName,calibratedGazeFileName, varargin{:})
+p.parse(pupilFileName, glintFileName, gazeCalFactorsFileName, varargin{:})
 
 %% load pupil data
 tmpData = load(pupilFileName);
@@ -146,5 +146,7 @@ calibratedGaze.viewingDist = screenCoords(:,3);
 %% save out calibrated gaze and metadata
 calibratedGaze.meta = p.Results;
 
-save(calibratedGazeFileName,'calibratedGaze');
+if ~isempty(p.Results.calibratedGazeFileName)
+    save(p.Results.calibratedGazeFileName,'calibratedGaze');
+end
 

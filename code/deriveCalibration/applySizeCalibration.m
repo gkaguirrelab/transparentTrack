@@ -1,9 +1,9 @@
-function applySizeCalibration(pupilFileName,sizeCalFactorsFileName,calibratedPupilFileName,varargin)
-% applySizeCalibration(pupilFileName,sizeFactorsFileName,calibratedPupilFileName)
+function [calibratedPupil] = applySizeCalibration(pupilFileName,sizeCalFactorsFileName,varargin)
+% applySizeCalibration(pupilFileName,sizeFactorsFileName)
 %
 % this function applies the size calibration factors to the pupil data.
 
-% OUTPUTS: (saved to file)
+% OUTPUTS
 %   calibratedPupil: struct containing the calibrated pupil width, height
 %   and area. The calibrated units are dependent on the size calibration
 %   method used.
@@ -14,10 +14,10 @@ function applySizeCalibration(pupilFileName,sizeCalFactorsFileName,calibratedPup
 %       as it results from the pupil pipeline.
 %   sizeCalFactorsFileName: name of the mat file to save the size
 %       conversion factor.
-%   calibratedPupilFileName: name of the output file containing the
-%       calibrated data
 % 
 % Optional params:
+%   calibratedPupilFileName: name of the output file containing the
+%       calibrated data, if the user wishes to save it on file.
 %   calibratedUnits: units in which the calibrated data is expressed
 %       (default [mm])
 %   whichFitToCalibrate: which of the pupil fit resulting from
@@ -38,9 +38,9 @@ p = inputParser; p.KeepUnmatched = true;
 % Required
 p.addRequired('pupilFileName',@ischar);
 p.addRequired('sizeCalFactorsFileName',@ischar);
-p.addRequired('calibratedPupilFileName',@ischar);
 
 % Optional analysis parameters
+p.addParameter('calibratedPupilFileName','',@ischar);
 p.addParameter('calibratedUnits','mm', @ischar);
 p.addParameter('whichFitToCalibrate','pPosteriorMeanTransparent', @ischar);
 
@@ -54,7 +54,7 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % parse
-p.parse(pupilFileName, sizeCalFactorsFileName,calibratedPupilFileName, varargin{:})
+p.parse(pupilFileName, sizeCalFactorsFileName, varargin{:})
 
 
 %% load pupil data
@@ -114,4 +114,6 @@ calibratedPupil.height = calPupil(:,2);
 calibratedPupil.area = calPupil(:,3);
 calibratedPupil.meta = p.Results;
 
-save(calibratedPupilFileName, 'calibratedPupil');
+if ~isempty(p.Results.calibratedPupilFileName)
+    save(p.Results.calibratedPupilFileName, 'calibratedPupil');
+end
