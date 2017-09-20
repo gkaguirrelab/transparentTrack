@@ -9,7 +9,7 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 % Next, a smoothing operation is conducted that estimates the posterior
 % parameter values, using the measured ellipse as the likelihood and a
 % non-causal, exponentially weighted window of surrounding parameter values
-% as a prior.
+% as a prior. This is an empirical Bayes approach.
 %
 % A note on ellipse parameterization: an ellipse can be specified in
 % multiple forms. We adopt the standard "explicit" form for saving the
@@ -21,21 +21,20 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 % We use this parameterization to allow us to constrain fits with regard to
 % these values (specifically area and eccentricity).
 % 
-% A note on the results coordinates: matlab's intrinsic coordinates system
+% A note on the results coordinates: Matlab's intrinsic coordinate system
 % is built so that the center of each pixel on the image cooresponds to the
-% integer indexed position on the pixel itself, that means that a 3x3
-% pixels image in intrisic coordinates will be represented in a grid with
-% xlim = [0.5 3.5] and ylim = [0.5 3.5], with the origin being the top left
-% corner of the image. This is done to facilitate the handling of images in
-% many of the built-in image processing functions. We are interested in
-% returning the results in "world units", which in our case correspond to
-% the cartesian system having the origin in the top left corner of the
-% frame and, referring to the above example, xlim = [0 3] and ylim = [0 3],
+% integer indexed position on the pixel itself. Thus a 3x3 pixel image in
+% intrisic coordinates will be represented in a grid with xlim = [0.5 3.5] 
+% and ylim = [0.5 3.5], with the origin being the top left corner of the 
+% image. This is done to facilitate the handling of images in many of the 
+% built-in image processing functions. We are interested in returning the
+% results in "world units", which in our case correspond to the Cartesian
+% system having the origin in the top left corner of the frame and, 
+% referring to the above example, xlim = [0 3] and ylim = [0 3],
 % with the assumption of using square pixels. To apply this conversion, the
 % last stage before saving the pupil data is to subtract 0.5 pixels from
 % every X transparent coordinate and add 0.5 pixel to every Y transparent
-% coordinate.
-% REF for intrinsic coordinates explaination: 
+% coordinate. REF for intrinsic coordinates explaination: 
 % https://blogs.mathworks.com/steve/2013/08/28/introduction-to-spatial-referencing/
 %
 % NOTES REGARDING USE OF PARALLEL POOL
@@ -76,7 +75,7 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %  'skipInitialPupilFit' - If set to true, the routine attempts to load a
 %    pre-existing set of initial ellipse measures (and SDs upon those
 %    params), rather than re-computing these. This allows more rapid
-%    exploration of parameter settigns that guide the Bayesian smoothing.
+%    exploration of parameter settings that guide the Bayesian smoothing.
 %  'skipPupilBayes' - If set to true, the routine exits after the initial
 %    ellipse fitting and prior to performing Bayesian smoothing 
 %
@@ -119,6 +118,8 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %     points to perform to estimate a likelihood SD. This was found in
 %     testing to not be useful, as the pupil boundary is oversampled, so
 %     this is left at a default of zero.
+%   'nAdditionalBayes' - The number of additional passes of empirical Bayes
+%     that is performed upon the posterior.
 %   'priorCenterNaN' - Controls the behavior of the weighting function for
 %     the prior for the current time point. See comments below for details.
 %   'whichLikelihoodSD' - The variance of the measured parameters for a
@@ -128,7 +129,6 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %       'pInitialFitHessianSD'
 %       'pInitialFitSplitsSD'
 %       'pInitialFitBootsSD'
-% 
 % 
 % OUTPUTS:
 %   ellipseFitData: A structure with multiple fields corresponding to the
@@ -167,6 +167,7 @@ p.addParameter('constrainEccen_x_Theta',[0.5,0.5],@isnumeric);
 p.addParameter('likelihoodErrorExponent',1.25,@isnumeric);
 p.addParameter('nSplits',8,@isnumeric);
 p.addParameter('nBoots',0,@isnumeric);
+p.addParameter('nAdditionalBayes',1,@isnumeric);
 p.addParameter('priorCenterNaN',true,@islogical);
 p.addParameter('whichLikelihoodSD','pInitialFitSplitsSD',@ischar);
 
@@ -378,8 +379,16 @@ end
 % If we are not skipping the Bayesian fitting, proceed
 if ~p.Results.skipPupilBayes
     
-    %% Conduct a Bayesian smoothing operation
-    
+    %% Conduct empirical Bayes smoothing
+
+    % There are different measures available for the SD of the
+    % parameters of the initial fit. The parameter 'whichLikelihoodSD'
+    % controls which one of these is used for the likelihood. check that
+    % the requested SD measure is available
+    if ~isfield(pupilData,p.Results.whichLikelihoodSD)
+        error('The requested estimate of fit SD is not available in ellipseFitData');
+    end
+
     % Set up the decaying exponential weighting functions. The relatively large
     % window (8 times the biggest time constant) is used to handle the case in
     % which there is a stretch of missing data, in which case the long tails of
@@ -421,13 +430,8 @@ if ~p.Results.skipPupilBayes
                 fprintf('\b.\n');
             end
         end
-        
-        % get the data frame
-        thisFrame = squeeze(perimeter.data(:,:,ii));
-        
-        % get the boundary points
-        [Yc, Xc] = ind2sub(size(thisFrame),find(thisFrame));
-        
+
+        % initialize some variables
         pPosteriorMeanTransparent=NaN(1,nEllipseParams);
         pPosteriorSDTransparent=NaN(1,nEllipseParams);
         pPriorMeanTransparent=NaN(1,nEllipseParams);
@@ -435,6 +439,12 @@ if ~p.Results.skipPupilBayes
         pLikelihoodMeanTransparent=NaN(1,nEllipseParams);
         pLikelihoodSDTransparent=NaN(1,nEllipseParams);
         fitError=NaN;
+
+        % get the data frame
+        thisFrame = squeeze(perimeter.data(:,:,ii));
+        
+        % get the boundary points
+        [Yc, Xc] = ind2sub(size(thisFrame),find(thisFrame));        
         
         % if this frame has data, and the initial ellipse fit is not nan,
         % then proceed to calculate the posterior
@@ -460,7 +470,7 @@ if ~p.Results.skipPupilBayes
                 % SD on each frame, scaled to range within the window from zero
                 % to unity. Thus, the noisiest measurement will not influence
                 % the prior.
-                precisionVector=squeeze(pupilData.pInitialFitSplitsSD(:,jj))';
+                precisionVector=squeeze(pupilData.(p.Results.whichLikelihoodSD)(:,jj))';
                 precisionVector=precisionVector.^(-1);
                 precisionVector=precisionVector(rangeLowSignal:rangeHiSignal);
                 precisionVector=precisionVector-nanmin(precisionVector);
@@ -483,15 +493,7 @@ if ~p.Results.skipPupilBayes
             
             % Retrieve the initialFit for this frame
             pLikelihoodMeanTransparent = pupilData.pInitialFitTransparent(ii,:);
-            
-            % There are different measures available for the SD of the
-            % parameters of the initial fit. The parameter 'whichLikelihoodSD'
-            % controls which one of these is used for the likelihood
-            if ~isfield(pupilData,p.Results.whichLikelihoodSD)
-                error('The requested estimate of fit SD is not available in ellipseFitData');
-            else
-                pLikelihoodSDTransparent = pupilData.(p.Results.whichLikelihoodSD)(ii,:);
-            end
+            pLikelihoodSDTransparent = pupilData.(p.Results.whichLikelihoodSD)(ii,:);
             
             % Raise the estimate of the SD from the initial fit to an
             % exponent. This is used to adjust the relative weighting of
@@ -525,20 +527,129 @@ if ~p.Results.skipPupilBayes
         
     end % loop over frames to calculate the posterior
     
-    
-    %% convert to world coordinates
-        % convert to world coordinates
-        loopVar_pPriorMeanTransparent(:,1) = loopVar_pPriorMeanTransparent(:,1) - 0.5;
-        loopVar_pPriorMeanTransparent(:,2) = loopVar_pPriorMeanTransparent(:,2) + 0.5;
-        loopVar_pPosteriorMeanTransparent(:,1) = loopVar_pPosteriorMeanTransparent(:,1) - 0.5;
-        loopVar_pPosteriorMeanTransparent(:,2) = loopVar_pPosteriorMeanTransparent(:,2) + 0.5;
-        if ~ p.Results.skipInitialPupilFit
-            pupilData.pInitialFitTransparent(:,1) = pupilData.pInitialFitTransparent(:,1) - 0.5;
-            pupilData.pInitialFitTransparent(:,2) = pupilData.pInitialFitTransparent(:,2) + 0.5;
-        end
+    % Conduct additional passes of Bayes smoothing if requested
+    if p.Results.nAdditionalBayes > 0
+        for pp = 1:p.Results.nAdditionalBayes
+            loopVar_pLikelihoodMeanFromLastLoop = loopVar_pPosteriorMeanTransparent;
+            loopVar_pLikelihoodSDFromLastLoop = loopVar_pPosteriorSDTransparent;
+            % update progress
+            if strcmp(p.Results.verbosity,'full')
+                fprintf(['Additional Bayes pass ' num2str(pp) '\n']);
+            end
+            parfor (ii = 1:nFrames, nWorkers)
+                
+                % update progress
+                if strcmp(p.Results.verbosity,'full')
+                    if mod(ii,round(nFrames/50))==0
+                        fprintf('\b.\n');
+                    end
+                end % check for verbosity
+                
+                % initialize some variables
+                pPosteriorMeanTransparent=NaN(1,nEllipseParams);
+                pPosteriorSDTransparent=NaN(1,nEllipseParams);
+                pPriorMeanTransparent=NaN(1,nEllipseParams);
+                pPriorSDTransparent=NaN(1,nEllipseParams);
+                fitError=NaN;
+                
+                % get the data frame
+                thisFrame = squeeze(perimeter.data(:,:,ii));
+                
+                % get the boundary points
+                [Yc, Xc] = ind2sub(size(thisFrame),find(thisFrame));
+                
+                % if this frame has data, and the initial ellipse fit is not nan,
+                % then proceed to calculate the posterior
+                if ~isempty(Xc) &&  ~isempty(Yc) && sum(isnan(pupilData.pInitialFitTransparent(ii,:)))==0
+                    
+                    % Calculate the prior. The prior mean is given by the surrounding
+                    % fit values, weighted by a decaying exponential in time and the
+                    % inverse of the standard deviation of each measure. The prior
+                    % standard deviation is weighted only by time.
+                    
+                    % A bit of fussing with the range here to handle the start and the
+                    % end of the data vector
+                    rangeLowSignal=max([ii-window,1]);
+                    rangeHiSignal=min([ii+window,nFrames]);
+                    restrictLowWindow= max([(ii-window-1)*-1,0]);
+                    restrictHiWindow = max([(nFrames-ii-window)*-1,0]);
+                    
+                    % loop over the parameters of the ellipse
+                    for jj=1:nEllipseParams
+                        % Get the dataVector, restricted to the window range
+                        dataVector=squeeze(loopVar_pLikelihoodMeanFromLastLoop(:,jj))';
+                        dataVector=dataVector(rangeLowSignal:rangeHiSignal);
+                        
+                        % Build the precisionVector as the inverse of the measurement
+                        % SD on each frame, scaled to range within the window from zero
+                        % to unity. Thus, the noisiest measurement will not influence
+                        % the prior.
+                        precisionVector=squeeze(loopVar_pLikelihoodSDFromLastLoop(:,jj))';
+                        precisionVector=precisionVector.^(-1);
+                        precisionVector=precisionVector(rangeLowSignal:rangeHiSignal);
+                        precisionVector=precisionVector-nanmin(precisionVector);
+                        precisionVector=precisionVector/nanmax(precisionVector);
+                        
+                        % The temporal weight vector is simply the exponential weights,
+                        % restricted to the available data widow
+                        temporalWeightVector = ...
+                            exponentialWeights(jj,1+restrictLowWindow:end-restrictHiWindow);
+                        
+                        % Combine the precision and time weights, and calculate the
+                        % prior mean
+                        combinedWeightVector=precisionVector.*temporalWeightVector;
+                        pPriorMeanTransparent(jj) = nansum(dataVector.*combinedWeightVector,2)./ ...
+                            nansum(combinedWeightVector(~isnan(dataVector)),2);
+                        
+                        % Obtain the standard deviation of the prior
+                        pPriorSDTransparent(jj) = nanstd(dataVector,temporalWeightVector);
+                    end % loop over ellipse params
+                    
+                    % The likelihood for this pass is the posterior from
+                    % the last loop
+                    pLikelihoodMeanTransparent = loopVar_pLikelihoodMeanFromLastLoop(ii,:);
+                    pLikelihoodSDTransparent = loopVar_pLikelihoodSDFromLastLoop(ii,:);
+                    
+                    % Calculate the posterior values for the pupil fits, given the
+                    % likelihood and the prior
+                    pPosteriorMeanTransparent = pPriorSDTransparent.^2.*pLikelihoodMeanTransparent./(pPriorSDTransparent.^2+pLikelihoodSDTransparent.^2) + ...
+                        pLikelihoodSDTransparent.^2.*pPriorMeanTransparent./(pPriorSDTransparent.^2+pLikelihoodSDTransparent.^2);
+                    
+                    pPosteriorSDTransparent = sqrt((pPriorSDTransparent.^2.*pLikelihoodSDTransparent.^2) ./ ...
+                        (pPriorSDTransparent.^2+pLikelihoodSDTransparent.^2));
+                    
+                    % refit the data points to deal with any NaNs in the posterior and
+                    % to obtain a measure of the fit error
+                    lb_pin = p.Results.ellipseTransparentLB;
+                    ub_pin = p.Results.ellipseTransparentUB;
+                    lb_pin(~isnan(pPosteriorMeanTransparent))=pPosteriorMeanTransparent(~isnan(pPosteriorMeanTransparent));
+                    ub_pin(~isnan(pPosteriorMeanTransparent))=pPosteriorMeanTransparent(~isnan(pPosteriorMeanTransparent));
+                    [pPosteriorMeanTransparent, ~, fitError] = constrainedEllipseFit(Xc,Yc, lb_pin, ub_pin, nonlinconst);
+                   
+                end % not an empty frame
+                
+                % store results
+                loopVar_pPosteriorMeanTransparent(ii,:) = pPosteriorMeanTransparent';
+                loopVar_pPosteriorSDTransparent(ii,:) = pPosteriorSDTransparent';
+                loopVar_finalFitError(ii) = fitError;
+                
+            end % parfor loop over frames
+        end % loop over additional Bayes passes
+    end % check if we are doing additional Bayes passes
+
     
     %% Clean up and save the fit results
-    
+
+    % convert to world coordinates
+    loopVar_pPriorMeanTransparent(:,1) = loopVar_pPriorMeanTransparent(:,1) - 0.5;
+    loopVar_pPriorMeanTransparent(:,2) = loopVar_pPriorMeanTransparent(:,2) + 0.5;
+    loopVar_pPosteriorMeanTransparent(:,1) = loopVar_pPosteriorMeanTransparent(:,1) - 0.5;
+    loopVar_pPosteriorMeanTransparent(:,2) = loopVar_pPosteriorMeanTransparent(:,2) + 0.5;
+    if ~ p.Results.skipInitialPupilFit
+        pupilData.pInitialFitTransparent(:,1) = pupilData.pInitialFitTransparent(:,1) - 0.5;
+        pupilData.pInitialFitTransparent(:,2) = pupilData.pInitialFitTransparent(:,2) + 0.5;
+    end
+
     % gather the loop vars into the ellipse structure
     pupilData.pPriorMeanTransparent=loopVar_pPriorMeanTransparent;
     pupilData.pPriorSDTransparent=loopVar_pPriorSDTransparent;
