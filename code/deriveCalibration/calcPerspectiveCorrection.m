@@ -54,11 +54,16 @@ function perspectiveCorrection = calcPerspectiveCorrection(targets,pupil,glint,v
 %       [ perspectiveCorrectedGaze ] = 1/Z * [(Px -Gx); (Py - Gy); Z; Z]
 % 
 
+
+%% Pull out variables
+targets = [targets.X, targets.Y];
+pupil = [pupil.X, pupil.Y];
+glint = [glint.X, glint.Y];
 %% Find the corner target furthest from the center
-[~,I] = max((abs(targets.X + targets.Y)));
-cT = [targets.X(I) targets.Y(I)];
-cP = [pupil.X(I) pupil.Y(I)];
-cG = [glint.X(I) glint.Y(I)];
+[~,I] = max(nansum(abs(targets),2));
+cT = targets(I, :);
+cP = pupil(I, :);
+cG = glint(I, :);
 %% Calculate the perspective correction factor
 perspectiveCorrection = (sqrt((cT(1))^2 + (cT(2))^2 + viewingDistance^2) ...
     / sqrt((cT(1))^2 + (cT(2))^2)) * sqrt((cP(1) - cG(1))^2 + (cP(2) - cG(2))^2);
