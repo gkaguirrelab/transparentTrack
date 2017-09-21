@@ -11,6 +11,11 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 % non-causal, exponentially weighted window of surrounding parameter values
 % as a prior. This is an empirical Bayes approach.
 %
+% Optionally, additional iterations of empirical Bayes smoothing can be
+% conducted. Default settings cause the temporal domain of the smoothing to
+% become shorter and shorter, preventing the iterative process from
+% converging on a flat line.
+%
 % A note on ellipse parameterization: an ellipse can be specified in
 % multiple forms. We adopt the standard "explicit" form for saving the
 % ellipse fit results to a file. Within the context of this routine,
@@ -120,6 +125,8 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %     this is left at a default of zero.
 %   'nAdditionalBayes' - The number of additional passes of empirical Bayes
 %     that is performed upon the posterior.
+%   'shrinkTauParamFactor' - The factor by which the exponentialTauParams
+%     are reduced on each iteration of the additional Bayes smoothing.
 %   'priorCenterNaN' - Controls the behavior of the weighting function for
 %     the prior for the current time point. See comments below for details.
 %   'whichLikelihoodSD' - The variance of the measured parameters for a
@@ -168,6 +175,7 @@ p.addParameter('likelihoodErrorExponent',1.25,@isnumeric);
 p.addParameter('nSplits',8,@isnumeric);
 p.addParameter('nBoots',0,@isnumeric);
 p.addParameter('nAdditionalBayes',1,@isnumeric);
+p.addParameter('shrinkTauParamFactor',2,@isnumeric);
 p.addParameter('priorCenterNaN',true,@islogical);
 p.addParameter('whichLikelihoodSD','pInitialFitSplitsSD',@ischar);
 
@@ -527,15 +535,45 @@ if ~p.Results.skipPupilBayes
         
     end % loop over frames to calculate the posterior
     
+    
     % Conduct additional passes of Bayes smoothing if requested
     if p.Results.nAdditionalBayes > 0
         for pp = 1:p.Results.nAdditionalBayes
+            
+            % Copy the posterior from the last loop into the likelihood for
+            % this loop
             loopVar_pLikelihoodMeanFromLastLoop = loopVar_pPosteriorMeanTransparent;
             loopVar_pLikelihoodSDFromLastLoop = loopVar_pPosteriorSDTransparent;
+ 
+            % Build a new set of exponential decay weights, with the tau
+            % parameters reduced as the loops progress
+            thisLoopTauParams = p.Results.exponentialTauParams ./ (p.Results.shrinkTauParamFactor.^pp);
+            window=max(thisLoopTauParams)*8;
+            if p.Results.priorCenterNaN
+                windowSupport=1:1:window;
+            else
+                windowSupport=1:1:window+1;
+            end
+            for jj=1:nEllipseParams
+                baseExpFunc=exp(-1/thisLoopTauParams(jj)*windowSupport);
+                
+                % The weighting function is symmetric about the current time point. A
+                % parameter flag switches the treatment of the current time point,
+                % either excluding it and weighting most heavily the immediately
+                % adjacent frames, or giving the current time point a weight of unity.
+                if p.Results.priorCenterNaN
+                    exponentialWeights(jj,:)=[fliplr(baseExpFunc) NaN baseExpFunc];
+                else
+                    exponentialWeights(jj,1:window+1)=fliplr(baseExpFunc);
+                    exponentialWeights(jj,window+1:window*2+1)=baseExpFunc;
+                end
+            end
+
             % update progress
             if strcmp(p.Results.verbosity,'full')
-                fprintf(['Additional Bayes pass ' num2str(pp) '\n']);
+                fprintf(['Additional Bayes pass ' num2str(pp) '\n\n']);
             end
+
             parfor (ii = 1:nFrames, nWorkers)
                 
                 % update progress
