@@ -401,7 +401,7 @@ if ~p.Results.skipPupilBayes
     % window (8 times the biggest time constant) is used to handle the case in
     % which there is a stretch of missing data, in which case the long tails of
     % the exponential can provide the prior.
-    window=max(p.Results.exponentialTauParams)*8;
+    window=ceil(max([max(p.Results.exponentialTauParams)*8,8]));
     if p.Results.priorCenterNaN
         windowSupport=1:1:window;
     else
@@ -548,7 +548,7 @@ if ~p.Results.skipPupilBayes
             % Build a new set of exponential decay weights, with the tau
             % parameters reduced as the loops progress
             thisLoopTauParams = p.Results.exponentialTauParams ./ (p.Results.shrinkTauParamFactor.^pp);
-            window=max(thisLoopTauParams)*8;
+            window=ceil(max([max(thisLoopTauParams)*8,8]));
             if p.Results.priorCenterNaN
                 windowSupport=1:1:window;
             else
