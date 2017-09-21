@@ -411,6 +411,11 @@ for ct = 1 :length(gazeCalData.targets.X)
     gazeCalData.glint.Y(ct) = movMedianG.Y(minPstdIDX);
 end
 
+% format pupil and glint correctly
+gazeCalData.pupil.X =  gazeCalData.pupil.X';
+gazeCalData.pupil.Y =  gazeCalData.pupil.Y';
+gazeCalData.glint.X =  gazeCalData.glint.X';
+gazeCalData.glint.Y =  gazeCalData.glint.Y';
 
 %%  add meta fields and save results
 gazeCalData.meta = p.Results;
