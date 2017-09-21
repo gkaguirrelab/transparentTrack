@@ -1,5 +1,5 @@
 function calcSizeCalFactors(sizeDataFilesNames, sizeCalFactorsFileName, varargin)
-% calcSizeFactors(sizeDataFilesNames,sizeCalFactorsFileName)
+% calcSizeCalFactors(sizeDataFilesNames,sizeCalFactorsFileName)
 %
 % This routine computes the following size conversion factors:
 %   horizontalPxPerMm
