@@ -43,6 +43,7 @@ p.addParameter('rawVideoSuffix', {'_raw.mov' '.mov'}, @iscell);
 p.addParameter('videoTypeChoice', 'LiveTrackWithVTOP_eye', @ischar);
 p.addParameter('customFunCalls', {}, @iscell);
 p.addParameter('skipStage', {}, @iscell);
+p.addParameter('catchErrors', true, @islogical);
 
 % parse
 p.parse(pathParams, varargin{:})
@@ -156,33 +157,40 @@ funNames = cellfun(@(x) strtok(x,'('),funCalls,'UniformOutput',false);
 % Loop through the function calls
 for ff = 1:length(funCalls)
     if ~any(strcmp(p.Results.skipStage,funNames{ff}))
-        % intialize while control
-        success = 0;
-        attempts = 1; % we will attempt to execute the instruction 3 times. If it does not work, the code will eventually break.
-        while ~success
-            try
-                eval(funCalls{ff});
-                success = 1;
-            catch ME
-                warning ('There has been an error during execution. Cleaning matlabprefs.mat and trying again - attempt %d.',attempts)
-                cleanupMatlabPrefs;
-                success = 0;
-                attempts = attempts +1;
-                if attempts > 3
-                    rethrow(ME)
+
+        % check if we are going to catch or throw errors
+        if p.Results.catchErrors
+            % intialize while control
+            success = 0;
+            attempts = 1; % we will attempt to execute the instruction 3 times. If it does not work, the code will eventually break.
+            while ~success
+                try
+                    eval(funCalls{ff});
+                    success = 1;
+                catch ME
+                    warning ('There has been an error during execution. Cleaning matlabprefs.mat and trying again - attempt %d.',attempts)
+                    cleanupMatlabPrefs;
+                    success = 0;
+                    attempts = attempts +1;
+                    if attempts > 3
+                        rethrow(ME)
+                    end
                 end
             end
-        end
-        % clear while and if control
-        clear success
-        clear attempts
+            % clear while and if control
+            clear success
+            clear attempts
+        else % we will throw errors
+            eval(funCalls{ff});
+        end % if catchErrors
+
         % clear all files (hopefully prevents 'too many files open' error)
         fclose all ;
         if strcmp(p.Results.lastStage,funNames{ff})
             return
         end
-    end
-end
+    end % if we aren't skipping this stage
+end % loop over function calls
 
 end % main function
 
