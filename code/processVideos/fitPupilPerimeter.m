@@ -361,11 +361,10 @@ else
         end % try catch
     end % loop over frames
     
-    % convert to world coordinates  (if this is the last stage)
-    if p.Results.skipPupilBayes
-        loopVar_pInitialFitTransparent(:,1) = loopVar_pInitialFitTransparent(:,1) - 0.5;
-        loopVar_pInitialFitTransparent(:,2) = loopVar_pInitialFitTransparent(:,2) + 0.5;
-    end
+    % convert to world coordinates
+    loopVar_pInitialFitTransparent(:,1) = loopVar_pInitialFitTransparent(:,1) - 0.5;
+    loopVar_pInitialFitTransparent(:,2) = loopVar_pInitialFitTransparent(:,2) + 0.5;
+
     % gather the loop vars into the ellipse structure    
     pupilData.pInitialFitTransparent = loopVar_pInitialFitTransparent;
     pupilData.pInitialFitHessianSD = loopVar_pInitialFitHessianSD;
@@ -547,6 +546,7 @@ if ~p.Results.skipPupilBayes
  
             % Build a new set of exponential decay weights, with the tau
             % parameters reduced as the loops progress
+            clear exponentialWeights
             thisLoopTauParams = p.Results.exponentialTauParams ./ (p.Results.shrinkTauParamFactor.^pp);
             window=ceil(max([max(thisLoopTauParams)*8,8]));
             if p.Results.priorCenterNaN
@@ -678,16 +678,6 @@ if ~p.Results.skipPupilBayes
     
     %% Clean up and save the fit results
 
-    % convert to world coordinates
-    loopVar_pPriorMeanTransparent(:,1) = loopVar_pPriorMeanTransparent(:,1) - 0.5;
-    loopVar_pPriorMeanTransparent(:,2) = loopVar_pPriorMeanTransparent(:,2) + 0.5;
-    loopVar_pPosteriorMeanTransparent(:,1) = loopVar_pPosteriorMeanTransparent(:,1) - 0.5;
-    loopVar_pPosteriorMeanTransparent(:,2) = loopVar_pPosteriorMeanTransparent(:,2) + 0.5;
-    if ~ p.Results.skipInitialPupilFit
-        pupilData.pInitialFitTransparent(:,1) = pupilData.pInitialFitTransparent(:,1) - 0.5;
-        pupilData.pInitialFitTransparent(:,2) = pupilData.pInitialFitTransparent(:,2) + 0.5;
-    end
-
     % gather the loop vars into the ellipse structure
     pupilData.pPriorMeanTransparent=loopVar_pPriorMeanTransparent;
     pupilData.pPriorSDTransparent=loopVar_pPriorSDTransparent;
@@ -697,7 +687,7 @@ if ~p.Results.skipPupilBayes
     
     % add a meta field with analysis details
     pupilData.meta = p.Results;
-    pupilData.meta.coordinatesSystem = 'worldCoordinates';
+    pupilData.meta.coordinateSystem = 'worldCoordinates';
     
     % save the ellipse fit results if requested
     if ~isempty(p.Results.pupilFileName)
