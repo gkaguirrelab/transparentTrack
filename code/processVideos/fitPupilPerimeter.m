@@ -174,8 +174,8 @@ p.addParameter('constrainEccen_x_Theta',[0.5,0.5],@isnumeric);
 p.addParameter('likelihoodErrorExponent',1.25,@isnumeric);
 p.addParameter('nSplits',8,@isnumeric);
 p.addParameter('nBoots',0,@isnumeric);
-p.addParameter('nAdditionalBayes',1,@isnumeric);
-p.addParameter('shrinkTauParamFactor',2,@isnumeric);
+p.addParameter('nAdditionalBayes',0,@isnumeric);
+p.addParameter('shrinkTauParamFactor',4,@isnumeric);
 p.addParameter('priorCenterNaN',true,@islogical);
 p.addParameter('whichLikelihoodSD','pInitialFitSplitsSD',@ischar);
 
