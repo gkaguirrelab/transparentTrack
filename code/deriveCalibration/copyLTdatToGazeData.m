@@ -48,7 +48,7 @@ p.addRequired('LTdatFileName',@ischar);
 p.addRequired('gazeDataFileName',@ischar);
 
 % Optional analysis parameters
-p.addParameter('viewingDistance', 1065, @isnumeric)
+p.addParameter('viewingDistanceMm', 1065, @isnumeric)
 p.addParameter('units', 'mm', @ischar)
 
 % Optional display and I/O parameters
@@ -83,7 +83,7 @@ gazeCalData.glint.X = LTdata.glint(:,1);
 gazeCalData.glint.Y = LTdata.glint(:,2);
 
 % add viewing distance
-gazeCalData.viewingDistance = p.Results.viewingDistance;
+gazeCalData.viewingDistanceMm = p.Results.viewingDistanceMm;
 
 % add metadata
 gazeCalData.meta = p.Results;

@@ -1,6 +1,6 @@
-function deriveTimebaseFromLTData(glintFileName,ltReportFileName,timebaseFileName,varargin)
+function [timebase] = deriveTimebaseFromLTData(glintFileName,ltReportFileName,varargin)
 
-% deriveTimebaseFromLTData(glintFileName,ltReportFilename,timebaseFilename
+% deriveTimebaseFromLTData(glintFileName,ltReportFilename)
 % 
 % this function is to be used with the LiveTrack+VTop setup and assignes a
 % timebase to the raw data by aligning the tracked glint position obtained
@@ -15,7 +15,7 @@ function deriveTimebaseFromLTData(glintFileName,ltReportFileName,timebaseFileNam
 % Note that if no TR information is found in the LiveTrack Report file
 % (i.e. for anatomical runs), the alignment is not possible.
 % 
-% Output (saved to file)
+% Output
 %	timebase : structure with fields that contain the rawVideo and
 %	livetrack timebase information in seconds, and a meta field.
 %
@@ -23,10 +23,10 @@ function deriveTimebaseFromLTData(glintFileName,ltReportFileName,timebaseFileNam
 %   glintFileName - full path to the matFile with the glint tracking
 %       results.
 %   ltReportFileName - full path to the livetrack generated "report file".
-%   timebaseFileName - full path to the file that will contain the timebase
-%       information.
 %
 % Options (analysis)
+%   timebaseFileName - full path to the file that will contain the timebase
+%       information.
 %   maxLag - max lag allowed between the two glint timeseries
 %   numTRs -  number of expeted TR for this run. This is used only for
 %       sanity check purposes. In principle, just a single TTL syncing
@@ -55,9 +55,9 @@ p = inputParser; p.KeepUnmatched = true;
 % Required
 p.addRequired('glintFileName',@ischar);
 p.addRequired('ltReportFileName',@ischar);
-p.addRequired('timebaseFileName',@ischar);
 
 % Optional analysis parameters
+p.addParameter('timebaseFileName', '', @ischar);
 p.addParameter('maxLag',500, @isnumeric);
 p.addParameter('numTRs',420, @isnumerical);
 p.addParameter('rawVidFrameRate',60, @isnumeric);
@@ -75,7 +75,7 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % parse
-p.parse(glintFileName,ltReportFileName,timebaseFileName, varargin{:})
+p.parse(glintFileName,ltReportFileName, varargin{:})
 
 
 %% load tracking data
@@ -233,7 +233,9 @@ timebase.meta.delay = delay;
 timebase.meta.units = 'milliseconds';
 timebase.meta.liveTrackTimebase = liveTrackTimebase;
 
-save(timebaseFileName,'timebase');
+if ~isempty(p.Results.timebaseFileName)
+    save(p.Results.timebaseFileName,'timebase');
+end
 
 
 end % main function

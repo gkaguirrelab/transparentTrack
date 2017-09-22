@@ -32,14 +32,16 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 % intrisic coordinates will be represented in a grid with xlim = [0.5 3.5] 
 % and ylim = [0.5 3.5], with the origin being the top left corner of the 
 % image. This is done to facilitate the handling of images in many of the 
-% built-in image processing functions. We are interested in returning the
-% results in "world units", which in our case correspond to the Cartesian
-% system having the origin in the top left corner of the frame and, 
-% referring to the above example, xlim = [0 3] and ylim = [0 3],
-% with the assumption of using square pixels. To apply this conversion, the
-% last stage before saving the pupil data is to subtract 0.5 pixels from
-% every X transparent coordinate and add 0.5 pixel to every Y transparent
-% coordinate. REF for intrinsic coordinates explaination: 
+% built-in image processing functions. This does not constitute
+% an issue for the following steps of the routine, as long as all pupil
+% data coordinate system/units are kept consistent. If interested in
+% returning the results in "world units", i.e.
+% the cartesian system having the origin in the top left corner of the
+% frame and, referring to the above example, xlim = [0 3] and ylim = [0 3],
+% the operation to do is to  subtract 0.5 pixels from each X and each Y
+% transparent coordinate as they are returned from this function.
+% REF for intrinsic coordinates explaination: 
+
 % https://blogs.mathworks.com/steve/2013/08/28/introduction-to-spatial-referencing/
 %
 % NOTES REGARDING USE OF PARALLEL POOL
@@ -361,10 +363,6 @@ else
         end % try catch
     end % loop over frames
     
-    % convert to world coordinates
-    loopVar_pInitialFitTransparent(:,1) = loopVar_pInitialFitTransparent(:,1) - 0.5;
-    loopVar_pInitialFitTransparent(:,2) = loopVar_pInitialFitTransparent(:,2) + 0.5;
-
     % gather the loop vars into the ellipse structure    
     pupilData.pInitialFitTransparent = loopVar_pInitialFitTransparent;
     pupilData.pInitialFitHessianSD = loopVar_pInitialFitHessianSD;
@@ -534,7 +532,6 @@ if ~p.Results.skipPupilBayes
         
     end % loop over frames to calculate the posterior
     
-    
     % Conduct additional passes of Bayes smoothing if requested
     if p.Results.nAdditionalBayes > 0
         for pp = 1:p.Results.nAdditionalBayes
@@ -675,7 +672,7 @@ if ~p.Results.skipPupilBayes
         end % loop over additional Bayes passes
     end % check if we are doing additional Bayes passes
 
-    
+
     %% Clean up and save the fit results
 
     % gather the loop vars into the ellipse structure
@@ -687,7 +684,8 @@ if ~p.Results.skipPupilBayes
     
     % add a meta field with analysis details
     pupilData.meta = p.Results;
-    pupilData.meta.coordinateSystem = 'worldCoordinates';
+    pupilData.meta.coordinateSystem = 'intrinsicCoordinates(pixels)';
+
     
     % save the ellipse fit results if requested
     if ~isempty(p.Results.pupilFileName)
