@@ -280,7 +280,7 @@ glintData.Y = glintData_Y;
 glintData.meta = p.Results;
 glintData.meta.centroidsByFrame.X = centroidsByFrame_X;
 glintData.meta.centroidsByFrame.Y = centroidsByFrame_Y;
-glintData.meta.coordinatesSystem = 'worldCoordinates';
+glintData.meta.coordinateSystem = 'worldCoordinates';
 
 
 % save out a mat file with the glint tracking data
