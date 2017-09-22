@@ -1,5 +1,5 @@
-function LiveTrackAnalysisIToolboxLocalHook
-% LiveTrackfMRIToolboxLocalHook
+function transparentTrackLocalHook
+% transparentTrackLocalHook
 %
 % For use with the ToolboxToolbox.  Copy this into your
 % ToolboxToolbox localToolboxHooks directory (by defalut,
@@ -13,7 +13,7 @@ function LiveTrackAnalysisIToolboxLocalHook
 % to match what is true on your computer.
 
 %% Say hello
-fprintf('* Running LiveTrackAnalysisIToolboxLocalHook...');
+fprintf('* Running transparentTrackLocalHook...');
 
 %% Set preferences
 
