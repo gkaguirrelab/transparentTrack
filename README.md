@@ -1,2 +1,2 @@
-# LiveTrackAnalysisToolbox
-Toolbox to analyze video data acquired with the LiveTrack + V.Top hardware system
+# transparentTrack
+code to analyze pupil size and eye position in IR video
