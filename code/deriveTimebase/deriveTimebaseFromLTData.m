@@ -16,8 +16,8 @@ function [timebase] = deriveTimebaseFromLTData(glintFileName,ltReportFileName,va
 % (i.e. for anatomical runs), the alignment is not possible.
 % 
 % Output
-%	timebase : structure with fields that contain the rawVideo and
-%	livetrack timebase information in seconds, and a meta field.
+%	timebase : structure with fields that contain the timebase information
+%	in milliseconds, and a meta field.
 %
 % Input (required)
 %   glintFileName - full path to the matFile with the glint tracking
