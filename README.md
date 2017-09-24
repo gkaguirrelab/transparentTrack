@@ -1,2 +1,2 @@
 # transparentTrack
-code to analyze pupil size and eye position in IR video
+code to analyze pupil size and gaze location in IR video of the eye
