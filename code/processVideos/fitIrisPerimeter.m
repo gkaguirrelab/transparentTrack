@@ -66,7 +66,7 @@ p.addParameter('irisTransparentUB',[240,320,30000,0.3, 0.5*pi],@isnumeric);
 p.addParameter('nFrames',Inf,@isnumeric);
 p.addParameter('useParallel',false,@islogical);
 p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('tbtbRepoName','LiveTrackAnalysisToolbox',@ischar);
+p.addParameter('tbtbRepoName','transparentTrack',@ischar);
 
 % Environment parameters
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
