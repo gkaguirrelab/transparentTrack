@@ -158,7 +158,7 @@ p.addParameter('verbosity','none',@ischar);
 p.addParameter('nFrames',Inf,@isnumeric);
 p.addParameter('useParallel',false,@islogical);
 p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('tbtbRepoName','LiveTrackAnalysisToolbox',@ischar);
+p.addParameter('tbtbRepoName','transparentTrack',@ischar);
 p.addParameter('skipInitialPupilFit',false,@islogical);
 p.addParameter('skipPupilBayes',false,@islogical);
 

@@ -13,7 +13,7 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 % glint is at a non-plausible location when compared to the average glint
 % location, are marked as blinks. Frames that are adjacent to blinks may
 % also be excluded.
-% 2a) Glint patching. In case the glint is sitting right on the pupil 
+% 2a) Glint patching. In case the glint is sitting right on the pupil
 % boundary, the pupil perimeter might be distorted. This step will apply a
 % black circular patch on the glint location to prevent that. This will
 % have no effect if the glint location is well within (or outside) the
@@ -40,15 +40,15 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 % Input (required)
 %	controlFileName - full path to the control file (including csv extension)
 %   perimeterFileName -
-%   glintFileName - 
+%   glintFileName -
 %
 % Options (analysis)
 %   glintZoneRadius - the radius (in pixel) of the circular zone in which
 %   the glint is allowed to be on the frame. Any candiate glint beyond this
 %   Radius will be disregarded.
 %   glintZoneCenter - [X Y] location of the glint zone center. If not
-%       specified, the glint zone Center will be the median value of the 
-%       candidate glint locations throughout the run. 
+%       specified, the glint zone Center will be the median value of the
+%       candidate glint locations throughout the run.
 %	extendBlinkWindow - a two element vector that defines the number of
 %       additional frames flagged as a blink before and after a continuous
 %       block blinks
@@ -119,7 +119,6 @@ p.addParameter('candidateThetas',pi/2:pi/16:pi,@isnumeric);
 p.addParameter('radiusDivisions',5,@isnumeric);
 p.addParameter('minRadiusProportion',0,@isnumeric);
 
-
 % Optional display params
 p.addParameter('verbosity','none',@ischar);
 
@@ -128,7 +127,7 @@ p.addParameter('overwriteControlFile',false,@islogical);
 p.addParameter('nFrames',Inf,@isnumeric);
 p.addParameter('useParallel',true,@islogical);
 p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('tbtbRepoName','LiveTrackAnalysisToolbox',@ischar);
+p.addParameter('tbtbRepoName','transparentTrack',@ischar);
 
 % Environment parameters
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
@@ -229,29 +228,29 @@ blinkFrames = sort([blinkFrames; tooFarGlints]);
 % extend the frames identified as blinks to before and after blocks of
 % blink frames
 if ~isempty(blinkFrames)
-    tmp=diff(blinkFrames); 
+    tmp=diff(blinkFrames);
     blinkBoundaryIdx=find(tmp~=1);
     if ~isempty(blinkBoundaryIdx) && p.Results.extendBlinkWindow(1)>0
-      padBlinksBefore=[];
-      for pp=1:p.Results.extendBlinkWindow(1)
-          candidateBlinkFrames=blinkFrames(blinkBoundaryIdx+1)-pp;
-          inBoundFrames=logical((candidateBlinkFrames>=1) .* (candidateBlinkFrames<=nFrames));
-          if ~isempty(inBoundFrames)
-              padBlinksBefore=[padBlinksBefore;candidateBlinkFrames(inBoundFrames)];
-          end
-      end
-    blinkFrames=unique(sort([blinkFrames;padBlinksBefore]));    
+        padBlinksBefore=[];
+        for pp=1:p.Results.extendBlinkWindow(1)
+            candidateBlinkFrames=blinkFrames(blinkBoundaryIdx+1)-pp;
+            inBoundFrames=logical((candidateBlinkFrames>=1) .* (candidateBlinkFrames<=nFrames));
+            if ~isempty(inBoundFrames)
+                padBlinksBefore=[padBlinksBefore;candidateBlinkFrames(inBoundFrames)];
+            end
+        end
+        blinkFrames=unique(sort([blinkFrames;padBlinksBefore]));
     end
     if ~isempty(blinkBoundaryIdx) && p.Results.extendBlinkWindow(2)>0
-      padBlinksAfter=[];
-      for pp=1:p.Results.extendBlinkWindow(2)
-          candidateBlinkFrames=blinkFrames(blinkBoundaryIdx)+pp;
-          inBoundFrames=logical((candidateBlinkFrames>=1) .* (candidateBlinkFrames<=nFrames));
-          if ~isempty(inBoundFrames)
-              padBlinksAfter=[padBlinksAfter;candidateBlinkFrames(inBoundFrames)];
-          end
-      end
-    blinkFrames=unique(sort([blinkFrames;padBlinksAfter]));    
+        padBlinksAfter=[];
+        for pp=1:p.Results.extendBlinkWindow(2)
+            candidateBlinkFrames=blinkFrames(blinkBoundaryIdx)+pp;
+            inBoundFrames=logical((candidateBlinkFrames>=1) .* (candidateBlinkFrames<=nFrames));
+            if ~isempty(inBoundFrames)
+                padBlinksAfter=[padBlinksAfter;candidateBlinkFrames(inBoundFrames)];
+            end
+        end
+        blinkFrames=unique(sort([blinkFrames;padBlinksAfter]));
     end
 end
 
@@ -380,17 +379,17 @@ parfor (ii = 1:nFrames, nWorkers)
                     candidateRadius=candidateRadius - stepReducer;
                 end
             end % search over cuts
-
+            
         catch
             % If there is a fitting error, tag this frame error and
             % continue with the parfor loop
-             frameErrors(ii)=1;
-             continue
+            frameErrors(ii)=1;
+            continue
         end % try-catch
         
         % If, after finishing the search, the bestFitOnThisSearch is still
-        % larger than the error threshold, or there are too few pixels that 
-        % compose the boundary in this frame, then tag this frame bad. 
+        % larger than the error threshold, or there are too few pixels that
+        % compose the boundary in this frame, then tag this frame bad.
         if bestFitOnThisSearch > p.Results.cutErrorThreshold || ...
                 numberPerimeterPixels < p.Results.pixelBoundaryThreshold
             frameBads(ii)=1;
@@ -422,8 +421,8 @@ end
 % write out glint patches
 glintPatchFrames=find(~isnan(glintPatchX));
 if ~isempty(glintPatchFrames)
-    for cc = 1 : length(glintPatchFrames)
-        frameIdx=glintPatchFrames(cc);
+    for kk = 1 : length(glintPatchFrames)
+        frameIdx=glintPatchFrames(kk);
         instruction = [num2str(frameIdx) ',' 'glintPatch' ',' num2str(glintPatchX(frameIdx)) ',' num2str(glintPatchY(frameIdx)) ',' num2str(glintPatchRadius(frameIdx))];
         fprintf(fid,'%s\n',instruction);
         clear instruction
@@ -433,8 +432,8 @@ end
 % write out cuts
 cutFrames=find(~isnan(frameThetas));
 if ~isempty(cutFrames)
-    for cc = 1 : length(cutFrames)
-        frameIdx=cutFrames(cc);
+    for kk = 1 : length(cutFrames)
+        frameIdx=cutFrames(kk);
         instruction = [num2str(frameIdx) ',' 'cut' ',' num2str(frameRadii(frameIdx)) ',' num2str(frameThetas(frameIdx))];
         fprintf(fid,'%s\n',instruction);
         clear instruction
@@ -444,8 +443,8 @@ end
 % write out bad frames
 badFrameIdx=find(~isnan(frameBads));
 if ~isempty(badFrameIdx)
-    for cc = 1 : length(badFrameIdx)
-        frameIdx=badFrameIdx(cc);
+    for kk = 1 : length(badFrameIdx)
+        frameIdx=badFrameIdx(kk);
         instruction = [num2str(frameIdx) ',' 'bad' ];
         fprintf(fid,'%s\n',instruction);
         clear instruction
@@ -455,13 +454,44 @@ end
 % write out error frames
 errorFrameIdx=find(~isnan(frameErrors));
 if ~isempty(errorFrameIdx)
-    for cc = 1 : length(errorFrameIdx)
-        frameIdx=errorFrameIdx(cc);
+    for kk = 1 : length(errorFrameIdx)
+        frameIdx=errorFrameIdx(kk);
         instruction = [num2str(frameIdx) ',' 'error' ];
         fprintf(fid,'%s\n',instruction);
         clear instruction
     end
 end
+
+% write out the params as comments
+% Extract field data
+fields = repmat(fieldnames(p.Results), numel(p.Results), 1);
+values = struct2cell(p.Results);
+% Convert all numerical values to strings
+numericIdx = cellfun(@isnumeric, values);
+values(numericIdx) = cellfun(@num2str, values(numericIdx), 'UniformOutput', 0);
+% Convert all logical values to strings
+logicalText = {'false','true'};
+logicalIdx = cellfun(@islogical, values);
+values(logicalIdx) = cellfun(@(x) logicalText{double(x)+1}, values(logicalIdx), 'UniformOutput', 0);
+% Replace any remaining structures with an explanation
+structIdx = cellfun(@isstruct, values);
+values(structIdx) = cellfun(@(x) '== struct value not reported here ==', values(structIdx), 'UniformOutput', 0);
+% Combine field names and values in the same array
+paramsCellArray = {fields{:}; values{:}};
+% Mark off this section
+instruction = ['%' ',' '%' ',' '**** start analysis parameters ****'];
+fprintf(fid,'%s\n',instruction);
+clear instruction
+% Loop through the columns and save each as a row in the filed
+for kk = 1:size(paramsCellArray,2)
+    instruction = ['%' ',' '%' ',' paramsCellArray{1,kk} ',' paramsCellArray{2,kk}];
+    fprintf(fid,'%s\n',instruction);
+    clear instruction
+end
+instruction = ['%' ',' '%' ',' '**** end analysis parameters ****'];
+fprintf(fid,'%s\n',instruction);
+clear instruction
+
 % finish and close the file
 instruction = ['%' ',' '%' ',' 'end of automatic instructions'];
 fprintf(fid,'%s\n',instruction);

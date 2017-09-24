@@ -40,25 +40,29 @@ p.addRequired('controlFileName',@isstr);
 %parse
 p.parse(controlFileName)
 
-%% open the control file
+% open the control file
 controlFile = fopen(controlFileName);
 
-%% import values in a cell with textscan
+% import values in a cell with textscan
 instructionCell = textscan(controlFile,'%f%s%[^\n]','Delimiter',',');
 
+% close the control file
 fclose(controlFile);
-%% write values to the struct array
-frames = double(instructionCell{1});
-types =  cellstr(instructionCell{2});
-params = cellstr(instructionCell{3});
-for ff = 1: length(frames)
-    instructions(ff).frame = frames(ff);
-    instructions(ff).type =types{ff};
-    instructions(ff).params = params{ff};
-end
 
-%% check if this is a preliminary control file
-if strcmp(instructions(end).params, 'end of automatic instructions')
-    warning ('A preliminary control file was imported. Perimeter correction might not be accurate.')
-end
+% if there are instructions, organized them into a structure
+if isempty(instructionCell{1})
+    instructions(1).frame=[];
+    instructions(1).type=[];
+    instructions(1).params=[];
+else
+    frames = double(instructionCell{1});
+    types =  cellstr(instructionCell{2});
+    params = cellstr(instructionCell{3});
+    for ff = 1: length(frames)
+        instructions(ff).frame = frames(ff);
+        instructions(ff).type =types{ff};
+        instructions(ff).params = params{ff};
+    end % loop over the number of frames
+end % check if there are instructions
 
+end % function
