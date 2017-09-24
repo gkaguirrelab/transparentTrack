@@ -47,7 +47,7 @@ p.addParameter('videoOutFrameRate', 60, @isnumeric);
 p.addParameter('nFrames',Inf,@isnumeric);
 p.addParameter('useParallel',false,@islogical);
 p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('tbtbRepoName','LiveTrackAnalysisToolbox',@ischar);
+p.addParameter('tbtbRepoName','transparentTrack',@ischar);
 
 % Optional items to include in the video
 p.addParameter('glintFileName',[],@(x)(isempty(x) | ischar(x)));
