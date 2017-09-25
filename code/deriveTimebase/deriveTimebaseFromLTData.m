@@ -186,13 +186,13 @@ end
 timebaseGlintTMP = liveTrackTimebase + delay * (1/p.Results.rawVidFrameRate); %pupilTrack timeBase in [sec]
 
 % make timebase.timebase as long as ptSignal
-if length(timebaseGlintTMP)<length(glintSignal)
+if length(timebaseGlintTMP)<length(glintData.glintData.X)
     %add missing values
-    glintPadding = timebaseGlintTMP(end)+(1/p.Results.rawVidFrameRate): (1/p.Results.rawVidFrameRate) :timebaseGlintTMP(end)+((length(glintSignal)-length(timebaseGlintTMP)*(1/p.Results.rawVidFrameRate)));
+    glintPadding = timebaseGlintTMP(end)+(1/p.Results.rawVidFrameRate): (1/p.Results.rawVidFrameRate) :timebaseGlintTMP(end)+((length(glintData.glintData.X)-length(timebaseGlintTMP)*(1/p.Results.rawVidFrameRate)));
     timebase.timebase = [timebaseGlintTMP glintPadding];
-elseif length(timebaseGlintTMP)>length(glintSignal)
+elseif length(timebaseGlintTMP)>length(glintData.glintData.X)
     %trim timeBase.rawVid
-    timebase.timebase = timebaseGlintTMP(1:length(glintSignal));
+    timebase.timebase = timebaseGlintTMP(1:length(glintData.glintData.X));
 else
     timebase.timebase = timebaseGlintTMP;
 end
