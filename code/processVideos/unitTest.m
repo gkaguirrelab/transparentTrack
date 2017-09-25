@@ -33,7 +33,7 @@ pupil.theta = 0;
 
 %%  generate and save video with these params
  % create the video writer with 1 fps
- writerObj = VideoWriter(systheticEyeVideoName,'Grayscale AVI');
+ writerObj = VideoWriter(systheticEyeVideoName);
  writerObj.FrameRate = 60;
  
  % open the video writer
@@ -64,6 +64,7 @@ pupil.theta = 0;
      thisFrame = insertShape(thisFrame, 'filledCircle', [glint.X(ii) glint.Y(ii) glint.radius], 'Color', 'white','Opacity', 1);
      
      thisFrame = rgb2gray(thisFrame);
+     
      % write the frame
      writeVideo(writerObj, thisFrame);
  end
@@ -83,15 +84,15 @@ finalFitVideoName = fullfile(unitTestDir, 'finalFit.avi');
  
  % note: there is no need to use convertRawToGray
  
- findGlint(grayVideoName, glintFileName, varargin{:});
+ findGlint(systheticEyeVideoName, glintFileName);
  
- findPupilPerimeter(systheticEyeVideoName, perimeterFileName, varargin{:});
+ findPupilPerimeter(systheticEyeVideoName, perimeterFileName);
  
- makeControlFile(controlFileName, perimeterFileName, glintFileName, varargin{:});
+ makeControlFile(controlFileName, perimeterFileName, glintFileName);
  
- applyControlFile(perimeterFileName,controlFileName,correctedPerimeterFileName, varargin{:});
+ applyControlFile(perimeterFileName,controlFileName,correctedPerimeterFileName);
  
- fitPupilPerimeter(correctedPerimeterFileName, pupilFileName, varargin{:});
+ fitPupilPerimeter(correctedPerimeterFileName, pupilFileName);
  
  makeFitVideo(grayVideoName, finalFitVideoName, ...
      'glintFileName', glintFileName, 'perimeterFileName', correctedPerimeterFileName,...
