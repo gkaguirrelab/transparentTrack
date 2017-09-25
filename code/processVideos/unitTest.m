@@ -1,7 +1,11 @@
 % transparentTrack unit test
 
 %% set path params
-systheticEyeVideoName = '~/Desktop/unitTest.avi';
+unitTestDir = '~/Desktop/unitTest';
+if ~exist(unitTestDir,'dir')
+    mkdir(unitTestDir)
+end
+systheticEyeVideoName = fullfile(unitTestDir, 'syntheticEye.avi');
 %% synthetic glint and pupil parameters
 
 % define data length
@@ -68,7 +72,31 @@ pupil.theta = 0;
  
  
  %% track synthetic eye
+ % define some file names
+glintFileName = fullfile(unitTestDir, 'glint.mat');
+perimeterFileName = fullfile(unitTestDir, 'perimeter.mat');
+controlFileName = fullfile(unitTestDir, 'controlFile.csv');
+correctedPerimeterFileName = fullfile(unitTestDir, 'correctedPerimeter.mat');
+pupilFileName = fullfile(unitTestDir, 'pupil.mat');
+finalFitVideoName = fullfile(unitTestDir, 'finalFit.avi');
+
  
+ % note: there is no need to use convertRawToGray
+ 
+ findGlint(grayVideoName, glintFileName, varargin{:});
+ 
+ findPupilPerimeter(systheticEyeVideoName, perimeterFileName, varargin{:});
+ 
+ makeControlFile(controlFileName, perimeterFileName, glintFileName, varargin{:});
+ 
+ applyControlFile(perimeterFileName,controlFileName,correctedPerimeterFileName, varargin{:});
+ 
+ fitPupilPerimeter(correctedPerimeterFileName, pupilFileName, varargin{:});
+ 
+ makeFitVideo(grayVideoName, finalFitVideoName, ...
+     'glintFileName', glintFileName, 'perimeterFileName', correctedPerimeterFileName,...
+     'pupilFileName', pupilFileName, 'whichFieldToPlot', 'pPosteriorMeanTransparent', ...
+     'controlFileName',controlFileName,varargin{:});
  
  
  %% compare results

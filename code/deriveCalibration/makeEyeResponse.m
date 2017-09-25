@@ -30,7 +30,7 @@ function makeEyeResponse(timebase,pupil,gaze,eyeResponseFileName,varargin)
 %       eyeResponse struct.
 % 
 % Options (analysis)
-%   uncalibratedData - 
+%   uncalibratedData - toggle to true to add a flag for uncalibrated data
 %   
 %
 % Options (environment)
