@@ -16,9 +16,10 @@ glint.radius = 3;
 
 % We have the pupil moving uniformely on a certain trajectory, and insert a
 % quick change of position in the middle of the data
-pupil.X(1:nFrames/2) = linspace (frameWidth/2, frameWidth/2.5, nFrames/2 )';
-pupil.X(nFrames/2+1:nFrames) = linspace (frameWidth/2 + 10,  frameWidth/2.5+20,nFrames/2 )';
-pupil.Y = linspace (frameHeight/2,frameHeight/2.5, nFrames );
+pupil.X(1:nFrames/2) = linspace (frameWidth/2, frameWidth/2.5, nFrames/2 );
+pupil.X(nFrames/2+1:nFrames) = linspace (frameWidth/2 + 10,  frameWidth/2.5+20,nFrames/2 );
+pupil.X = pupil.X';
+pupil.Y = linspace (frameHeight/2,frameHeight/2.2, nFrames )';
 
 % we assume a slowly decreasing pupil size over time
 pupil.width = linspace (90, 40, nFrames)';
