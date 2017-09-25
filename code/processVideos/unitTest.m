@@ -1,11 +1,14 @@
 % transparentTrack unit test
 
+% initialize the random number generator to the default seed
+rng;
+
 %% set path params
 unitTestDir = '~/Desktop/unitTest';
 if ~exist(unitTestDir,'dir')
     mkdir(unitTestDir)
 end
-systheticEyeVideoName = fullfile(unitTestDir, 'syntheticEye.avi');
+syntheticEyeVideoName = fullfile(unitTestDir, 'syntheticEye.avi');
 %% synthetic glint and pupil parameters
 
 % define data length
@@ -32,48 +35,48 @@ pupil.theta = 0;
 
 
 %%  generate and save video with these params
- % create the video writer with 1 fps
- writerObj = VideoWriter(systheticEyeVideoName);
- writerObj.FrameRate = 60;
- 
- % open the video writer
- open(writerObj);
- 
- grayFrame=zeros(frameHeight, frameWidth, 3);
- grayFrame(:,:,1) = .6;
- grayFrame(:,:,2) =.6;
- grayFrame(:,:,3) = .6;
- for ii =1:nFrames
-     
-     % add the pupil
-     
-     % get a certain  number of ellipse points
-     [xE,yE,~,~] = ellipse(3000, pupil.X(ii), pupil.Y(ii), pupil.width(ii)/2, pupil.height(ii)/2, pupil.theta);
-     
-     % build the poligon coordinates
-     poly = [];
-     for jj = 1:length(xE)
-         poly = [poly xE(jj) yE(jj)];
-     end
-     
-     % build ellipse impicit equation
-     thisFrame = insertShape(grayFrame, 'filledPolygon', poly, 'Color', 'black','Opacity', 1);
-     
-     
-     % super impose the glint
-     thisFrame = insertShape(thisFrame, 'filledCircle', [glint.X(ii) glint.Y(ii) glint.radius], 'Color', 'white','Opacity', 1);
-     
-     thisFrame = rgb2gray(thisFrame);
-     
-     % write the frame
-     writeVideo(writerObj, thisFrame);
- end
- 
- close (writerObj);
- 
- 
- %% track synthetic eye
- % define some file names
+% create the video writer with 1 fps
+writerObj = VideoWriter(syntheticEyeVideoName);
+writerObj.FrameRate = 60;
+
+% open the video writer
+open(writerObj);
+
+grayFrame=zeros(frameHeight, frameWidth, 3);
+grayFrame(:,:,1) = .6;
+grayFrame(:,:,2) =.6;
+grayFrame(:,:,3) = .6;
+for ii =1:nFrames
+    
+    % add the pupil
+    
+    % get a certain  number of ellipse points
+    [xE,yE,~,~] = ellipse(3000, pupil.X(ii), pupil.Y(ii), pupil.width(ii)/2, pupil.height(ii)/2, pupil.theta);
+    
+    % build the poligon coordinates
+    poly = [];
+    for jj = 1:length(xE)
+        poly = [poly xE(jj) yE(jj)];
+    end
+    
+    % build ellipse impicit equation
+    thisFrame = insertShape(grayFrame, 'filledPolygon', poly, 'Color', 'black','Opacity', 1);
+    
+    
+    % super impose the glint
+    thisFrame = insertShape(thisFrame, 'filledCircle', [glint.X(ii) glint.Y(ii) glint.radius], 'Color', 'white','Opacity', 1);
+    
+    thisFrame = rgb2gray(thisFrame);
+    
+    % write the frame
+    writeVideo(writerObj, thisFrame);
+end
+
+close (writerObj);
+
+
+%% track synthetic eye
+% define some file names
 glintFileName = fullfile(unitTestDir, 'glint.mat');
 perimeterFileName = fullfile(unitTestDir, 'perimeter.mat');
 controlFileName = fullfile(unitTestDir, 'controlFile.csv');
@@ -81,23 +84,23 @@ correctedPerimeterFileName = fullfile(unitTestDir, 'correctedPerimeter.mat');
 pupilFileName = fullfile(unitTestDir, 'pupil.mat');
 finalFitVideoName = fullfile(unitTestDir, 'finalFit.avi');
 
- 
- % note: there is no need to use convertRawToGray
- 
- findGlint(systheticEyeVideoName, glintFileName);
- 
- findPupilPerimeter(systheticEyeVideoName, perimeterFileName);
- 
- makeControlFile(controlFileName, perimeterFileName, glintFileName);
- 
- applyControlFile(perimeterFileName,controlFileName,correctedPerimeterFileName);
- 
- fitPupilPerimeter(correctedPerimeterFileName, pupilFileName);
- 
- makeFitVideo(grayVideoName, finalFitVideoName, ...
-     'glintFileName', glintFileName, 'perimeterFileName', correctedPerimeterFileName,...
-     'pupilFileName', pupilFileName, 'whichFieldToPlot', 'pPosteriorMeanTransparent', ...
-     'controlFileName',controlFileName,varargin{:});
- 
- 
- %% compare results
+
+% note: there is no need to use convertRawToGray
+
+findGlint(syntheticEyeVideoName, glintFileName);
+
+findPupilPerimeter(syntheticEyeVideoName, perimeterFileName);
+
+makeControlFile(controlFileName, perimeterFileName, glintFileName);
+
+applyControlFile(perimeterFileName,controlFileName,correctedPerimeterFileName);
+
+fitPupilPerimeter(correctedPerimeterFileName, pupilFileName);
+
+makeFitVideo(syntheticEyeVideoName, finalFitVideoName, ...
+    'glintFileName', glintFileName, 'perimeterFileName', correctedPerimeterFileName,...
+    'pupilFileName', pupilFileName, 'whichFieldToPlot', 'pPosteriorMeanTransparent', ...
+    'controlFileName',controlFileName);
+
+
+%% compare results
