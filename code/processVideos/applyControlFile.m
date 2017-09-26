@@ -1,8 +1,8 @@
-function applyControlFile(perimeterFileName, controlFileName, correctedPerimeterFileName, varargin)
+function perimeter = applyControlFile(perimeterFileName, controlFileName, correctedPerimeterFileName, varargin)
 % applyControlFile(perimeterFileName, controlFileName, correctedPerimeterFileName, varargin)
 %
-% correctPupilPerimeterVideo applies the instructions from the control file
-% on the pupil perimeter video. A new corrected perimeter video will be
+% This routine applies the instructions from the control file
+% to the pupil perimeter video. A new corrected perimeter video will be
 % saved out in the specified file.
 % 
 % Each frame of the original perimeter video is loaded and elaborated
@@ -28,7 +28,12 @@ function applyControlFile(perimeterFileName, controlFileName, correctedPerimeter
 % 
 % Once the instructions have been applied the video will be saved out.
 % 
-% 
+% OUTPUT:
+%   perimeter - a structure that contains the field data, which is a
+%      three-dimensional matrix (x, y, frame) containing binary values that
+%      indicate pupil perimeter points (1) or not (0). A .meta field is
+%      stores information regarding the analysis parameters.
+%
 % Input (required)
 %	perimeterFileName - path to the .mat file containing perimeter data.
 %   controlFileName - path to the control file (with/without extestion)

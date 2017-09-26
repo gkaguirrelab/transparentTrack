@@ -1,16 +1,13 @@
-function findPupilPerimeter(grayVideoName, perimeterFileName, varargin)
+function perimeter = findPupilPerimeter(grayVideoName, perimeterFileName, varargin)
 % function findPupilPerimeter(grayVideoName, perimeterVideoName,varargin)
 %
 % This function thresholds the video to find the pupil perimeter.
 %
-% An initial search for the pupil border is performed with the
-%
-%       findPupilCircle
-%
-% function. If a candidate circle is found, the region is dilated. We then
-% binarize the resulting "patch" image with a user determined threshold,
-% and extract the perimeter of the bigger region surviving the thresholding
-% process (believed to be the pupil).
+% An initial search for the pupil border is performed with the local
+% function 'findPupilCircle'. If a candidate circle is found, the region is
+% dilated. We then binarize the resulting "patch" image with a user
+% set threshold, and extract the perimeter of the bigger region surviving 
+% the thresholding process (believed to be the pupil).
 %
 % Output
 %   perimeter - structure with a 'data' field containing a 3D matrix
@@ -18,32 +15,44 @@ function findPupilPerimeter(grayVideoName, perimeterFileName, varargin)
 %       perimeter, and a meta field with analysis and environment params.
 %
 % Input (required)
-%	grayVideoName - full path to  the gray video to track
+%	grayVideoName - full path to the gray video to track
 %	perimeterFileName - full path to the .mat file in which to save the
 %       output.
 %
 % Options (analysis)
 % 	pupilGammaCorrection - gamma correction to be applied to the video frames
 %       (default 1, typical range [0.5 1.8])
-%   pupilCircleThresh - threshold value to locate the pupil for circle
+%   pupilFrameMask : this option with add a mask on the original gray video,
+%       framing it by [nRows nColumns] on the borders symmetrically or by
+%       [nRowsTop nColumnsRight nRowsBottom nColumnsLeft]. This is
+%       particularly useful for size calibration videos in which appear
+%       partial black dots that may throw off the circle finding mechanism.
 %       fitting (default 0.06, typical range [0.04 0.09])
-%	pupilRange - initial radius range for circle fitting of the pupil
-%       (default [30 90]). This value gets dynamically updated.
 %   maskBox - This is the proportion to dilate the pupil masked region in
 %       the vertical and horizontal directions respectively. A value of
 %       zero will result in no dilation in that direction. A value of unity
 %       will result in a masked region that is twice the size of the pupil
 %       radius.
-%   frameMask : this option with add a mask on the original gray video,
-%       framing it by [nRows nColumns] on the borders symmetrically or by
-%       [nRowsTop nColumnsRight nRowsBottom nColumnsLeft]. This is
-%       particularly useful for size calibration videos in which appear
-%       partial black dots that may throw off the circle finding mechanism.
 %   frameMaskValue - the image value that is assigned to the region that is
 %       masked by frameMask. This should be a gray that is neither pupil
 %       nor glint.
 %   smallObjThresh - maximum size of small objects to be removed to clean
 %       up the pupil perimeter.
+%
+% Options (used in the local function findPupilCircle)
+%   pupilCircleThresh - The threshold used to binarize the image. Ranges
+%      from 0 to 1, with 0 corresponding to black.
+%	pupilRange - initial radius range in pixels for circle fitting of the
+%       pupil (default [20 189]). This value gets dynamically updated.
+%   imfindcirclesSensitivity - a parameter (ranging from 0-1) that is used
+%       in the call to the matlab function imfindcircles as part of the
+%       key-value pair 'Sensitivity'. We set the default value to 0.99,
+%       meaning that the function will be very sensitive to circles, even
+%       those that are partially obscured.
+%   rangeAdjust - for each frame, a circle is fit to the pupil. The size of
+%       the found pupil is used to update the pupilRange values for the
+%       next frame. The rangeAdjust parameter defines the proportion above
+%       and below this target size that is used to search on the next frame
 %
 % Options (verbosity and display)
 %   verbosity - controls console status updates
@@ -71,8 +80,8 @@ p.addRequired('perimeterFileName',@isstr);
 
 % Optional analysis params
 p.addParameter('pupilGammaCorrection', 0.75, @isnumeric);
-p.addParameter('maskBox', [0.20 0.75], @isnumeric);
 p.addParameter('pupilFrameMask', [], @isnumeric);
+p.addParameter('maskBox', [0.20 0.75], @isnumeric);
 p.addParameter('frameMaskValue', 220, @isnumeric);
 p.addParameter('smallObjThresh', 200, @isnumeric);
 

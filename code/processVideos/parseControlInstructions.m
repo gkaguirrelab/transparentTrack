@@ -1,12 +1,12 @@
-function [varargout] = parseControlInstructions(instructionLine,varargin)
+function [varargout] = parseControlInstructions(instructionLine)
 % parseControlInstructions(instructionLine,varargin)
 %
-% parseInstructionParams will output the necessary paramers to execute a
-% given instruction.
+% This routine accepts a single line of a control file and then returns a
+%   variable number of output parameters that contain the instructions for
+%   modifying a frame of a pupil perimeter file.
 
 
 %% parse input
-
 p = inputParser;
 
 % required input
@@ -17,7 +17,6 @@ p.parse(instructionLine)
 
 
 %% switch according to type of instruction
-
 instructionType = instructionLine.type;
 
 switch instructionType

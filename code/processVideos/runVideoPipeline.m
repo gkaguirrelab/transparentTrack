@@ -3,33 +3,70 @@ function runVideoPipeline( pathParams, varargin )
 %
 % this is the standard processing pipeline for eye tracking videos.
 %
-% The pipeline consists in the following stages:
+% The pipeline consists of the following stages:
 %   convertRawToGray
-%   trackGlint
+%   findGlint
 %   findPupilPerimeter
-%   makePreliminaryControlFile
-%   correctPupilPerimeter
+%   makeControlFile
+%   applyControlFile
 %   fitPupilPerimeter
-%   fitIrisCircleAndMask
+%   fitIrisPerimeter
 %   makeFitVideo
 %
 % The user can stop the execution after any of the stages with the optional
-% param 'lastStage', or skip any amount of stages listing them in a cell
-% under the optional param 'skipStage'. Every stage however requires the
+% param 'lastStage', or skip any number of stages listing them in a cell
+% under the optional param 'skipStage'. Every stage, however, requires the
 % existence of the output from the preceeding ones to be correctly
 % executed.
 %
 % INPUT
-%   pathParams - DESCRIBE THIS STRUCTURE AND ITS FIELDS HERE
+%   pathParams - This structure has fields corresponding to the name and
+%       location of the files to be processed. Fields include:
+%           dataSourceDirFull - full path to the directory that contains
+%              the source file
+%           dataOutputDirFull - full path to the directory where the files
+%               that result from processing will be written
+%           runName - the stem name for the source and subsequent output
+%               files. 
+%       This structure may have other fields defined that are used in
+%       routines prior to this one to assemble the full paths to the source
+%       and output dirs.
 %
 % OUTPUT
 %   None. The routine saves files but does not return variables.
 %
 % OPTIONS
+%   lastStage - the last stage to be executed. By deafult ends with the
+%      production of the fit video.
+%   skipStage - a cell array of function calls to be skipped during
+%      execution of the pipeline.
 %   rawVideoSuffix - cell array of strings that contain possible suffixes
 %       of raw video files to be processed. The routine will search for
 %       raw videos sequentially in the cell array until it finds a match
+%   videoTypeChoice - This key-value can be used to identify a set of
+%       processing choices. There are three choices defined here that are
+%       somewhat idiosyncratic to the data being collected in the GKAguirre
+%       lab of the University of Pennsylvania. Set this value to 'custom'
+%       to execute a set of parameters passed using customFunCalls.
+%           LiveTrackWithVTOP_sizeCal - used for the analysis of size
+%           calibration videos of a black circle on a calibration wand.
+%           Skips tracking of the glint or production of a control file, as
+%           no eyelid will be present.
+%           LiveTrackWithVTOP_eye - our standard processing pipeline.
+%           LiveTrackWithVTOP_eyeNoIris - the standard, but skipping
+%           fitting of the iris bounds as this is under development.
+%   customFunCalls - A cell array of functional calls and key values that
+%       can be passed in lieu of hard-coding a videoTypeChoice set here. 
+%       This is used in concert with passing 'custom' to videoTypeChoice.
+%   catchErrors - controls if the function calls take place within a
+%       try-catch block. If set to true (the default) then the routine will
+%       attempt to execute a function three times before exiting with an
+%       error. After each error within the try-catch block, the function
+%       cleanupMatlabPrefs is called. This is thought to correct a
+%       stochastic error that can occur in parpool jobs and results in the
+%       corruption of the matlab preference file, which is then deleted.
 %
+
 
 %% Parse input and define variables
 p = inputParser; p.KeepUnmatched = true;
@@ -39,17 +76,17 @@ p.addRequired('pathParams',@isstruct);
 
 % optional input
 p.addParameter('lastStage', 'makePupilFitVideo', @ischar);
+p.addParameter('skipStage', {}, @iscell);
 p.addParameter('rawVideoSuffix', {'_raw.mov' '.mov'}, @iscell);
 p.addParameter('videoTypeChoice', 'LiveTrackWithVTOP_eye', @ischar);
 p.addParameter('customFunCalls', {}, @iscell);
-p.addParameter('skipStage', {}, @iscell);
 p.addParameter('catchErrors', true, @islogical);
 
 % parse
 p.parse(pathParams, varargin{:})
 pathParams=p.Results.pathParams;
 
-% Sanity check the input
+%% Sanity check the input
 if ~isempty(p.Results.customFunCalls) && ~strcmp(p.Results.videoTypeChoice,'custom')
     error('Set videoTypeChoice to ''custom'' when passing customFunCalls');
 end
@@ -57,6 +94,7 @@ end
 if strcmp(p.Results.videoTypeChoice,'custom') && isempty(p.Results.customFunCalls)
     error('customFunCalls is set to empty, despite request for a custom videoTypeChoice');
 end
+
 
 %% Create output directories if needed
 if ~exist(pathParams.dataOutputDirFull,'dir')
@@ -96,12 +134,12 @@ pupilFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_pup
 finalFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_finalFit.avi']);
 irisFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_iris.mat']);
 
+
 %% Conduct the analysis
 % We define a set of function calls, and then execute them within a try-
 %  catch block. This is chiefly because a Matlab bug causes the matlab
 %  prefs file to sometimes become corrupted during parpool operations.
 %  If we detect an error, we delete the pref file and try again.
-
 
 % define analysis pipelines.
 switch p.Results.videoTypeChoice
@@ -197,11 +235,12 @@ end % main function
 
 
 function cleanupMatlabPrefs    
-% this small function closes any open parallel pool and removes the
+% This small function closes any open parallel pool and removes the
 % matlabprefs.mat file in case it is corrupt.
 % This file can get corrupt while using parallel pools because all of the
-% pool worker try to read/write it at the same time. MathWorks has been
-% contacted about this issue.
+% pool worker try to read/write it at the same time. MathWorks does not
+% currently have a better solution for this probem:
+%   https://www.mathworks.com/matlabcentral/answers/348966-how-to-set-prefdir-for-parpool-workers
 
 % close parallel pool if any is open
 poolobj = gcp('nocreate');

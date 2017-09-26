@@ -76,8 +76,13 @@ for ii =1:nFrames
     % add a filled black ellipse to the frame
     thisFrame = insertShape(grayFrame, 'filledPolygon', poly, 'Color', 'black','Opacity', 1);
     
-    % add a circular white glint
-    thisFrame = insertShape(thisFrame, 'filledCircle', [glint.X(ii) glint.Y(ii) glint.radius], 'Color', 'white','Opacity', 1);
+    gaussSpot =  gauss2d(thisFrame, glint.radius.*2, [glint.Y(ii) glint.X(ii)]);
+    idx = (gaussSpot(:) >0.01);
+    subFrame=thisFrame(:,:,1);
+    subFrame(idx)=gaussSpot(idx);
+    thisFrame(:,:,1)=subFrame;
+    thisFrame(:,:,2)=subFrame;
+    thisFrame(:,:,3)=subFrame;
     
     % store the frame
     outputVideo(:,:,:,ii)=thisFrame;
@@ -110,7 +115,6 @@ controlFileName = fullfile(unitTestDir, 'controlFile.csv');
 correctedPerimeterFileName = fullfile(unitTestDir, 'correctedPerimeter.mat');
 pupilFileName = fullfile(unitTestDir, 'pupil.mat');
 finalFitVideoName = fullfile(unitTestDir, 'finalFit.avi');
-
 
 % note: there is no need to use convertRawToGray in this case, because the
 % video is digitally generated.
@@ -178,3 +182,15 @@ legend('fit', 'groundTruth')
 title('Y glint position in pixels')
 hold off
 
+function val = gaussC(x, y, sigma, center)
+xc = center(1);
+yc = center(2);
+exponent = ((x-xc).^2 + (y-yc).^2)./(2*sigma);
+val       = (exp(-exponent));  
+end
+
+function mat = gauss2d(mat, sigma, center)
+gsize = size(mat);
+[R,C] = ndgrid(1:gsize(1), 1:gsize(2));
+mat = gaussC(R,C, sigma, center);
+end
