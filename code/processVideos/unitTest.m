@@ -40,7 +40,7 @@ pupil.X = pupil.X';
 pupil.Y = linspace (frameHeight/2,frameHeight/2.2, nFrames )';
 
 % For pupil size, assume a slowly decreasing pupil size over time.
-pupil.width = linspace (80, 50, nFrames)';
+pupil.width = linspace (82, 60, nFrames)';
 pupil.height = linspace (70, 55, nFrames)';
 pupil.theta = 0;
 
