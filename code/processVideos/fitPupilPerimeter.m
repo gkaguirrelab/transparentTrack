@@ -41,7 +41,7 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 % the operation to do is to  subtract 0.5 pixels from each X and each Y
 % transparent coordinate as they are returned from this function.
 % REF for intrinsic coordinates explaination: 
-
+% 
 % https://blogs.mathworks.com/steve/2013/08/28/introduction-to-spatial-referencing/
 %
 % NOTES REGARDING USE OF PARALLEL POOL
