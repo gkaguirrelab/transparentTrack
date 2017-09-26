@@ -12,7 +12,7 @@ syntheticEyeVideoName = fullfile(unitTestDir, 'syntheticEye.avi');
 %% synthetic glint and pupil parameters
 
 % define data length
-nFrames = 500;
+nFrames = 50;
 frameWidth = 320;
 frameHeight = 240;
 % the glint position is almost constant, so we just pick a value and add
@@ -36,7 +36,7 @@ pupil.theta = 0;
 
 %%  generate and save video with these params
 % create the video writer with 1 fps
-writerObj = VideoWriter(syntheticEyeVideoName);
+writerObj = VideoWriter(syntheticEyeVideoName, 'Uncompressed AVI');
 writerObj.FrameRate = 60;
 
 % open the video writer
@@ -66,12 +66,25 @@ for ii =1:nFrames
     % super impose the glint
     thisFrame = insertShape(thisFrame, 'filledCircle', [glint.X(ii) glint.Y(ii) glint.radius], 'Color', 'white','Opacity', 1);
     
-    thisFrame = rgb2gray(thisFrame);
-    
-    % write the frame
-    writeVideo(writerObj, thisFrame);
+    % store the frame
+    outputVideo(:,:,:,ii)=thisFrame;
 end
 
+% write video
+
+% Create a color map
+cmap = [linspace(0,1,256)' linspace(0,1,256)' linspace(0,1,256)'];
+cmap(1,:)=[1 0 0];
+cmap(2,:)=[0 1 0];
+cmap(3,:)=[0 0 1];
+cmap(4,:)=[1 1 0];
+cmap(5,:)=[0 1 1];
+cmap(6,:)=[1 0 1];
+
+for ii=1:nFrames
+    indexedFrame = rgb2ind(squeeze(outputVideo(:,:,:,ii)), cmap, 'nodither');
+    writeVideo(writerObj,indexedFrame);
+end
 close (writerObj);
 
 
@@ -104,3 +117,48 @@ makeFitVideo(syntheticEyeVideoName, finalFitVideoName, ...
 
 
 %% compare results
+load(pupilFileName)
+figure
+subplot(2,1,1)
+plot(pupilData.pPosteriorMeanTransparent(:,1))
+hold on
+plot(pupil.X)
+xlabel('Frames')
+ylabel('Pupil X [px]')
+legend('fit', 'groundTruth')
+title('X pupil position in pixels')
+hold off
+
+subplot(2,1,2)
+plot(pupilData.pPosteriorMeanTransparent(:,2))
+hold on
+plot(pupil.Y)
+xlabel('Frames')
+ylabel('Pupil Y [px]')
+legend('fit', 'groundTruth')
+title('Y pupil position in pixels')
+hold off
+
+
+load(glintFileName)
+figure
+subplot(2,1,1)
+plot(glintData.X)
+hold on
+plot(glint.X)
+xlabel('Frames')
+ylabel('Glint X [px]')
+legend('fit', 'groundTruth')
+title('X glint position in pixels')
+hold off
+
+subplot(2,1,2)
+plot(glintData.Y)
+hold on
+plot(glint.Y)
+xlabel('Frames')
+ylabel('Glint Y [px]')
+legend('fit', 'groundTruth')
+title('Y glint position in pixels')
+hold off
+
