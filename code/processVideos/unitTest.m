@@ -1,4 +1,10 @@
 % transparentTrack unit test
+% 
+% this script demonstrate the accuracy of the trasparentTrack engine on a
+% "synthetic eye" video. The synthetic eye consists in a black ellipse and
+% a white small dot (representing the pupil and the glint, respectively)
+% moving on a gray background.
+% 
 
 % initialize the random number generator to the default seed
 rng;
@@ -11,68 +17,73 @@ end
 syntheticEyeVideoName = fullfile(unitTestDir, 'syntheticEye.avi');
 %% synthetic glint and pupil parameters
 
-% define data length
+% 1. define synthetic data length
 nFrames = 50;
+
+% 2. define frame dimention in pixels
 frameWidth = 320;
 frameHeight = 240;
-% the glint position is almost constant, so we just pick a value and add
-% some noise
+
+% 3. define glint position. As it is usually almost constant,  we pick a
+% central location in the frame  and add some noise.
 glint.X = random('Normal', frameWidth/2, 1, nFrames,1);
 glint.Y = random('Normal', frameHeight/2, 1, nFrames,1);
 glint.radius = 3;
 
-% We have the pupil moving uniformely on a certain trajectory, and insert a
-% quick change of position in the middle of the data
+% 4. define pupil behavior
+% We'll have the pupil moving uniformely on a certain trajectory starting
+% from the center of the frame, and insert a quick change of position
+% halfway in the data to simulate a saccade.
 pupil.X(1:nFrames/2) = linspace (frameWidth/2, frameWidth/2.5, nFrames/2 );
 pupil.X(nFrames/2+1:nFrames) = linspace (frameWidth/2 + 10,  frameWidth/2.5+20,nFrames/2 );
 pupil.X = pupil.X';
 pupil.Y = linspace (frameHeight/2,frameHeight/2.2, nFrames )';
 
-% we assume a slowly decreasing pupil size over time
-pupil.width = linspace (90, 40, nFrames)';
-pupil.height = linspace (80, 35, nFrames)';
+% For pupil size, assume a slowly decreasing pupil size over time.
+pupil.width = linspace (80, 50, nFrames)';
+pupil.height = linspace (70, 55, nFrames)';
 pupil.theta = 0;
 
 
 %%  generate and save video with these params
-% create the video writer with 1 fps
+
+% create the video writer object
 writerObj = VideoWriter(syntheticEyeVideoName, 'Uncompressed AVI');
 writerObj.FrameRate = 60;
 
-% open the video writer
+% open the video writer object
 open(writerObj);
 
+% initialize a gray empty frame
 grayFrame=zeros(frameHeight, frameWidth, 3);
 grayFrame(:,:,1) = .6;
 grayFrame(:,:,2) =.6;
 grayFrame(:,:,3) = .6;
+
+% add pupil and glint to each frame
 for ii =1:nFrames
     
-    % add the pupil
-    
-    % get a certain  number of ellipse points
+    % get a certain  number of ellipse points that represent the pupil
+    % boundary
     [xE,yE,~,~] = ellipse(3000, pupil.X(ii), pupil.Y(ii), pupil.width(ii)/2, pupil.height(ii)/2, pupil.theta);
     
-    % build the poligon coordinates
+    % build the "ellipse poligon" coordinates array
     poly = [];
     for jj = 1:length(xE)
         poly = [poly xE(jj) yE(jj)];
     end
     
-    % build ellipse impicit equation
+    % add a filled black ellipse to the frame
     thisFrame = insertShape(grayFrame, 'filledPolygon', poly, 'Color', 'black','Opacity', 1);
     
-    
-    % super impose the glint
+    % add a circular white glint
     thisFrame = insertShape(thisFrame, 'filledCircle', [glint.X(ii) glint.Y(ii) glint.radius], 'Color', 'white','Opacity', 1);
     
     % store the frame
     outputVideo(:,:,:,ii)=thisFrame;
 end
 
-% write video
-
-% Create a color map
+% Create a color map for the indexed video
 cmap = [linspace(0,1,256)' linspace(0,1,256)' linspace(0,1,256)'];
 cmap(1,:)=[1 0 0];
 cmap(2,:)=[0 1 0];
@@ -81,10 +92,13 @@ cmap(4,:)=[1 1 0];
 cmap(5,:)=[0 1 1];
 cmap(6,:)=[1 0 1];
 
+% write the video
 for ii=1:nFrames
     indexedFrame = rgb2ind(squeeze(outputVideo(:,:,:,ii)), cmap, 'nodither');
     writeVideo(writerObj,indexedFrame);
 end
+
+
 close (writerObj);
 
 
@@ -98,7 +112,8 @@ pupilFileName = fullfile(unitTestDir, 'pupil.mat');
 finalFitVideoName = fullfile(unitTestDir, 'finalFit.avi');
 
 
-% note: there is no need to use convertRawToGray
+% note: there is no need to use convertRawToGray in this case, because the
+% video is digitally generated.
 
 findGlint(syntheticEyeVideoName, glintFileName);
 
@@ -116,7 +131,8 @@ makeFitVideo(syntheticEyeVideoName, finalFitVideoName, ...
     'controlFileName',controlFileName);
 
 
-%% compare results
+%% compare tracking results with ground truth
+% pupil
 load(pupilFileName)
 figure
 subplot(2,1,1)
@@ -139,7 +155,7 @@ legend('fit', 'groundTruth')
 title('Y pupil position in pixels')
 hold off
 
-
+% glint
 load(glintFileName)
 figure
 subplot(2,1,1)
