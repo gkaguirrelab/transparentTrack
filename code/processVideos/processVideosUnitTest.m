@@ -1,4 +1,4 @@
-% transparentTrack unit test
+% processVideosUnitTest
 % 
 % this script demonstrate the accuracy of the trasparentTrack engine on a
 % "synthetic eye" video. The synthetic eye consists in a black ellipse and
@@ -119,7 +119,7 @@ findGlint(syntheticEyeVideoName, glintFileName);
 
 findPupilPerimeter(syntheticEyeVideoName, perimeterFileName);
 
-makeControlFile(controlFileName, perimeterFileName, glintFileName);
+makeControlFile(controlFileName, perimeterFileName, glintFileName, 'overwriteControlFile', true);
 
 applyControlFile(perimeterFileName,controlFileName,correctedPerimeterFileName);
 
@@ -132,7 +132,7 @@ makeFitVideo(syntheticEyeVideoName, finalFitVideoName, ...
 
 
 %% compare tracking results with ground truth
-% pupil
+% plot pupil
 load(pupilFileName)
 figure
 subplot(2,1,1)
@@ -155,7 +155,7 @@ legend('fit', 'groundTruth')
 title('Y pupil position in pixels')
 hold off
 
-% glint
+% plot glint
 load(glintFileName)
 figure
 subplot(2,1,1)
