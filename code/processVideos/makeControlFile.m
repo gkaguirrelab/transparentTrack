@@ -117,7 +117,7 @@ p.addParameter('extendBlinkWindow', [5,10], @isnumeric);
 p.addParameter('glintPatchRadius', 10, @isnumeric);
 p.addParameter('pixelBoundaryThreshold', 50, @isnumeric);
 p.addParameter('cutErrorThreshold', 10, @isnumeric);
-p.addParameter('ellipseTransparentLB',[0, 0, 1000, 0, -0.5*pi],@isnumeric);
+p.addParameter('ellipseTransparentLB',[0, 0, 400, 0, -0.5*pi],@isnumeric);
 p.addParameter('ellipseTransparentUB',[240,320,10000,0.417, 0.5*pi],@isnumeric);
 p.addParameter('candidateThetas',pi/2:pi/16:pi,@isnumeric);
 p.addParameter('radiusDivisions',5,@isnumeric);

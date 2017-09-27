@@ -163,7 +163,7 @@ p.addParameter('hostname',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional fitting params
-p.addParameter('ellipseTransparentLB',[0, 0, 500, 0, -0.5*pi],@isnumeric);
+p.addParameter('ellipseTransparentLB',[0, 0, 400, 0, -0.5*pi],@isnumeric);
 p.addParameter('ellipseTransparentUB',[320,240,10000,0.5, 0.5*pi],@isnumeric);
 p.addParameter('exponentialTauParams',[.25, .25, 5, 1, 1],@isnumeric);
 p.addParameter('constrainEccen_x_Theta',[0.5,0.5],@isnumeric);
