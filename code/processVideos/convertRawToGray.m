@@ -1,11 +1,12 @@
 function convertRawToGray(inputVideoName,outputVideoName,varargin)
 % convertRawToGray(inputVideoName,outputVideoName,varargin)
 %
-% This function converts the raw, RBG 30Hz video acquired with the V.top
-% device into a 60Hz, grayscale video. Additionally, the video is cropped
-% to correspond to the same field of view as that returned by the LiveTrack
-% device.
-% 
+% This routine is idiosyncratic to the analysis of interlaced, analog
+% videos. It converts raw, RBG 30Hz video  into a 60Hz, grayscale video.
+% Additionally, the video is cropped. The implementation here is fairly
+% specific to the GKAguirreLab at U Penn and data collected using the
+% Cambridge Research Systems LiveTrack device.
+%
 % This process happens in two steps:
 % 1. the original video is deinterlaced using the function deinterlaceVideo
 % 2. the resulting video is converted to gray and resized to LiveTrack
@@ -15,7 +16,9 @@ function convertRawToGray(inputVideoName,outputVideoName,varargin)
 % but it is deleted at the end of the routine, as it won't be necessary in
 % the subsequent eyetracking steps.
 % 
-% 
+% This code could be modified for use on other videos to skip or modify one
+% or both components
+
 %% parse input
 p = inputParser; p.KeepUnmatched = true;
 

@@ -1,7 +1,8 @@
 function makeFitVideo(videoInFileName, videoOutFileName, varargin)
 % makeFitVideo(perimeterVideoFileName, varargin)
 %
-% This routine will superimpose ellipses on frames of a video file.
+% This routine creates an integrated fit video that illustrates the
+% position of the pupil and glint and indicates any control instructions.
 %
 % INPUTS:
 %   videoInFileName: full path to an .avi file. Typically the gray video
@@ -22,14 +23,17 @@ function makeFitVideo(videoInFileName, videoOutFileName, varargin)
 %
 % Optional items to include in the video
 %	glintFileName
-%   glintColor
+%   glintColor - indicate color with a single character or string (e.g.,
+%       'r' for red or 'green')
 %   perimeterFileName
 %   perimeterColor
-%   ellipseFitFileName - full path to the .mat file that contains the
-%       pupil tracking information.
-%   ellipseColor
+%   pupilFileName
+%   pupilColor
 %   whichFieldToPlot - The name of the field within the ellipseFitData
 %   	struct that is to be plotted
+%   irisFileName
+%   irisColor
+%   controlFileName
 %
 
 %% Parse vargin for options passed here

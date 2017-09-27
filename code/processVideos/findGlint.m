@@ -1,19 +1,19 @@
 function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 %  [glintData] = trackGlint(grayVideoName, glintFileName, varargin)
 %
-% This function tracks one or more glints in the eye video using a simple
+% This function tracks one or more glints in an IR video using a simple
 % thresholding and region property identification approach.
 %
-% Every frame is firstly corrected with gamma value greater than 1, so that
+% Every frame is first corrected with a gamma > 1, so that
 % glints and other large bright spot are enhanced. The image is then
-% binarized with a relatively high threshold, so that only the brights spot
-% and their immediate surroundings results as non-zero values. The
+% binarized with a relatively high threshold, so that only the bright spots
+% and their immediate surroundings remain as non-zero values. The
 % centroids of each surviving region in the binary image are extracted using
 % matlab's function "regionprops". The centroid location is weighted with
 % the actual brightness value of each pixel in the gray gamma-corrected
 % image.
 %
-% After all centroids location are extracted, data is refined according to
+% After all centroid locations are extracted, data is refined according to
 % the expected number of glints and average centroid location throughout
 % the video. Firstly, we calculate the median location of the glints from
 % those frames that return as many centroids as the desired glints. For
@@ -30,7 +30,7 @@ function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 % 
 % DEVELOPMENT PLACEHOLDER: if the expected nuber of glints is greater than
 % 1, the centroids will be sorted in the N more likely glints subgroups,
-% where N = number of expected glints.
+% where N = number of expected glints. This has not yet been implemented.
 %
 % Output
 %	glintData : structure with fields that contain the X and Y location of
@@ -54,7 +54,7 @@ function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 %   glintThreshold : threshold value to binarize the glint gray image.
 %       Should be set to preserve both the glints and any "halo" around
 %       them.(default value 0.8)
-%   frameMask : this option with add a mask on the original gray video, 
+%   glintFrameMask : this option with add a mask on the original gray video, 
 %       framing it by [nRows nColumns] on the borders symmetrically or by
 %       [nRowsTop nColumnsRight nRowsBottom nColumnsLeft].
 %   frameMaskValue : the image value that is assigned to the region that is

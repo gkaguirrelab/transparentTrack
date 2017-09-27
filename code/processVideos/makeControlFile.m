@@ -2,7 +2,7 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 % makeControlFile(controlFileName, perimeterFileName, glintFileName, varargin)
 %
 % The routine creates and saves a "control file", which is a text (csv)
-% file that instruct subsequent routines as to how a perimeterFile may be
+% file that instructs subsequent routines as to how a perimeterFile may be
 % cleaned up to remove blinks, eyelid intrusions, or force a particular
 % set of ellipse parameters.
 %
@@ -39,13 +39,13 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 %
 % Input (required)
 %	controlFileName - full path to the control file (including csv extension)
-%   perimeterFileName -
-%   glintFileName -
+%   perimeterFileName - the full path to the perimeter file
+%   glintFileName - the full path to the glint file
 %
 % Options (analysis)
 %   glintZoneRadius - the radius (in pixel) of the circular zone in which
-%   the glint is allowed to be on the frame. Any candiate glint beyond this
-%   Radius will be disregarded.
+%       the glint is allowed to be on the frame. Any candiate glint beyond
+%       this radius will be disregarded.
 %   glintZoneCenter - [X Y] location of the glint zone center. If not
 %       specified, the glint zone Center will be the median value of the
 %       candidate glint locations throughout the run.
@@ -53,11 +53,11 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 %       additional frames flagged as a blink before and after a continuous
 %       block blinks
 %   glintPatchRadius - the radius of the glint patch
-%   cutErrorThreshold - the distance error tolerated before attempting to
-%       cut
 %   pixelBoundaryThreshold - the number of pixels required to be on the
 %       pupil boundary (either originally or after cutting) to not be
 %       marked as bad
+%   cutErrorThreshold - the distance error tolerated before attempting to
+%       cut
 %   ellipseTransparentLB/UB - the lower and upper bounds of the constrained
 %      ellipse fit that is used to judge the quality of different cuts.
 %   canidateThetas - A vector that gives the theta values at which to
@@ -82,6 +82,10 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 %  'verbosity' - level of verbosity. [none, full]
 %
 % Optional key/value pairs (flow control)
+%   overwriteControlFile - by default, the routine will not overwrite an
+%       existing control file. This behavior is motivated by the possibility
+%       that a human has edited the control file to improve analysis, and
+%       we do not want to overwrite this by accident.
 %  'useParallel' - If set to true, use the Matlab parallel pool for the
 %    initial ellipse fitting.
 %  'nWorkers' - Specify the number of workers in the parallel pool. If

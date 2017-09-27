@@ -5,11 +5,11 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 % perimeter of the pupil. First, an ellipse is fit to each frame of the
 % video using a non-linear search routine, with some constraints on size
 % and aspect ratio of the solution. An estimate of the standard deviation
-% of the parameters of the best fitting ellipse is stored as well.
-% Next, a smoothing operation is conducted that estimates the posterior
-% parameter values, using the measured ellipse as the likelihood and a
-% non-causal, exponentially weighted window of surrounding parameter values
-% as a prior. This is an empirical Bayes approach.
+% of the parameters of the best fitting ellipse is stored as well. Next, a
+% smoothing operation is conducted that estimates the posterior parameter
+% values, using the measured ellipse as the likelihood and a non-causal,
+% exponentially weighted window of surrounding parameter values as a prior.
+% This is an empirical Bayes approach.
 %
 % Optionally, additional iterations of empirical Bayes smoothing can be
 % conducted. Default settings cause the temporal domain of the smoothing to
@@ -26,37 +26,31 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 % We use this parameterization to allow us to constrain fits with regard to
 % these values (specifically area and eccentricity).
 % 
-% A note on the results coordinates: Matlab's intrinsic coordinate system
-% is built so that the center of each pixel on the image cooresponds to the
-% integer indexed position on the pixel itself. Thus a 3x3 pixel image in
-% intrisic coordinates will be represented in a grid with xlim = [0.5 3.5] 
-% and ylim = [0.5 3.5], with the origin being the top left corner of the 
-% image. This is done to facilitate the handling of images in many of the 
-% built-in image processing functions. This does not constitute
-% an issue for the following steps of the routine, as long as all pupil
-% data coordinate system/units are kept consistent. If interested in
-% returning the results in "world units", i.e.
-% the cartesian system having the origin in the top left corner of the
-% frame and, referring to the above example, xlim = [0 3] and ylim = [0 3],
-% the operation to do is to  subtract 0.5 pixels from each X and each Y
-% transparent coordinate as they are returned from this function.
-% REF for intrinsic coordinates explaination: 
-% 
-% https://blogs.mathworks.com/steve/2013/08/28/introduction-to-spatial-referencing/
+% NOTES REGARDING image coordinates
+%
+% Matlab uses an "intrinsic" coordinate system such that the center of each
+% pixel in an image corresponds to its integer indexed position. Thus a 3x3
+% pixel image in intrisic coordinates is represented on a grid with xlim =
+% [0.5 3.5] and ylim = [0.5 3.5], with the origin being the top left corner
+% of the image. This is done to facilitate the handling of images in many
+% of the built-in image processing functions. This routine outputs the
+% results in intrinsic coordinates. Additinal information regarding the
+% Matlab image coordinate system may be found here:
+%   https://blogs.mathworks.com/steve/2013/08/28/introduction-to-spatial-referencing/
 %
 % NOTES REGARDING USE OF PARALLEL POOL
 %
 % The initial ellipse fitting is conducted within a parfor loop. The
-% parallel pool will not be used unless the key/value pair
-% 'useParallel' is set to true. The routine should gracefully fall-back on
-% serial processing if the parallel pool is unavailable.
+% parallel pool will not be used unless the key/value pair 'useParallel' is
+% set to true. The routine should gracefully fall-back on serial processing
+% if the parallel pool is unavailable.
 %
 % Each worker requires ~8 GB of memory to operate. It is important to keep
-% total RAM usage below the physical memory limit to prevent swapping and
-% a dramatic slow down in processing.
+% total RAM usage below the physical memory limit to prevent swapping and a
+% dramatic slow down in processing.
 %
-% To use the parallel pool with TbTb, provide the identity of the repo
-% name in the 'tbtbRepoName', which is then used to configure the workers.
+% To use the parallel pool with TbTb, provide the identity of the repo name
+% in the 'tbtbRepoName', which is then used to configure the workers.
 %
 % INPUTS:
 %   perimeterFileName: full path to a .mat file that contains the perimeter
