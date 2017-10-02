@@ -11,7 +11,8 @@ Ellipse fitting to the initial and refined boundary is conducted within a constr
 
 Following an initial ellipse fit, the parameters are subject to an empirical Bayes smoothing step. The initial ellipse fit (and the confidence in the parameters across sub-divisions) is treated as the likelihood. A temporal prior is constructed from a weighted, non-causal average of the values for each parameter. The relative influence of past and future timepoints is subject to weighting by a decaying exponential, with different integration times for the different ellipse parameters (e.g., we encourage the area of the pupil to change more gradually than its position).
 
+There are many software parameters that control the behavior of the routines. While the default settings work well for some videos (including those that are part of the sandbox demo included in this repository), other parameter settings may be needed for videos with different qualities.
+
 The transparentTrack toolbox has several dependencies, most notably the "quadfit" toolbox: https://www.mathworks.com/matlabcentral/fileexchange/45356-fitting-quadratic-curves-and-surfaces
 
 transparentTrack can be configured to run using toolboxToolbox, which provides for declarative dependency management for Matlab: https://github.com/ToolboxHub/ToolboxToolbox
-
