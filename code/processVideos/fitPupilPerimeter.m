@@ -17,9 +17,8 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 % converging on a flat line.
 %
 % A note on ellipse parameterization: an ellipse can be specified in
-% multiple forms. We adopt the standard "explicit" form for saving the
-% ellipse fit results to a file. Within the context of this routine,
-% however, ellipses are considered in "transparent" form (our coinage):
+% multiple forms. Within the context of this routine, and in saved files,
+% ellipses are considered in "transparent" form (our coinage):
 %
 %   center (cx,cy), area (a), eccentricity (e), angle of tilt (theta)
 %
