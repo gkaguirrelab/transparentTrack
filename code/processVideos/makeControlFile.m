@@ -111,7 +111,7 @@ p.addRequired('perimeterFileName',@isstr);
 p.addRequired('glintFileName',@isstr);
 
 % Optional analysis params
-p.addParameter('glintZoneRadius', 20, @isnumeric);
+p.addParameter('glintZoneRadius', 40, @isnumeric);
 p.addParameter('glintZoneCenter', [], @isnumeric);
 p.addParameter('extendBlinkWindow', [5,10], @isnumeric);
 p.addParameter('glintPatchRadius', 10, @isnumeric);
