@@ -27,7 +27,7 @@ end
 %% hard coded parameters
 nFrames = 100; % number of frames to process (set to Inf to do all)
 verbosity = 'full'; % Set to none to make the demo silent
-TbTbProjectName = 'eyeTrackTOMEAnalysis';
+TbTbToolboxName = 'transparentTrack';
 
 % define path parameters
 pathParams.dataSourceDirRoot = fullfile(sandboxDir,'TOME_data');
@@ -44,7 +44,7 @@ pathParams.runName = 'GazeCal01';
 %% TbTb configuration
 % We will suppress the verbose output, but detect if there are deploy
 % errors and if so stop execution
-tbConfigResult=tbUseProject(TbTbProjectName,'reset','full','verbose',false);
+tbConfigResult=tbUse(TbTbToolboxName,'reset','full','verbose',false);
 if sum(cellfun(@sum,extractfield(tbConfigResult, 'isOk')))~=length(tbConfigResult)
     error('There was a tb deploy error. Check the contents of tbConfigResult');
 end
@@ -53,7 +53,7 @@ clear tbConfigResult
 
 % identify the base for the project code directory
 %  This would normally be used as the location to save the controlFiles
-codeBaseDir = tbLocateProject(TbTbProjectName,'verbose',false);
+codeBaseDir = tbLocateProject(TbTbToolboxName,'verbose',false);
 
 
 %% Prepare paths and directories
