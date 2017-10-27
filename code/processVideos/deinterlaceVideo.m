@@ -26,16 +26,17 @@ function deinterlaceVideo (inputVideoName, outputVideoName, varargin)
 %	outputVideoName - full path to the deinterlaced output video
 %
 % Options (analysis)
-%   bobMode - deinterlace strategy
+%   bobMode - deinterlace strategy convertToGray - if set to true
+%   (default), the video will also be converted to grayscale.
 %
 % Options (verbosity and display)
 %   verbosity - controls console status updates
 % 
 % Options (flow control)
-%  'nFrames' - analyze fewer than the total number of frames.
-%  'startFrame' - which frame to start on
+%  nFrames' - analyze fewer than the total number of frames.
+%  startFrame - which frame to start on
 % 
-% % Options (environment)
+% Options (environment)
 %   tbSnapshot - the passed tbSnapshot output that is to be saved along
 %      with the data
 %   timestamp / username / hostname - these are automatically derived and
@@ -51,6 +52,7 @@ p.addRequired('outputVideoName',@isstr);
 
 % optional inputs
 p.addParameter('bobMode', 'Mean', @isstr);
+p.addParameter('convertToGray',true,@islogical)
 
 % verbosity
 p.addParameter('verbosity', 'none', @isstr);
@@ -153,6 +155,12 @@ for ii = p.Results.startFrame:nFrames
             clear newLines
     end
     
+    % if required, convert the fields to gray
+    if p.Results.convertToGray
+        oddFields = rgb2gray(oddFields);
+        evenFields = rgb2gray(evenFields);
+    end
+
     % write the fields as frames
     writeVideo(Bob,oddFields);
     writeVideo(Bob,evenFields);
