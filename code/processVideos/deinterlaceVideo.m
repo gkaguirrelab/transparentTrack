@@ -1,4 +1,5 @@
 function deinterlaceVideo (inputVideoName, outputVideoName, varargin)
+% deinterlaceVideo (inputVideoName, outputVideoName)
 
 % This function deinterlaces NTSC DV 30Hz videos, saving out
 % progressive 60 Hz videos, using a "bob deinterlacing" strategy.
@@ -15,17 +16,32 @@ function deinterlaceVideo (inputVideoName, outputVideoName, varargin)
 % 'Mean'   =  extract 2 fields for every frame. Add a row with the mean of
 %             two consecutive rows to preserve aspect ratio.
 
-% References on bob technique for deinterlacing and on deinterlacing in
+% References on bob techniques for deinterlacing and on deinterlacing in
 % general:
 % https://www.altera.com/content/dam/altera-www/global/en_US/pdfs/literature/wp/wp-01117-hd-video-deinterlacing.pdf
 % http://www.100fps.com/
 %
-%   Usage:
-%       deinterlaceVideo (inputVideoName, outputVideoName)
+% Input (required)
+%	inputVideoName - full path to the video to deinterlace
+%	outputVideoName - full path to the deinterlaced output video
 %
+% Options (analysis)
+%   bobMode - deinterlace strategy
 %
-%   Written by Giulia Frazzetta - Nov.2016
-%  Edited June 2017 - added input parsing, changed input/output format.
+% Options (verbosity and display)
+%   verbosity - controls console status updates
+% 
+% Options (flow control)
+%  'nFrames' - analyze fewer than the total number of frames.
+%  'startFrame' - which frame to start on
+% 
+% % Options (environment)
+%   tbSnapshot - the passed tbSnapshot output that is to be saved along
+%      with the data
+%   timestamp / username / hostname - these are automatically derived and
+%      saved within the p.Results structure.
+% 
+
 %% parse input and define variables
 
 p = inputParser;
@@ -35,8 +51,19 @@ p.addRequired('outputVideoName',@isstr);
 
 % optional inputs
 p.addParameter('bobMode', 'Mean', @isstr);
+
+% verbosity
 p.addParameter('verbosity', 'none', @isstr);
-p.addParameter('nFrames', Inf, @isnumeric);
+
+% flow control
+p.addParameter('nFrames',Inf,@isnumeric);
+p.addParameter('startFrame',1,@isnumeric);
+
+% environment parameters
+p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
+p.addParameter('timestamp',char(datetime('now')),@ischar);
+p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischar);
+p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % parse
 p.parse(inputVideoName,outputVideoName,varargin{:})
@@ -68,7 +95,7 @@ end
 
 open(Bob)
 
-for ii = 1:nFrames
+for ii = p.Results.startFrame:nFrames
     
     % update progressbar
     if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
