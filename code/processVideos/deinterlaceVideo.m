@@ -21,6 +21,9 @@ function deinterlaceVideo (inputVideoName, outputVideoName, varargin)
 % https://www.altera.com/content/dam/altera-www/global/en_US/pdfs/literature/wp/wp-01117-hd-video-deinterlacing.pdf
 % http://www.100fps.com/
 %
+% Output
+%   an AVI video is saved out.
+% 
 % Input (required)
 %	inputVideoName - full path to the video to deinterlace
 %	outputVideoName - full path to the deinterlaced output video
@@ -153,6 +156,8 @@ for ii = p.Results.startFrame:nFrames
             evenFields = cat(1,evenFields(1,:),tmp);
             clear tmp
             clear newLines
+        otherwise
+        error('Unknown bobMode. Type help deinterlaceVideo for available deinterlacing methods.')
     end
     
     % if required, convert the fields to gray
