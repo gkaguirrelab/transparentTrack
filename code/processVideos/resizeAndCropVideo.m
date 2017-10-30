@@ -36,8 +36,8 @@ function resizeAndCropVideo(inputVideoName, outputVideoName, varargin)
 
 
 %% parse input and define variables
+p = inputParser; p.KeepUnmatched = true;
 
-p = inputParser;
 % required input
 p.addRequired('inputVideoName',@isstr);
 p.addRequired('outputVideoName',@isstr);

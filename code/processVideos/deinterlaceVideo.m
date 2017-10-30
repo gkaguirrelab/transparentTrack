@@ -23,7 +23,7 @@ function deinterlaceVideo (inputVideoName, outputVideoName, varargin)
 %
 % Output
 %   an AVI video is saved out.
-% 
+%
 % Input (required)
 %	inputVideoName - full path to the video to deinterlace
 %	outputVideoName - full path to the deinterlaced output video
@@ -34,21 +34,21 @@ function deinterlaceVideo (inputVideoName, outputVideoName, varargin)
 %
 % Options (verbosity and display)
 %   verbosity - controls console status updates
-% 
+%
 % Options (flow control)
 %  nFrames' - analyze fewer than the total number of frames.
 %  startFrame - which frame to start on
-% 
+%
 % Options (environment)
 %   tbSnapshot - the passed tbSnapshot output that is to be saved along
 %      with the data
 %   timestamp / username / hostname - these are automatically derived and
 %      saved within the p.Results structure.
-% 
+%
 
 %% parse input and define variables
+p = inputParser; p.KeepUnmatched = true;
 
-p = inputParser;
 % required input
 p.addRequired('inputVideoName',@isstr);
 p.addRequired('outputVideoName',@isstr);
@@ -109,7 +109,13 @@ for ii = p.Results.startFrame:nFrames
     
     % get the frame
     tmp = readFrame(inObj);
-    thisFrame = rgb2gray(tmp);
+    
+    % if required, convert to gray
+    if p.Results.convertToGray
+        thisFrame = rgb2gray(tmp);
+    else
+        thisFrame = tmp;
+    end
     
     %get the fields
     oddFields = thisFrame(1:2:end,:);
@@ -157,15 +163,10 @@ for ii = p.Results.startFrame:nFrames
             clear tmp
             clear newLines
         otherwise
-        error('Unknown bobMode. Type help deinterlaceVideo for available deinterlacing methods.')
+            error('Unknown bobMode. Type help deinterlaceVideo for available deinterlacing methods.')
     end
     
-    % if required, convert the fields to gray
-    if p.Results.convertToGray
-        oddFields = rgb2gray(oddFields);
-        evenFields = rgb2gray(evenFields);
-    end
-
+    
     % write the fields as frames
     writeVideo(Bob,oddFields);
     writeVideo(Bob,evenFields);
