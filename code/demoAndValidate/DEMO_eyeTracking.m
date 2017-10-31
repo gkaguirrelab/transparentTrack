@@ -1,4 +1,4 @@
-co% DEMO_eyeTracking
+% DEMO_eyeTracking
 %
 % Demonstrate the entire eyetracking analysis pipeline.
 %
@@ -25,7 +25,7 @@ if ~exist(sandboxDir,'dir')
 end
 
 %% hard coded parameters
-nFrames = 500; % number of frames to process (set to Inf to do all)
+nFrames = 1000; % number of frames to process (set to Inf to do all)
 verbosity = 'full'; % Set to none to make the demo silent
 TbTbToolboxName = 'transparentTrack';
 
