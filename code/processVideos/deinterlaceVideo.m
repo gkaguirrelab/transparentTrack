@@ -1,4 +1,5 @@
 function deinterlaceVideo (inputVideoName, outputVideoName, varargin)
+% deinterlaceVideo (inputVideoName, outputVideoName)
 
 % This function deinterlaces NTSC DV 30Hz videos, saving out
 % progressive 60 Hz videos, using a "bob deinterlacing" strategy.
@@ -15,28 +16,59 @@ function deinterlaceVideo (inputVideoName, outputVideoName, varargin)
 % 'Mean'   =  extract 2 fields for every frame. Add a row with the mean of
 %             two consecutive rows to preserve aspect ratio.
 
-% References on bob technique for deinterlacing and on deinterlacing in
+% References on bob techniques for deinterlacing and on deinterlacing in
 % general:
 % https://www.altera.com/content/dam/altera-www/global/en_US/pdfs/literature/wp/wp-01117-hd-video-deinterlacing.pdf
 % http://www.100fps.com/
 %
-%   Usage:
-%       deinterlaceVideo (inputVideoName, outputVideoName)
+% Output
+%   an AVI video is saved out.
 %
+% Input (required)
+%	inputVideoName - full path to the video to deinterlace
+%	outputVideoName - full path to the deinterlaced output video
 %
-%   Written by Giulia Frazzetta - Nov.2016
-%  Edited June 2017 - added input parsing, changed input/output format.
-%% parse input and define variables
+% Options (analysis)
+%   bobMode - deinterlace strategy convertToGray - if set to true
+%   (default), the video will also be converted to grayscale.
+%
+% Options (verbosity and display)
+%   verbosity - controls console status updates
+%
+% Options (flow control)
+%  nFrames' - analyze fewer than the total number of frames.
+%  startFrame - which frame to start on
+%
+% Options (environment)
+%   tbSnapshot - the passed tbSnapshot output that is to be saved along
+%      with the data
+%   timestamp / username / hostname - these are automatically derived and
+%      saved within the p.Results structure.
+%
 
-p = inputParser;
+%% parse input and define variables
+p = inputParser; p.KeepUnmatched = true;
+
 % required input
 p.addRequired('inputVideoName',@isstr);
 p.addRequired('outputVideoName',@isstr);
 
 % optional inputs
 p.addParameter('bobMode', 'Mean', @isstr);
+p.addParameter('convertToGray',true,@islogical)
+
+% verbosity
 p.addParameter('verbosity', 'none', @isstr);
-p.addParameter('nFrames', Inf, @isnumeric);
+
+% flow control
+p.addParameter('nFrames',Inf,@isnumeric);
+p.addParameter('startFrame',1,@isnumeric);
+
+% environment parameters
+p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
+p.addParameter('timestamp',char(datetime('now')),@ischar);
+p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischar);
+p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % parse
 p.parse(inputVideoName,outputVideoName,varargin{:})
@@ -68,7 +100,7 @@ end
 
 open(Bob)
 
-for ii = 1:nFrames
+for ii = p.Results.startFrame:nFrames
     
     % update progressbar
     if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
@@ -77,7 +109,13 @@ for ii = 1:nFrames
     
     % get the frame
     tmp = readFrame(inObj);
-    thisFrame = rgb2gray(tmp);
+    
+    % if required, convert to gray
+    if p.Results.convertToGray
+        thisFrame = rgb2gray(tmp);
+    else
+        thisFrame = tmp;
+    end
     
     %get the fields
     oddFields = thisFrame(1:2:end,:);
@@ -124,7 +162,10 @@ for ii = 1:nFrames
             evenFields = cat(1,evenFields(1,:),tmp);
             clear tmp
             clear newLines
+        otherwise
+            error('Unknown bobMode. Type help deinterlaceVideo for available deinterlacing methods.')
     end
+    
     
     % write the fields as frames
     writeVideo(Bob,oddFields);
