@@ -5,6 +5,7 @@ function runVideoPipeline( pathParams, varargin )
 %
 % The pipeline consists of the following stages:
 %   deinterlaceVideo
+%   resizeAndCropVideo
 %   findGlint
 %   findPupilPerimeter
 %   makeControlFile
