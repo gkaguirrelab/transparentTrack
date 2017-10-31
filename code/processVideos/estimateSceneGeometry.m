@@ -1,17 +1,23 @@
-function bestFitCoP = findBestFitCoP (pupilFileName, varargin)
-% bestFitCoP = findBestFitCoP (pupilFileName)
+function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileName, varargin)
+% sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileName, varargin)
 %
 % HEADER
+% Output
+%  sceneGeometry - a structure with the fields eyeCenterX, Y, and Z, and
+%  the field meta. The eyeCenter coordinates are in units of pixels on the
+%  image plane.
 
 %% input parser
 p = inputParser; p.KeepUnmatched = true;
 
 % required input
 p.addRequired('pupilFileName',@isstr);
+p.addRequired('sceneGeometryFileName',@isstr);
 
 % optional inputs
 p.addParameter('initialEyeballRadiusPX',1000, @isnumeric);
 p.addParameter('plotResults', true, @islogical);
+p.addParameter('eyeRadiusOfCurvatureMm', 12, @islogical);
 
 % verbosity
 p.addParameter('verbosity', 'none', @isstr);
@@ -21,7 +27,7 @@ p.addParameter('nFrames',Inf,@isnumeric);
 p.addParameter('startFrame',1,@isnumeric);
 
 %parse
-p.parse(pupilFileName,varargin{:})
+p.parse(pupilFileName, sceneGeometryFileName, varargin{:})
 
 %% load pupil data
 
@@ -68,3 +74,8 @@ if p.Results.plotResults
     xlim([0 320] * 2)
     ylim([0 240] * 2)
 end
+
+% assemble the sceneGeometry structure here
+
+
+end % function
