@@ -3,41 +3,41 @@ function resizeAndCropVideo(inputVideoName, outputVideoName, varargin)
 %
 %  This fuction crops and resizes a video according to the specified
 %  parameters. Using the default options the routine will scale and crop a
-%  V.TOP video (720x486 px) to LiveTrack standard size (320x240 px). The
-%  video is also converted to gray.
+%  VGA video to match the LiveTrack standard size video. The
+%  video is also converted to gray, if requested.
 
 % Output
-% ======
-%       a gray video is saved out
+%   an AVI video is saved out.
 %
-% Input
-% =====
-%       inputVideoName : name (including path) of the input video
-%       outputVideoName : name (including path) of the output video
+% Input (required)
+%	inputVideoName - full path to the video to deinterlace
+%	outputVideoName - full path to the deinterlaced output video
 %
-% Options
-% =======
-%       'nFrames' : number of frames to process. If not specified or
-%           Inf will process the full video.
-%       'resizeVideo' : [Y X] desired output video resolution. (recommended: keep default)
-%       'cropVideo' : [firstX firstY lastX lastY] position of first and last
-%           pixels to include in the crop. (recommended: keep default)
-%       'keepOriginalSize' : option to skip video resizing.
+% Options (analysis)
+%   resizeVideo - [Y X] desired output video resolution. (keep default to
+%       get livetrack format)
+%   cropVideo - [firstX firstY lastX lastY] position of first and last
+%           pixels to include in the crop. (keep default to get livetrack
+%           format)
+%   keepOriginalSize - option to skip video resizing.
 %
-%  NOTE: if processing videos acquired with the LiveTrack+V.TOP hardware
-%  setup, do not alter the default resizing and cropping video options
+% Options (verbosity and display)
+%   verbosity - controls console status updates
+%
+% Options (flow control)
+%  nFrames' - analyze fewer than the total number of frames.
+%  startFrame - which frame to start on
 %
 %
 % Usage examples
-% ==============
 %  resizeAndCropVideo(inputVideoName,outputVideoName);
 %  resizeAndCropVideo(inputVideoName,outputVideoName, 'nFrames', 1000) % this will
 %       process just the first 1000 frames of the video
 
 
 %% parse input and define variables
+p = inputParser; p.KeepUnmatched = true;
 
-p = inputParser;
 % required input
 p.addRequired('inputVideoName',@isstr);
 p.addRequired('outputVideoName',@isstr);
@@ -46,8 +46,14 @@ p.addRequired('outputVideoName',@isstr);
 p.addParameter('resizeVideo',[486 720]/2, @isnumeric);
 p.addParameter('cropVideo', [1 1 319 239], @isnumeric);
 p.addParameter('keepOriginalSize', false, @islogic);
-p.addParameter('nFrames', Inf, @isnumeric);
-p.addParameter('verbosity', 'none', @ischar);
+p.addParameter('convertToGray',true,@islogical)
+
+% verbosity
+p.addParameter('verbosity', 'none', @isstr);
+
+% flow control
+p.addParameter('nFrames',Inf,@isnumeric);
+p.addParameter('startFrame',1,@isnumeric);
 
 
 %parse
@@ -84,18 +90,20 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 % Resize and crop, save
-for ii = 1:nFrames
+for ii = p.Results.startFrame:nFrames
     % increment the progress bar
     if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
         fprintf('.');
     end
     thisFrame = readFrame(inObj);
-    tmp = rgb2gray(thisFrame);
-    if keepOriginalSize == 0
-        tmp2 = imresize(tmp,resizeVideo);
-        tmp = imcrop(tmp2,cropVideo);
+    if p.Results.convertToGray
+        thisFrame = rgb2gray(thisFrame);
     end
-    writeVideo(outObj,tmp);
+    if keepOriginalSize == 0
+        tmp = imresize(thisFrame,resizeVideo);
+        thisFrame = imcrop(tmp,cropVideo);
+    end
+    writeVideo(outObj,thisFrame);
 end
 
 clear inObj outObj
