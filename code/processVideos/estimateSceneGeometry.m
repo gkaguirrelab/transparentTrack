@@ -1,12 +1,40 @@
 function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileName, varargin)
-% sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileName, varargin)
+% sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileName)
 %
-% HEADER
+% This function performs a search over the available ellipses to determine
+% the sceneGeometry features in units of pixels on the scene. The returned
+% features are the following:
+%       eyeball.X : X coordinate of the eyeball center (i.e. the assumed
+%       center of rotation of the pupil) on the scene plane.
+%       eyeball.Y : Y coordinate of the eyeball center (i.e. the assumed
+%       center of rotation of the pupil) on the scene plane.
+%       eyeball.Z : the orthogonal distance for the eyeball center from the
+%       scene plane.
+% 
+% The routine assumes that the ellipses are orthogonal projections onto the
+% scene plane of a circle whose center rotates around the eyeball center
+% onto the scene plane.
+% The most circular ellipse that is available provides the initial guess
+% for the X Y coordinates of the center of the eyeball. The initial guess
+% for the eyeball Z coordinate is arbitrary and can be customized.
+% For each ellipse, the 2 candidate center of projection are calculated.
+% The routine will then look for the [X Y Z] coordinates that minimize the
+% distance between the all the candidate center of projections.
+% 
+% Note that at this stage, the best fit for the Z coordinate is not
+% phisically sound. This might be due to the simplified assumptions of
+% orthogonal projection, eyeball sphericity and absence of noise.
+% 
 % Output
 %  sceneGeometry - a structure with the fields eyeCenterX, Y, and Z, and
 %  the field meta. The eyeCenter coordinates are in units of pixels on the
 %  image plane.
-
+% 
+% Input
+%   pupilFileName - 
+%   sceneGeometryFileName -  name of the sceneGeometry file in which to
+%       save the output.
+% 
 %% input parser
 p = inputParser; p.KeepUnmatched = true;
 
@@ -75,7 +103,12 @@ if p.Results.plotResults
     ylim([0 240] * 2)
 end
 
-% assemble the sceneGeometry structure here
+%% assemble the sceneGeometry and save it out
+sceneGeometry.eyeball.X = bestFitCoP(1);
+sceneGeometry.eyeball.Y = bestFitCoP(2);
+sceneGeometry.eyeball.Z = bestFitCoP(3);
+sceneGeometry.units = 'pixelsOnTheScenePlane';
+sceneGeometry.meta = p.Results;
 
-
+save(sceneGeometryFileName,'sceneGeometry');
 end % function
