@@ -31,3 +31,13 @@ for ii = 1:length(ellipses)
         [eccentricity(ii,:), theta(ii)] = constrainEllipseBySceneGeometry (ellipses(ii,:),sceneGeometryFileName,'distanceFromSceneRangePx',distanceRangeInPX);
     end
 end
+
+
+%% use the derived eccentricity and thetas to constrain the ellipse fit
+% constrained pupil fit here
+
+%% project the constrained fitted pupil file back in 3d to derive azi and elevation 
+% need to test this
+[reconstructedPupilAzi, reconstructedPupilEle, reconstructedPupilRadius] = pupilProjection_inv(transparentEllipse,centerOfProjection);
+
+%% do the smoothing in 3d
