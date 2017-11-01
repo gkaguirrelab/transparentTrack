@@ -13,9 +13,6 @@ sceneGeometryFileName = '~/Desktop/eyeTrackingDEMO/TOME_processing/session2_spat
 sceneGeometry = estimateSceneGeometry (pupilFileName,sceneGeometryFileName);
 
 %% given the scene geometry and ellipses centers, find the eccentricity and theta to be used as fitting constraints
-% for the demo, imagine that 1 mm = 10 px and the camera was between 10 and
-% 14 cm from the subject eye.
-distanceRangeInPX = [10*100 10*140];
 
 % load ellises from the pupilfile
 load(pupilFileName)
@@ -28,16 +25,16 @@ for ii = 1:length(ellipses)
     if any(isnan(ellipses(ii)))
         continue
     else
-        [eccentricity(ii,:), theta(ii)] = constrainEllipseBySceneGeometry (ellipses(ii,:),sceneGeometryFileName,'distanceFromSceneRangePx',distanceRangeInPX);
+        [eccentricity(ii,:), theta(ii)] = constrainEllipseBySceneGeometry (ellipses(ii,:),sceneGeometry);
     end
 end
 
 
-%% use the derived eccentricity and thetas to constrain the ellipse fit
-% constrained pupil fit here
-
-%% project the constrained fitted pupil file back in 3d to derive azi and elevation 
-% need to test this
-[reconstructedPupilAzi, reconstructedPupilEle, reconstructedPupilRadius] = pupilProjection_inv(transparentEllipse,centerOfProjection);
-
-%% do the smoothing in 3d
+% %% use the derived eccentricity and thetas to constrain the ellipse fit
+% % constrained pupil fit here
+% 
+% %% project the constrained fitted pupil file back in 3d to derive azi and elevation 
+% % need to test this
+% [reconstructedPupilAzi, reconstructedPupilEle, reconstructedPupilRadius] = pupilProjection_inv(transparentEllipse,centerOfProjection);
+% 
+% %% do the smoothing in 3d
