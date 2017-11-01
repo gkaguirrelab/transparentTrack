@@ -37,7 +37,6 @@ p = inputParser; p.KeepUnmatched = true;
 p.addRequired('pupilAzi',@isnumeric);
 p.addRequired('pupilEle',@isnumeric);
 p.addRequired('pupilCenter3D',@isnumeric);
-p.addRequired('centerOfProjection',@isnumeric);
 
 % optional analysis params
 p.addParameter('pupilRadius', nan, @isnumeric);
