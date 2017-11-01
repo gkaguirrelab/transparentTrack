@@ -104,9 +104,10 @@ if p.Results.plotResults
 end
 
 %% assemble the sceneGeometry and save it out
+% note that the "eyeball" here is really the center of rotation
 sceneGeometry.eyeball.X = bestFitCoP(1);
 sceneGeometry.eyeball.Y = bestFitCoP(2);
-sceneGeometry.eyeball.Z = bestFitCoP(3);
+sceneGeometry.eyeball.Z = bestFitCoP(3); % meant as the distance from the scene plane
 sceneGeometry.units = 'pixelsOnTheScenePlane';
 sceneGeometry.meta = p.Results;
 
