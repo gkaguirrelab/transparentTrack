@@ -6,13 +6,12 @@ function [eccentricity, theta] = constrainEllipseBySceneGeometry (ellipseCenter,
 % The function can either use the Z coordinate for the eyeball in the scene
 % geometry as the distance of the eye from the scene, or a user input
 % distance range in pixel (2 elements vector). In the latter case, the
-% routine will return the range of expected eccentricity and theta.
+% routine will return the range of expected eccentricity and a single theta.
 % 
 % Output
 % eccentricity - either a one element or 2 element vector with the expected
 %   eccentricity value or range.
-% theta - either a one element or 2 element vector with the expected
-%   tilt value or range.
+% theta -the expected tilt value for the ellipse (does not depend on the distance).
 % 
 % Input (required)
 % ellipseCenter - [X Y] coordinate for the ellipse center. Note that
@@ -50,17 +49,18 @@ if isempty (p.Results.distanceFromSceneRangePx)
     eccentricity = reconstructedTransparentEllipse(4);
     theta = reconstructedTransparentEllipse(5);
 else
-    % calculate lower bound values for eccentricity and theta
+    % calculate lower bound values for eccentricity
     minPupilAzi = atand((ellipseCenter(1)-sceneGeometry.eyeball.X)/p.Results.distanceFromSceneRangePx(1));
     minPupilEle = atand((ellipseCenter(2)-sceneGeometry.eyeball.Y)/p.Results.distanceFromSceneRangePx(1));
     minReconstructedTransparentEllipse = pupilProjection_fwd(minPupilAzi, minPupilEle, [sceneGeometry.eyeball.X sceneGeometry.eyeball.Y p.Results.distanceFromSceneRangePx(1)]);
     eccentricity(1) = minReconstructedTransparentEllipse(4);
-    theta(1) = minReconstructedTransparentEllipse(5);
     
-    % calculate upper bound values
+    % calculate upper bound values fpr eccentricity
     maxPupilAzi = atand((ellipseCenter(1)-sceneGeometry.eyeball.X)/p.Results.distanceFromSceneRangePx(2));
     maxPupilEle = atand((ellipseCenter(2)-sceneGeometry.eyeball.Y)/p.Results.distanceFromSceneRangePx(2));
     maxReconstructedTransparentEllipse = pupilProjection_fwd(maxPupilAzi, maxPupilEle, [sceneGeometry.eyeball.X sceneGeometry.eyeball.Y p.Results.distanceFromSceneRangePx(2)]);
     eccentricity(2) = maxReconstructedTransparentEllipse(4);
-    theta(2) = maxReconstructedTransparentEllipse(5);
+    
+    % calculate the tilt
+    theta = maxReconstructedTransparentEllipse(5);
 end
