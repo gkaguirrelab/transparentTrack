@@ -32,10 +32,26 @@ figure
 plot(ellipses(:,4),eccentricity,'.')
 xlabel('transparentEllipses eccentricities')
 ylabel('constrained eccentricities')
+
+figure
+plot(ellipses(:,4))
+hold on
+plot(eccentricity)
+title('Timeseries for eccentricity')
+legend('transparentEllipses eccentricities','constrained eccentricities')
+
 figure
 plot(ellipses(:,5),theta,'.')
 xlabel('transparentEllipses tilt angles')
 ylabel('constrained tilt angles')
+
+figure
+plot(sin(ellipses(:,5)))
+hold on
+plot(sin(theta))
+title('timeseries for the sin of the thetas') % for easier comparison
+legend('transparentEllipses tilt angles','constrained tilt angles')
+ylabel('sin(theta)')
 
 % %% use the derived eccentricity and thetas to constrain the ellipse fit
 % % constrained pupil fit here
