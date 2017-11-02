@@ -1,5 +1,5 @@
 function [eccentricity, theta] = constrainEllipseBySceneGeometry (ellipseCenter,sceneGeometry, varargin)
-% [eccentricity, theta] = constrainEllipseBySceneGeometry (ellipseCenter,sceneGeometryFileName)
+% [eccentricity, theta] = constrainEllipseBySceneGeometry (ellipseCenter,sceneGeometry)
 %
 % This function returns the expected ecceentricity and tilt for an ellipse,
 % given the location of the center and the scene geometry.
@@ -17,7 +17,7 @@ function [eccentricity, theta] = constrainEllipseBySceneGeometry (ellipseCenter,
 % ellipseCenter - [X Y] coordinate for the ellipse center. Note that
 %   passing the full parametrization of a transparent ellipse will work as
 %   well.
-% sceneGeometryFileName - struct with scene geometry
+% sceneGeometry - struct with scene geometry
 % 
 % Optional Input (analysis)
 % distanceFromSceneRangePx - [distInPx] or [minDistPx maxDistPx] estimate
@@ -36,38 +36,20 @@ p.addRequired('sceneGeometry',@isstruct);
 p.addParameter('distanceFromScenePx', [],@isnumeric)
 
 %parse
-p.parse(ellipseCenter, sceneGeometry, varargin{:})
+p.parse(ellipseCenter,sceneGeometry, varargin{:})
 
 
 %% derive rotation angles and reconstruct eccentricity and theta
-if isempty (p.Results.distanceFromScenePx)
-    pupilAzi = atand((ellipseCenter(1)-sceneGeometry.eyeball.X)/sceneGeometry.eyeball.Z);
-    pupilEle = atand((ellipseCenter(2)-sceneGeometry.eyeball.Y)/sceneGeometry.eyeball.Z);
+
+    % derive pupil center cartesian 3D coordinates
+    pupilCenter.X = ellipseCenter(1);
+    pupilCenter.Y = ellipseCenter(2);
+    pupilCenter.Z = sqrt(sceneGeometry.eyeballRadius^2 - (pupilCenter.X - sceneGeometry.eyeballCenter.X)^2 - (pupilCenter.Y - sceneGeometry.eyeballCenter.Y)^2) +sceneGeometry.eyeballCenter.Z ;
+    pupilAzi = atand((pupilCenter.X - sceneGeometry.eyeballCenter.X)/(pupilCenter.Z - sceneGeometry.eyeballCenter.Z));
+    pupilEle = atand((pupilCenter.Y - sceneGeometry.eyeballCenter.Y)/(pupilCenter.Z - sceneGeometry.eyeballCenter.Z));
     
-    reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzi, pupilEle, [sceneGeometry.eyeball.X sceneGeometry.eyeball.Y sceneGeometry.eyeball.Z]);
+    reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzi, pupilEle, [sceneGeometry.eyeballCenter.X sceneGeometry.eyeballCenter.Y sceneGeometry.eyeballCenter.Z]);
     eccentricity = reconstructedTransparentEllipse(4);
     theta = reconstructedTransparentEllipse(5);
     
-elseif length (p.Results.distanceFromScenePx) == 1
-    pupilAzi = atand((ellipseCenter(1)-sceneGeometry.eyeball.X)/p.Results.distanceFromScenePx);
-    pupilEle = atand((ellipseCenter(2)-sceneGeometry.eyeball.Y)/p.Results.distanceFromScenePx);
-    reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzi, pupilEle, [sceneGeometry.eyeball.X sceneGeometry.eyeball.Y p.Results.distanceFromScenePx]);
-    eccentricity = reconstructedTransparentEllipse(4);
-    
-    theta = reconstructedTransparentEllipse(5);
-elseif length (p.Results.distanceFromScenePx) == 2
-    % calculate lower bound values for eccentricity
-    minPupilAzi = atand((ellipseCenter(1)-sceneGeometry.eyeball.X)/p.Results.distanceFromScenePx(1));
-    minPupilEle = atand((ellipseCenter(2)-sceneGeometry.eyeball.Y)/p.Results.distanceFromScenePx(1));
-    minReconstructedTransparentEllipse = pupilProjection_fwd(minPupilAzi, minPupilEle, [sceneGeometry.eyeball.X sceneGeometry.eyeball.Y p.Results.distanceFromScenePx(1)]);
-    eccentricity(1) = minReconstructedTransparentEllipse(4);
-    
-    % calculate upper bound values fpr eccentricity
-    maxPupilAzi = atand((ellipseCenter(1)-sceneGeometry.eyeball.X)/p.Results.distanceFromScenePx(2));
-    maxPupilEle = atand((ellipseCenter(2)-sceneGeometry.eyeball.Y)/p.Results.distanceFromScenePx(2));
-    maxReconstructedTransparentEllipse = pupilProjection_fwd(maxPupilAzi, maxPupilEle, [sceneGeometry.eyeball.X sceneGeometry.eyeball.Y p.Results.distanceFromScenePx(2)]);
-    eccentricity(2) = maxReconstructedTransparentEllipse(4);
-    
-    % calculate the tilt
-    theta = maxReconstructedTransparentEllipse(5);
 end

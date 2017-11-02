@@ -30,7 +30,7 @@ clc
 
 % define the eyeball sphere radius
 eyeballR =  100; 
-eyeballCenter = [30 30 0];
+eyeballCenter = [10 0 0];
 eyeball = [eyeballCenter eyeballR];
 
 % "Depth" of the pupil plane, with respect to the sphere radius. The
@@ -62,7 +62,7 @@ opticalAxis = createLine3d(eyeballCenter,centerOfProjection3D);
 
 %% rotate the optical axis along X and Y and draw the pupil
 % define rotations in deg
-pupilAzi = 40; % in degrees
+pupilAzi = 20; % in degrees
 pupilEle = 0; % in degrees
 
 % first rotate along Y (azi)
@@ -74,7 +74,7 @@ rotationY = createRotationOx(eyeballCenter, deg2rad(-pupilEle)); % - to preserve
 pupilAxis = transformLine3d(pupilAxis, rotationY);
 
 % intersect sphere and pupil axis
-pupilCenter3D = intersectLineSphere(pupilAxis, intersectingSphere);
+pupilCenter3D = intersectLineSphere(pupilAxis, intersectingSphere)
 
 % create the pupil plane
 pupilPlane = createPlane(pupilCenter3D(2,:),pupilCenter3D(2,:)-eyeballCenter);
@@ -101,13 +101,37 @@ unconstrainedEllipseExplicit = ellipse_im2ex(unconstrainedEllipseImplicit);
 centerOfProjection = [centerOfProjection3D(1) centerOfProjection3D(2)];
 
 % inverse projection
-[reconstructedPupilAzi, reconstructedPupilEle, reconstructedPupilRadius] = pupilProjection_inv(unconstrainedEllipseTransparent,centerOfProjection)
+[reconstructedPupilAzi, reconstructedPupilEle, reconstructedPupilRadius] = pupilProjection_inv(unconstrainedEllipseTransparent,centerOfProjection);
 
 % forward projection
-reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzi, pupilEle, pupilCenter3D(2,:),centerOfProjection, 'pupilRadius', pupilRadius)
+reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzi, pupilEle, pupilCenter3D(2,:), 'pupilRadius', pupilRadius);
 
-% find candidates COP
-candidatesCOP = findCandidatesCenterOfProjection(reconstructedTransparentEllipse,eyeballR)
+
+%% test constraints on eccentricity and theta
+% find candidates eyeball
+candidatesEB = findCandidatesEyeball(reconstructedTransparentEllipse,eyeballR-planeDepth);
+
+% since we have just a single ellipse, we just pick the first candidate
+% eyeball 
+
+sceneGeometry.eyeballCenter.X = candidatesEB(1,1);
+sceneGeometry.eyeballCenter.Y = candidatesEB(1,2);
+sceneGeometry.eyeballCenter.Z = candidatesEB(1,3);% meant as the distance from the scene plane
+sceneGeometry.eyeballRadius = candidatesEB(1,4);
+
+
+% reconstruct theta and eccentricity
+[eccentricity, theta] = constrainEllipseBySceneGeometry (reconstructedTransparentEllipse,sceneGeometry);
+
+figure
+plot(reconstructedTransparentEllipse(4),eccentricity,'.')
+xlabel('transparentEllipse eccentricities')
+ylabel('constrained eccentricities')
+figure
+plot(reconstructedTransparentEllipse(5),theta,'.')
+xlabel('transparentEllipses tilt angles')
+ylabel('constraine tilt angles')
+
 %%  plots
 
 % plot 3d

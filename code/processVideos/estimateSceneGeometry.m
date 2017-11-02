@@ -4,37 +4,37 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 % This function performs a search over the available ellipses to determine
 % the sceneGeometry features in units of pixels on the scene. The returned
 % features are the following:
-%       eyeball.X : X coordinate of the eyeball center (i.e. the assumed
-%       center of rotation of the pupil) on the scene plane.
-%       eyeball.Y : Y coordinate of the eyeball center (i.e. the assumed
-%       center of rotation of the pupil) on the scene plane.
-%       eyeball.Z : the orthogonal distance for the eyeball center from the
-%       scene plane.
-% 
-% The routine assumes that the ellipses are orthogonal projections onto the
+%       eyeballCenter.X : X coordinate of the eyeball center (i.e. the assumed
+%           center of rotation of the pupil) on the scene plane.
+%       eyeballCenter.Y : Y coordinate of the eyeball center (i.e. the assumed
+%           center of rotation of the pupil) on the scene plane.
+%       eyeballCenter.Z : the orthogonal distance for the eyeball center from the
+%           scene plane.
+%       eyeballRadius : radius of the eyeball in pixels
+%
+% The routine can assume that the ellipses are orthogonal projections onto the
 % scene plane of a circle whose center rotates around the eyeball center
 % onto the scene plane.
 % The most circular ellipse that is available provides the initial guess
-% for the X Y coordinates of the center of the eyeball. The initial guess
-% for the eyeball Z coordinate is arbitrary and can be customized.
-% For each ellipse, the 2 candidate center of projection are calculated.
+% for the X Y coordinates of the center of the eyeball. 
+% For each ellipse, the 2 candidate eyeballs are calculated.
 % The routine will then look for the [X Y Z] coordinates that minimize the
 % distance between the all the candidate center of projections.
-% 
+%
 % Note that at this stage, the best fit for the Z coordinate is not
 % phisically sound. This might be due to the simplified assumptions of
 % orthogonal projection, eyeball sphericity and absence of noise.
-% 
+%
 % Output
 %  sceneGeometry - a structure with the fields eyeCenterX, Y, and Z, and
 %  the field meta. The eyeCenter coordinates are in units of pixels on the
 %  image plane.
-% 
+%
 % Input
-%   pupilFileName - 
+%   pupilFileName -
 %   sceneGeometryFileName -  name of the sceneGeometry file in which to
 %       save the output.
-% 
+%
 %% input parser
 p = inputParser; p.KeepUnmatched = true;
 
@@ -43,7 +43,8 @@ p.addRequired('pupilFileName',@isstr);
 p.addRequired('sceneGeometryFileName',@isstr);
 
 % optional inputs
-p.addParameter('initialEyeballRadiusPX',1000, @isnumeric);
+p.addParameter('orthogonalProjection',true, @islogical);
+p.addParameter('initialGuessEyeballRadius',1000,@isnumeric);
 p.addParameter('plotResults', true, @islogical);
 p.addParameter('eyeRadiusOfCurvatureMm', 12, @islogical);
 
@@ -61,24 +62,26 @@ p.parse(pupilFileName, sceneGeometryFileName, varargin{:})
 
 load(pupilFileName)
 if p.Results.nFrames ~= Inf
-    ellipses = pupilData.pPosteriorMeanTransparent(p.Results.startFrame:p.Results.nFrames,:);
+    ellipses = pupilData.pInitialFitTransparent(p.Results.startFrame:p.Results.nFrames,:);
 else
-    ellipses = pupilData.pPosteriorMeanTransparent(p.Results.startFrame:end,:);
+    ellipses = pupilData.pInitialFitTransparent(p.Results.startFrame:end,:);
 end
 
 %% find the most circular ellipse and use the X Y coordinate as the initial guess for the CoP XY coordinates
 
-[minEccentricity, minEccentricityIDX] = min(pupilData.pPosteriorMeanTransparent(:,4));
+[minEccentricity, minEccentricityIDX] = min(pupilData.pInitialFitTransparent(:,4));
 
-% first guess for the CoP is the location of the most circular ellipse on
-% the scene and the initial eyeball radius guess as a Z coordinate
-x0 = [pupilData.pPosteriorMeanTransparent(minEccentricityIDX,1) ...
-    pupilData.pPosteriorMeanTransparent(minEccentricityIDX,2) ...
-    p.Results.initialEyeballRadiusPX];
-
+% under orthogonal projection hypotesis, the first guess for the CoP is the [X Y] coordinates of the most circular ellipse on
+% the scene, the initial eyeball radius guess is user defined, and the Z coordinate is zero 
+if p.Results.orthogonalProjection
+    x0 = [pupilData.pInitialFitTransparent(minEccentricityIDX,1) ...
+        pupilData.pInitialFitTransparent(minEccentricityIDX,2) ...
+        0 ...
+        p.Results.initialGuessEyeballRadius];
+end
 % add weights to ellipses based on how good is the fit
 if p.Results.nFrames ~= Inf
-errorWeights = (1./pupilData.fitError(p.Results.startFrame:p.Results.nFrames))';
+    errorWeights = (1./pupilData.fitError(p.Results.startFrame:p.Results.nFrames))';
 else
     errorWeights = (1./pupilData.fitError(p.Results.startFrame:end))';
 end
@@ -104,12 +107,15 @@ if p.Results.plotResults
 end
 
 %% assemble the sceneGeometry and save it out
-% note that the "eyeball" here is really the center of rotation
-sceneGeometry.eyeball.X = bestFitCoP(1);
-sceneGeometry.eyeball.Y = bestFitCoP(2);
-sceneGeometry.eyeball.Z = bestFitCoP(3); % meant as the distance from the scene plane
+sceneGeometry.eyeballCenter.X = bestFitCoP(1);
+sceneGeometry.eyeballCenter.Y = bestFitCoP(2);
+sceneGeometry.eyeballCenter.Z = bestFitCoP(3); % meant as the distance from the scene plane
+sceneGeometry.eyeballRadius = bestFitCoP(4);
 sceneGeometry.units = 'pixelsOnTheScenePlane';
 sceneGeometry.meta = p.Results;
 
-save(sceneGeometryFileName,'sceneGeometry');
+if ~isempty(sceneGeometryFileName)
+    save(sceneGeometryFileName,'sceneGeometry');
+end
+
 end % function

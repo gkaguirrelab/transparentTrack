@@ -10,16 +10,15 @@ pupilFileName = '~/Desktop/eyeTrackingDEMO/TOME_processing/session2_spatialStimu
 
 %% find sceneGeometry
 sceneGeometryFileName = '~/Desktop/eyeTrackingDEMO/TOME_processing/session2_spatialStimuli/TOME_3020/050517/EyeTracking/GazeCal01_sceneGeometry.mat';
-sceneGeometry = estimateSceneGeometry (pupilFileName,sceneGeometryFileName);
+sceneGeometry = estimateSceneGeometry (pupilFileName,sceneGeometryFileName,'initialGuessEyeballRadius',5000);
 
 %% given the scene geometry and ellipses centers, find the eccentricity and theta to be used as fitting constraints
 
 % load ellises from the pupilfile
 load(pupilFileName)
-ellipses = pupilData.pPosteriorMeanTransparent;
-
+ellipses = pupilData.pInitialFitTransparent;
 % initialize eccentricity and theta
-eccentricity = nan(length(ellipses),2);
+eccentricity = nan(length(ellipses),1);
 theta = nan(length(ellipses),1);
 for ii = 1:length(ellipses)
     if any(isnan(ellipses(ii)))
@@ -29,6 +28,14 @@ for ii = 1:length(ellipses)
     end
 end
 
+figure
+plot(ellipses(:,4),eccentricity,'.')
+xlabel('transparentEllipses eccentricities')
+ylabel('constrained eccentricities')
+figure
+plot(ellipses(:,5),theta,'.')
+xlabel('transparentEllipses tilt angles')
+ylabel('constrained tilt angles')
 
 % %% use the derived eccentricity and thetas to constrain the ellipse fit
 % % constrained pupil fit here
