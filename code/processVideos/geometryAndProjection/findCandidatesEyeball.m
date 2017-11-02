@@ -1,4 +1,4 @@
-function candidatesEyeball = findCandidatesEyeball(transparentEllipse,eyeballRadius, varargin)
+function candidatesEyeball = findCandidatesEyeball(transparentEllipse, eyeballRadiusInPixels, varargin)
 % candidatesEyeball = findCandidatesEyeball(transparentEllipse,eyeballRadius)
 %
 % this function returns the coordinates of the candidate eyeball centers
@@ -25,22 +25,19 @@ p = inputParser; p.KeepUnmatched = true;
 
 % required input
 p.addRequired('transparentEllipse',@isnumeric);
-p.addRequired('eyeballRadius',@isnumeric);
+p.addRequired('eyeballRadiusInPixels',@isnumeric);
 
-% Environment parameters
-p.addParameter('orthogonalProjection',true,@islogical)
-p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
-p.addParameter('timestamp',char(datetime('now')),@ischar);
-p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischar);
-p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
+% Analysis parameters
+p.addParameter('orthogonalProjection',true,@islogical);
+
 
 % parse
-p.parse(transparentEllipse, eyeballRadius, varargin{:})
+p.parse(transparentEllipse, eyeballRadiusInPixels, varargin{:})
 
 %% find candidates center of projection for the ellipse
 if p.Results.orthogonalProjection
     if transparentEllipse(4) == 0 && (transparentEllipse(5) == 0 || transparentEllipse(5) == pi) % clear the easiest case
-        candidatesEyeball = [ transparentEllipse(1) transparentEllipse(2) 0 eyeballRadius];
+        candidatesEyeball = [ transparentEllipse(1) transparentEllipse(2) 0 eyeballRadiusInPixels];
         
     else
         % Find candidate azimut and elevation values (unless the eccentricity
@@ -70,8 +67,8 @@ if p.Results.orthogonalProjection
         end
         % find the eyeball center coordinates for this ellipse
         for ii = 1: length(anglePairs)
-            delta(ii,:) = eyeballRadius * [ sind(anglePairs(ii,1)) sind(anglePairs(ii,2))];
-            candidatesEyeball (ii,:) = [transparentEllipse(1)-delta(ii,1) transparentEllipse(2)-delta(ii,2) 0 eyeballRadius];
+            delta(ii,:) = eyeballRadiusInPixels * [ sind(anglePairs(ii,1)) sind(anglePairs(ii,2))];
+            candidatesEyeball (ii,:) = [transparentEllipse(1)-delta(ii,1) transparentEllipse(2)-delta(ii,2) 0];
         end
     end  
 else

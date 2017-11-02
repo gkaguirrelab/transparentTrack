@@ -44,18 +44,23 @@ p.addRequired('sceneGeometryFileName',@isstr);
 
 % optional inputs
 p.addParameter('orthogonalProjection',true, @islogical);
-p.addParameter('initialGuessEyeballRadius',1000,@isnumeric);
-p.addParameter('plotResults', true, @islogical);
-p.addParameter('eyeRadiusOfCurvatureMm', 12, @islogical);
+p.addParameter('eyeballRadiusInPixels',250,@isnumeric);
 
-% verbosity
+% verbosity and plotting control
 p.addParameter('verbosity', 'none', @isstr);
+p.addParameter('plotResults', true, @islogical);
 
 % flow control
 p.addParameter('nFrames',Inf,@isnumeric);
 p.addParameter('startFrame',1,@isnumeric);
 
-%parse
+% Environment parameters
+p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
+p.addParameter('timestamp',char(datetime('now')),@ischar);
+p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischar);
+p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
+
+% parse
 p.parse(pupilFileName, sceneGeometryFileName, varargin{:})
 
 %% load pupil data
@@ -76,18 +81,25 @@ end
 if p.Results.orthogonalProjection
     x0 = [pupilData.pInitialFitTransparent(minEccentricityIDX,1) ...
         pupilData.pInitialFitTransparent(minEccentricityIDX,2) ...
-        0 ...
-        p.Results.initialGuessEyeballRadius];
+        0];
 end
 % add weights to ellipses based on how good is the fit
 if p.Results.nFrames ~= Inf
-    errorWeights = (1./pupilData.fitError(p.Results.startFrame:p.Results.nFrames))';
+    if isfield(pupilData,'fitError')
+        errorWeights = (1./pupilData.fitError(p.Results.startFrame:p.Results.nFrames))';
+    else
+        errorWeights=ones(1,size(ellipses,1));
+    end
 else
-    errorWeights = (1./pupilData.fitError(p.Results.startFrame:end))';
+    if isfield(pupilData,'fitError')
+        errorWeights = (1./pupilData.fitError(p.Results.startFrame:end))';
+    else
+        errorWeights=ones(1,size(ellipses,1));
+    end
 end
 
 % define an anonymous function to measure SSQ error
-errorFunc = @(x) sqrt(nansum(errorWeights.*distanceToCandidateEyeBallCenter(ellipses,x).^2));
+errorFunc = @(x) sqrt(nansum(errorWeights.*distanceToCandidateEyeBallCenter(ellipses, x, p.Results.eyeballRadiusInPixels, 'orthogonalProjection', p.Results.orthogonalProjection).^2));
 bestFitCoP = fmincon(errorFunc, x0);
 
 
