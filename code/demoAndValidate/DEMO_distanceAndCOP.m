@@ -138,3 +138,152 @@ for ii=1:nFrames
 end
 % close the videoObj
 clear videoOutObj
+
+
+%% derive pupil params in 3D
+% pupil params in 3D are azimut and elevation (with respect to the center
+% of projection on the scene) and pupil area
+pupil3DFileName = '~/Desktop/eyeTrackingDEMO/TOME_processing/session2_spatialStimuli/TOME_3020/050517/EyeTracking/GazeCal01_pupil3D.mat';
+
+for ii = 1:length(constrainedEllipses)
+    centerOfProjection = [sceneGeometry.eyeballCenter.X sceneGeometry.eyeballCenter.Y]; % because of orthogonal projection
+    [reconstructedPupilAzi(ii), reconstructedPupilEle(ii), reconstructedPupilRadius(ii)] = pupilProjection_inv(constrainedEllipses(ii,:),centerOfProjection);
+end
+
+pupil3D.azi = reconstructedPupilAzi;
+pupil3D.ele = reconstructedPupilEle;
+pupil3D.radius= reconstructedPupilRadius;
+pupil3D.centerOfProjection = centerOfProjection;
+save(pupil3DFileName,'pupil3D')
+%% make a pupil movement animation reproducing the 3D movements of the eye
+
+% first attempt: pupil of fixed size (just to see if this works)
+
+synteticFixedSizePupilVideoName = '~/Desktop/eyeTrackingDEMO/TOME_processing/session2_spatialStimuli/TOME_3020/050517/EyeTracking/GazeCal01_syntFixedSizePupil.avi';
+
+
+
+% 1.initial geometry
+
+% define the eyeball sphere radius
+eyeballR =  250;
+eyeballCenter = [pupil3D.centerOfProjection(1) pupil3D.centerOfProjection(2) 0];
+eyeball = [eyeballCenter eyeballR];
+
+% "Depth" of the pupil plane, with respect to the sphere radius. The
+% deeper, the bigger the pupil.
+planeDepth = 15;
+intersectingSphere = [eyeballCenter eyeballR-planeDepth];
+
+
+% "Depth" of the intersecting plane, with respect to the sphere radius. The
+% deeper, the bigger the pupil.
+planeDepth = 5;
+
+% rotation arm length
+rotationArmLength = eyeballR - planeDepth;
+
+% create scene plane
+sceneDistance = 5000; % orthogonal distance from rotation arm
+xMax= 640; % max x size of scene (for plotting purposes)
+yMax = 480; % max y size of scene
+scenePlane = createPlane([0 0 rotationArmLength+sceneDistance],[0 0 rotationArmLength+sceneDistance]);
+
+% center of projection
+centerOfProjection3D = projPointOnPlane(eyeballCenter, scenePlane);
+
+% derive optical axis
+% [centerOfProjectionX,centerOfProjectionY,centerOfProjectionZ] = sph2cart(azi0,ele0,rotationArmLength);
+opticalAxis = createLine3d(eyeballCenter,centerOfProjection3D);
+
+
+for ii = 1:length(pupil3D.azi)
+    % define rotations in deg
+    pupilAzi = pupil3D.azi(ii); % in degrees
+    pupilEle = pupil3D.ele(ii); % in degrees
+    
+    if ~isnan(pupilAzi)
+        % first rotate along Y (azi)
+        rotationX = createRotationOy(eyeballCenter, deg2rad(pupilAzi));
+        pupilAxis = transformLine3d(opticalAxis, rotationX);
+        
+        % then along X (elevation)
+        rotationY = createRotationOx(eyeballCenter, deg2rad(-pupilEle)); % - to preserve convention
+        pupilAxis = transformLine3d(pupilAxis, rotationY);
+        
+        % intersect sphere and pupil axis
+        pupilCenter3D = intersectLineSphere(pupilAxis, intersectingSphere);
+        
+        % create the pupil plane
+        pupilPlane = createPlane(pupilCenter3D(2,:),pupilCenter3D(2,:)-eyeballCenter);
+        
+        % intersect pupil plane and sphere to obtain the pupil circle
+        pupilInEye = intersectPlaneSphere(pupilPlane, eyeball);
+        pupilRadius = pupilInEye(4); % saving it explicitely for reference
+        
+        %  get the 3d cartesian coordinates of the pupil perimeter points
+        pupilPoints3d = getCirclePoints3d(pupilInEye);
+    end
+    
+    % Create a figure
+    frameFig = figure( 'Visible', 'off');
+    
+    
+    % add the eyeball
+    drawSphere(eyeball,'FaceAlpha',0.5)
+    hold on
+    
+    % add optical axis
+    drawLine3d(opticalAxis,'k')
+    hold on
+    
+    if ~isnan(pupilAzi)
+        % add the pupil on the eye
+        drawCircle3d(pupilInEye)
+        hold on
+        
+        % add pupil axis
+        drawLine3d(pupilAxis,'b')
+        hold on
+    end
+    
+    
+    % add labels
+    xlabel('X')
+    ylabel('Y')
+    zlabel('Z')
+    
+    view([-35 60])
+    title( 'Reconstruction of 3D pupil movements (fixed size pupil)')
+    axis equal
+    
+    
+    
+    % Save the frame and close the figure
+    tmp=getframe(frameFig);
+    outputVideo(:,:,:,ii)=tmp.cdata;
+    close(frameFig);
+end
+
+% Create a color map
+cmap = [linspace(0,1,256)' linspace(0,1,256)' linspace(0,1,256)'];
+cmap(1,:)=[1 0 0];
+cmap(2,:)=[0 1 0];
+cmap(3,:)=[0 0 1];
+cmap(4,:)=[1 1 0];
+cmap(5,:)=[0 1 1];
+cmap(6,:)=[1 0 1];
+
+% write the outputVideo to file
+videoOutObj = VideoWriter(synteticFixedSizePupilVideoName,'Indexed AVI');
+videoOutObj.FrameRate = 60;
+videoOutObj.Colormap = cmap;
+open(videoOutObj);
+
+% loop through the frames and save them
+for ii=1:nFrames
+    indexedFrame = rgb2ind(squeeze(outputVideo(:,:,:,ii)), cmap, 'nodither');
+    writeVideo(videoOutObj,indexedFrame);
+end
+% close the videoObj
+clear videoOutObj
