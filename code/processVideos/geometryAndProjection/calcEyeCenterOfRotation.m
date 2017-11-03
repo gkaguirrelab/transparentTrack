@@ -1,4 +1,4 @@
-function candidatesEyeball = findCandidatesEyeball(transparentEllipse, eyeballRadiusInPixels, varargin)
+function eyeCenterOfRotation = calcEyeCenterOfRotation(transparentEllipse, eyeRadiusInPixels, varargin)
 % candidatesEyeball = findCandidatesEyeball(transparentEllipse,eyeballRadius)
 %
 % this function returns the coordinates of the candidate eyeball centers
@@ -8,7 +8,7 @@ function candidatesEyeball = findCandidatesEyeball(transparentEllipse, eyeballRa
 % of the candidate is the "real" center of projection on the scene.
 %
 % Outputs:
-%   candidatesEyeball - matrix with the [X Y Z radius] coordinates of a
+%   eyeCenterOfRotation - matrix with the [X Y Z radius] coordinates of a
 %       possible eyeball center on each row. Note that if only 1 couple of
 %       coordinates is returned, the ellipse eccentricity is zero. In case
 %       of orthogonal projection, the Z coordinate will be returned as
@@ -17,7 +17,7 @@ function candidatesEyeball = findCandidatesEyeball(transparentEllipse, eyeballRa
 %
 % Inputs:
 %   transparentEllipse - ellipse in transparent form
-%   eyeballRadius - radius of the eyeball, in the same linear coordinates
+%   eyeRadiusInPixels - radius of the eyeball, in the same linear coordinates
 %       as in the transparent ellipse.
 %
 %% input parser
@@ -25,19 +25,19 @@ p = inputParser; p.KeepUnmatched = true;
 
 % required input
 p.addRequired('transparentEllipse',@isnumeric);
-p.addRequired('eyeballRadiusInPixels',@isnumeric);
+p.addRequired('eyeRadiusInPixels',@isnumeric);
 
 % Analysis parameters
 p.addParameter('orthogonalProjection',true,@islogical);
 
 
 % parse
-p.parse(transparentEllipse, eyeballRadiusInPixels, varargin{:})
+p.parse(transparentEllipse, eyeRadiusInPixels, varargin{:})
 
 %% find candidates center of projection for the ellipse
 if p.Results.orthogonalProjection
     if transparentEllipse(4) == 0 && (transparentEllipse(5) == 0 || transparentEllipse(5) == pi) % clear the easiest case
-        candidatesEyeball = [ transparentEllipse(1) transparentEllipse(2) 0 eyeballRadiusInPixels];
+        eyeCenterOfRotation = [ transparentEllipse(1) transparentEllipse(2) 0 eyeRadiusInPixels];
         
     else
         % Find candidate azimut and elevation values (unless the eccentricity
@@ -67,8 +67,8 @@ if p.Results.orthogonalProjection
         end
         % find the eyeball center coordinates for this ellipse
         for ii = 1: length(anglePairs)
-            delta(ii,:) = eyeballRadiusInPixels * [ sind(anglePairs(ii,1)) sind(anglePairs(ii,2))];
-            candidatesEyeball (ii,:) = [transparentEllipse(1)-delta(ii,1) transparentEllipse(2)-delta(ii,2) 0];
+            delta(ii,:) = eyeRadiusInPixels * [ sind(anglePairs(ii,1)) sind(anglePairs(ii,2))];
+            eyeCenterOfRotation (ii,:) = [transparentEllipse(1)-delta(ii,1) transparentEllipse(2)-delta(ii,2) 0];
         end
     end  
 else
