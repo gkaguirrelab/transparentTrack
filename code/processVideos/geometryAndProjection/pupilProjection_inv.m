@@ -63,39 +63,46 @@ else
     % apply it!
 end
 
-% derive horizontal tilt angle (azimut)
-if ~isnan(centerOfProjection)
-    if centerX > centerOfProjection(1)
-        reconstructedPupilAzi = asind(sqrt((sin(theta))^2 * (1 -k^2)));
-    elseif centerX < centerOfProjection(1)
-        reconstructedPupilAzi = - asind(sqrt((sin(theta))^2 * (1 -k^2)));
-    elseif centerX == centerOfProjection(1)
-        reconstructedPupilAzi = 0;
-    end
-
-    % derive vertical tilt angle (elevation)
-    if centerY > centerOfProjection(2)
-        reconstructedPupilEle = asind(sqrt(((cos(theta))^2 *(k^2 - 1))/(((sin(theta))^2 * (1 -k^2)) -1)));
-    elseif centerY < centerOfProjection(2)
-        reconstructedPupilEle = -asind(sqrt(((cos(theta))^2 *(k^2 - 1))/(((sin(theta))^2 * (1 -k^2)) -1)));
-    elseif centerY == centerOfProjection(2)
-        reconstructedPupilEle = 0;
-    end
+if any(isnan(transparentEllipse(1:2)))
+    reconstructedPupilAzi = nan;
+    reconstructedPupilEle = nan;
+    reconstructedPupilRadius = nan;
 else
-    reconstructedPupilAzi(1) = asind(sqrt((sin(theta))^2 * (1 -k^2)));
-    reconstructedPupilAzi(2) = -asind(sqrt((sin(theta))^2 * (1 -k^2)));
-    reconstructedPupilEle(1) = asind(sqrt(((cos(theta))^2 *(k^2 - 1))/(((sin(theta))^2 * (1 -k^2)) -1)));
-    reconstructedPupilEle(2) = - asind(sqrt(((cos(theta))^2 *(k^2 - 1))/(((sin(theta))^2 * (1 -k^2)) -1)));
-end
-%% see if you can derive the pupil radius
-if ~isnan(transparentEllipse(3))
-    if p.Results.perspectiveCorrection == 0
-        reconstructedPupilRadius = sqrt(transparentEllipse(3) / (pi * k));
-    elseif p.Results.perspectiveCorrection > 0
-        % DEV PLACEHOLDER: if there is a perspective correction value to apply,
-        % apply it!
+    % derive horizontal tilt angle (azimut)
+    if ~isnan(centerOfProjection)
+        if centerX > centerOfProjection(1)
+            reconstructedPupilAzi = asind(sqrt((sin(theta))^2 * (1 -k^2)));
+        elseif centerX < centerOfProjection(1)
+            reconstructedPupilAzi = - asind(sqrt((sin(theta))^2 * (1 -k^2)));
+        elseif centerX == centerOfProjection(1)
+            reconstructedPupilAzi = 0;
+        end
+        
+        % derive vertical tilt angle (elevation)
+        if centerY > centerOfProjection(2)
+            reconstructedPupilEle = asind(sqrt(((cos(theta))^2 *(k^2 - 1))/(((sin(theta))^2 * (1 -k^2)) -1)));
+        elseif centerY < centerOfProjection(2)
+            reconstructedPupilEle = -asind(sqrt(((cos(theta))^2 *(k^2 - 1))/(((sin(theta))^2 * (1 -k^2)) -1)));
+        elseif centerY == centerOfProjection(2)
+            reconstructedPupilEle = 0;
+        end
+    else
+        reconstructedPupilAzi(1) = asind(sqrt((sin(theta))^2 * (1 -k^2)));
+        reconstructedPupilAzi(2) = -asind(sqrt((sin(theta))^2 * (1 -k^2)));
+        reconstructedPupilEle(1) = asind(sqrt(((cos(theta))^2 *(k^2 - 1))/(((sin(theta))^2 * (1 -k^2)) -1)));
+        reconstructedPupilEle(2) = - asind(sqrt(((cos(theta))^2 *(k^2 - 1))/(((sin(theta))^2 * (1 -k^2)) -1)));
     end
-else
-    reconstructedPupilRadius = NaN;
+    %% see if you can derive the pupil radius
+    if ~isnan(transparentEllipse(3))
+        if p.Results.perspectiveCorrection == 0
+            reconstructedPupilRadius = sqrt(transparentEllipse(3) / (pi * k));
+        elseif p.Results.perspectiveCorrection > 0
+            % DEV PLACEHOLDER: if there is a perspective correction value to apply,
+            % apply it!
+        end
+    else
+        reconstructedPupilRadius = NaN;
+    end
 end
 
+end % function
