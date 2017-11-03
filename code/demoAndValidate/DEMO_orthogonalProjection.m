@@ -117,7 +117,7 @@ candidatesEB = findCandidatesEyeball(reconstructedTransparentEllipse,eyeballR-pl
 sceneGeometry.eyeballCenter.X = candidatesEB(1,1);
 sceneGeometry.eyeballCenter.Y = candidatesEB(1,2);
 sceneGeometry.eyeballCenter.Z = candidatesEB(1,3);% meant as the distance from the scene plane
-sceneGeometry.eyeballRadius = candidatesEB(1,4);
+sceneGeometry.eyeballRadius = eyeballR-planeDepth;
 
 
 % reconstruct theta and eccentricity
