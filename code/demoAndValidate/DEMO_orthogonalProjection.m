@@ -24,11 +24,11 @@ clc
 % intersection will result in a circle of constant radius on the pupil
 % plane, no matter the orientation of the plane itself. NOTE that the
 % intersecting sphere by which we define the pupil plane at this point is
-% not meant to represent the eyeball. It is merely a "trick" to make sure
+% not meant to represent the eye. It is merely a "trick" to make sure
 % that the pupil is always a circle of the same size rotating around a
 % fixed arm in 3D.
 
-% define the eyeball sphere radius
+% define the eye sphere radius
 eyeballR =  100; 
 eyeballCenter = [10 0 0];
 eyeball = [eyeballCenter eyeballR];
@@ -109,15 +109,15 @@ reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzi, pupilEle, pupilC
 
 %% test constraints on eccentricity and theta
 % find candidates eyeball
-candidatesEB = findCandidatesEyeball(reconstructedTransparentEllipse,eyeballR-planeDepth);
+candidatesEB = calcEyeCenterOfRotation(reconstructedTransparentEllipse,eyeballR-planeDepth);
 
 % since we have just a single ellipse, we just pick the first candidate
 % eyeball 
 
-sceneGeometry.eyeballCenter.X = candidatesEB(1,1);
-sceneGeometry.eyeballCenter.Y = candidatesEB(1,2);
-sceneGeometry.eyeballCenter.Z = candidatesEB(1,3);% meant as the distance from the scene plane
-sceneGeometry.eyeballRadius = eyeballR-planeDepth;
+sceneGeometry.eyeCenter.X = candidatesEB(1,1);
+sceneGeometry.eyeCenter.Y = candidatesEB(1,2);
+sceneGeometry.eyeCenter.Z = candidatesEB(1,3);% meant as the distance from the scene plane
+sceneGeometry.eyeRadius = eyeballR-planeDepth;
 
 
 % reconstruct theta and eccentricity
@@ -165,7 +165,7 @@ plot3(pupilPoints2d(:,1),pupilPoints2d(:,2),rotationArmLength+sceneDistance *one
 xlabel('X')
 ylabel('Y')
 zlabel('Z')
-title( 'Forward orthogonal projection (from eyeball to scene)')
+title( 'Forward orthogonal projection (from eye to scene)')
 axis equal
 
 % plot 2d scene
