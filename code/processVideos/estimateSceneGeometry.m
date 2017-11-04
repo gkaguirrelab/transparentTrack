@@ -1,40 +1,61 @@
 function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileName, varargin)
 % sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileName)
 %
-% This function performs a search over the available ellipses to determine
-% the sceneGeometry features in units of pixels on the scene. The returned
-% features are the following:
-%       eyeCenter.X : X coordinate of the eye center (i.e. the assumed
-%           center of rotation of the pupil) on the scene plane.
-%       eyeCenter.Y : Y coordinate of the eye center (i.e. the assumed
-%           center of rotation of the pupil) on the scene plane.
-%       eyeCenter.Z : the orthogonal distance for the eye center from the
-%           scene plane.
-%       eyeRadius : radius of the eye in pixels
+% This function searches over the set of ellipses in the passed pupil file
+% to estimate the sceneGeometry features in units of pixels on the scene.
+% The routine identifies the [X, Y, Z] coordinates on the scene plane of a
+% the center of rotation of an eye that would minimize the center of
+% projection implied by each ellipse in the pupil file.
 %
-% The routine can assume that the ellipses are orthogonal projections onto the
-% scene plane of a circle whose center rotates around the eye center
-% onto the scene plane.
-% The most circular ellipse that is available provides the initial guess
-% for the X Y coordinates of the center of the eye. 
-% For each ellipse, the 2 candidate eyes are calculated.
-% The routine will then look for the [X Y Z] coordinates that minimize the
-% distance between the all the candidate center of projections.
+% Different projection models can be used to guide this calculation: The
+% orthogonal model assumes that ellipses  on the scene plane are orthogonal
+% projections of a circular pupil the center of which rotates around the
+% eye center.
 %
-% Note that at this stage, the best fit for the Z coordinate is not
-% phisically sound. This might be due to the simplified assumptions of
-% orthogonal projection, eye sphericity and absence of noise.
+% The x, y coordinates on the scene plane of the center of the most
+% circular (least eccentric) ellipse are taken as the initial guess for the
+% center of rotation of the eye.
 %
-% Output
-%  sceneGeometry - a structure with the fields eyeCenterX, Y, and Z, and
-%  the field meta. The eyeCenter coordinates are in units of pixels on the
-%  image plane.
 %
 % Input
-%   pupilFileName -
-%   sceneGeometryFileName -  name of the sceneGeometry file in which to
-%       save the output.
+%	pupilFileName - Full path to a pupilData file
+%   sceneGeometryFileName -  Full path to the file in which the
+%      sceneGeometry data should be saved.
 %
+% Output
+%	sceneGeometry - A structure with the fields
+%       eyeCenter.X - X coordinate of the eye center (i.e. the assumed
+%           center of rotation of the pupil) on the scene plane.
+%       eyeCenter.Y - Y coordinate of the eye center (i.e. the assumed
+%           center of rotation of the pupil) on the scene plane.
+%       eyeCenter.Z - the orthogonal distance for the eye center from the
+%           scene plane.
+%       eyeRadius - radius of the eye in pixels
+%       meta - information regarding the analysis, including units.
+%
+% Options (analysis)
+%   projectionModel - options include 'orthogonal' and 'perspective'
+%   eyeRadiusInPixels - an assigned valye for eye radius. When operating 
+%       with the orthogonal projection model, this value is stored and
+%       used for all subsequent calculations. When operating in the
+%       perspective model, the eyeRadius is estimated from the data.
+%
+% Options (verbosity and display)
+%   verbosity - controls console status updates
+%   displayMode - when set to true, displays the results of the fit
+%
+% Optional key/value pairs (flow control)
+%  'nFrames' - analyze fewer than the total number of frames.
+%  'startFrame' - which frame to start on
+%
+% Options (environment)
+%   tbSnapshot - the passed tbSnapshot output that is to be saved along
+%      with the data
+%   timestamp / username / hostname - these are automatically derived and
+%      saved within the p.Results structure.
+%
+
+
 %% input parser
 p = inputParser; p.KeepUnmatched = true;
 
@@ -42,13 +63,13 @@ p = inputParser; p.KeepUnmatched = true;
 p.addRequired('pupilFileName',@isstr);
 p.addRequired('sceneGeometryFileName',@isstr);
 
-% optional inputs
-p.addParameter('orthogonalProjection',true, @islogical);
+% Optional analysis params
+p.addParameter('projectionModel','orthogonal', @ischar);
 p.addParameter('eyeRadiusInPixels',250,@isnumeric);
 
 % verbosity and plotting control
 p.addParameter('verbosity', 'none', @isstr);
-p.addParameter('plotResults', true, @islogical);
+p.addParameter('displayMode', true, @islogical);
 
 % flow control
 p.addParameter('nFrames',Inf,@isnumeric);
@@ -63,8 +84,9 @@ p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@i
 % parse
 p.parse(pupilFileName, sceneGeometryFileName, varargin{:})
 
-%% load pupil data
+%% main
 
+% load pupil data
 load(pupilFileName)
 if p.Results.nFrames ~= Inf
     ellipses = pupilData.pInitialFitTransparent(p.Results.startFrame:p.Results.nFrames,:);
@@ -72,18 +94,23 @@ else
     ellipses = pupilData.pInitialFitTransparent(p.Results.startFrame:end,:);
 end
 
-%% find the most circular ellipse and use the X Y coordinate as the initial guess for the CoP XY coordinates
+% find the most circular ellipse and use the X Y coordinate as the initial
+% guess for the CoP XY coordinates
+[~, minEccentricityIdx] = min(pupilData.pInitialFitTransparent(:,4));
 
-[minEccentricity, minEccentricityIDX] = min(pupilData.pInitialFitTransparent(:,4));
-
-% under orthogonal projection hypotesis, the first guess for the CoP is the [X Y] coordinates of the most circular ellipse on
-% the scene, the initial eye radius guess is user defined, and the Z coordinate is zero 
-if p.Results.orthogonalProjection
-    x0 = [pupilData.pInitialFitTransparent(minEccentricityIDX,1) ...
-        pupilData.pInitialFitTransparent(minEccentricityIDX,2) ...
-        0];
+% Identify the [X Y] coordinates of the most circular ellipse. Z is set to
+% an initial value of zero
+switch p.Results.projectionModel
+    case 'orthogonal'
+        x0 = [pupilData.pInitialFitTransparent(minEccentricityIdx,1) ...
+            pupilData.pInitialFitTransparent(minEccentricityIdx,2) ...
+            0];
+    case 'perspective'
+        error('not yet implemented');
 end
-% add weights to ellipses based on how good is the fit
+
+% construct a weight vector based upon the quality of the initial fit of
+% the ellipse to the pupil perimeter
 if p.Results.nFrames ~= Inf
     if isfield(pupilData,'fitError')
         errorWeights = (1./pupilData.fitError(p.Results.startFrame:p.Results.nFrames))';
@@ -99,39 +126,39 @@ else
 end
 
 % define an anonymous function to measure SSQ error
-errorFunc = @(x) sqrt(nansum(errorWeights.*distanceToCandidateEyeCenterOfRotation(ellipses, x, p.Results.eyeRadiusInPixels, 'orthogonalProjection', p.Results.orthogonalProjection).^2));
-[bestFitCoP, fVal] = fmincon(errorFunc, x0);
+errorFunc = @(x) sqrt(nansum(errorWeights.*distanceToCandidateEyeCenterOfRotation(ellipses, x, p.Results.eyeRadiusInPixels, 'projectionModel', p.Results.projectionModel).^2));
 
+% perform the fit
+[bestFitCoR, fVal] = fmincon(errorFunc, x0);
 
-%% if so requested, plot the results of the CoP estimation
-
-if p.Results.plotResults
-    [distances, ellipsesCOPs] = distanceToCandidateEyeCenterOfRotation(ellipses,bestFitCoP,p.Results.eyeRadiusInPixels,'orthogonalProjection', p.Results.orthogonalProjection);
+% plot the results of the CoP estimation if requested
+if p.Results.displayMode
+    [~, ellipsesCoRs] = distanceToCandidateEyeCenterOfRotation(ellipses,bestFitCoR,p.Results.eyeRadiusInPixels,'projectionModel', p.Results.projectionModel);
     figure
-    plot(ellipsesCOPs(:,1), ellipsesCOPs(:,2), '.')
+    plot(ellipsesCoRs(:,1), ellipsesCoRs(:,2), '.')
     hold on
     plot(x0(1),x0(2), 'xr')
-    plot(bestFitCoP(1),bestFitCoP(2), 'og')
-    title('Estimate Position of the Center of Projeciton for fitted ellipses')
-    legend('Ellipses COP', 'COP of the most circular ellipse (reference COP)','Best fit CoP')
+    plot(bestFitCoR(1),bestFitCoR(2), 'og')
+    title('Estimate Center of Rotation from pupil ellipses')
+    legend('CoR from each ellipse', 'Most circular ellipse','Best fit CoR')
     xlim([0 320] * 2)
     ylim([0 240] * 2)
 end
 
-%% assemble the sceneGeometry and save it out
-sceneGeometry.eyeCenter.X = bestFitCoP(1);
-sceneGeometry.eyeCenter.Y = bestFitCoP(2);
-sceneGeometry.eyeCenter.Z = bestFitCoP(3); % meant as the distance from the scene plane
+% assemble and save the sceneGeometry
+sceneGeometry.eyeCenter.X = bestFitCoR(1);
+sceneGeometry.eyeCenter.Y = bestFitCoR(2);
+sceneGeometry.eyeCenter.Z = bestFitCoR(3);
 sceneGeometry.eyeCenter.fVal = fVal;
 sceneGeometry.eyeRadius = p.Results.eyeRadiusInPixels;
-sceneGeometry.units = 'pixelsOnTheScenePlane';
 sceneGeometry.meta = p.Results;
+sceneGeometry.meta.units = 'pixelsOnTheScenePlane';
 
 if ~isempty(sceneGeometryFileName)
     save(sceneGeometryFileName,'sceneGeometry');
 end
 
-end % function
+end % main function
 
 
 
@@ -146,16 +173,17 @@ function [distances, ellipsesCoRs] = distanceToCandidateEyeCenterOfRotation(elli
 % candidate eye center of rotation must be in the same units.
 % (e.g. Pixels)
 %
-% input 
+% input
 %  ellipses - set of ellipses in transparent form.
 %  candidateEyeCenterOfRotation -[X Y Z] coordinates of the center. If
 %       orthogonal projection, the Z coordinate (distance from the scene plane,
 %       will be set to zero).
 %  eyeRadiusInPixels - radius of the eye in pixels
-% 
+%
 %  Output
 %     distances
 %     ellipsesCoRs
+
 %% input parser
 p = inputParser; p.KeepUnmatched = true;
 
@@ -165,39 +193,44 @@ p.addRequired('candidateEyeCenterOfRotation',@isnumeric);
 p.addRequired('eyeRadiusInPixels',@isnumeric);
 
 % Analysis parameters
-p.addParameter('orthogonalProjection',true,@islogical);
+p.addParameter('projectionModel','orthogonal',@ischar);
 
 % parse
 p.parse(ellipses, candidateEyeCenterOfRotation, eyeRadiusInPixels, varargin{:})
 
-if p.Results.orthogonalProjection
-    
-%% initialize variables
+%% main
+
+% initialize variables
 distances = nan(size(ellipses,1),2);
 ellipsesCoRs = nan(size(ellipses,1),3);
 
-%% loop through ellipses, find all distances and pick center of projection
-for ii = 1:size(ellipses,1)
-    if ~any(isnan(ellipses(ii,:)))
-        % find candidates Center of rotation
-        ellipseCoRCandidates = calcEyeCenterOfRotation(ellipses(ii,:), eyeRadiusInPixels, 'orthogonalProjection', p.Results.orthogonalProjection);
+switch p.Results.projectionModel
+    case 'orthogonal'
         
-        % find eucledian distance for each ellipse COP
-        for jj = 1:size(ellipseCoRCandidates,1)
-            distances(ii,jj) = sqrt((candidateEyeCenterOfRotation(1) - ellipseCoRCandidates(jj,1))^2 + (candidateEyeCenterOfRotation(2) - ellipseCoRCandidates(jj,2))^2 + (candidateEyeCenterOfRotation(3) - ellipseCoRCandidates(jj,3))^2);
+        % loop through ellipses, find all distances and pick center of projection
+        for ii = 1:size(ellipses,1)
+            if ~any(isnan(ellipses(ii,:)))
+                % find candidates Center of rotation
+                ellipseCoRCandidates = calcEyeCenterOfRotation(ellipses(ii,:), eyeRadiusInPixels, 'projectionModel', p.Results.projectionModel);
+                
+                % find Eucledian distance for each ellipse CoR
+                for jj = 1:size(ellipseCoRCandidates,1)
+                    distances(ii,jj) = ...
+                        sqrt((candidateEyeCenterOfRotation(1) - ellipseCoRCandidates(jj,1))^2 + (candidateEyeCenterOfRotation(2) - ellipseCoRCandidates(jj,2))^2 + (candidateEyeCenterOfRotation(3) - ellipseCoRCandidates(jj,3))^2);
+                end
+                % select ellipseCoR with the min distance from the scene CoR and store
+                % it
+                [~,minDistIDX] =min(distances(ii,:));
+                ellipsesCoRs(ii,:) = ellipseCoRCandidates(minDistIDX,:);
+            else
+                continue
+            end
         end
-        % select ellipseCoR with the min distance from the scene CoR and store
-        % it
-        [~,minDistIDX] =min(distances(ii,:));
-        ellipsesCoRs(ii,:) = ellipseCoRCandidates(minDistIDX,:);
-    else
-        continue
-    end
-end
+        
+        distances = min(distances');
+        
+    case 'perspective'
+        error('not implemented yet');
+end % switch
 
-distances = min(distances');
-
-else
-    % Dev PLACEHOLDER - develop perspective correction case
-end
-end %function
+end % local function
