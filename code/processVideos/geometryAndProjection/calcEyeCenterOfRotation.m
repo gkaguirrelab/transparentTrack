@@ -21,59 +21,64 @@ function eyeCenterOfRotation = calcEyeCenterOfRotation(transparentEllipse, eyeRa
 %       as in the transparent ellipse.
 %
 %% input parser
-p = inputParser; p.KeepUnmatched = true;
+p = inputParser;
 
 % required input
 p.addRequired('transparentEllipse',@isnumeric);
 p.addRequired('eyeRadiusInPixels',@isnumeric);
 
 % Analysis parameters
-p.addParameter('orthogonalProjection',true,@islogical);
+p.addParameter('projectionModel','orthogonal',@ischar);
 
 
 % parse
 p.parse(transparentEllipse, eyeRadiusInPixels, varargin{:})
 
-%% find candidates center of projection for the ellipse
-if p.Results.orthogonalProjection
-    if transparentEllipse(4) == 0 && (transparentEllipse(5) == 0 || transparentEllipse(5) == pi) % clear the easiest case
-        eyeCenterOfRotation = [ transparentEllipse(1) transparentEllipse(2) 0 eyeRadiusInPixels];
-        
-    else
-        % Find candidate azimut and elevation values (unless the eccentricity
-        % is zero, this will return 2 values for each angle).
-        centerOfProjection = nan;
-        [reconstructedPupilAzi, reconstructedPupilEle, ~] = pupilProjection_inv(transparentEllipse,centerOfProjection);
-        
-        % if the pupilAzi or the pupilEle is zero
-        if ~any(reconstructedPupilAzi) || ~any(reconstructedPupilEle)
-            anglePairs = [reconstructedPupilAzi' reconstructedPupilEle'];
+
+%% main
+
+
+% find candidates center of projection for the ellipse
+switch p.Results.projectionModel
+    case 'orthogonal'
+        if transparentEllipse(4) == 0 && (transparentEllipse(5) == 0 || transparentEllipse(5) == pi) % clear the easiest case
+            eyeCenterOfRotation = [ transparentEllipse(1) transparentEllipse(2) 0 eyeRadiusInPixels];
+            
         else
-            % look at the ellipse theta (assumed to vary from 0 to pi/2)  and
-            % derive the plausible couples of angles for the center of projection
-            if (transparentEllipse(5) <= pi/2 && transparentEllipse(5) >= 0)
-                for jj = 1: length(reconstructedPupilAzi)
-                    anglePairs(jj,1) = reconstructedPupilAzi(jj);
-                    eleIDX = find(sign(reconstructedPupilEle)~=sign(reconstructedPupilAzi(jj)));
-                    anglePairs(jj,2) =  reconstructedPupilEle(eleIDX);
-                end
+            % Find candidate azimuth and elevation values (unless the eccentricity
+            % is zero, this will return 2 values for each angle).
+            centerOfProjection = nan;
+            [reconstructedPupilAzi, reconstructedPupilEle, ~] = pupilProjection_inv(transparentEllipse, centerOfProjection);
+            
+            % if the pupilAzi or the pupilEle is zero
+            if ~any(reconstructedPupilAzi) || ~any(reconstructedPupilEle)
+                anglePairs = [reconstructedPupilAzi' reconstructedPupilEle'];
             else
-                for jj = 1: length(reconstructedPupilAzi)
-                    anglePairs(jj,1) = reconstructedPupilAzi(jj);
-                    eleIDX = find(sign(reconstructedPupilEle)==sign(reconstructedPupilAzi(jj)));
-                    anglePairs(jj,2) =  reconstructedPupilEle(eleIDX);
+                % look at the ellipse theta (assumed to vary from 0 to pi/2)  and
+                % derive the plausible couples of angles for the center of projection
+                if (transparentEllipse(5) <= pi/2 && transparentEllipse(5) >= 0)
+                    for jj = 1: length(reconstructedPupilAzi)
+                        anglePairs(jj,1) = reconstructedPupilAzi(jj);
+                        eleIDX = find(sign(reconstructedPupilEle)~=sign(reconstructedPupilAzi(jj)));
+                        anglePairs(jj,2) =  reconstructedPupilEle(eleIDX);
+                    end
+                else
+                    for jj = 1: length(reconstructedPupilAzi)
+                        anglePairs(jj,1) = reconstructedPupilAzi(jj);
+                        eleIDX = find(sign(reconstructedPupilEle)==sign(reconstructedPupilAzi(jj)));
+                        anglePairs(jj,2) =  reconstructedPupilEle(eleIDX);
+                    end
                 end
             end
+            % find the eyeball center coordinates for this ellipse
+            for ii = 1: length(anglePairs)
+                delta(ii,:) = eyeRadiusInPixels * [ sind(anglePairs(ii,1)) sind(anglePairs(ii,2))];
+                eyeCenterOfRotation (ii,:) = [transparentEllipse(1)-delta(ii,1) transparentEllipse(2)-delta(ii,2) 0];
+            end
         end
-        % find the eyeball center coordinates for this ellipse
-        for ii = 1: length(anglePairs)
-            delta(ii,:) = eyeRadiusInPixels * [ sind(anglePairs(ii,1)) sind(anglePairs(ii,2))];
-            eyeCenterOfRotation (ii,:) = [transparentEllipse(1)-delta(ii,1) transparentEllipse(2)-delta(ii,2) 0];
-        end
-    end  
-else
-    % DEV placeholder - implement perspective correction case
-end
+    case 'perspective'
+        error('not implemented yet');
+end % switch
 
 end % function
 
