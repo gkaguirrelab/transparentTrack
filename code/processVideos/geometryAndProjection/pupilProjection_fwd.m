@@ -31,7 +31,7 @@ function reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzi, pupilEl
 %       correction
 
 %% parse input and define variables
-p = inputParser; p.KeepUnmatched = true;
+p = inputParser;
 
 % required input
 p.addRequired('pupilAzi',@isnumeric);
@@ -40,33 +40,32 @@ p.addRequired('pupilCenter3D',@isnumeric);
 
 % optional analysis params
 p.addParameter('pupilRadius', nan, @isnumeric);
-p.addParameter('perspectiveCorrection', 0, @isnumeric);
 
-% Environment parameters
-p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
-p.addParameter('timestamp',char(datetime('now')),@ischar);
-p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischar);
-p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
+% optional analysis params
+p.addParameter('projectionModel','orthogonal', @ischar);
 
 % parse
 p.parse(pupilAzi, pupilEle, pupilCenter3D,varargin{:})
 
+%% main
 
-%% initiate reconstructedTransparentEllipse
+% initiate reconstructedTransparentEllipse
 reconstructedTransparentEllipse = nan(1,5);
 
-%% define ellipse center
-if p.Results.perspectiveCorrection == 0
+% define ellipse center
+switch p.Results.projectionModel
+    case 'orthogonal'
     % under orthogonal hypothesis the ellipse center in 2D is coincident with
     % the ellipse center in the plane of projection.
     reconstructedTransparentEllipse(1) = pupilCenter3D(1);
     reconstructedTransparentEllipse(2) = pupilCenter3D(2);
-else
+    case 'perspective'
+        error('not implemented yet');
     % DEV PLACEHOLDER: if there is a perspective correction value to apply,
     % apply it!
 end
 
-%% derive transparent parameters
+% derive transparent parameters
 % eccentricity
 e = sqrt((sind(pupilEle))^2 - ((sind(pupilAzi))^2 * ((sind(pupilEle))^2 - 1)));
 reconstructedTransparentEllipse(4) = e;
@@ -103,4 +102,6 @@ if ~isnan(p.Results.pupilRadius)
 semiMinorAxis = semiMajorAxis*sqrt(1-e^2);
 reconstructedTransparentEllipse(3) = pi*semiMajorAxis*semiMinorAxis;
 end
+
+end % function
 

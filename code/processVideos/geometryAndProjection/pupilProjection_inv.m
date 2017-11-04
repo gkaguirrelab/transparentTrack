@@ -30,7 +30,7 @@ function [reconstructedPupilAzi, reconstructedPupilEle, reconstructedPupilRadius
 %   projectionModel - currently orthogonal is the only option
 
 %% parse input and define variables
-p = inputParser; p.KeepUnmatched = true;
+p = inputParser;
 
 % required input
 p.addRequired('transparentEllipse',@isnumeric);
@@ -38,12 +38,6 @@ p.addRequired('centerOfProjection',@isnumeric);
 
 % optional analysis params
 p.addParameter('projectionModel','orthogonal', @ischar);
-
-% Environment parameters
-p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
-p.addParameter('timestamp',char(datetime('now')),@ischar);
-p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischar);
-p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % parse
 p.parse(transparentEllipse, centerOfProjection, varargin{:})

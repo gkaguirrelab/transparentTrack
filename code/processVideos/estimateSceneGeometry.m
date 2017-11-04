@@ -66,6 +66,9 @@ p.addRequired('sceneGeometryFileName',@isstr);
 % Optional analysis params
 p.addParameter('projectionModel','orthogonal', @ischar);
 p.addParameter('eyeRadiusInPixels',250,@isnumeric);
+p.addParameter('CoRLowerBound',[-500, -500, 0],@isnumeric);
+p.addParameter('CoRUpperBound',[1000, 1000, 1000],@isnumeric);
+
 
 % verbosity and plotting control
 p.addParameter('verbosity', 'none', @isstr);
@@ -85,6 +88,12 @@ p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@i
 p.parse(pupilFileName, sceneGeometryFileName, varargin{:})
 
 %% main
+
+%% Announce we are starting
+if strcmp(p.Results.verbosity,'full')
+    tic
+    fprintf(['Estimating scene geometry from pupil ellipses. Started ' char(datetime('now')) '\n']);
+end
 
 % load pupil data
 load(pupilFileName)
@@ -128,8 +137,12 @@ end
 % define an anonymous function to measure SSQ error
 errorFunc = @(x) sqrt(nansum(errorWeights.*distanceToCandidateEyeCenterOfRotation(ellipses, x, p.Results.eyeRadiusInPixels, 'projectionModel', p.Results.projectionModel).^2));
 
+% define some search options
+options = optimset('fmincon');
+options = optimset(options,'Diagnostics','off','Display','off','LargeScale','off','Algorithm','interior-point');
+
 % perform the fit
-[bestFitCoR, fVal] = fmincon(errorFunc, x0);
+[bestFitCoR, fVal] = fmincon(errorFunc, x0, [], [], [], [], p.Results.CoRLowerBound, p.Results.CoRUpperBound, [], options);
 
 % plot the results of the CoP estimation if requested
 if p.Results.displayMode
@@ -156,6 +169,12 @@ sceneGeometry.meta.units = 'pixelsOnTheScenePlane';
 
 if ~isempty(sceneGeometryFileName)
     save(sceneGeometryFileName,'sceneGeometry');
+end
+
+% alert the user that we are done with the routine
+if strcmp(p.Results.verbosity,'full')
+    toc
+    fprintf('\n');
 end
 
 end % main function

@@ -10,7 +10,7 @@ pupilFileName = '~/Desktop/eyeTrackingDEMO/TOME_processing/session2_spatialStimu
 
 %% find sceneGeometry
 sceneGeometryFileName = '~/Desktop/eyeTrackingDEMO/TOME_processing/session2_spatialStimuli/TOME_3020/050517/EyeTracking/GazeCal01_sceneGeometry.mat';
-sceneGeometry = estimateSceneGeometry (pupilFileName,sceneGeometryFileName);
+sceneGeometry = estimateSceneGeometry (pupilFileName,sceneGeometryFileName,'verbosity','full');
 
 %% given the scene geometry and ellipses centers, find the eccentricity and theta to be used as fitting constraints
 
