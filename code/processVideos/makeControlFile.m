@@ -110,19 +110,27 @@ p.addRequired('controlFileName',@isstr);
 p.addRequired('perimeterFileName',@isstr);
 p.addRequired('glintFileName',@isstr);
 
-% Optional analysis params
+% Optional analysis params -- glint patch
 p.addParameter('glintZoneRadius', 40, @isnumeric);
 p.addParameter('glintZoneCenter', [], @isnumeric);
 p.addParameter('extendBlinkWindow', [5,10], @isnumeric);
 p.addParameter('glintPatchRadius', 10, @isnumeric);
+
+% Optional analysis params -- search over pupil cuts
 p.addParameter('pixelBoundaryThreshold', 50, @isnumeric);
 p.addParameter('cutErrorThreshold', 10, @isnumeric);
 p.addParameter('ellipseTransparentLB',[0, 0, 400, 0, -0.5*pi],@isnumeric);
-p.addParameter('ellipseTransparentUB',[240,320,10000,0.417, 0.5*pi],@isnumeric);
+p.addParameter('ellipseTransparentUB',[240,320,10000,0.5, 0.5*pi],@isnumeric);
 p.addParameter('candidateThetas',pi/2:pi/16:pi,@isnumeric);
 p.addParameter('radiusDivisions',5,@isnumeric);
 p.addParameter('minRadiusProportion',0,@isnumeric);
 
+% Optional analysis params -- sceneGeometry fitting constraint
+p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
+p.addParameter('constraintMarginEccenMultiplier',1.05,@isnumeric);
+p.addParameter('constraintMarginThetaDegrees',5,@isnumeric);
+p.addParameter('projectionModel','orthogonal', @ischar);
+    
 % Optional display params
 p.addParameter('verbosity','none',@ischar);
 
@@ -193,6 +201,27 @@ else
     nWorkers=0;
 end
 
+
+%% Prepare some anonymous functions
+% Create a non-linear constraint for the ellipse fit. If no parameters are
+% given, then create an empty function handle (and thus have no non-linear
+% constraint)
+if isempty(p.Results.sceneGeometryFileName)
+    nonlinconst = [];
+else
+    % load the sceneGeometry structure
+    dataLoad=load(p.Results.sceneGeometryFileName);
+    sceneGeometry=dataLoad.sceneGeometry;
+    clear dataLoad
+
+    nonlinconst = @(x) constrainEllipseBySceneGeometry(x, ...
+        sceneGeometry, ...
+        p.Results.constraintMarginEccenMultiplier, ...
+        p.Results.constraintMarginThetaDegrees, ...
+        'projectionModel',p.Results.projectionModel);
+end
+
+
 %% Load the pupil perimeter data.
 % It will be a structure variable "perimeter", with the fields .data and .meta
 dataLoad=load(perimeterFileName);
@@ -203,7 +232,6 @@ if p.Results.nFrames == Inf
 else
     nFrames = p.Results.nFrames;
 end
-
 
 
 %% Perform blink detection
@@ -257,7 +285,6 @@ if ~isempty(blinkFrames)
         blinkFrames=unique(sort([blinkFrames;padBlinksAfter]));
     end
 end
-
 
 
 %% Apply glint patch and guess pupil cuts
@@ -334,7 +361,8 @@ parfor (ii = 1:nFrames, nWorkers)
             % fit an ellipse to the full perimeter using the constrainedEllipseFit
             [~, ~, originalFittingError] = constrainedEllipseFit(Xp, Yp, ...
                 p.Results.ellipseTransparentLB, ...
-                p.Results.ellipseTransparentUB, []);
+                p.Results.ellipseTransparentUB, ...
+                nonlinconst);
             
             % if the fitting error is above the threshold, search over cuts
             if originalFittingError > p.Results.cutErrorThreshold
@@ -357,7 +385,7 @@ parfor (ii = 1:nFrames, nWorkers)
                 
                 % Perform a grid search across thetas
                 [gridSearchRadii,gridSearchThetas] = ndgrid(candidateRadius,p.Results.candidateThetas);
-                myCutOptim = @(params) calcErrorForACut(binP, params(1), params(2), p.Results.ellipseTransparentLB, p.Results.ellipseTransparentUB);
+                myCutOptim = @(params) calcErrorForACut(binP, params(1), params(2), p.Results.ellipseTransparentLB, p.Results.ellipseTransparentUB, nonlinconst);
                 gridSearchResults=arrayfun(@(k1,k2) myCutOptim([k1,k2]),gridSearchRadii,gridSearchThetas);
                 
                 % Store the best cut from this search
@@ -517,11 +545,14 @@ if strcmp(p.Results.verbosity,'full')
     fprintf('\n');
 end
 
-
 end % function
 
-function [distanceError] = calcErrorForACut(theFrame, radiusThresh, theta, lb, ub)
+
+%% LOCAL FUNCTIONS
+
+function [distanceError] = calcErrorForACut(theFrame, radiusThresh, theta, lb, ub, nonlinconst)
 [binPcut] = applyPupilCut (theFrame, radiusThresh, theta);
 [Yp, Xp] = ind2sub(size(binPcut),find(binPcut));
-[~, ~, distanceError] = constrainedEllipseFit(Xp, Yp, lb, ub, []);
+[~, ~, distanceError] = constrainedEllipseFit(Xp, Yp, lb, ub, nonlinconst);
 end
+

@@ -144,11 +144,13 @@ if sum(p.Results.ellipseTransparentUB>=p.Results.ellipseTransparentLB)~=nEllipse
     error('Lower bounds must be equal to or less than upper bounds');
 end
 
+
 %% Announce we are starting
 if strcmp(p.Results.verbosity,'full')
     fprintf('Performing non-causal Bayesian fitting of the pupil boundary file:\n');
     fprintf(['\t' perimeterFileName '\n\n']);
 end
+
 
 %% Prepare some anonymous functions and load the pupil perimeter data
 % Create a non-linear constraint for the ellipse fit. If no parameters are

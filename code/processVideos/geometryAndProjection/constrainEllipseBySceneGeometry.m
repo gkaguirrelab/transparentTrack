@@ -1,49 +1,87 @@
-function [eccentricity, theta] = constrainEllipseBySceneGeometry (ellipseCenter, sceneGeometry, varargin)
-% [eccentricity, theta] = constrainEllipseBySceneGeometry (ellipseCenter,sceneGeometry)
+function [c, ceq]=constrainEllipseBySceneGeometry(transparentEllipseParams, sceneGeometry, constraintMarginEccenMultiplier, constraintMarginThetaDegrees, varargin)
+% [c, ceq]=constrainEllipseBySceneGeometry(transparentEllipseParams, sceneGeometry, constraintMarginsEccenTheta, varargin)
 %
-% This function returns the expected ecceentricity and tilt for an ellipse,
-% given the location of the center and the scene geometry.
-% The function can either use the Z coordinate for the eye in the scene
-% geometry as the distance of the eye from the scene, or a user input
-% distance range in pixel (2 elements vector). In the latter case, the
-% routine will return the range of expected eccentricity and a single theta.
-% 
-% Output
-% eccentricity - either a one element or 2 element vector with the expected
-%   eccentricity value or range.
-% theta -the expected tilt value for the ellipse (does not depend on the distance).
-% 
+% This function implements a non-linear constraint upon the ellipse fit
+% to the pupil boundary. The goal of the limit is to constrain the
+% eccentricity and theta of the ellipse to be a close match to that
+% predicted by the x, y location of the center of the ellipse, given the
+% sceneGeometry parameters.
+
+
+% This function returns the expected eccentricity and tilt for an ellipse,
+% given the location of the center and the scene geometry. The function can
+% either use the Z coordinate for the eye in the scene geometry as the
+% distance of the eye from the scene, or a user input distance range in
+% pixel (2 elements vector). In the latter case, the routine will return
+% the range of expected eccentricity and a single theta.
+%
 % Input (required)
 % ellipseCenter - [X Y] coordinate for the ellipse center. Note that
 %   passing the full parametrization of a transparent ellipse will work as
 %   well.
 % sceneGeometry - struct with scene geometry
-% 
+%
+% Output
+% eccentricity - either a one element or 2 element vector with the expected
+% 	eccentricity value or range.
+% theta -the expected tilt value for the ellipse (does not depend on the
+%   distance).
+%
 
 
 %% input parser
-p = inputParser; p.KeepUnmatched = true;
+p = inputParser;
 
 % required input
-p.addRequired('ellipseCenter',@isnumeric);
+p.addRequired('transparentEllipseParams',@isnumeric);
 p.addRequired('sceneGeometry',@isstruct);
+p.addRequired('constraintMarginEccenMultiplier',@isnumeric);
+p.addRequired('constraintMarginThetaDegrees',@isnumeric);
 
+% optional analysis params
+p.addParameter('projectionModel','orthogonal', @ischar);
 
 %parse
-p.parse(ellipseCenter,sceneGeometry, varargin{:})
+p.parse(transparentEllipseParams, sceneGeometry, constraintMarginEccenMultiplier, constraintMarginThetaDegrees, varargin{:})
 
 
-%% derive rotation angles and reconstruct eccentricity and theta
+%% Calculate the predicted eccentricty and theta for this pupil center
 
-    % derive pupil center cartesian 3D coordinates
-    pupilCenter.X = ellipseCenter(1);
-    pupilCenter.Y = ellipseCenter(2);
-    pupilCenter.Z = sqrt(sceneGeometry.eyeRadius^2 - (pupilCenter.X - sceneGeometry.eyeCenter.X)^2 - (pupilCenter.Y - sceneGeometry.eyeCenter.Y)^2) +sceneGeometry.eyeCenter.Z ;
-    pupilAzi = atand((pupilCenter.X - sceneGeometry.eyeCenter.X)/(pupilCenter.Z - sceneGeometry.eyeCenter.Z));
-    pupilEle = atand((pupilCenter.Y - sceneGeometry.eyeCenter.Y)/(pupilCenter.Z - sceneGeometry.eyeCenter.Z));
-    
-    reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzi, pupilEle, [sceneGeometry.eyeCenter.X sceneGeometry.eyeCenter.Y sceneGeometry.eyeCenter.Z]);
-    eccentricity = reconstructedTransparentEllipse(4);
-    theta = reconstructedTransparentEllipse(5);
-    
+
+% derive pupil center cartesian 3D coordinates
+pupilCenter.Z = ...
+    sqrt(...
+        sceneGeometry.eyeRadius^2 - ...
+        (transparentEllipseParams(1) - sceneGeometry.eyeCenter.X)^2 - ...
+        (transparentEllipseParams(2) - sceneGeometry.eyeCenter.Y)^2 ...
+        ) + ...
+    sceneGeometry.eyeCenter.Z;
+pupilAzi = atand((transparentEllipseParams(1) - sceneGeometry.eyeCenter.X)/(pupilCenter.Z - sceneGeometry.eyeCenter.Z));
+pupilEle = atand((transparentEllipseParams(2) - sceneGeometry.eyeCenter.Y)/(pupilCenter.Z - sceneGeometry.eyeCenter.Z));
+
+predictedTransparentEllipse = ...
+    pupilProjection_fwd(pupilAzi, pupilEle, ...
+    [sceneGeometry.eyeCenter.X sceneGeometry.eyeCenter.Y sceneGeometry.eyeCenter.Z],...
+    'projectionModel',p.Results.projectionModel);
+
+% calculate the range of allowed eccentricty and theta values
+minAllowedEccentricity = predictedTransparentEllipse(4) ./ p.Results.constraintMarginsEccenTheta(1);
+maxAllowedEccentricity = predictedTransparentEllipse(4) .* p.Results.constraintMarginsEccenTheta(1);
+
+minAllowedTheta = predictedTransparentEllipse(5) - p.Results.constraintMarginThetaDegrees;
+maxAllowedTheta = predictedTransparentEllipse(5) + p.Results.constraintMarginThetaDegrees;
+
+% First constraint
+%  Set ceq to zero only if the eccentricty of the ellipse to be tested is
+%  within min / max allowed range
+ceq = ~((transparentEllipseParams(4) > minAllowedEccentricity) .* ...
+      (transparentEllipseParams(4) < maxAllowedEccentricity));
+
+% Second constraint
+%  Set cq to zero only if the theta of the ellipse to be tested is
+%  within min / max allowed range
+c  = ~((transparentEllipseParams(5) > minAllowedTheta) .* ...
+      (transparentEllipseParams(5) < maxAllowedTheta));
+  
+
 end
