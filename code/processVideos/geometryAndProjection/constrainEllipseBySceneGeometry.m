@@ -65,8 +65,8 @@ predictedTransparentEllipse = ...
     'projectionModel',p.Results.projectionModel);
 
 % calculate the range of allowed eccentricty and theta values
-minAllowedEccentricity = predictedTransparentEllipse(4) ./ p.Results.constraintMarginsEccenTheta(1);
-maxAllowedEccentricity = predictedTransparentEllipse(4) .* p.Results.constraintMarginsEccenTheta(1);
+minAllowedEccentricity = predictedTransparentEllipse(4) ./ p.Results.constraintMarginEccenMultiplier;
+maxAllowedEccentricity = predictedTransparentEllipse(4) .* p.Results.constraintMarginEccenMultiplier;
 
 minAllowedTheta = predictedTransparentEllipse(5) - p.Results.constraintMarginThetaDegrees;
 maxAllowedTheta = predictedTransparentEllipse(5) + p.Results.constraintMarginThetaDegrees;
@@ -74,14 +74,16 @@ maxAllowedTheta = predictedTransparentEllipse(5) + p.Results.constraintMarginThe
 % First constraint
 %  Set ceq to zero only if the eccentricty of the ellipse to be tested is
 %  within min / max allowed range
-ceq = ~((transparentEllipseParams(4) > minAllowedEccentricity) .* ...
-      (transparentEllipseParams(4) < maxAllowedEccentricity));
-
+ceq = double(...
+            ~((transparentEllipseParams(4) > minAllowedEccentricity) .* ...
+            (transparentEllipseParams(4) < maxAllowedEccentricity))...
+            );
 % Second constraint
 %  Set cq to zero only if the theta of the ellipse to be tested is
 %  within min / max allowed range
-c  = ~((transparentEllipseParams(5) > minAllowedTheta) .* ...
-      (transparentEllipseParams(5) < maxAllowedTheta));
-  
+c  = double(...
+            ~((transparentEllipseParams(5) > minAllowedTheta) .* ...
+            (transparentEllipseParams(5) < maxAllowedTheta))...
+            );
 
 end

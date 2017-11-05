@@ -60,7 +60,7 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 %       cut
 %   ellipseTransparentLB/UB - the lower and upper bounds of the constrained
 %      ellipse fit that is used to judge the quality of different cuts.
-%   canidateThetas - A vector that gives the theta values at which to
+%   candidateThetas - A vector that gives the theta values at which to
 %       examine pupil cuts to improve the ellipse fit. pi/2 corresponds to
 %       the superior vertical medidian, while pi corresponds to the nasal
 %       horizontal vertical meridian. The default settings explore thetas
@@ -74,7 +74,7 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 %       the pupil that can be cut. When set to zero (the default) the
 %       largest cut that will be considered is one that passes through the
 %       center of the pupil perimeter. A positive value (e.g., 0.5) limits
-%       the maximum cut to that proportion of the radisu. A negative
+%       the maximum cut to that proportion of the radius. A negative
 %       proportion would allow a cut to remove more than half of the total
 %       pupil radius.
 %
@@ -111,22 +111,23 @@ p.addRequired('perimeterFileName',@isstr);
 p.addRequired('glintFileName',@isstr);
 
 % Optional analysis params -- glint patch
-p.addParameter('glintZoneRadius', 40, @isnumeric);
+p.addParameter('glintZoneRadius', 80, @isnumeric);
 p.addParameter('glintZoneCenter', [], @isnumeric);
 p.addParameter('extendBlinkWindow', [5,10], @isnumeric);
-p.addParameter('glintPatchRadius', 10, @isnumeric);
+p.addParameter('glintPatchRadius', 20, @isnumeric);
 
 % Optional analysis params -- search over pupil cuts
-p.addParameter('pixelBoundaryThreshold', 50, @isnumeric);
-p.addParameter('cutErrorThreshold', 10, @isnumeric);
-p.addParameter('ellipseTransparentLB',[0, 0, 400, 0, -0.5*pi],@isnumeric);
-p.addParameter('ellipseTransparentUB',[240,320,10000,0.5, 0.5*pi],@isnumeric);
+p.addParameter('pixelBoundaryThreshold', 100, @isnumeric);
+p.addParameter('cutErrorThresholdWithoutSceneConstraint', 20, @isnumeric);
+p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, -0.5*pi],@isnumeric);
+p.addParameter('ellipseTransparentUB',[640,480,20000,0.5, 0.5*pi],@isnumeric);
 p.addParameter('candidateThetas',pi/2:pi/16:pi,@isnumeric);
 p.addParameter('radiusDivisions',5,@isnumeric);
 p.addParameter('minRadiusProportion',0,@isnumeric);
 
 % Optional analysis params -- sceneGeometry fitting constraint
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
+p.addParameter('cutErrorThresholdWithSceneConstraint', 100, @isnumeric);
 p.addParameter('constraintMarginEccenMultiplier',1.05,@isnumeric);
 p.addParameter('constraintMarginThetaDegrees',5,@isnumeric);
 p.addParameter('projectionModel','orthogonal', @ischar);
@@ -159,9 +160,9 @@ if exist(controlFileName, 'file') == 2 && ~(p.Results.overwriteControlFile)
     return
 end
 
-% On the other hand, if we decided to overwrite an existing control file,
-% we remove the previous one to start fresh and avoid that new instructions
-% are appended after old ones.
+% If we decided to overwrite an existing control file, we remove the
+% previous one to start fresh and avoid that new instructions are appended
+% after old ones.
 if exist(controlFileName, 'file') == 2 && (p.Results.overwriteControlFile)
     warning(['Deleting old version of ' controlFileName ]);
     delete (controlFileName)
@@ -205,9 +206,11 @@ end
 %% Prepare some anonymous functions
 % Create a non-linear constraint for the ellipse fit. If no parameters are
 % given, then create an empty function handle (and thus have no non-linear
-% constraint)
+% constraint). We will also define the cutErrorThreshold based upon the
+% presence or absence of a sceneGeometry constraint
 if isempty(p.Results.sceneGeometryFileName)
     nonlinconst = [];
+    cutErrorThreshold = p.Result.cutErrorThresholdWithoutSceneConstraint;
 else
     % load the sceneGeometry structure
     dataLoad=load(p.Results.sceneGeometryFileName);
@@ -219,6 +222,8 @@ else
         p.Results.constraintMarginEccenMultiplier, ...
         p.Results.constraintMarginThetaDegrees, ...
         'projectionModel',p.Results.projectionModel);
+
+    cutErrorThreshold = p.Result.cutErrorThresholdWithSceneConstraint;
 end
 
 
@@ -309,6 +314,7 @@ end
 % get glintData ready for the parfor
 glintData_X = glintData.X;
 glintData_Y = glintData.Y;
+
 % Loop through the video frames
 parfor (ii = 1:nFrames, nWorkers)
     
@@ -355,8 +361,8 @@ parfor (ii = 1:nFrames, nWorkers)
     % proceed if the frame is not empty and has not been tagged as a blink
     if ~ismember(ii,blinkFrames) && ~isempty(Xp)
         
-        % add a try - catch here to prevent the code from breaking in case
-        % the ellipseFit/guess cut fails
+        % The try - catch allows processing to proceed if an attempt to
+        % fit the ellipse fails
         try
             % fit an ellipse to the full perimeter using the constrainedEllipseFit
             [~, ~, originalFittingError] = constrainedEllipseFit(Xp, Yp, ...
@@ -365,7 +371,7 @@ parfor (ii = 1:nFrames, nWorkers)
                 nonlinconst);
             
             % if the fitting error is above the threshold, search over cuts
-            if originalFittingError > p.Results.cutErrorThreshold
+            if originalFittingError > cutErrorThreshold
                 smallestFittingError = originalFittingError;
                 stillSearching = true;
             else
@@ -405,7 +411,7 @@ parfor (ii = 1:nFrames, nWorkers)
                 end
                 
                 % Are we done searching? If not, shrink the radius
-                if bestFitOnThisSearch < p.Results.cutErrorThreshold
+                if bestFitOnThisSearch < cutErrorThreshold
                     stillSearching = false;
                 else
                     candidateRadius=candidateRadius - stepReducer;
@@ -422,7 +428,7 @@ parfor (ii = 1:nFrames, nWorkers)
         % If, after finishing the search, the bestFitOnThisSearch is still
         % larger than the error threshold, or there are too few pixels that
         % compose the boundary in this frame, then tag this frame bad.
-        if bestFitOnThisSearch > p.Results.cutErrorThreshold || ...
+        if bestFitOnThisSearch > cutErrorThreshold || ...
                 numberPerimeterPixels < p.Results.pixelBoundaryThreshold
             frameBads(ii)=1;
             frameThetas(ii)=nan;

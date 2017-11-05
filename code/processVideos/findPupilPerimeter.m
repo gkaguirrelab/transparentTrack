@@ -83,11 +83,11 @@ p.addParameter('pupilGammaCorrection', 0.75, @isnumeric);
 p.addParameter('pupilFrameMask', [], @isnumeric);
 p.addParameter('maskBox', [0.20 0.75], @isnumeric);
 p.addParameter('frameMaskValue', 220, @isnumeric);
-p.addParameter('smallObjThresh', 200, @isnumeric);
+p.addParameter('smallObjThresh', 400, @isnumeric);
 
 % findPupilCircle routine params. Defined here for transparency
 p.addParameter('pupilCircleThresh', 0.06, @isnumeric);
-p.addParameter('pupilRange', [20 180], @isnumeric);
+p.addParameter('pupilRange', [40 800], @isnumeric);
 p.addParameter('imfindcirclesSensitivity', 0.99, @isnumeric);
 p.addParameter('rangeAdjust', 0.05, @isnumeric);
 

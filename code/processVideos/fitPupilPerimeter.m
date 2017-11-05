@@ -122,8 +122,8 @@ p.addParameter('hostname',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional fitting params
-p.addParameter('ellipseTransparentLB',[0, 0, 400, 0, -0.5*pi],@isnumeric);
-p.addParameter('ellipseTransparentUB',[320,240,10000,0.5, 0.5*pi],@isnumeric);
+p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, -0.5*pi],@isnumeric);
+p.addParameter('ellipseTransparentUB',[640,480,20000,0.5, 0.5*pi],@isnumeric);
 p.addParameter('nSplits',8,@isnumeric);
 p.addParameter('nBoots',0,@isnumeric);
 
@@ -147,13 +147,6 @@ if length(p.Results.ellipseTransparentUB)~=nEllipseParams
 end
 if sum(p.Results.ellipseTransparentUB>=p.Results.ellipseTransparentLB)~=nEllipseParams
     error('Lower bounds must be equal to or less than upper bounds');
-end
-
-
-%% Announce we are starting
-if strcmp(p.Results.verbosity,'full')
-    fprintf('Performing non-causal Bayesian fitting of the pupil boundary file:\n');
-    fprintf(['\t' perimeterFileName '\n\n']);
 end
 
 
@@ -241,7 +234,7 @@ end
 % Alert the user
 if strcmp(p.Results.verbosity,'full')
     tic
-    fprintf(['Initial ellipse fit. Started ' char(datetime('now')) '\n']);
+    fprintf(['Ellipse fitting to pupil perimeter. Started ' char(datetime('now')) '\n']);
     fprintf('| 0                      50                   100%% |\n');
     fprintf('.\n');
 end
