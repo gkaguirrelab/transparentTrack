@@ -120,14 +120,14 @@ end
 % construct a weight vector based upon the quality of the initial fit of
 % the ellipse to the pupil perimeter
 if p.Results.nFrames ~= Inf
-    if isfield(pupilData,'fitError')
-        errorWeights = (1./pupilData.fitError(p.Results.startFrame:p.Results.nFrames))';
+    if isfield(pupilData,'pInitialFitError')
+        errorWeights = (1./pupilData.pInitialFitError(p.Results.startFrame:p.Results.nFrames))';
     else
         errorWeights=ones(1,size(ellipses,1));
     end
 else
-    if isfield(pupilData,'fitError')
-        errorWeights = (1./pupilData.fitError(p.Results.startFrame:end))';
+    if isfield(pupilData,'pInitialFitError')
+        errorWeights = (1./pupilData.pInitialFitError(p.Results.startFrame:end))';
     else
         errorWeights=ones(1,size(ellipses,1));
     end

@@ -119,7 +119,6 @@ p.addParameter('nBoots',0,@isnumeric);
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('constraintMarginEccenMultiplier',1.05,@isnumeric);
 p.addParameter('constraintMarginThetaDegrees',5,@isnumeric);
-p.addParameter('projectionModel','orthogonal', @ischar);
 
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
@@ -164,14 +163,15 @@ else
     sceneGeometry=dataLoad.sceneGeometry;
     clear dataLoad
 
-    nonlinconst = @(transparentEllipseParams) constrainEllipseBySceneGeometry(transparentEllipseParams, ...
+    nonlinconst = @(transparentEllipseParams) constrainEllipseBySceneGeometry(...
+        transparentEllipseParams, ...
         sceneGeometry, ...
         p.Results.constraintMarginEccenMultiplier, ...
         p.Results.constraintMarginThetaDegrees);
 end
 
 % Create an anonymous function for ellipse fitting
-obtainPupilLikelihood = @(x,y) constrainedEllipseFit(x, y, ...
+obtainPupilLikelihood = @(Xp,Yp) constrainedEllipseFit(Xp, Yp, ...
     p.Results.ellipseTransparentLB, p.Results.ellipseTransparentUB, nonlinconst);
 
 % Create an anonymous function to return a rotation matrix given theta in
@@ -259,9 +259,10 @@ parfor (ii = 1:nFrames, nWorkers)
             pInitialFitHessianSD=NaN(1,nEllipseParams);
             pInitialFitSplitsSD=NaN(1,nEllipseParams);
             pInitialFitBootsSD=NaN(1,nEllipseParams);
+            pInitialFitError=NaN(1);
         else
             % Obtain the fit to the veridical data
-            [pInitialFitTransparent, pInitialFitHessianSD, ~] = ...
+            [pInitialFitTransparent, pInitialFitHessianSD, pInitialFitError] = ...
                 feval(obtainPupilLikelihood,Xc, Yc);
 
             % Re-calculate fit for splits of data points, if requested
@@ -307,6 +308,7 @@ parfor (ii = 1:nFrames, nWorkers)
         loopVar_pInitialFitHessianSD(ii,:) = pInitialFitHessianSD';
         loopVar_pInitialFitSplitsSD(ii,:) = pInitialFitSplitsSD';
         loopVar_pInitialFitBootsSD(ii,:) = pInitialFitBootsSD';
+        loopVar_pInitialFitError(ii) = pInitialFitError;
     catch ME
         warning ('Error while processing frame: %d', ii)
         rethrow(ME)
@@ -318,8 +320,7 @@ pupilData.pInitialFitTransparent = loopVar_pInitialFitTransparent;
 pupilData.pInitialFitHessianSD = loopVar_pInitialFitHessianSD;
 pupilData.pInitialFitSplitsSD = loopVar_pInitialFitSplitsSD;
 pupilData.pInitialFitBootsSD = loopVar_pInitialFitBootsSD;
-
-
+pupilData.pInitialFitError = loopVar_pInitialFitError;
 
 %% Clean up and save
 
