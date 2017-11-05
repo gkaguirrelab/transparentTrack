@@ -13,8 +13,6 @@ Following an initial ellipse fit, the parameters are subject to an empirical Bay
 
 There are many software parameters that control the behavior of the routines. While the default settings work well for some videos (including those that are part of the sandbox demo included in this repository), other parameter settings may be needed for videos with different qualities.
 
-The transparentTrack toolbox has several dependencies, most notably the "quadfit" toolbox: https://www.mathworks.com/matlabcentral/fileexchange/45356-fitting-quadratic-curves-and-surfaces
+To install and configure transparentTrack, first install toolboxToolbox (tBtB), which provides for declarative dependency management for Matlab: https://github.com/ToolboxHub/ToolboxToolbox
 
-To properly install and configure these dependencies, install toolboxToolbox (tBtB), which provides for declarative dependency management for Matlab: https://github.com/ToolboxHub/ToolboxToolbox
-
-Once tBtB is installed, transparentTrack can be readied for use with the command `tbUse('transparentTrack')`.
+Once tBtB is installed, transparentTrack (and all its dependencies) can be installed and readied for use with the command `tbUse('transparentTrack')`.
