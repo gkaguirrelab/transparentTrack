@@ -69,7 +69,6 @@ p.addParameter('eyeRadiusInPixels',250,@isnumeric);
 p.addParameter('CoRLowerBound',[-500, -500, 0],@isnumeric);
 p.addParameter('CoRUpperBound',[1000, 1000, 1000],@isnumeric);
 
-
 % verbosity and plotting control
 p.addParameter('verbosity', 'none', @isstr);
 p.addParameter('displayMode', true, @islogical);
@@ -148,12 +147,13 @@ options = optimset(options,'Diagnostics','off','Display','off','LargeScale','off
 if p.Results.displayMode
     [~, ellipsesCoRs] = distanceToCandidateEyeCenterOfRotation(ellipses,bestFitCoR,p.Results.eyeRadiusInPixels,'projectionModel', p.Results.projectionModel);
     figure
-    plot(ellipsesCoRs(:,1), ellipsesCoRs(:,2), '.')
+    plot(ellipses(:,1), ellipses(:,2), '.k')
     hold on
+    plot(ellipsesCoRs(:,1), ellipsesCoRs(:,2), '.b')
     plot(x0(1),x0(2), 'xr')
     plot(bestFitCoR(1),bestFitCoR(2), 'og')
     title('Estimate Center of Rotation from pupil ellipses')
-    legend('CoR from each ellipse', 'Most circular ellipse','Best fit CoR')
+    legend('ellipse centers','CoR from each ellipse', 'Most circular ellipse','Best fit CoR')
     xlim([0 320] * 2)
     ylim([0 240] * 2)
 end
