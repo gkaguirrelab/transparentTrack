@@ -71,7 +71,8 @@ elseif pupilAzi ==  0 && pupilEle ~= 0
 elseif pupilEle == 0 && pupilAzi ~= 0
     theta = pi/2;
 else
-    warning('I can not constrain theta');
+    % Couldn't constrain the theta
+    theta = nan;
 end
 reconstructedTransparentEllipse(5) = theta;
 
