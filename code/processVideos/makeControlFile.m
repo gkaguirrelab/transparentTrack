@@ -210,7 +210,7 @@ end
 % presence or absence of a sceneGeometry constraint
 if isempty(p.Results.sceneGeometryFileName)
     nonlinconst = [];
-    cutErrorThreshold = p.Result.cutErrorThresholdWithoutSceneConstraint;
+    cutErrorThreshold = p.Results.cutErrorThresholdWithoutSceneConstraint;
 else
     % load the sceneGeometry structure
     dataLoad=load(p.Results.sceneGeometryFileName);
@@ -223,7 +223,7 @@ else
         p.Results.constraintMarginThetaDegrees, ...
         'projectionModel',p.Results.projectionModel);
 
-    cutErrorThreshold = p.Result.cutErrorThresholdWithSceneConstraint;
+    cutErrorThreshold = p.Results.cutErrorThresholdWithSceneConstraint;
 end
 
 
