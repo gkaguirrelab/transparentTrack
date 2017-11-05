@@ -15,4 +15,6 @@ There are many software parameters that control the behavior of the routines. Wh
 
 The transparentTrack toolbox has several dependencies, most notably the "quadfit" toolbox: https://www.mathworks.com/matlabcentral/fileexchange/45356-fitting-quadratic-curves-and-surfaces
 
-transparentTrack can be configured to run using toolboxToolbox, which provides for declarative dependency management for Matlab: https://github.com/ToolboxHub/ToolboxToolbox
+To properly install and configure these dependencies, install toolboxToolbox (tBtB), which provides for declarative dependency management for Matlab: https://github.com/ToolboxHub/ToolboxToolbox
+
+Once tBtB is installed, transparentTrack can be readied for use with the command `tbUse('transparentTrack')`.
