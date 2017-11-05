@@ -124,9 +124,14 @@ p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@i
 % Optional fitting params
 p.addParameter('ellipseTransparentLB',[0, 0, 400, 0, -0.5*pi],@isnumeric);
 p.addParameter('ellipseTransparentUB',[320,240,10000,0.5, 0.5*pi],@isnumeric);
-p.addParameter('constrainEccen_x_Theta',[0.5,0.5],@isnumeric);
 p.addParameter('nSplits',8,@isnumeric);
 p.addParameter('nBoots',0,@isnumeric);
+
+% Optional analysis params -- sceneGeometry fitting constraint
+p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
+p.addParameter('constraintMarginEccenMultiplier',1.05,@isnumeric);
+p.addParameter('constraintMarginThetaDegrees',5,@isnumeric);
+p.addParameter('projectionModel','orthogonal', @ischar);
 
 
 %% Parse and check the parameters
@@ -156,10 +161,22 @@ end
 % Create a non-linear constraint for the ellipse fit. If no parameters are
 % given, then create an empty function handle (and thus have no non-linear
 % constraint)
-if isempty(p.Results.constrainEccen_x_Theta)
+% Create a non-linear constraint for the ellipse fit. If no parameters are
+% given, then create an empty function handle (and thus have no non-linear
+% constraint)
+if isempty(p.Results.sceneGeometryFileName)
     nonlinconst = [];
 else
-    nonlinconst = @(x) restrictEccenByTheta(x,p.Results.constrainEccen_x_Theta);
+    % load the sceneGeometry structure
+    dataLoad=load(p.Results.sceneGeometryFileName);
+    sceneGeometry=dataLoad.sceneGeometry;
+    clear dataLoad
+
+    nonlinconst = @(x) constrainEllipseBySceneGeometry(x, ...
+        sceneGeometry, ...
+        p.Results.constraintMarginEccenMultiplier, ...
+        p.Results.constraintMarginThetaDegrees, ...
+        'projectionModel',p.Results.projectionModel);
 end
 
 % Create an anonymous function for ellipse fitting
@@ -349,28 +366,3 @@ end
 
 end % function
 
-
-
-function [c, ceq]=restrictEccenByTheta(transparentEllipseParams, constrainEccen_x_Theta)
-% function [c, ceq]=restrictEccenByTheta(transparentEllipseParams,constrainEccen_x_Theta)
-%
-% This function implements a non-linear constraint upon the ellipse fit
-% to the pupil boundary. The goal of the limit is to constrain theta to the
-% cardinal axes, and more severely constrain eccentricity in the horizontal
-% as compared to the vertical direction.
-
-% First constraint (equality)
-%  - the theta is on a cardinal axis (i.e., theta is from the set [-pi/2,0,pi/2])
-ceq = mod(abs(transparentEllipseParams(5)),(pi/2));
-
-% Second constraint (inequality)
-%  - require the eccen to be less than constrainEccen_x_Theta, where this
-%    has one value for horizontal ellipses (i.e., abs(theta)<pi/2) and a
-%    second value for vertical ellipses.
-if abs(transparentEllipseParams(5))<(pi/4)
-    c = transparentEllipseParams(4) - constrainEccen_x_Theta(1);
-else
-    c = transparentEllipseParams(4) - constrainEccen_x_Theta(2);
-end
-
-end
