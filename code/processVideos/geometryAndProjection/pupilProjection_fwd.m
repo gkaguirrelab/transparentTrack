@@ -1,10 +1,11 @@
-function reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzi, pupilEle, pupilCenter3D, varargin)
+function reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzi, pupilEle, pupilRadius, pupilCenter3D, projectionModel)
 % reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzi, pupilEle, pupilCenter3D)
 % 
 % Returns the transparent ellipse params of the pupil projection on the
 % scene, using the 3D pupil center coordinates and the horiziontal and
 % vertical angles of tilt (in degrees) of the pupil center with reference
 % to the scene plane.
+%
 % If the pupil radius is available, the transparent param for the ellipse
 % area will return the projected ellipse area, otherwise it will be left as
 % NaN.
@@ -21,31 +22,14 @@ function reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzi, pupilEl
 %       with the center being the centerOfProjection on the scene.
 % pupilEle - elevation of the pupil from the XY plane in degrees,
 %       with the center being the centerOfProjection on the scene.
+% pupilRadius - if not set to nan, the routine will return the ellipse area
 % pupilCenter3D - center of the pupil in 3D, where X and Y are parallel to
-%   the scene plane and Z is the distance of the center of the pupil from the
-%   scene plane.
-% 
-% Optional inputs:
-%   pupilRadius -  when available, the routine will return the ellipse area
-%   perspectiveCorrection - DEV PLACEHOLDER param to appy perspective
-%       correction
+%	the scene plane and Z is the distance of the center of the pupil from
+%	the scene plane.
+% projectionModel - string that identifies the projection model to use.
+%   Options include "orthogonal" and "perspective"
 
-%% parse input and define variables
-p = inputParser;
 
-% required input
-p.addRequired('pupilAzi',@isnumeric);
-p.addRequired('pupilEle',@isnumeric);
-p.addRequired('pupilCenter3D',@isnumeric);
-
-% optional analysis params
-p.addParameter('pupilRadius', nan, @isnumeric);
-
-% optional analysis params
-p.addParameter('projectionModel','orthogonal', @ischar);
-
-% parse
-p.parse(pupilAzi, pupilEle, pupilCenter3D,varargin{:})
 
 %% main
 
@@ -53,7 +37,7 @@ p.parse(pupilAzi, pupilEle, pupilCenter3D,varargin{:})
 reconstructedTransparentEllipse = nan(1,5);
 
 % define ellipse center
-switch p.Results.projectionModel
+switch projectionModel
     case 'orthogonal'
     % under orthogonal hypothesis the ellipse center in 2D is coincident with
     % the ellipse center in the plane of projection.
@@ -70,6 +54,7 @@ end
 e = sqrt((sind(pupilEle))^2 - ((sind(pupilAzi))^2 * ((sind(pupilEle))^2 - 1)));
 reconstructedTransparentEllipse(4) = e;
 
+theta = nan;
 % tilt
 if pupilAzi > 0  &&  pupilEle > 0  
     theta = - asin(sind(pupilAzi)/e);
@@ -85,22 +70,24 @@ elseif pupilAzi ==  0 && pupilEle ~= 0
     theta = 0;
 elseif pupilEle == 0 && pupilAzi ~= 0
     theta = pi/2;
+else
+    warning('I can not constrain theta');
 end
 reconstructedTransparentEllipse(5) = theta;
 
 % area (if pupilRadius available)
-if ~isnan(p.Results.pupilRadius)
-    if p.Results.perspectiveCorrection == 0
-        % under orthogonal hypotesis, the semimajor axis of the ellipse equals the
-        % pupil circle radius. If that is known, it can be assigned and used later
-        % to determine the ellipse area.
-        semiMajorAxis = p.Results.pupilRadius;
-    elseif p.Results.perspectiveCorrection > 0
-        % DEV PLACEHOLDER: if there is a perspective correction value to apply,
-        % apply it!
+if ~isnan(pupilRadius)
+    switch projectionModel
+        case 'orthogonal'
+            % under orthogonal hypotesis, the semimajor axis of the ellipse equals the
+            % pupil circle radius. If that is known, it can be assigned and used later
+            % to determine the ellipse area.
+            semiMajorAxis = p.Results.pupilRadius;
+        case 'perspective'
+            error('not implemented yet');
     end
-semiMinorAxis = semiMajorAxis*sqrt(1-e^2);
-reconstructedTransparentEllipse(3) = pi*semiMajorAxis*semiMinorAxis;
+    semiMinorAxis = semiMajorAxis*sqrt(1-e^2);
+    reconstructedTransparentEllipse(3) = pi*semiMajorAxis*semiMinorAxis;
 end
 
 end % function

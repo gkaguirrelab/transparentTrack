@@ -109,18 +109,6 @@ p.addRequired('pupilFileName',@ischar);
 % Optional display and I/O params
 p.addParameter('verbosity','none',@ischar);
 
-% Optional flow control params
-p.addParameter('nFrames',Inf,@isnumeric);
-p.addParameter('useParallel',false,@islogical);
-p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('tbtbRepoName','transparentTrack',@ischar);
-
-% Environment parameters
-p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
-p.addParameter('timestamp',char(datetime('now')),@ischar);
-p.addParameter('hostname',char(java.lang.System.getProperty('user.name')),@ischar);
-p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
-
 % Optional fitting params
 p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, -0.5*pi],@isnumeric);
 p.addParameter('ellipseTransparentUB',[640,480,20000,0.5, 0.5*pi],@isnumeric);
@@ -133,6 +121,17 @@ p.addParameter('constraintMarginEccenMultiplier',1.05,@isnumeric);
 p.addParameter('constraintMarginThetaDegrees',5,@isnumeric);
 p.addParameter('projectionModel','orthogonal', @ischar);
 
+% Optional flow control params
+p.addParameter('nFrames',Inf,@isnumeric);
+p.addParameter('useParallel',false,@islogical);
+p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('tbtbRepoName','transparentTrack',@ischar);
+
+% Environment parameters
+p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
+p.addParameter('timestamp',char(datetime('now')),@ischar);
+p.addParameter('hostname',char(java.lang.System.getProperty('user.name')),@ischar);
+p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 %% Parse and check the parameters
 p.parse(perimeterFileName, pupilFileName, varargin{:});
@@ -165,11 +164,10 @@ else
     sceneGeometry=dataLoad.sceneGeometry;
     clear dataLoad
 
-    nonlinconst = @(x) constrainEllipseBySceneGeometry(x, ...
+    nonlinconst = @(transparentEllipseParams) constrainEllipseBySceneGeometry(transparentEllipseParams, ...
         sceneGeometry, ...
         p.Results.constraintMarginEccenMultiplier, ...
-        p.Results.constraintMarginThetaDegrees, ...
-        'projectionModel',p.Results.projectionModel);
+        p.Results.constraintMarginThetaDegrees);
 end
 
 % Create an anonymous function for ellipse fitting
@@ -265,7 +263,7 @@ parfor (ii = 1:nFrames, nWorkers)
             % Obtain the fit to the veridical data
             [pInitialFitTransparent, pInitialFitHessianSD, ~] = ...
                 feval(obtainPupilLikelihood,Xc, Yc);
-            
+
             % Re-calculate fit for splits of data points, if requested
             if p.Results.nSplits == 0
                 pInitialFitSplitsSD=NaN(1,nEllipseParams);
@@ -282,7 +280,6 @@ parfor (ii = 1:nFrames, nWorkers)
                     forwardPoints = feval(returnRotMat,theta) * ([Xc,Yc]' - centerMatrix) + centerMatrix;
                     splitIdx1 = find((forwardPoints(1,:) < median(forwardPoints(1,:))))';
                     splitIdx2 = find((forwardPoints(1,:) >= median(forwardPoints(1,:))))';
-                    
                     pFitTransparentSplit(1,ss,:) = ...
                         feval(obtainPupilLikelihood,Xc(splitIdx1), Yc(splitIdx1));
                     pFitTransparentSplit(2,ss,:) = ...

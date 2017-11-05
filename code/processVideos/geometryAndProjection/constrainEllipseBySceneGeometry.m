@@ -1,4 +1,4 @@
-function [c, ceq]=constrainEllipseBySceneGeometry(transparentEllipseParams, sceneGeometry, constraintMarginEccenMultiplier, constraintMarginThetaDegrees, varargin)
+function [c, ceq]=constrainEllipseBySceneGeometry(transparentEllipseParams, sceneGeometry, constraintMarginEccenMultiplier, constraintMarginThetaDegrees)
 % [c, ceq]=constrainEllipseBySceneGeometry(transparentEllipseParams, sceneGeometry, constraintMarginsEccenTheta, varargin)
 %
 % This function implements a non-linear constraint upon the ellipse fit
@@ -29,24 +29,8 @@ function [c, ceq]=constrainEllipseBySceneGeometry(transparentEllipseParams, scen
 %
 
 
-%% input parser
-p = inputParser;
-
-% required input
-p.addRequired('transparentEllipseParams',@isnumeric);
-p.addRequired('sceneGeometry',@isstruct);
-p.addRequired('constraintMarginEccenMultiplier',@isnumeric);
-p.addRequired('constraintMarginThetaDegrees',@isnumeric);
-
-% optional analysis params
-p.addParameter('projectionModel','orthogonal', @ischar);
-
-%parse
-p.parse(transparentEllipseParams, sceneGeometry, constraintMarginEccenMultiplier, constraintMarginThetaDegrees, varargin{:})
-
 
 %% Calculate the predicted eccentricty and theta for this pupil center
-
 
 % derive pupil center cartesian 3D coordinates
 pupilCenter.Z = ...
@@ -58,18 +42,19 @@ pupilCenter.Z = ...
     sceneGeometry.eyeCenter.Z;
 pupilAzi = atand((transparentEllipseParams(1) - sceneGeometry.eyeCenter.X)/(pupilCenter.Z - sceneGeometry.eyeCenter.Z));
 pupilEle = atand((transparentEllipseParams(2) - sceneGeometry.eyeCenter.Y)/(pupilCenter.Z - sceneGeometry.eyeCenter.Z));
+pupilRadius = nan;
 
 predictedTransparentEllipse = ...
-    pupilProjection_fwd(pupilAzi, pupilEle, ...
+    pupilProjection_fwd(pupilAzi, pupilEle, pupilRadius,...
     [sceneGeometry.eyeCenter.X sceneGeometry.eyeCenter.Y sceneGeometry.eyeCenter.Z],...
-    'projectionModel',p.Results.projectionModel);
+    sceneGeometry.meta.projectionModel);
 
 % calculate the range of allowed eccentricty and theta values
-minAllowedEccentricity = predictedTransparentEllipse(4) ./ p.Results.constraintMarginEccenMultiplier;
-maxAllowedEccentricity = predictedTransparentEllipse(4) .* p.Results.constraintMarginEccenMultiplier;
+minAllowedEccentricity = predictedTransparentEllipse(4) ./ constraintMarginEccenMultiplier;
+maxAllowedEccentricity = predictedTransparentEllipse(4) .* constraintMarginEccenMultiplier;
 
-minAllowedTheta = predictedTransparentEllipse(5) - p.Results.constraintMarginThetaDegrees;
-maxAllowedTheta = predictedTransparentEllipse(5) + p.Results.constraintMarginThetaDegrees;
+minAllowedTheta = predictedTransparentEllipse(5) - constraintMarginThetaDegrees;
+maxAllowedTheta = predictedTransparentEllipse(5) + constraintMarginThetaDegrees;
 
 % First constraint
 %  Set ceq to zero only if the eccentricty of the ellipse to be tested is
