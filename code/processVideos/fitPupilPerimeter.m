@@ -117,8 +117,8 @@ p.addParameter('nBoots',0,@isnumeric);
 
 % Optional analysis params -- sceneGeometry fitting constraint
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('constraintMarginEccenMultiplier',1.05,@isnumeric);
-p.addParameter('constraintMarginThetaDegrees',5,@isnumeric);
+p.addParameter('constraintMarginEccenMultiplier',1,@isnumeric);
+p.addParameter('constraintMarginThetaDegrees',0,@isnumeric);
 
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
@@ -320,7 +320,7 @@ pupilData.pInitialFitTransparent = loopVar_pInitialFitTransparent;
 pupilData.pInitialFitHessianSD = loopVar_pInitialFitHessianSD;
 pupilData.pInitialFitSplitsSD = loopVar_pInitialFitSplitsSD;
 pupilData.pInitialFitBootsSD = loopVar_pInitialFitBootsSD;
-pupilData.pInitialFitError = loopVar_pInitialFitError;
+pupilData.pInitialFitError = loopVar_pInitialFitError';
 
 %% Clean up and save
 
