@@ -25,7 +25,7 @@ if ~exist(sandboxDir,'dir')
 end
 
 %% hard coded parameters
-nFrames = 1000; % number of frames to process (set to Inf to do all)
+nFrames = Inf; % number of frames to process (set to Inf to do all)
 verbosity = 'full'; % Set to none to make the demo silent
 TbTbToolboxName = 'transparentTrack';
 
@@ -38,7 +38,6 @@ pathParams.eyeTrackingDir = 'EyeTracking';
 pathParams.subjectID = 'TOME_3020';
 pathParams.sessionDate = '050517';
 pathParams.runName = 'GazeCal01';
-% pathParams.runName = 'tfMRI_RETINO_PA_run01';
 
 
 %% TbTb configuration
@@ -79,63 +78,63 @@ end
 
 
 %% Perform the entire analysis with one call
-% runVideoPipeline( pathParams, ...
-%     'nFrames',nFrames,'verbosity', verbosity, 'tbSnapshot',tbSnapshot, 'useParallel',true, ...
-%     'pupilRange', [20 120], 'pupilCircleThresh', 0.04, 'pupilGammaCorrection', 1.5, ...
-%     'overwriteControlFile', true, 'catchErrors', false);
-
-%% Perform the analysis up to initial pupil fit
 runVideoPipeline( pathParams, ...
-    'nFrames',nFrames,'verbosity', verbosity,'tbSnapshot',tbSnapshot, 'useParallel',true, ...
+    'nFrames',nFrames,'verbosity', verbosity, 'tbSnapshot',tbSnapshot, 'useParallel',true, ...
     'pupilRange', [40 200], 'pupilCircleThresh', 0.04, 'pupilGammaCorrection', 1.5, ...
-    'overwriteControlFile', true,  ...
-    'glintPatchRadius', 20,'ellipseTransparentLB',[0, 0, 800, 0, -0.5*pi],'ellipseTransparentUB',[480,640,20000,0.417, 0.5*pi], ...
-    'skipStage', {'smoothPupilParameters', 'fitIrisPerimeter', 'makeFitVideo' }, ...
-    'catchErrors', false);
+    'overwriteControlFile', true, 'catchErrors', false);
 
-%% Define some file names
-grayVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_gray.avi']);
-glintFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_glint.mat']);
-perimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_perimeter.mat']);
-controlFileName = fullfile(pathParams.controlFileDirFull, [pathParams.runName '_controlFile.csv']);
-correctedPerimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_correctedPerimeter.mat']);
-pupilFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_pupil.mat']);
-finalFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_finalFit.avi']);
-irisFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_iris.mat']);
-
-%% Create videos of intermediate stages
-exampleFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_Stage1.avi']);
-makeFitVideo(grayVideoName, exampleFitVideoName, 'glintFileName', glintFileName, ...
-    'nFrames',nFrames,'verbosity', verbosity,'tbSnapshot',tbSnapshot, 'useParallel',true);
-
-exampleFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_Stage2.avi']);
-makeFitVideo(grayVideoName, exampleFitVideoName, 'glintFileName', glintFileName, 'perimeterFileName', perimeterFileName, ...
-    'nFrames',nFrames,'verbosity', verbosity,'tbSnapshot',tbSnapshot, 'useParallel',true);
-
-exampleFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_Stage3.avi']);
-makeFitVideo(grayVideoName, exampleFitVideoName, 'glintFileName', glintFileName, 'perimeterFileName', correctedPerimeterFileName, 'controlFileName', controlFileName, ...
-    'nFrames',nFrames,'verbosity', verbosity,'tbSnapshot',tbSnapshot, 'useParallel',true);
-
-exampleFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_Stage4.avi']);
-makeFitVideo(grayVideoName, exampleFitVideoName, 'glintFileName', glintFileName, 'perimeterFileName', correctedPerimeterFileName, 'controlFileName', controlFileName, 'pupilFileName', pupilFileName, ...
-    'whichFieldToPlot','pInitialFitTransparent',...
-    'nFrames',nFrames,'verbosity', verbosity,'tbSnapshot',tbSnapshot, 'useParallel', true);
-
-%% Perform Bayesian smoothing and iris fitting
-runVideoPipeline( pathParams, ...
-    'whichFieldToPlot','pInitialFitTransparent',...
-    'nFrames',nFrames,'verbosity', verbosity,'tbSnapshot',tbSnapshot, 'useParallel',true, ...
-    'skipStage', {'deinterlaceVideo', 'findGlint', 'findPupilPerimeter', 'makeControlFile', 'applyControlFile', 'fitPupilPerimeter', 'makeFitVideo' }, ...
-    'catchErrors', false);
-
-%% Create some more videos
-exampleFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_Stage5.avi']);
-makeFitVideo(grayVideoName, exampleFitVideoName, 'glintFileName', glintFileName, 'perimeterFileName', correctedPerimeterFileName, 'controlFileName', controlFileName, 'pupilFileName', pupilFileName, ...
-    'nFrames',nFrames,'verbosity', verbosity,'tbSnapshot',tbSnapshot, 'useParallel',true);
-
-exampleFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_Stage6.avi']);
-makeFitVideo(grayVideoName, exampleFitVideoName, 'glintFileName', glintFileName, 'perimeterFileName', correctedPerimeterFileName, 'controlFileName', controlFileName, 'pupilFileName', pupilFileName, 'irisFileName', irisFileName, ...
-    'nFrames',nFrames,'verbosity', verbosity,'tbSnapshot',tbSnapshot, 'useParallel',true);
+% %% Perform the analysis up to initial pupil fit
+% runVideoPipeline( pathParams, ...
+%     'nFrames',nFrames,'verbosity', verbosity,'tbSnapshot',tbSnapshot, 'useParallel',true, ...
+%     'pupilRange', [40 200], 'pupilCircleThresh', 0.04, 'pupilGammaCorrection', 1.5, ...
+%     'overwriteControlFile', true,  ...
+%     'glintPatchRadius', 20,'ellipseTransparentLB',[0, 0, 800, 0, -0.5*pi],'ellipseTransparentUB',[480,640,20000,0.417, 0.5*pi], ...
+%     'skipStage', {'smoothPupilParameters', 'fitIrisPerimeter', 'makeFitVideo' }, ...
+%     'catchErrors', false);
+% 
+% %% Define some file names
+% grayVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_gray.avi']);
+% glintFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_glint.mat']);
+% perimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_perimeter.mat']);
+% controlFileName = fullfile(pathParams.controlFileDirFull, [pathParams.runName '_controlFile.csv']);
+% correctedPerimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_correctedPerimeter.mat']);
+% pupilFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_pupil.mat']);
+% finalFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_finalFit.avi']);
+% irisFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_iris.mat']);
+% 
+% %% Create videos of intermediate stages
+% exampleFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_Stage1.avi']);
+% makeFitVideo(grayVideoName, exampleFitVideoName, 'glintFileName', glintFileName, ...
+%     'nFrames',nFrames,'verbosity', verbosity,'tbSnapshot',tbSnapshot, 'useParallel',true);
+% 
+% exampleFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_Stage2.avi']);
+% makeFitVideo(grayVideoName, exampleFitVideoName, 'glintFileName', glintFileName, 'perimeterFileName', perimeterFileName, ...
+%     'nFrames',nFrames,'verbosity', verbosity,'tbSnapshot',tbSnapshot, 'useParallel',true);
+% 
+% exampleFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_Stage3.avi']);
+% makeFitVideo(grayVideoName, exampleFitVideoName, 'glintFileName', glintFileName, 'perimeterFileName', correctedPerimeterFileName, 'controlFileName', controlFileName, ...
+%     'nFrames',nFrames,'verbosity', verbosity,'tbSnapshot',tbSnapshot, 'useParallel',true);
+% 
+% exampleFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_Stage4.avi']);
+% makeFitVideo(grayVideoName, exampleFitVideoName, 'glintFileName', glintFileName, 'perimeterFileName', correctedPerimeterFileName, 'controlFileName', controlFileName, 'pupilFileName', pupilFileName, ...
+%     'whichFieldToPlot','pInitialFitTransparent',...
+%     'nFrames',nFrames,'verbosity', verbosity,'tbSnapshot',tbSnapshot, 'useParallel', true);
+% 
+% %% Perform Bayesian smoothing and iris fitting
+% runVideoPipeline( pathParams, ...
+%     'whichFieldToPlot','pInitialFitTransparent',...
+%     'nFrames',nFrames,'verbosity', verbosity,'tbSnapshot',tbSnapshot, 'useParallel',true, ...
+%     'skipStage', {'deinterlaceVideo', 'findGlint', 'findPupilPerimeter', 'makeControlFile', 'applyControlFile', 'fitPupilPerimeter', 'makeFitVideo' }, ...
+%     'catchErrors', false);
+% 
+% %% Create some more videos
+% exampleFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_Stage5.avi']);
+% makeFitVideo(grayVideoName, exampleFitVideoName, 'glintFileName', glintFileName, 'perimeterFileName', correctedPerimeterFileName, 'controlFileName', controlFileName, 'pupilFileName', pupilFileName, ...
+%     'nFrames',nFrames,'verbosity', verbosity,'tbSnapshot',tbSnapshot, 'useParallel',true);
+% 
+% exampleFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_Stage6.avi']);
+% makeFitVideo(grayVideoName, exampleFitVideoName, 'glintFileName', glintFileName, 'perimeterFileName', correctedPerimeterFileName, 'controlFileName', controlFileName, 'pupilFileName', pupilFileName, 'irisFileName', irisFileName, ...
+%     'nFrames',nFrames,'verbosity', verbosity,'tbSnapshot',tbSnapshot, 'useParallel',true);
 
 
 %% Plot some fits

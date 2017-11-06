@@ -109,6 +109,17 @@ p.addRequired('pupilFileName',@ischar);
 % Optional display and I/O params
 p.addParameter('verbosity','none',@ischar);
 
+% Optional fitting params
+p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, -0.5*pi],@isnumeric);
+p.addParameter('ellipseTransparentUB',[640,480,20000,0.5, 0.5*pi],@isnumeric);
+p.addParameter('nSplits',8,@isnumeric);
+p.addParameter('nBoots',0,@isnumeric);
+
+% Optional analysis params -- sceneGeometry fitting constraint
+p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
+p.addParameter('constraintMarginEccenMultiplier',1,@isnumeric);
+p.addParameter('constraintMarginThetaDegrees',0,@isnumeric);
+
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
 p.addParameter('useParallel',false,@islogical);
@@ -120,14 +131,6 @@ p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
 p.addParameter('timestamp',char(datetime('now')),@ischar);
 p.addParameter('hostname',char(java.lang.System.getProperty('user.name')),@ischar);
 p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
-
-% Optional fitting params
-p.addParameter('ellipseTransparentLB',[0, 0, 400, 0, -0.5*pi],@isnumeric);
-p.addParameter('ellipseTransparentUB',[320,240,10000,0.5, 0.5*pi],@isnumeric);
-p.addParameter('constrainEccen_x_Theta',[0.5,0.5],@isnumeric);
-p.addParameter('nSplits',8,@isnumeric);
-p.addParameter('nBoots',0,@isnumeric);
-
 
 %% Parse and check the parameters
 p.parse(perimeterFileName, pupilFileName, varargin{:});
@@ -144,24 +147,31 @@ if sum(p.Results.ellipseTransparentUB>=p.Results.ellipseTransparentLB)~=nEllipse
     error('Lower bounds must be equal to or less than upper bounds');
 end
 
-%% Announce we are starting
-if strcmp(p.Results.verbosity,'full')
-    fprintf('Performing non-causal Bayesian fitting of the pupil boundary file:\n');
-    fprintf(['\t' perimeterFileName '\n\n']);
-end
 
 %% Prepare some anonymous functions and load the pupil perimeter data
 % Create a non-linear constraint for the ellipse fit. If no parameters are
 % given, then create an empty function handle (and thus have no non-linear
 % constraint)
-if isempty(p.Results.constrainEccen_x_Theta)
+% Create a non-linear constraint for the ellipse fit. If no parameters are
+% given, then create an empty function handle (and thus have no non-linear
+% constraint)
+if isempty(p.Results.sceneGeometryFileName)
     nonlinconst = [];
 else
-    nonlinconst = @(x) restrictEccenByTheta(x,p.Results.constrainEccen_x_Theta);
+    % load the sceneGeometry structure
+    dataLoad=load(p.Results.sceneGeometryFileName);
+    sceneGeometry=dataLoad.sceneGeometry;
+    clear dataLoad
+
+    nonlinconst = @(transparentEllipseParams) constrainEllipseBySceneGeometry(...
+        transparentEllipseParams, ...
+        sceneGeometry, ...
+        p.Results.constraintMarginEccenMultiplier, ...
+        p.Results.constraintMarginThetaDegrees);
 end
 
 % Create an anonymous function for ellipse fitting
-obtainPupilLikelihood = @(x,y) constrainedEllipseFit(x, y, ...
+obtainPupilLikelihood = @(Xp,Yp) constrainedEllipseFit(Xp, Yp, ...
     p.Results.ellipseTransparentLB, p.Results.ellipseTransparentUB, nonlinconst);
 
 % Create an anonymous function to return a rotation matrix given theta in
@@ -222,7 +232,7 @@ end
 % Alert the user
 if strcmp(p.Results.verbosity,'full')
     tic
-    fprintf(['Initial ellipse fit. Started ' char(datetime('now')) '\n']);
+    fprintf(['Ellipse fitting to pupil perimeter. Started ' char(datetime('now')) '\n']);
     fprintf('| 0                      50                   100%% |\n');
     fprintf('.\n');
 end
@@ -249,11 +259,12 @@ parfor (ii = 1:nFrames, nWorkers)
             pInitialFitHessianSD=NaN(1,nEllipseParams);
             pInitialFitSplitsSD=NaN(1,nEllipseParams);
             pInitialFitBootsSD=NaN(1,nEllipseParams);
+            pInitialFitError=NaN(1);
         else
             % Obtain the fit to the veridical data
-            [pInitialFitTransparent, pInitialFitHessianSD, ~] = ...
+            [pInitialFitTransparent, pInitialFitHessianSD, pInitialFitError] = ...
                 feval(obtainPupilLikelihood,Xc, Yc);
-            
+
             % Re-calculate fit for splits of data points, if requested
             if p.Results.nSplits == 0
                 pInitialFitSplitsSD=NaN(1,nEllipseParams);
@@ -270,7 +281,6 @@ parfor (ii = 1:nFrames, nWorkers)
                     forwardPoints = feval(returnRotMat,theta) * ([Xc,Yc]' - centerMatrix) + centerMatrix;
                     splitIdx1 = find((forwardPoints(1,:) < median(forwardPoints(1,:))))';
                     splitIdx2 = find((forwardPoints(1,:) >= median(forwardPoints(1,:))))';
-                    
                     pFitTransparentSplit(1,ss,:) = ...
                         feval(obtainPupilLikelihood,Xc(splitIdx1), Yc(splitIdx1));
                     pFitTransparentSplit(2,ss,:) = ...
@@ -298,6 +308,7 @@ parfor (ii = 1:nFrames, nWorkers)
         loopVar_pInitialFitHessianSD(ii,:) = pInitialFitHessianSD';
         loopVar_pInitialFitSplitsSD(ii,:) = pInitialFitSplitsSD';
         loopVar_pInitialFitBootsSD(ii,:) = pInitialFitBootsSD';
+        loopVar_pInitialFitError(ii) = pInitialFitError;
     catch ME
         warning ('Error while processing frame: %d', ii)
         rethrow(ME)
@@ -309,8 +320,7 @@ pupilData.pInitialFitTransparent = loopVar_pInitialFitTransparent;
 pupilData.pInitialFitHessianSD = loopVar_pInitialFitHessianSD;
 pupilData.pInitialFitSplitsSD = loopVar_pInitialFitSplitsSD;
 pupilData.pInitialFitBootsSD = loopVar_pInitialFitBootsSD;
-
-
+pupilData.pInitialFitError = loopVar_pInitialFitError';
 
 %% Clean up and save
 
@@ -347,28 +357,3 @@ end
 
 end % function
 
-
-
-function [c, ceq]=restrictEccenByTheta(transparentEllipseParams, constrainEccen_x_Theta)
-% function [c, ceq]=restrictEccenByTheta(transparentEllipseParams,constrainEccen_x_Theta)
-%
-% This function implements a non-linear constraint upon the ellipse fit
-% to the pupil boundary. The goal of the limit is to constrain theta to the
-% cardinal axes, and more severely constrain eccentricity in the horizontal
-% as compared to the vertical direction.
-
-% First constraint (equality)
-%  - the theta is on a cardinal axis (i.e., theta is from the set [-pi/2,0,pi/2])
-ceq = mod(abs(transparentEllipseParams(5)),(pi/2));
-
-% Second constraint (inequality)
-%  - require the eccen to be less than constrainEccen_x_Theta, where this
-%    has one value for horizontal ellipses (i.e., abs(theta)<pi/2) and a
-%    second value for vertical ellipses.
-if abs(transparentEllipseParams(5))<(pi/4)
-    c = transparentEllipseParams(4) - constrainEccen_x_Theta(1);
-else
-    c = transparentEllipseParams(4) - constrainEccen_x_Theta(2);
-end
-
-end

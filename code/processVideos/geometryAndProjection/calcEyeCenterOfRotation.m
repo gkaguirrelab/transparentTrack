@@ -48,7 +48,7 @@ switch p.Results.projectionModel
             % Find candidate azimuth and elevation values (unless the eccentricity
             % is zero, this will return 2 values for each angle).
             centerOfProjection = nan;
-            [reconstructedPupilAzi, reconstructedPupilEle, ~] = pupilProjection_inv(transparentEllipse, centerOfProjection);
+            [reconstructedPupilAzi, reconstructedPupilEle, ~] = pupilProjection_inv(transparentEllipse, centerOfProjection, p.Results.projectionModel);
             
             % if the pupilAzi or the pupilEle is zero
             if ~any(reconstructedPupilAzi) || ~any(reconstructedPupilEle)

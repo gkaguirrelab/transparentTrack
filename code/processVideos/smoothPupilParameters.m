@@ -131,10 +131,9 @@ p.addParameter('hostname',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional fitting params
-p.addParameter('ellipseTransparentLB',[0, 0, 400, 0, -0.5*pi],@isnumeric);
-p.addParameter('ellipseTransparentUB',[320,240,10000,0.5, 0.5*pi],@isnumeric);
+p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, -0.5*pi],@isnumeric);
+p.addParameter('ellipseTransparentUB',[640,480,20000,0.5, 0.5*pi],@isnumeric);
 p.addParameter('exponentialTauParams',[.25, .25, 5, 1, 1],@isnumeric);
-p.addParameter('constrainEccen_x_Theta',[0.5,0.5],@isnumeric);
 p.addParameter('likelihoodErrorExponent',1.25,@isnumeric);
 p.addParameter('nAdditionalBayes',0,@isnumeric);
 p.addParameter('shrinkTauParamFactor',4,@isnumeric);
@@ -160,11 +159,6 @@ if sum(p.Results.ellipseTransparentUB>=p.Results.ellipseTransparentLB)~=nEllipse
     error('Lower bounds must be equal to or less than upper bounds');
 end
 
-%% Announce we are starting
-if strcmp(p.Results.verbosity,'full')
-    fprintf('Performing non-causal Bayesian fitting of the pupil boundary file:\n');
-    fprintf(['\t' perimeterFileName '\n\n']);
-end
 
 % Load the pupil perimeter data. It will be a structure variable
 % "perimeter", with the fields .data and .meta
