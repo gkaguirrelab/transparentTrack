@@ -246,7 +246,7 @@ switch p.Results.projectionModel
             end
         end
         
-        distances = min(distances');
+        distances = min(distances,[],2);
         
     case 'perspective'
         error('not implemented yet');
