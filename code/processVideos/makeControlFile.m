@@ -128,8 +128,8 @@ p.addParameter('minRadiusProportion',0,@isnumeric);
 % Optional analysis params -- sceneGeometry fitting constraint
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('cutErrorThresholdWithSceneConstraint', 40, @isnumeric);
-p.addParameter('constraintMarginEccenMultiplier',1.05,@isnumeric);
-p.addParameter('constraintMarginThetaDegrees',5,@isnumeric);
+p.addParameter('constraintMarginEccenMultiplier',1,@isnumeric);
+p.addParameter('constraintMarginThetaDegrees',0,@isnumeric);
 p.addParameter('projectionModel','orthogonal', @ischar);
     
 % Optional display params

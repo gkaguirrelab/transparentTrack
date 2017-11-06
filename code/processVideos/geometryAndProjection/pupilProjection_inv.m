@@ -1,4 +1,4 @@
-function [reconstructedPupilAzi, reconstructedPupilEle, reconstructedPupilRadius] = pupilProjection_inv(transparentEllipse,centerOfProjection, projectionModel)
+function [reconstructedPupilAzi, reconstructedPupilEle, reconstructedPupilRadius] = pupilProjection_inv(transparentEllipse, centerOfProjection, projectionModel)
 % [reconstructedHorizontalAngle, reconstructedVerticalAngle] =
 % pupilProjection_inv(transparentEllipse,centerOfProjection)
 %
@@ -49,7 +49,7 @@ if any(isnan(transparentEllipse(1:2)))
     reconstructedPupilEle = nan;
     reconstructedPupilRadius = nan;
 else
-    % derive horizontal tilt angle (azimut)
+    % derive horizontal tilt angle (azimuth)
     if ~isnan(centerOfProjection)
         if centerX > centerOfProjection(1)
             reconstructedPupilAzi = asind(sqrt((sin(theta))^2 * (1 -k^2)));

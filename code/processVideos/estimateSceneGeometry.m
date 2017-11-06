@@ -71,7 +71,7 @@ p.addParameter('CoRUpperBound',[1000, 1000, 1000],@isnumeric);
 
 % verbosity and plotting control
 p.addParameter('verbosity', 'none', @isstr);
-p.addParameter('displayMode', true, @islogical);
+p.addParameter('displayMode', false, @islogical);
 
 % flow control
 p.addParameter('nFrames',Inf,@isnumeric);
