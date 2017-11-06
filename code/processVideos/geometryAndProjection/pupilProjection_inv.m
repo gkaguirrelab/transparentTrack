@@ -1,4 +1,4 @@
-function [reconstructedPupilAzi, reconstructedPupilEle, reconstructedPupilRadius] = pupilProjection_inv(transparentEllipse, centerOfProjection, projectionModel)
+function [reconstructedPupilAzi, reconstructedPupilEle, reconstructedPupilArea] = pupilProjection_inv(transparentEllipse, centerOfProjection, projectionModel)
 % [reconstructedHorizontalAngle, reconstructedVerticalAngle] =
 % pupilProjection_inv(transparentEllipse,centerOfProjection)
 %
@@ -17,7 +17,7 @@ function [reconstructedPupilAzi, reconstructedPupilEle, reconstructedPupilRadius
 %       degrees, with the center being the centerOfProjection on the scene
 %   reconstructedPupilEle - elevation of the pupil from the XY plane in
 %       degrees, with the center being the centerOfProjection on the scene.
-%   reconstructedPupilRadius - pupil radius, in the same units as the
+%   reconstructedPupilArea - pupil area, in the same (squared) units as the
 %       transparent ellipse center.
 %   
 % Required inputs:
@@ -47,7 +47,7 @@ end
 if any(isnan(transparentEllipse(1:2)))
     reconstructedPupilAzi = nan;
     reconstructedPupilEle = nan;
-    reconstructedPupilRadius = nan;
+    reconstructedPupilArea = nan;
 else
     % derive horizontal tilt angle (azimuth)
     if ~isnan(centerOfProjection)
@@ -79,6 +79,7 @@ else
         switch projectionModel
             case 'orthogonal'
                 reconstructedPupilRadius = sqrt(transparentEllipse(3) / (pi * k));
+                reconstructedPupilArea = pi * reconstructedPupilRadius^2;
             case 'perspective'
                 error('Not yet implemented');
         end

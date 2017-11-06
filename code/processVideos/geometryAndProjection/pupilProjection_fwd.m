@@ -1,4 +1,4 @@
-function reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzi, pupilEle, pupilRadius, pupilCenter3D, projectionModel)
+function reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzi, pupilEle, pupilArea, pupilCenter3D, projectionModel)
 % reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzi, pupilEle, pupilCenter3D)
 % 
 % Returns the transparent ellipse params of the pupil projection on the
@@ -6,7 +6,7 @@ function reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzi, pupilEl
 % vertical angles of tilt (in degrees) of the pupil center with reference
 % to the scene plane.
 %
-% If the pupil radius is available, the transparent param for the ellipse
+% If the pupil area is available, the transparent param for the ellipse
 % area will return the projected ellipse area, otherwise it will be left as
 % NaN.
 % 
@@ -22,7 +22,7 @@ function reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzi, pupilEl
 %       with the center being the centerOfProjection on the scene.
 % pupilEle - elevation of the pupil from the XY plane in degrees,
 %       with the center being the centerOfProjection on the scene.
-% pupilRadius - if not set to nan, the routine will return the ellipse area
+% pupilArea - if not set to nan, the routine will return the ellipse area
 % pupilCenter3D - center of the pupil in 3D, where X and Y are parallel to
 %	the scene plane and Z is the distance of the center of the pupil from
 %	the scene plane.
@@ -81,13 +81,14 @@ end
 reconstructedTransparentEllipse(5) = theta;
 
 % area (if pupilRadius available)
-if ~isnan(pupilRadius)
+if ~isnan(pupilArea)
     switch projectionModel
         case 'orthogonal'
             % under orthogonal hypotesis, the semimajor axis of the ellipse equals the
             % pupil circle radius. If that is known, it can be assigned and used later
             % to determine the ellipse area.
-            semiMajorAxis = p.Results.pupilRadius;
+            pupilRadius = sqrt(pupilArea/pi);
+            semiMajorAxis = pupilRadius;
         case 'perspective'
             error('not implemented yet');
     end
