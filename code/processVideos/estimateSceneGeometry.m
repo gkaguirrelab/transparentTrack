@@ -121,13 +121,13 @@ end
 % the ellipse to the pupil perimeter
 if p.Results.nFrames ~= Inf
     if isfield(pupilData,'pInitialFitError')
-        errorWeights = (1./pupilData.pInitialFitError(p.Results.startFrame:p.Results.nFrames))';
+        errorWeights = (1./pupilData.pInitialFitError(p.Results.startFrame:p.Results.nFrames));
     else
         errorWeights=ones(1,size(ellipses,1));
     end
 else
     if isfield(pupilData,'pInitialFitError')
-        errorWeights = (1./pupilData.pInitialFitError(p.Results.startFrame:end))';
+        errorWeights = (1./pupilData.pInitialFitError(p.Results.startFrame:end));
     else
         errorWeights=ones(1,size(ellipses,1));
     end
