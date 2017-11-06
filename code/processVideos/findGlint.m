@@ -82,7 +82,7 @@ p.addRequired('glintFileName',@isstr);
 
 % optional analysis parameters
 p.addParameter('numberOfGlints', 1, @isnumeric); %% MORE THAN 1 TO BE DEVELOPED
-p.addParameter('glintGammaCorrection', 1.5, @isnumeric);
+p.addParameter('glintGammaCorrection', 5, @isnumeric);
 p.addParameter('glintThreshold', 0.8, @isnumeric);
 p.addParameter('glintFrameMask',[] , @isnumeric);
 p.addParameter('frameMaskValue', 30, @isnumeric);
