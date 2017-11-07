@@ -21,8 +21,8 @@ function [reconstructedPupilAzi, reconstructedPupilEle, reconstructedPupilArea] 
 %       transparent ellipse center.
 %   
 % Required inputs:
-%   transparentEllipse - ellipse in transparent form center of projection -
-%   [X Y] coordinates of the center of projection on
+%   transparentEllipse - ellipse in transparent form
+%   center of projection -[X Y] coordinates of the center of projection on
 %       the scene. The center of projection is the center of the projected
 %       pupil that preserves its circular shape in the scene.
 %   projectionModel - string that identifies the projection model to use.

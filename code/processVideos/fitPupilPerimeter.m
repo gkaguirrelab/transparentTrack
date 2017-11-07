@@ -143,9 +143,6 @@ end
 % Create a non-linear constraint for the ellipse fit. If no parameters are
 % given, then create an empty function handle (and thus have no non-linear
 % constraint)
-% Create a non-linear constraint for the ellipse fit. If no parameters are
-% given, then create an empty function handle (and thus have no non-linear
-% constraint)
 if isempty(p.Results.sceneGeometryFileName)
     nonlinconst = [];
 else

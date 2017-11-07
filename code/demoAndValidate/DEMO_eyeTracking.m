@@ -147,22 +147,22 @@ temporalSupport = 0:1/60.:(size(pupilData.pPosteriorMeanTransparent,1)-1)/60; % 
 temporalSupport = temporalSupport / 60; % minutes
 
 figure
-plot(temporalSupport,pupilData.pInitialFitTransparent(:,3),'-.k');
+plot(temporalSupport,pupilData.pInitialFitTransparent(:,3),'-.b');
 hold on
+plot(temporalSupport,pupilData.pInitialFitTransparent(:,3)-pupilData.pInitialFitSplitsSD(:,3),'-','Color',[0.7 0.7 0.7])
+plot(temporalSupport,pupilData.pInitialFitTransparent(:,3)+pupilData.pInitialFitSplitsSD(:,3),'-','Color',[0.7 0.7 0.7])
 plot(temporalSupport,pupilData.pPosteriorMeanTransparent(:,3),'-r','LineWidth',2)
-plot(temporalSupport,pupilData.pPosteriorMeanTransparent(:,3)-pupilData.pPosteriorSDTransparent(:,3),'-b')
-plot(temporalSupport,pupilData.pPosteriorMeanTransparent(:,3)+pupilData.pPosteriorSDTransparent(:,3),'-b')
 xlim([0 max(temporalSupport)]);
 xlabel('time [mins]');
 ylabel('area [pixels]');
 hold off
 
 figure
-plot(temporalSupport,pupilData.pInitialFitTransparent(:,1),'-.k');
+plot(temporalSupport,pupilData.pInitialFitTransparent(:,1),'-.b');
 hold on
+plot(temporalSupport,pupilData.pInitialFitTransparent(:,1)-pupilData.pInitialFitSplitsSD(:,1),'-','Color',[0.7 0.7 0.7])
+plot(temporalSupport,pupilData.pInitialFitTransparent(:,1)+pupilData.pInitialFitSplitsSD(:,1),'-','Color',[0.7 0.7 0.7])
 plot(temporalSupport,pupilData.pPosteriorMeanTransparent(:,1),'-r','LineWidth',2)
-plot(temporalSupport,pupilData.pPosteriorMeanTransparent(:,1)-pupilData.pPosteriorSDTransparent(:,1),'-b')
-plot(temporalSupport,pupilData.pPosteriorMeanTransparent(:,1)+pupilData.pPosteriorSDTransparent(:,1),'-b')
 xlim([0 max(temporalSupport)]);
 xlabel('time [mins]');
 ylabel('position [pixels]');
