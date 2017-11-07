@@ -60,13 +60,6 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 %       cut
 %   ellipseTransparentLB/UB - the lower and upper bounds of the constrained
 %      ellipse fit that is used to judge the quality of different cuts.
-%   candidateThetas - A vector that gives the theta values at which to
-%       examine pupil cuts to improve the ellipse fit. pi/2 corresponds to
-%       the superior vertical medidian, while pi corresponds to the nasal
-%       horizontal vertical meridian. The default settings explore thetas
-%       in this range, accounting for intrusions on the pupil boundary from
-%       the eyelid, and from an IR shadow that is sometimes seen on the
-%       nasal border of the pupil.
 %   radiusDivisions - Controls how many divisions between the geometric
 %       center of the pupil perimeter and the outer edge are examined with
 %       a pupil cut.
@@ -121,7 +114,7 @@ p.addParameter('pixelBoundaryThreshold', 100, @isnumeric);
 p.addParameter('cutErrorThreshold', 20, @isnumeric);
 p.addParameter('badFrameErrorThresholdWithoutSceneConstraint', 20, @isnumeric);
 p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, -0.5*pi],@isnumeric);
-p.addParameter('ellipseTransparentUB',[640,480,20000,0.5, 0.5*pi],@isnumeric);
+p.addParameter('ellipseTransparentUB',[640,480,20000,0.75, 0.5*pi],@isnumeric);
 p.addParameter('candidateThetas',pi/2:pi/16:pi,@isnumeric);
 p.addParameter('radiusDivisions',5,@isnumeric);
 p.addParameter('minRadiusProportion',0,@isnumeric);

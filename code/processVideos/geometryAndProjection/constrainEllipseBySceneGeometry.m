@@ -54,21 +54,13 @@ predictedTransparentEllipse = ...
     [sceneGeometry.eyeCenter.X sceneGeometry.eyeCenter.Y sceneGeometry.eyeCenter.Z],...
     sceneGeometry.meta.projectionModel);
 
-% calculate the range of allowed eccentricty and theta values
-minAllowedEccentricity = predictedTransparentEllipse(4) ./ constraintMarginEccenMultiplier;
-maxAllowedEccentricity = predictedTransparentEllipse(4) .* constraintMarginEccenMultiplier;
-
-minAllowedTheta = predictedTransparentEllipse(5) - constraintMarginThetaDegrees;
-maxAllowedTheta = predictedTransparentEllipse(5) + constraintMarginThetaDegrees;
 
 % First constraint
-%  Set ceq to zero only if the eccentricty of the ellipse to be tested is
-%  within min / max allowed range
+%  Ceq reflects the difference beween the predicted an passed eccentricty
 ceq = constraintFactor .* abs(transparentEllipseParams(4) - predictedTransparentEllipse(4));
 
 % Second constraint
-%  Set cq to zero only if the theta of the ellipse to be tested is
-%  within min / max allowed range
+%  c reflects the difference beween the predicted an passed theta
 c = constraintFactor .* abs(transparentEllipseParams(5) - predictedTransparentEllipse(5));
 
 end

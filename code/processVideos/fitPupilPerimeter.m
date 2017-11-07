@@ -55,7 +55,6 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %  'verbosity' - level of verbosity. [none, full]
 %
 % Optional key/value pairs (flow control)
-%
 %  'nFrames' - analyze fewer than the total number of frames.
 %  'useParallel' - If set to true, use the Matlab parallel pool for the
 %    initial ellipse fitting.
@@ -81,12 +80,7 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %     calculated using:
 %           eccentricity = axes2ecc(semimajor, semiminor)
 %     If we wish to prevent ellipses with an aspect ratio greater than
-%     1.1 : 1, this gives us an eccentricity UB threshold of ~0.417.
-%   'constrainEccen_x_Theta' - If defined, the ellipse fitting will be
-%     constrained to allow only eccentric ellipses aligned with the
-%     vertical or horizontal axes. Further, the two values provided will
-%     differently limit the eccentricity of ellipses on the horizontal and
-%     vertical axes, respectively.
+%     3 : 2, this gives us an eccentricity UB threshold of ~0.75.
 %   'nSplits' - The number of tests upon the spatial split-halves of the
 %     pupil boundary values to examine to estimate a likelihood SD.
 %   'nBoots' - The number of bootstrap resamples of the pupil boundary
@@ -111,7 +105,7 @@ p.addParameter('verbosity','none',@ischar);
 
 % Optional fitting params
 p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, -0.5*pi],@isnumeric);
-p.addParameter('ellipseTransparentUB',[640,480,20000,0.5, 0.5*pi],@isnumeric);
+p.addParameter('ellipseTransparentUB',[640,480,20000,0.75, 0.5*pi],@isnumeric);
 p.addParameter('nSplits',8,@isnumeric);
 p.addParameter('nBoots',0,@isnumeric);
 
@@ -225,6 +219,10 @@ end
 
 %% Calculate an ellipse fit for each video frame
 
+% Reshape perimeter.data into a sliced variable to speed the par-for
+perimeterSize = size(perimeter.data);
+slicedPerimeterData = reshape(perimeter.data, [perimeterSize(1)*perimeterSize(2),perimeterSize(3)]);
+
 % Alert the user
 if strcmp(p.Results.verbosity,'full')
     tic
@@ -234,8 +232,7 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 % Loop through the frames
-%parfor (ii = 1:nFrames, nWorkers)
-for ii = 1938:nFrames
+parfor (ii = 1:nFrames, nWorkers)
     
     % Update progress
     if strcmp(p.Results.verbosity,'full')
@@ -245,8 +242,9 @@ for ii = 1938:nFrames
     end
     try % this is to have information on which frame caused an error
         % get the data frame
-        thisFrame = squeeze(perimeter.data(:,:,ii));
-        
+        thisFrameVec = slicedPerimeterData(:,ii);
+        thisFrame = reshape(thisFrameVec, [perimeterSize(1), perimeterSize(2)]);
+
         % get the boundary points
         [Yc, Xc] = ind2sub(size(thisFrame),find(thisFrame));
         
