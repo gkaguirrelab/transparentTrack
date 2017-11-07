@@ -209,7 +209,7 @@ parfor (ii = 1:nFrames, nWorkers)
     frameFig = figure( 'Visible', 'off');
     
     % show the initial frame
-    imshow(sourceVideoArray{ii}), 'Border', 'tight');
+    imshow(sourceVideoArray{ii}, 'Border', 'tight');
     hold on
     
     % add glint
