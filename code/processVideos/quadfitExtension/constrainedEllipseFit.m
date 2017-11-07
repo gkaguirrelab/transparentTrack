@@ -84,9 +84,9 @@ end
 options = optimset('fmincon');
 options = optimset(options,'Diagnostics','off','Display','off','LargeScale','off','Algorithm','interior-point');
 
-% Define the objective function, which is the sqrt of the sum of squared
+% Define the objective function, which is the mean of the squared
 % distance values of the boundary points to the ellipse fit
-myFun = @(p) sqrt(nansum(ellipsefit_distance(x,y,ellipse_transparent2ex(p)).^2));
+myFun = @(p) nanmean(ellipsefit_distance(x,y,ellipse_transparent2ex(p)).^2);
 
 % save the current warning status and silence anticipated warnings
 warningState = warning;

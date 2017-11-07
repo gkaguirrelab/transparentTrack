@@ -71,7 +71,7 @@ p.addParameter('CoRUpperBound',[1000, 1000, 1000],@isnumeric);
 
 % verbosity and plotting control
 p.addParameter('verbosity', 'none', @isstr);
-p.addParameter('displayMode', false, @islogical);
+p.addParameter('sceneDiagnosticPlotFileName', [],@(x)(isempty(x) | ischar(x)));
 
 % flow control
 p.addParameter('nFrames',Inf,@isnumeric);
@@ -133,8 +133,8 @@ else
     end
 end
 
-% define an anonymous function to measure SSQ error
-errorFunc = @(x) sqrt(nansum(errorWeights.*distanceToCandidateEyeCenterOfRotation(ellipses, x, p.Results.eyeRadiusInPixels, 'projectionModel', p.Results.projectionModel).^2));
+% define an anonymous function to measure mean squared error (MSE)
+errorFunc = @(x) nanmean(errorWeights.*distanceToCandidateEyeCenterOfRotation(ellipses, x, p.Results.eyeRadiusInPixels, 'projectionModel', p.Results.projectionModel).^2);
 
 % define some search options
 options = optimset('fmincon');
@@ -144,9 +144,9 @@ options = optimset(options,'Diagnostics','off','Display','off','LargeScale','off
 [bestFitCoR, fVal] = fmincon(errorFunc, x0, [], [], [], [], p.Results.CoRLowerBound, p.Results.CoRUpperBound, [], options);
 
 % plot the results of the CoP estimation if requested
-if p.Results.displayMode
+if ~isempty(p.Results.sceneDiagnosticPlotFileName)
     [~, ellipsesCoRs] = distanceToCandidateEyeCenterOfRotation(ellipses,bestFitCoR,p.Results.eyeRadiusInPixels,'projectionModel', p.Results.projectionModel);
-    figure
+    figHandle = figure('visible','off');
     plot(ellipses(:,1), ellipses(:,2), '.k')
     hold on
     plot(ellipsesCoRs(:,1), ellipsesCoRs(:,2), '.b')
@@ -154,15 +154,14 @@ if p.Results.displayMode
     plot(bestFitCoR(1),bestFitCoR(2), 'og')
     title('Estimate Center of Rotation from pupil ellipses')
     legend('ellipse centers','CoR from each ellipse', 'Most circular ellipse','Best fit CoR')
-    xlim([0 320] * 2)
-    ylim([0 240] * 2)
+    saveas(figHandle,p.Results.sceneDiagnosticPlotFileName);
 end
 
 % assemble and save the sceneGeometry
 sceneGeometry.eyeCenter.X = bestFitCoR(1);
 sceneGeometry.eyeCenter.Y = bestFitCoR(2);
 sceneGeometry.eyeCenter.Z = bestFitCoR(3);
-sceneGeometry.eyeCenter.fVal = fVal;
+sceneGeometry.eyeCenter.meanSquareError = fVal;
 sceneGeometry.eyeRadius = p.Results.eyeRadiusInPixels;
 sceneGeometry.meta = p.Results;
 sceneGeometry.meta.units = 'pixelsOnTheScenePlane';
