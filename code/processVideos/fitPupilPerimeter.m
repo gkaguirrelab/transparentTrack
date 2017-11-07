@@ -117,8 +117,6 @@ p.addParameter('nBoots',0,@isnumeric);
 
 % Optional analysis params -- sceneGeometry fitting constraint
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('constraintMarginEccenMultiplier',1,@isnumeric);
-p.addParameter('constraintMarginThetaDegrees',0,@isnumeric);
 
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
@@ -165,9 +163,7 @@ else
 
     nonlinconst = @(transparentEllipseParams) constrainEllipseBySceneGeometry(...
         transparentEllipseParams, ...
-        sceneGeometry, ...
-        p.Results.constraintMarginEccenMultiplier, ...
-        p.Results.constraintMarginThetaDegrees);
+        sceneGeometry);
 end
 
 % Create an anonymous function for ellipse fitting
@@ -238,7 +234,8 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 % Loop through the frames
-parfor (ii = 1:nFrames, nWorkers)
+%parfor (ii = 1:nFrames, nWorkers)
+for ii = 1938:nFrames
     
     % Update progress
     if strcmp(p.Results.verbosity,'full')

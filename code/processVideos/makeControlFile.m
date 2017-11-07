@@ -118,7 +118,8 @@ p.addParameter('glintPatchRadius', 20, @isnumeric);
 
 % Optional analysis params -- search over pupil cuts
 p.addParameter('pixelBoundaryThreshold', 100, @isnumeric);
-p.addParameter('cutErrorThresholdWithoutSceneConstraint', 20, @isnumeric);
+p.addParameter('cutErrorThreshold', 20, @isnumeric);
+p.addParameter('badFrameErrorThresholdWithoutSceneConstraint', 20, @isnumeric);
 p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, -0.5*pi],@isnumeric);
 p.addParameter('ellipseTransparentUB',[640,480,20000,0.5, 0.5*pi],@isnumeric);
 p.addParameter('candidateThetas',pi/2:pi/16:pi,@isnumeric);
@@ -127,10 +128,7 @@ p.addParameter('minRadiusProportion',0,@isnumeric);
 
 % Optional analysis params -- sceneGeometry fitting constraint
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('cutErrorThresholdWithSceneConstraint', 40, @isnumeric);
-p.addParameter('constraintMarginEccenMultiplier',1,@isnumeric);
-p.addParameter('constraintMarginThetaDegrees',0,@isnumeric);
-p.addParameter('projectionModel','orthogonal', @ischar);
+p.addParameter('badFrameErrorThresholdWithSceneConstraint', 40, @isnumeric);
     
 % Optional display params
 p.addParameter('verbosity','none',@ischar);
@@ -210,20 +208,20 @@ end
 % presence or absence of a sceneGeometry constraint
 if isempty(p.Results.sceneGeometryFileName)
     nonlinconst = [];
-    cutErrorThreshold = p.Results.cutErrorThresholdWithoutSceneConstraint;
+    cutErrorThreshold = p.Results.cutErrorThreshold;
+    badFrameErrorThreshold = p.Results.badFrameErrorThresholdWithoutSceneConstraint;
 else
     % load the sceneGeometry structure
     dataLoad=load(p.Results.sceneGeometryFileName);
     sceneGeometry=dataLoad.sceneGeometry;
     clear dataLoad
 
-    nonlinconst = @(x) constrainEllipseBySceneGeometry(x, ...
-        sceneGeometry, ...
-        p.Results.constraintMarginEccenMultiplier, ...
-        p.Results.constraintMarginThetaDegrees); %, ...
-%         'projectionModel',p.Results.projectionModel);
+    nonlinconst = @(transparentEllipseParams) constrainEllipseBySceneGeometry(...
+        transparentEllipseParams, ...
+        sceneGeometry);
 
-    cutErrorThreshold = p.Results.cutErrorThresholdWithSceneConstraint;
+    cutErrorThreshold = p.Results.cutErrorThreshold;
+    badFrameErrorThreshold = p.Results.badFrameErrorThresholdWithSceneConstraint;
 end
 
 
@@ -425,10 +423,10 @@ parfor (ii = 1:nFrames, nWorkers)
             continue
         end % try-catch
         
-        % If, after finishing the search, the bestFitOnThisSearch is still
-        % larger than the error threshold, or there are too few pixels that
+        % If, after finishing the search, the bestFitOnThisSearch is larger
+        % than the badFrameErrorThreshold, or there are too few pixels that
         % compose the boundary in this frame, then tag this frame bad.
-        if bestFitOnThisSearch > cutErrorThreshold || ...
+        if bestFitOnThisSearch > badFrameErrorThreshold || ...
                 numberPerimeterPixels < p.Results.pixelBoundaryThreshold
             frameBads(ii)=1;
             frameThetas(ii)=nan;

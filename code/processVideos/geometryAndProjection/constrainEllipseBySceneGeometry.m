@@ -29,6 +29,11 @@ function [c, ceq]=constrainEllipseBySceneGeometry(transparentEllipseParams, scen
 %
 
 
+% This is the value that is given to a violation of the constraint. This
+% number needs to be of a size comparable to or larger than the values that
+% the error function returns if the constraint is to be respected.
+constraintFactor = 1e4;
+
 
 %% Calculate the predicted eccentricty and theta for this pupil center
 
@@ -59,16 +64,11 @@ maxAllowedTheta = predictedTransparentEllipse(5) + constraintMarginThetaDegrees;
 % First constraint
 %  Set ceq to zero only if the eccentricty of the ellipse to be tested is
 %  within min / max allowed range
-ceq = double(...
-            ~((transparentEllipseParams(4) > minAllowedEccentricity) .* ...
-            (transparentEllipseParams(4) < maxAllowedEccentricity))...
-            );
+ceq = constraintFactor .* abs(transparentEllipseParams(4) - predictedTransparentEllipse(4));
+
 % Second constraint
 %  Set cq to zero only if the theta of the ellipse to be tested is
 %  within min / max allowed range
-c  = double(...
-            ~((transparentEllipseParams(5) > minAllowedTheta) .* ...
-            (transparentEllipseParams(5) < maxAllowedTheta))...
-            );
+c = constraintFactor .* abs(transparentEllipseParams(5) - predictedTransparentEllipse(5));
 
 end
