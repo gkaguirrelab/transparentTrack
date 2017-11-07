@@ -107,7 +107,6 @@ p.addParameter('verbosity','none',@ischar);
 p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, -0.5*pi],@isnumeric);
 p.addParameter('ellipseTransparentUB',[640,480,20000,0.75, 0.5*pi],@isnumeric);
 p.addParameter('nSplits',8,@isnumeric);
-p.addParameter('nBoots',0,@isnumeric);
 
 % Optional analysis params -- sceneGeometry fitting constraint
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
@@ -159,10 +158,6 @@ else
         transparentEllipseParams, ...
         sceneGeometry);
 end
-
-% Create an anonymous function for ellipse fitting
-obtainPupilLikelihood = @(Xp,Yp) constrainedEllipseFit(Xp, Yp, ...
-    p.Results.ellipseTransparentLB, p.Results.ellipseTransparentUB, nonlinconst);
 
 % Create an anonymous function to return a rotation matrix given theta in
 % radians
@@ -241,6 +236,7 @@ parfor (ii = 1:nFrames, nWorkers)
         end
     end
     try % this is to have information on which frame caused an error
+
         % get the data frame
         thisFrameVec = slicedPerimeterData(:,ii);
         thisFrame = reshape(thisFrameVec, [perimeterSize(1), perimeterSize(2)]);
@@ -253,13 +249,15 @@ parfor (ii = 1:nFrames, nWorkers)
             pInitialFitTransparent=NaN(1,nEllipseParams);
             pInitialFitHessianSD=NaN(1,nEllipseParams);
             pInitialFitSplitsSD=NaN(1,nEllipseParams);
-            pInitialFitBootsSD=NaN(1,nEllipseParams);
             pInitialFitError=NaN(1);
         else
             % Obtain the fit to the veridical data
             [pInitialFitTransparent, pInitialFitHessianSD, pInitialFitError] = ...
-                feval(obtainPupilLikelihood,Xc, Yc);
-
+                constrainedEllipseFit(Xc, Yc, ...
+                p.Results.ellipseTransparentLB, ...
+                p.Results.ellipseTransparentUB, ...
+                nonlinconst);
+            
             % Re-calculate fit for splits of data points, if requested
             if p.Results.nSplits == 0
                 pInitialFitSplitsSD=NaN(1,nEllipseParams);
@@ -277,32 +275,28 @@ parfor (ii = 1:nFrames, nWorkers)
                     splitIdx1 = find((forwardPoints(1,:) < median(forwardPoints(1,:))))';
                     splitIdx2 = find((forwardPoints(1,:) >= median(forwardPoints(1,:))))';
                     pFitTransparentSplit(1,ss,:) = ...
-                        feval(obtainPupilLikelihood,Xc(splitIdx1), Yc(splitIdx1));
+                        constrainedEllipseFit(Xc(splitIdx1), Yc(splitIdx1), ...
+                        p.Results.ellipseTransparentLB, ...
+                        p.Results.ellipseTransparentUB, ...
+                        nonlinconst);
                     pFitTransparentSplit(2,ss,:) = ...
-                        feval(obtainPupilLikelihood,Xc(splitIdx2), Yc(splitIdx2));
+                        constrainedEllipseFit(Xc(splitIdx2), Yc(splitIdx2), ...
+                        p.Results.ellipseTransparentLB, ...
+                        p.Results.ellipseTransparentUB, ...
+                        nonlinconst);
                 end % loop through splits
                 
                 % Calculate the SD of the parameters across splits, scaling by
                 % sqrt(2) to roughly account for our use of just half the data
                 pInitialFitSplitsSD=nanstd(reshape(pFitTransparentSplit,ss*2,nEllipseParams))/sqrt(2);
             end % check if we want to do splits
-            
-            % Obtain the SD of the parameters through a bootstrap resample
-            % of data points if requested
-            if p.Results.nBoots == 0
-                pInitialFitBootsSD=NaN(1,nEllipseParams);
-            else
-                bootOptSet = statset('UseParallel',p.Results.useParallel);
-                pInitialFitBootsSD = nanstd(bootstrp(p.Results.nBoots,obtainPupilLikelihood,Xc,Yc,'Options',bootOptSet));
-            end % check if we want to do bootstraps
-            
+                        
         end % check if there are pupil boundary data to be fit
         
         % store results
         loopVar_pInitialFitTransparent(ii,:) = pInitialFitTransparent';
         loopVar_pInitialFitHessianSD(ii,:) = pInitialFitHessianSD';
         loopVar_pInitialFitSplitsSD(ii,:) = pInitialFitSplitsSD';
-        loopVar_pInitialFitBootsSD(ii,:) = pInitialFitBootsSD';
         loopVar_pInitialFitError(ii) = pInitialFitError;
     catch ME
         warning ('Error while processing frame: %d', ii)
@@ -314,7 +308,6 @@ end % loop over frames
 pupilData.pInitialFitTransparent = loopVar_pInitialFitTransparent;
 pupilData.pInitialFitHessianSD = loopVar_pInitialFitHessianSD;
 pupilData.pInitialFitSplitsSD = loopVar_pInitialFitSplitsSD;
-pupilData.pInitialFitBootsSD = loopVar_pInitialFitBootsSD;
 pupilData.pInitialFitError = loopVar_pInitialFitError';
 
 %% Clean up and save

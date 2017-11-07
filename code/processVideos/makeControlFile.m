@@ -302,9 +302,14 @@ if strcmp(p.Results.verbosity,'full')
     fprintf('.\n');
 end
 
-% get glintData ready for the parfor
-glintData_X = glintData.X;
-glintData_Y = glintData.Y;
+% get glintData ready for the parfor. This includes transposing the
+% variables 
+glintData_X = glintData.X';
+glintData_Y = glintData.Y';
+
+% Reshape perimeter.data into a sliced variable to speed the par-for
+perimeterSize = size(perimeter.data);
+slicedPerimeterData = reshape(perimeter.data, [perimeterSize(1)*perimeterSize(2),perimeterSize(3)]);
 
 % Loop through the video frames
 parfor (ii = 1:nFrames, nWorkers)
@@ -315,31 +320,32 @@ parfor (ii = 1:nFrames, nWorkers)
     end
     
     % get the data frame
-    binP = squeeze(perimeter.data(:,:,ii));
+    thisFrameVec = slicedPerimeterData(:,ii);
+    thisFrame = reshape(thisFrameVec, [perimeterSize(1), perimeterSize(2)]);
     
     % make glint patch
-    if ~isnan(glintData_X(ii))
-        glintPatch = ones(size(binP));
-        glintPatch = insertShape(glintPatch,'FilledCircle',[glintData_X(ii,:) glintData_Y(ii,:) p.Results.glintPatchRadius],'Color','black');
+    if ~any(isnan(glintData_X(:,ii)))
+        glintPatch = ones(size(thisFrame));
+        glintPatch = insertShape(glintPatch,'FilledCircle',[glintData_X(:,ii)' glintData_Y(:,ii)' p.Results.glintPatchRadius],'Color','black');
         glintPatch = im2bw(glintPatch);
         
         % apply glint patch
-        patchedBinP = immultiply(binP,glintPatch);
+        thisFramePatched = immultiply(thisFrame,glintPatch);
         
         % check if glint patch had an effect. If so, save out glintPatch
         % instruction for this frame
-        if ~isempty(find(binP - patchedBinP))
-            glintPatchX(ii) = glintData_X(ii,:);
-            glintPatchY(ii) = glintData_Y(ii,:);
+        if ~isempty(find(thisFrame - thisFramePatched))
+            glintPatchX(ii) = glintData_X(:,ii)';
+            glintPatchY(ii) = glintData_Y(:,ii)';
             glintPatchRadius(ii) = p.Results.glintPatchRadius;
             
             % also, use the patched frame to search for the cut
-            binP = patchedBinP;
+            thisFrame = thisFramePatched;
         end
     end
     
     % index perimeter points
-    [Yp, Xp] = ind2sub(size(binP),find(binP));
+    [Yp, Xp] = ind2sub(size(thisFrame),find(thisFrame));
     
     % calculate the number of pixels that make up the perimeter
     numberPerimeterPixels = length(Yp);
@@ -382,7 +388,7 @@ parfor (ii = 1:nFrames, nWorkers)
                 
                 % Perform a grid search across thetas
                 [gridSearchRadii,gridSearchThetas] = ndgrid(candidateRadius,p.Results.candidateThetas);
-                myCutOptim = @(params) calcErrorForACut(binP, params(1), params(2), p.Results.ellipseTransparentLB, p.Results.ellipseTransparentUB, nonlinconst);
+                myCutOptim = @(params) calcErrorForACut(thisFrame, params(1), params(2), p.Results.ellipseTransparentLB, p.Results.ellipseTransparentUB, nonlinconst);
                 gridSearchResults=arrayfun(@(k1,k2) myCutOptim([k1,k2]),gridSearchRadii,gridSearchThetas);
                 
                 % Store the best cut from this search
@@ -396,7 +402,7 @@ parfor (ii = 1:nFrames, nWorkers)
                     
                     % determine the number of pixels that remain on the
                     % pupil boundary for this cut
-                    binPcut = applyPupilCut (binP, frameRadii(ii), frameThetas(ii));
+                    binPcut = applyPupilCut (thisFrame, frameRadii(ii), frameThetas(ii));
                     [tmpY, ~] = ind2sub(size(binPcut),find(binPcut));
                     numberPerimeterPixels = length(tmpY);
                 end

@@ -187,6 +187,15 @@ clear videoInObj
 % prepare the outputVideo
 outputVideo=zeros(videoSizeY,videoSizeX,3,nFrames,'uint8');
 
+% get glintData ready for the parfor. This includes transposing the
+% variables 
+glintData_X = glintData.X;
+glintData_Y = glintData.Y;
+
+% Reshape perimeter.data into a sliced variable to speed the par-for
+perimeterSize = size(perimeter.data);
+slicedPerimeterData = reshape(perimeter.data, [perimeterSize(1)*perimeterSize(2),perimeterSize(3)]);
+
 %% Loop through the frames
 parfor (ii = 1:nFrames, nWorkers)
     
@@ -204,13 +213,15 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % add glint
     if ~isempty(p.Results.glintFileName)
-            plot(glintData.X(ii),glintData.Y(ii),['*' p.Results.glintColor]);
+            plot(glintData_X(ii),glintData_Y(ii),['*' p.Results.glintColor]);
     end
     
     % add pupil perimeter
     if ~isempty(p.Results.perimeterFileName)
-        binP = squeeze(perimeter.data(:,:,ii));
-        [Yp, Xp] = ind2sub(size(binP),find(binP));
+        % get the data frame
+        thisFrameVec = slicedPerimeterData(:,ii);
+        thisFrame = reshape(thisFrameVec, [perimeterSize(1), perimeterSize(2)]);
+        [Yp, Xp] = ind2sub(size(thisFrame),find(thisFrame));
         plot(Xp,Yp,['.' p.Results.perimeterColor], 'MarkerSize', 1);
     end
     
