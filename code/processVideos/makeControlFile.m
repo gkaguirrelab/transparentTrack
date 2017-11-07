@@ -307,9 +307,9 @@ end
 glintData_X = glintData.X';
 glintData_Y = glintData.Y';
 
-% Reshape perimeter.data into a sliced variable to speed the par-for
-perimeterSize = size(perimeter.data);
-slicedPerimeterData = reshape(perimeter.data, [perimeterSize(1)*perimeterSize(2),perimeterSize(3)]);
+% Recast perimeter.data into a sliced cell array to reduce par for
+% broadcast overhead
+frameArray = arrayfun(@(ii) {squeeze(perimeter.data(:,:,ii))},1:1:nFrames);
 
 % Loop through the video frames
 parfor (ii = 1:nFrames, nWorkers)
@@ -320,8 +320,7 @@ parfor (ii = 1:nFrames, nWorkers)
     end
     
     % get the data frame
-    thisFrameVec = slicedPerimeterData(:,ii);
-    thisFrame = reshape(thisFrameVec, [perimeterSize(1), perimeterSize(2)]);
+    thisFrame = frameArray{ii};
     
     % make glint patch
     if ~any(isnan(glintData_X(:,ii)))

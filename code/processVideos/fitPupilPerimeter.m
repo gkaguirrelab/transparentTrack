@@ -214,9 +214,9 @@ end
 
 %% Calculate an ellipse fit for each video frame
 
-% Reshape perimeter.data into a sliced variable to speed the par-for
-perimeterSize = size(perimeter.data);
-slicedPerimeterData = reshape(perimeter.data, [perimeterSize(1)*perimeterSize(2),perimeterSize(3)]);
+% Recast perimeter.data into a sliced cell array to reduce par for
+% broadcast overhead
+frameArray = arrayfun(@(ii) {squeeze(perimeter.data(:,:,ii))},1:1:nFrames);
 
 % Alert the user
 if strcmp(p.Results.verbosity,'full')
@@ -238,8 +238,7 @@ parfor (ii = 1:nFrames, nWorkers)
     try % this is to have information on which frame caused an error
 
         % get the data frame
-        thisFrameVec = slicedPerimeterData(:,ii);
-        thisFrame = reshape(thisFrameVec, [perimeterSize(1), perimeterSize(2)]);
+        thisFrame = frameArray{ii};
 
         % get the boundary points
         [Yc, Xc] = ind2sub(size(thisFrame),find(thisFrame));

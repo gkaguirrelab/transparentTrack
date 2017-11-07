@@ -192,9 +192,10 @@ outputVideo=zeros(videoSizeY,videoSizeX,3,nFrames,'uint8');
 glintData_X = glintData.X;
 glintData_Y = glintData.Y;
 
-% Reshape perimeter.data into a sliced variable to speed the par-for
-perimeterSize = size(perimeter.data);
-slicedPerimeterData = reshape(perimeter.data, [perimeterSize(1)*perimeterSize(2),perimeterSize(3)]);
+% Recast perimeter.data into a sliced cell array to reduce par for
+% broadcast overhead
+frameArray = arrayfun(@(ii) {squeeze(perimeter.data(:,:,ii))},1:1:nFrames);
+sourceVideoArray = arrayfun(@(ii) {squeeze(sourceVideo(:,:,ii))},1:1:nFrames);
 
 %% Loop through the frames
 parfor (ii = 1:nFrames, nWorkers)
@@ -208,7 +209,7 @@ parfor (ii = 1:nFrames, nWorkers)
     frameFig = figure( 'Visible', 'off');
     
     % show the initial frame
-    imshow(squeeze(sourceVideo(:,:,ii)), 'Border', 'tight');
+    imshow(sourceVideoArray{ii}), 'Border', 'tight');
     hold on
     
     % add glint
@@ -219,8 +220,8 @@ parfor (ii = 1:nFrames, nWorkers)
     % add pupil perimeter
     if ~isempty(p.Results.perimeterFileName)
         % get the data frame
-        thisFrameVec = slicedPerimeterData(:,ii);
-        thisFrame = reshape(thisFrameVec, [perimeterSize(1), perimeterSize(2)]);
+        % get the data frame
+        thisFrame = frameArray{ii};
         [Yp, Xp] = ind2sub(size(thisFrame),find(thisFrame));
         plot(Xp,Yp,['.' p.Results.perimeterColor], 'MarkerSize', 1);
     end
