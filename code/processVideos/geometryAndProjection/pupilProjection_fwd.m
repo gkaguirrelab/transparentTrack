@@ -72,10 +72,10 @@ elseif pupilEle == 0 && pupilAzi ~= 0
     theta = pi/2;
 else
     % Couldn't constrain the theta
-    warning('could not constrain theta. Dumping out azimuth, elevation, and eccentricity:')
-    pupilAzi
-    pupilEle
-    e
+%     warning('could not constrain theta. Dumping out azimuth, elevation, and eccentricity:')
+%     pupilAzi
+%     pupilEle
+%     e
     theta = nan;
 end
 reconstructedTransparentEllipse(5) = theta;
