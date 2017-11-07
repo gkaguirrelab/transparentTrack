@@ -216,7 +216,13 @@ end
 
 % Recast perimeter.data into a sliced cell array to reduce par for
 % broadcast overhead
-frameArray = arrayfun(@(ii) {squeeze(perimeter.data(:,:,ii))},1:1:nFrames);
+frameCellArray = arrayfun(@(ii) {squeeze(perimeter.data(:,:,ii))},1:1:nFrames);
+
+% Set-up other variables to be non-broadcast
+verbosity = p.Results.verbosity;
+ellipseTransparentLB = p.Results.ellipseTransparentLB;
+ellipseTransparentUB = p.Results.ellipseTransparentUB;
+nSplits = p.Results.nSplits;
 
 % Alert the user
 if strcmp(p.Results.verbosity,'full')
@@ -230,7 +236,7 @@ end
 parfor (ii = 1:nFrames, nWorkers)
     
     % Update progress
-    if strcmp(p.Results.verbosity,'full')
+    if strcmp(verbosity,'full')
         if mod(ii,round(nFrames/50))==0
             fprintf('\b.\n');
         end
@@ -238,7 +244,7 @@ parfor (ii = 1:nFrames, nWorkers)
     try % this is to have information on which frame caused an error
 
         % get the data frame
-        thisFrame = frameArray{ii};
+        thisFrame = frameCellArray{ii};
 
         % get the boundary points
         [Yc, Xc] = ind2sub(size(thisFrame),find(thisFrame));
@@ -253,12 +259,12 @@ parfor (ii = 1:nFrames, nWorkers)
             % Obtain the fit to the veridical data
             [pInitialFitTransparent, pInitialFitHessianSD, pInitialFitError] = ...
                 constrainedEllipseFit(Xc, Yc, ...
-                p.Results.ellipseTransparentLB, ...
-                p.Results.ellipseTransparentUB, ...
+                ellipseTransparentLB, ...
+                ellipseTransparentUB, ...
                 nonlinconst);
             
             % Re-calculate fit for splits of data points, if requested
-            if p.Results.nSplits == 0
+            if nSplits == 0
                 pInitialFitSplitsSD=NaN(1,nEllipseParams);
             else
                 % Find the center of the pupil boundary points, place the boundary
@@ -267,21 +273,21 @@ parfor (ii = 1:nFrames, nWorkers)
                 centerMatrix = repmat([xCenter'; yCenter'], 1, length(Xc));
                 
                 % Rotate the data and split in half through the center
-                pFitTransparentSplit=NaN(2,p.Results.nSplits,nEllipseParams);
-                for ss=1:p.Results.nSplits
-                    theta=((pi/2)/p.Results.nSplits)*ss;
+                pFitTransparentSplit=NaN(2,nSplits,nEllipseParams);
+                for ss=1:nSplits
+                    theta=((pi/2)/nSplits)*ss;
                     forwardPoints = feval(returnRotMat,theta) * ([Xc,Yc]' - centerMatrix) + centerMatrix;
                     splitIdx1 = find((forwardPoints(1,:) < median(forwardPoints(1,:))))';
                     splitIdx2 = find((forwardPoints(1,:) >= median(forwardPoints(1,:))))';
                     pFitTransparentSplit(1,ss,:) = ...
                         constrainedEllipseFit(Xc(splitIdx1), Yc(splitIdx1), ...
-                        p.Results.ellipseTransparentLB, ...
-                        p.Results.ellipseTransparentUB, ...
+                        ellipseTransparentLB, ...
+                        ellipseTransparentUB, ...
                         nonlinconst);
                     pFitTransparentSplit(2,ss,:) = ...
                         constrainedEllipseFit(Xc(splitIdx2), Yc(splitIdx2), ...
-                        p.Results.ellipseTransparentLB, ...
-                        p.Results.ellipseTransparentUB, ...
+                        ellipseTransparentLB, ...
+                        ellipseTransparentUB, ...
                         nonlinconst);
                 end % loop through splits
                 
