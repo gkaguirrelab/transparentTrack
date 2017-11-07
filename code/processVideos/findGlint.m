@@ -165,7 +165,6 @@ end
 
 % loop through frames
 for   ii = 1:nFrames
-    
     if p.Results.displayMode && strcmp(get(figureHandle,'currentchar'),' ')
         close(figureHandle)
         return
@@ -207,7 +206,10 @@ for   ii = 1:nFrames
     
     % if centroids were found in this frame, save them out.
     if ~isempty(stats)
-        centroids = stats.WeightedCentroid;
+            for jj = 1 : size(stats,1)
+                centroids(jj,:) = stats(jj).WeightedCentroid;
+            end
+            clear stats
         for cc = 1: min(size(centroids,1),p.Results.centroidsAllocation)
             centroidsByFrame_X(ii,cc) = centroids(cc,1);
             centroidsByFrame_Y(ii,cc) = centroids(cc,2);
@@ -216,6 +218,7 @@ for   ii = 1:nFrames
                 thisFrame = insertShape(thisFrame,'FilledCircle', [centroids(cc,1),centroids(cc,2),2], 'Color','red');
             end
         end
+        clear centroids
     end
     
     % display the frame if requested
