@@ -269,7 +269,7 @@ for ff = 1:length(funCalls)
             % clear all files (hopefully prevents 'too many files open' error)
             fclose all ;
             if strcmp(p.Results.lastStage,funNames{ff})
-                return
+                break
             end
         end % if we aren't skipping this stage by number
     end % if we aren't skipping this stage by name
