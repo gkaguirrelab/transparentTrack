@@ -281,10 +281,12 @@ if ~isempty(p.Results.makeCustomVideoAtTheEnd)
     customVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_customVideo.avi']);
     
     % check what to plot
+    glintFileNameCustomPlot = [];
+    perimeterFileNameCustomPlot = [];
+    controlFileNameCustomPlot = [];
+    pupilFileNameCustomPlot = [];
     if any(strcmp(p.Results.makeCustomVideoAtTheEnd,'findGlint'))
         glintFileNameCustomPlot = glintFileName;
-    else
-        glintFileNameCustomPlot = [];
     end
  
     if any(strcmp(p.Results.makeCustomVideoAtTheEnd,'findPupilPerimeter'))
@@ -292,15 +294,10 @@ if ~isempty(p.Results.makeCustomVideoAtTheEnd)
     elseif any(strcmp(p.Results.makeCustomVideoAtTheEnd,'applyControlFile'))  
         perimeterFileNameCustomPlot = correctedPerimeterFileName;
         controlFileNameCustomPlot = controlFileName;
-    else
-        perimeterFileNameCustomPlot = [];
-        controlFileNameCustomPlot = [];
     end
     
     if any(strcmp(p.Results.makeCustomVideoAtTheEnd,'smoothPupilArea'))
         pupilFileNameCustomPlot = pupilFileName;
-    else
-        pupilFileNameCustomPlot = [];
     end
     
     % make the video
