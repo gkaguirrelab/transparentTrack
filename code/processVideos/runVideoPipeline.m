@@ -121,7 +121,7 @@ end
 
 %% Define input and output filenames
 
-if ~any(strcmp(p.Results.skipStage,'convertRawToGray'))
+if ~any(strcmp(p.Results.skipStage,'deinterlaceVideo'))
     % Create a cell array of candidate raw video nmaes with the runName and
     % each of the rawVideoSuffix choices
     candidateRawVideoNames = ...
