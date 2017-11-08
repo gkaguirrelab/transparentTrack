@@ -248,13 +248,13 @@ parfor (ii = 1:nFrames, nWorkers)
         
         % fit an ellipse to the boundary (if any points exist)
         if isempty(Xc) || isempty(Yc)
-            pInitialFitTransparent=NaN(1,nEllipseParams);
-            pInitialFitHessianSD=NaN(1,nEllipseParams);
-            pInitialFitSplitsSD=NaN(1,nEllipseParams);
-            pInitialFitError=NaN(1);
+            ellipseParamsTransparent=NaN(1,nEllipseParams);
+            ellipseParamsHessianSD=NaN(1,nEllipseParams);
+            ellipseParamsSplitsSD=NaN(1,nEllipseParams);
+            ellipseParamsError=NaN(1);
         else
             % Obtain the fit to the veridical data
-            [pInitialFitTransparent, pInitialFitHessianSD, pInitialFitError] = ...
+            [ellipseParamsTransparent, ellipseParamsHessianSD, ellipseParamsError] = ...
                 constrainedEllipseFit(Xc, Yc, ...
                 ellipseTransparentLB, ...
                 ellipseTransparentUB, ...
@@ -262,7 +262,7 @@ parfor (ii = 1:nFrames, nWorkers)
             
             % Re-calculate fit for splits of data points, if requested
             if nSplits == 0
-                pInitialFitSplitsSD=NaN(1,nEllipseParams);
+                ellipseParamsSplitsSD=NaN(1,nEllipseParams);
             else
                 % Find the center of the pupil boundary points, place the boundary
                 % points in a matrix and shift them to the center position
@@ -290,29 +290,21 @@ parfor (ii = 1:nFrames, nWorkers)
                 
                 % Calculate the SD of the parameters across splits, scaling by
                 % sqrt(2) to roughly account for our use of just half the data
-                pInitialFitSplitsSD=nanstd(reshape(pFitTransparentSplit,ss*2,nEllipseParams))/sqrt(2);
+                ellipseParamsSplitsSD=nanstd(reshape(pFitTransparentSplit,ss*2,nEllipseParams))/sqrt(2);
             end % check if we want to do splits
                         
         end % check if there are pupil boundary data to be fit
         
         % store results
-        loopVar_pInitialFitTransparent(ii,:) = pInitialFitTransparent';
-        loopVar_pInitialFitHessianSD(ii,:) = pInitialFitHessianSD';
-        loopVar_pInitialFitSplitsSD(ii,:) = pInitialFitSplitsSD';
-        loopVar_pInitialFitError(ii) = pInitialFitError;
+        loopVar_ellipseParamsTransparent(ii,:) = ellipseParamsTransparent';
+        loopVar_ellipseParamsHessianSD(ii,:) = ellipseParamsHessianSD';
+        loopVar_ellipseParamsSplitsSD(ii,:) = ellipseParamsSplitsSD';
+        loopVar_ellipseParamsError(ii) = ellipseParamsError;
     catch ME
         warning ('Error while processing frame: %d', ii)
         rethrow(ME)
     end % try catch
 end % loop over frames
-
-% gather the loop vars into the ellipse structure
-pupilData.pInitialFitTransparent = loopVar_pInitialFitTransparent;
-pupilData.pInitialFitHessianSD = loopVar_pInitialFitHessianSD;
-pupilData.pInitialFitSplitsSD = loopVar_pInitialFitSplitsSD;
-pupilData.pInitialFitError = loopVar_pInitialFitError';
-
-%% Clean up and save
 
 % alert the user that we are done with the fit loop
 if strcmp(p.Results.verbosity,'full')
@@ -320,9 +312,37 @@ if strcmp(p.Results.verbosity,'full')
     fprintf('\n');
 end
 
-% add a meta field with analysis details
-pupilData.meta.fitPupilPerimeter = p.Results;
-pupilData.meta.fitPupilPerimeter.coordinateSystem = 'intrinsicCoordinates(pixels)';
+%% Clean up and save
+
+% Check if the pupilData file already exists. If so, load it. This allows
+% us to preserve the Unconstrained results when a subsequent, sceneGeometry
+% constrained fit is constructed.
+if exist(p.Results.pupilFileName, 'file') == 2
+    dataLoad=load(pupilFileName);
+    pupilData=dataLoad.pupilData;
+    clear dataLoad
+end
+
+% Store the ellipse fit data in informative fields and add meta data
+if isempty(p.Results.sceneGeometryFileName)
+    pupilData.meta.fitPupilPerimeterUnconstrained = p.Results;
+    pupilData.meta.fitPupilPerimeterUnconstrained.coordinateSystem = 'intrinsicCoordinates(pixels)';
+    pupilData.ellipseParamsUnconstrained_mean = loopVar_ellipseParamsTransparent;
+    pupilData.ellipseParamsUnconstrained_hessianSD = loopVar_ellipseParamsHessianSD;
+    pupilData.ellipseParamsUnconstrained_mse = loopVar_ellipseParamsError';
+    if nSplits~=0
+        pupilData.ellipseParamsUnconstrained_splitsSD = loopVar_ellipseParamsSplitsSD;
+    end
+else
+    pupilData.meta.fitPupilPerimeterSceneConstrained = p.Results;
+    pupilData.meta.fitPupilPerimeterSceneConstrained.coordinateSystem = 'intrinsicCoordinates(pixels)';
+    pupilData.ellipseParamsSceneConstrained_mean = loopVar_ellipseParamsTransparent;
+    pupilData.ellipseParamsSceneConstrained_hessianSD = loopVar_ellipseParamsHessianSD;
+    pupilData.ellipseParamsSceneConstrained_mse = loopVar_ellipseParamsError';
+    if nSplits~=0
+        pupilData.ellipseParamsSceneConstrained_splitsSD = loopVar_ellipseParamsSplitsSD;
+    end
+end
 
 % save the ellipse fit results
 save(p.Results.pupilFileName,'pupilData')
