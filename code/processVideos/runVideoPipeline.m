@@ -72,6 +72,10 @@ function runVideoPipeline( pathParams, varargin )
 %       cleanupMatlabPrefs is called. This is thought to correct a
 %       stochastic error that can occur in parpool jobs and results in the
 %       corruption of the matlab preference file, which is then deleted.
+%    makeCustomVideoAtTheEnd - when stages are listed by name, a custom
+%       video displaying only the selected stages will be produced. This is
+%       particularly useful to review intermediate results before moving on
+%       with the processing.
 %
 
 
@@ -90,6 +94,7 @@ p.addParameter('rawVideoSuffix', {'_raw.mov' '.mov'}, @iscell);
 p.addParameter('videoTypeChoice', 'LiveTrackWithVTOP_eyeNoIris', @ischar);
 p.addParameter('customFunCalls', {}, @iscell);
 p.addParameter('catchErrors', true, @islogical);
+p.addParameter('makeCustomVideoAtTheEnd',{},@iscell);
 
 % parse
 p.parse(pathParams, varargin{:})
@@ -270,6 +275,41 @@ for ff = 1:length(funCalls)
     end % if we aren't skipping this stage by name
 end % loop over function calls
 
+% if requested make a custom video
+if ~isempty(p.Results.makeCustomVideoAtTheEnd)
+    
+    customVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_customVideo.avi']);
+    
+    % check what to plot
+    if any(strcmp(p.Results.makeCustomVideoAtTheEnd,'findGlint'))
+        glintFileNameCustomPlot = glintFileName;
+    else
+        glintFileNameCustomPlot = [];
+    end
+ 
+    if any(strcmp(p.Results.makeCustomVideoAtTheEnd,'findPupilPerimeter'))
+        perimeterFileNameCustomPlot = perimeterFileName;
+    elseif any(strcmp(p.Results.makeCustomVideoAtTheEnd,'applyControlFile'))  
+        perimeterFileNameCustomPlot = correctedPerimeterFileName;
+        controlFileNameCustomPlot = controlFileName;
+    else
+        perimeterFileNameCustomPlot = [];
+        controlFileNameCustomPlot = [];
+    end
+    
+    if any(strcmp(p.Results.makeCustomVideoAtTheEnd,'smoothPupilArea'))
+        pupilFileNameCustomPlot = pupilFileName;
+    else
+        pupilFileNameCustomPlot = [];
+    end
+    
+    % make the video
+    makeFitVideo(grayVideoName, customVideoName, ...
+            'glintFileName', glintFileNameCustomPlot, 'perimeterFileName', perimeterFileNameCustomPlot,...
+            'pupilFileName', pupilFileNameCustomPlot, 'whichFieldToPlot', 'pPosteriorMeanTransparent', ...
+            'controlFileName',controlFileNameCustomPlot,varargin{:});
+end 
+    
 end % main function
 
 
