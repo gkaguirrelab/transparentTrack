@@ -216,8 +216,6 @@ frameCellArray = arrayfun(@(ii) {squeeze(perimeter.data(:,:,ii))},1:1:nFrames);
 
 % Set-up other variables to be non-broadcast
 verbosity = p.Results.verbosity;
-ellipseTransparentLB = p.Results.ellipseTransparentLB;
-ellipseTransparentUB = p.Results.ellipseTransparentUB;
 areaIdx = p.Results.areaIdx;
 whichLikelihoodSD = p.Results.whichLikelihoodSD;
 likelihoodErrorExponent = p.Results.likelihoodErrorExponent;
@@ -254,8 +252,8 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 % Loop through the frames
-parfor (ii = 1:nFrames, nWorkers)
-%for ii = 1:nFrames
+%parfor (ii = 1:nFrames, nWorkers)
+for ii = 659:nFrames
     
     % update progress
     if strcmp(verbosity,'full')
@@ -340,9 +338,10 @@ parfor (ii = 1:nFrames, nWorkers)
         reconstructedTransparentEllipse = ...
             pupilProjection_fwd(pupilAzi(ii), pupilEle(ii), posteriorPupilAreaMean, eyeCenterOfRotation, projectionModel);
         
-        % Pin the area and re-fit the ellipse
-        lb_pin = ellipseTransparentLB;
-        ub_pin = ellipseTransparentUB;
+        % Pin the parameters are re-fit the ellipse to obtain the error
+        % term
+        lb_pin = pupilData.pInitialFitTransparent(ii,:);
+        ub_pin = pupilData.pInitialFitTransparent(ii,:);
         lb_pin(areaIdx)=reconstructedTransparentEllipse(areaIdx);
         ub_pin(areaIdx)=reconstructedTransparentEllipse(areaIdx);
         [pPosteriorMeanTransparent, ~, pPosteriorFitError] = constrainedEllipseFit(Xc,Yc, lb_pin, ub_pin, nonlinconst);

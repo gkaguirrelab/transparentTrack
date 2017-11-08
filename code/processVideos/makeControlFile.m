@@ -111,8 +111,8 @@ p.addParameter('glintPatchRadius', 20, @isnumeric);
 
 % Optional analysis params -- search over pupil cuts
 p.addParameter('pixelBoundaryThreshold', 100, @isnumeric);
-p.addParameter('cutErrorThreshold', 20, @isnumeric);
-p.addParameter('badFrameErrorThresholdWithoutSceneConstraint', 20, @isnumeric);
+p.addParameter('cutErrorThreshold', 1, @isnumeric);
+p.addParameter('badFrameErrorThresholdWithoutSceneConstraint', 2, @isnumeric);
 p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, -0.5*pi],@isnumeric);
 p.addParameter('ellipseTransparentUB',[640,480,20000,0.75, 0.5*pi],@isnumeric);
 p.addParameter('candidateThetas',pi/2:pi/16:pi,@isnumeric);
@@ -121,7 +121,7 @@ p.addParameter('minRadiusProportion',0,@isnumeric);
 
 % Optional analysis params -- sceneGeometry fitting constraint
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('badFrameErrorThresholdWithSceneConstraint', 40, @isnumeric);
+p.addParameter('badFrameErrorThresholdWithSceneConstraint', 3, @isnumeric);
     
 % Optional display params
 p.addParameter('verbosity','none',@ischar);

@@ -86,7 +86,7 @@ options = optimset(options,'Diagnostics','off','Display','off','LargeScale','off
 
 % Define the objective function, which is the mean of the squared
 % distance values of the boundary points to the ellipse fit
-myFun = @(p) nanmean(ellipsefit_distance(x,y,ellipse_transparent2ex(p)).^2);
+myFun = @(p) nanmean(abs(ellipsefit_distance(x,y,ellipse_transparent2ex(p))).^2);
 
 % save the current warning status and silence anticipated warnings
 warningState = warning;
