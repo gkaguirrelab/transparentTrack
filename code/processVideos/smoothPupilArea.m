@@ -71,12 +71,14 @@ function [pupilData] = smoothPupilArea(perimeterFileName, pupilFileName, sceneGe
 %     frame are raised to this exponent, to either to weaken (>1) or
 %     strengthen (<1) the influence of the current measure on the
 %     posterior.
+%   'whichLikelihoodMean' - The ellipse fit parameter values to be
+%     smoothed.
 %   'whichLikelihoodSD' - The variance of the measured parameters for a
 %     frame can be estimated using different methods. This setting controls
 %     which of these is used to set the SD of the likelihood in the
-%     calculation of the posterior. Valid values:
-%       'pInitialFitHessianSD'
-%       'pInitialFitSplitsSD'
+%     calculation of the posterior. Example valid values:
+%       'ellipseParamsSceneConstrained_hessianSD'
+%       'ellipseParamsSceneConstrained_splitsSD'
 %   'areaIdx' - The index of the ellipse parameters that holds pupil area.
 %
 % OUTPUTS:
@@ -112,7 +114,8 @@ p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, -0.5*pi],@isnumeric);
 p.addParameter('ellipseTransparentUB',[640,480,20000,0.75, 0.5*pi],@isnumeric);
 p.addParameter('exponentialTauParam',5,@isnumeric);
 p.addParameter('likelihoodErrorExponent',1.0,@isnumeric);
-p.addParameter('whichLikelihoodSD','pInitialFitSplitsSD',@ischar);
+p.addParameter('whichLikelihoodMean','ellipseParamsSceneConstrained_mean',@ischar);
+p.addParameter('whichLikelihoodSD','ellipseParamsSceneConstrained_splitsSD',@ischar);
 p.addParameter('areaIdx',3,@isnumeric);
 
 
@@ -170,7 +173,7 @@ end
 for ii = 1:nFrames
     [pupilAzi(ii), pupilEle(ii), pupilArea(ii)] = ...
         pupilProjection_inv( ...
-        pupilData.pInitialFitTransparent(ii,:), ...
+        pupilData.(p.Results.whichLikelihoodMean)(ii,:), ...
         eyeCenterOfRotation, ...
         projectionModel);
 end
@@ -217,6 +220,7 @@ frameCellArray = arrayfun(@(ii) {squeeze(perimeter.data(:,:,ii))},1:1:nFrames);
 % Set-up other variables to be non-broadcast
 verbosity = p.Results.verbosity;
 areaIdx = p.Results.areaIdx;
+whichLikelihoodMean = p.Results.whichLikelihoodMean;
 whichLikelihoodSD = p.Results.whichLikelihoodSD;
 likelihoodErrorExponent = p.Results.likelihoodErrorExponent;
 
@@ -229,6 +233,9 @@ likelihoodErrorExponent = p.Results.likelihoodErrorExponent;
 % the requested SD measure is available
 if ~isfield(pupilData,whichLikelihoodSD)
     error('The requested estimate of fit SD is not available in pupilData');
+end
+if ~isfield(pupilData,whichLikelihoodMean)
+    error('The requested fit values are not available in pupilData');
 end
 
 % Set up the decaying exponential weighting function. The relatively large
@@ -273,7 +280,7 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % if this frame has data, and the initial ellipse fit is not nan,
     % then proceed to calculate the posterior
-    if ~isempty(Xc) &&  ~isempty(Yc) && sum(isnan(pupilData.pInitialFitTransparent(ii,:)))==0
+    if ~isempty(Xc) &&  ~isempty(Yc) && sum(isnan(pupilData.(whichLikelihoodMean)(ii,:)))==0
         % Calculate the pupil area prior. The prior mean is given by the
         % surrounding area values, weighted by a decaying exponential in
         % time and the inverse of the standard deviation of each measure.
@@ -339,8 +346,8 @@ parfor (ii = 1:nFrames, nWorkers)
         
         % Pin the parameters are re-fit the ellipse to obtain the error
         % term
-        lb_pin = pupilData.pInitialFitTransparent(ii,:);
-        ub_pin = pupilData.pInitialFitTransparent(ii,:);
+        lb_pin = pupilData.(whichLikelihoodMean)(ii,:);
+        ub_pin = pupilData.(whichLikelihoodMean)(ii,:);
         lb_pin(areaIdx)=reconstructedTransparentEllipse(areaIdx);
         ub_pin(areaIdx)=reconstructedTransparentEllipse(areaIdx);
         [pPosteriorMeanTransparent, ~, pPosteriorFitError] = constrainedEllipseFit(Xc,Yc, lb_pin, ub_pin, nonlinconst);
@@ -353,25 +360,24 @@ parfor (ii = 1:nFrames, nWorkers)
     
 end % loop over frames to calculate the posterior
 
-
-%% Clean up and save the fit results
-
-% gather the loop vars into the ellipse structure
-pupilData.pPosteriorMeanTransparent=loopVar_pPosteriorMeanTransparent;
-pupilData.pPosteriorFitError=loopVar_pPosteriorFitError';
-
-% add a meta field with analysis details
-pupilData.meta.smoothPupilParameters = p.Results;
-pupilData.meta.smoothPupilParameters.coordinateSystem = 'intrinsicCoordinates(pixels)';
-
-% save the pupilData
-save(p.Results.pupilFileName,'pupilData')
-
 % report completion of Bayesian analysis
 if strcmp(p.Results.verbosity,'full')
     toc
     fprintf('\n');
 end
+
+%% Clean up and save the fit results
+
+% gather the loop vars into the ellipse structure
+pupilData.ellipseParamsAreaSmoothed_mean=loopVar_pPosteriorMeanTransparent;
+pupilData.ellipseParamsAreaSmoothed_mse=loopVar_pPosteriorFitError';
+
+% add a meta field with analysis details
+pupilData.meta.smoothPupilArea = p.Results;
+pupilData.meta.smoothPupilArea.coordinateSystem = 'intrinsicCoordinates(pixels)';
+
+% save the pupilData
+save(p.Results.pupilFileName,'pupilData')
 
 
 %% Delete the parallel pool

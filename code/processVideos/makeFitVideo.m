@@ -60,7 +60,7 @@ p.addParameter('perimeterFileName',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('perimeterColor','w',@ischar);
 p.addParameter('pupilFileName',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('pupilColor','green',@ischar);
-p.addParameter('whichFieldToPlot', 'pPosteriorMeanTransparent',@(x)(isempty(x) | ischar(x)));
+p.addParameter('whichFieldToPlot', 'ellipseParamsAreaSmoothed_mean',@(x)(isempty(x) | ischar(x)));
 p.addParameter('irisFileName',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('irisColor','red',@ischar);
 p.addParameter('controlFileName',[],@(x)(isempty(x) | ischar(x)));

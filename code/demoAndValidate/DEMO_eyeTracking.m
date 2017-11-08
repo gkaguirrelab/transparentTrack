@@ -83,59 +83,6 @@ runVideoPipeline( pathParams, ...
     'pupilRange', [40 200], 'pupilCircleThresh', 0.04, 'pupilGammaCorrection', 1.5, ...
     'overwriteControlFile', true, 'catchErrors', false);
 
-% %% Perform the analysis up to initial pupil fit
-% runVideoPipeline( pathParams, ...
-%     'nFrames',nFrames,'verbosity', verbosity,'tbSnapshot',tbSnapshot, 'useParallel',true, ...
-%     'pupilRange', [40 200], 'pupilCircleThresh', 0.04, 'pupilGammaCorrection', 1.5, ...
-%     'overwriteControlFile', true,  ...
-%     'glintPatchRadius', 20,'ellipseTransparentLB',[0, 0, 800, 0, -0.5*pi],'ellipseTransparentUB',[480,640,20000,0.417, 0.5*pi], ...
-%     'skipStage', {'smoothPupilParameters', 'fitIrisPerimeter', 'makeFitVideo' }, ...
-%     'catchErrors', false);
-% 
-% %% Define some file names
-% grayVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_gray.avi']);
-% glintFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_glint.mat']);
-% perimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_perimeter.mat']);
-% controlFileName = fullfile(pathParams.controlFileDirFull, [pathParams.runName '_controlFile.csv']);
-% correctedPerimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_correctedPerimeter.mat']);
-% pupilFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_pupil.mat']);
-% finalFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_finalFit.avi']);
-% irisFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_iris.mat']);
-% 
-% %% Create videos of intermediate stages
-% exampleFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_Stage1.avi']);
-% makeFitVideo(grayVideoName, exampleFitVideoName, 'glintFileName', glintFileName, ...
-%     'nFrames',nFrames,'verbosity', verbosity,'tbSnapshot',tbSnapshot, 'useParallel',true);
-% 
-% exampleFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_Stage2.avi']);
-% makeFitVideo(grayVideoName, exampleFitVideoName, 'glintFileName', glintFileName, 'perimeterFileName', perimeterFileName, ...
-%     'nFrames',nFrames,'verbosity', verbosity,'tbSnapshot',tbSnapshot, 'useParallel',true);
-% 
-% exampleFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_Stage3.avi']);
-% makeFitVideo(grayVideoName, exampleFitVideoName, 'glintFileName', glintFileName, 'perimeterFileName', correctedPerimeterFileName, 'controlFileName', controlFileName, ...
-%     'nFrames',nFrames,'verbosity', verbosity,'tbSnapshot',tbSnapshot, 'useParallel',true);
-% 
-% exampleFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_Stage4.avi']);
-% makeFitVideo(grayVideoName, exampleFitVideoName, 'glintFileName', glintFileName, 'perimeterFileName', correctedPerimeterFileName, 'controlFileName', controlFileName, 'pupilFileName', pupilFileName, ...
-%     'whichFieldToPlot','pInitialFitTransparent',...
-%     'nFrames',nFrames,'verbosity', verbosity,'tbSnapshot',tbSnapshot, 'useParallel', true);
-% 
-% %% Perform Bayesian smoothing and iris fitting
-% runVideoPipeline( pathParams, ...
-%     'whichFieldToPlot','pInitialFitTransparent',...
-%     'nFrames',nFrames,'verbosity', verbosity,'tbSnapshot',tbSnapshot, 'useParallel',true, ...
-%     'skipStage', {'deinterlaceVideo', 'findGlint', 'findPupilPerimeter', 'makeControlFile', 'applyControlFile', 'fitPupilPerimeter', 'makeFitVideo' }, ...
-%     'catchErrors', false);
-% 
-% %% Create some more videos
-% exampleFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_Stage5.avi']);
-% makeFitVideo(grayVideoName, exampleFitVideoName, 'glintFileName', glintFileName, 'perimeterFileName', correctedPerimeterFileName, 'controlFileName', controlFileName, 'pupilFileName', pupilFileName, ...
-%     'nFrames',nFrames,'verbosity', verbosity,'tbSnapshot',tbSnapshot, 'useParallel',true);
-% 
-% exampleFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_Stage6.avi']);
-% makeFitVideo(grayVideoName, exampleFitVideoName, 'glintFileName', glintFileName, 'perimeterFileName', correctedPerimeterFileName, 'controlFileName', controlFileName, 'pupilFileName', pupilFileName, 'irisFileName', irisFileName, ...
-%     'nFrames',nFrames,'verbosity', verbosity,'tbSnapshot',tbSnapshot, 'useParallel',true);
-
 
 %% Plot some fits
 pupilFileName = fullfile(pathParams.dataOutputDirFull,[pathParams.runName '_pupil.mat']);
@@ -143,26 +90,29 @@ dataLoad = load(pupilFileName);
 pupilData = dataLoad.pupilData;
 clear dataLoad
 
-temporalSupport = 0:1/60.:(size(pupilData.pPosteriorMeanTransparent,1)-1)/60; % seconds
+temporalSupport = 0:1/60.:(size(pupilData.ellipseParamsSceneConstrained_mean,1)-1)/60; % seconds
 temporalSupport = temporalSupport / 60; % minutes
 
 figure
-plot(temporalSupport,pupilData.pInitialFitTransparent(:,3),'-.b');
+plot(temporalSupport,pupilData.ellipseParamsUnconstrained_mean(:,3),'-k','LineWidth',2);
 hold on
-plot(temporalSupport,pupilData.pInitialFitTransparent(:,3)-pupilData.pInitialFitSplitsSD(:,3),'-','Color',[0.7 0.7 0.7])
-plot(temporalSupport,pupilData.pInitialFitTransparent(:,3)+pupilData.pInitialFitSplitsSD(:,3),'-','Color',[0.7 0.7 0.7])
-plot(temporalSupport,pupilData.pPosteriorMeanTransparent(:,3),'-r','LineWidth',2)
+plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,3),'-b');
+plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,3)-pupilData.ellipseParamsSceneConstrained_splitsSD(:,3),'-','Color',[0.7 0.7 0.2])
+plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,3)+pupilData.ellipseParamsSceneConstrained_splitsSD(:,3),'-','Color',[0.7 0.7 0.2])
+plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,3),'-r','LineWidth',2)
 xlim([0 max(temporalSupport)]);
 xlabel('time [mins]');
 ylabel('area [pixels]');
 hold off
 
 figure
-plot(temporalSupport,pupilData.pInitialFitTransparent(:,1),'-.b');
 hold on
-plot(temporalSupport,pupilData.pInitialFitTransparent(:,1)-pupilData.pInitialFitSplitsSD(:,1),'-','Color',[0.7 0.7 0.7])
-plot(temporalSupport,pupilData.pInitialFitTransparent(:,1)+pupilData.pInitialFitSplitsSD(:,1),'-','Color',[0.7 0.7 0.7])
-plot(temporalSupport,pupilData.pPosteriorMeanTransparent(:,1),'-r','LineWidth',2)
+plot(temporalSupport,pupilData.ellipseParamsUnconstrained_mean(:,1),'-k','LineWidth',2);
+hold on
+plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,1),'-b');
+plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,1)-pupilData.ellipseParamsSceneConstrained_splitsSD(:,1),'-','Color',[0.7 0.7 0.2])
+plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,1)+pupilData.ellipseParamsSceneConstrained_splitsSD(:,1),'-','Color',[0.7 0.7 0.2])
+plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,1),'-r','LineWidth',2)
 xlim([0 max(temporalSupport)]);
 xlabel('time [mins]');
 ylabel('position [pixels]');
