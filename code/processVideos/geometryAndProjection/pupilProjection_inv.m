@@ -40,7 +40,9 @@ switch projectionModel
     case 'orthogonal'
         centerX = round(transparentEllipse(1),4);
         centerY = round(transparentEllipse(2),4);
-    case 'perspective'
+    case 'weakPerspectiveCorrection'
+        error('Not yet implemented');
+    case 'pseudoPerspectiveCorrection'
         error('Not yet implemented');
 end
 
@@ -80,7 +82,9 @@ else
             case 'orthogonal'
                 reconstructedPupilRadius = sqrt(transparentEllipse(3) / (pi * k));
                 reconstructedPupilArea = pi * reconstructedPupilRadius^2;
-            case 'perspective'
+            case 'weakPerspectiveCorrection'
+                error('Not yet implemented');
+            case 'pseudoPerspectiveCorrection'
                 error('Not yet implemented');
         end
     end 

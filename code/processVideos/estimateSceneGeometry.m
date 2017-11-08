@@ -64,8 +64,9 @@ p.addRequired('pupilFileName',@isstr);
 p.addRequired('sceneGeometryFileName',@isstr);
 
 % Optional analysis params
-p.addParameter('projectionModel','orthogonal', @ischar);
+p.addParameter('projectionModel','orthogonal',@ischar);
 p.addParameter('eyeRadiusInPixels',250,@isnumeric);
+p.addParameter('cameraDistanceInPixels',Inf,@isnumeric);
 p.addParameter('CoRLowerBound',[-500, -500, 0],@isnumeric);
 p.addParameter('CoRUpperBound',[1000, 1000, 1000],@isnumeric);
 p.addParameter('whichFitField','orthogonal', @ischar);
@@ -166,6 +167,7 @@ sceneGeometry.eyeCenter.Y = bestFitCoR(2);
 sceneGeometry.eyeCenter.Z = bestFitCoR(3);
 sceneGeometry.eyeCenter.meanSquareError = fVal;
 sceneGeometry.eyeRadius = p.Results.eyeRadiusInPixels;
+sceneGeometry.cameraDistance = p.Results.cameraDistanceInPixels;
 sceneGeometry.meta = p.Results;
 sceneGeometry.meta.units = 'pixelsOnTheScenePlane';
 
