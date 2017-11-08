@@ -68,6 +68,9 @@ p.addParameter('projectionModel','orthogonal', @ischar);
 p.addParameter('eyeRadiusInPixels',250,@isnumeric);
 p.addParameter('CoRLowerBound',[-500, -500, 0],@isnumeric);
 p.addParameter('CoRUpperBound',[1000, 1000, 1000],@isnumeric);
+p.addParameter('whichFitField','orthogonal', @ischar);
+p.addParameter('whichFitFieldMean','ellipseParamsUnconstrained_mean',@ischar);
+p.addParameter('whichFitFieldMSE','ellipseParamsUnconstrained_mse',@ischar);
 
 % verbosity and plotting control
 p.addParameter('verbosity', 'none', @isstr);
@@ -97,21 +100,21 @@ end
 % load pupil data
 load(pupilFileName)
 if p.Results.nFrames ~= Inf
-    ellipses = pupilData.pInitialFitTransparent(p.Results.startFrame:p.Results.nFrames,:);
+    ellipses = pupilData.(p.Results.whichFitFieldMean)(p.Results.startFrame:p.Results.nFrames,:);
 else
-    ellipses = pupilData.pInitialFitTransparent(p.Results.startFrame:end,:);
+    ellipses = pupilData.(p.Results.whichFitFieldMean)(p.Results.startFrame:end,:);
 end
 
 % find the most circular ellipse and use the X Y coordinate as the initial
 % guess for the CoP XY coordinates
-[~, minEccentricityIdx] = min(pupilData.pInitialFitTransparent(:,4));
+[~, minEccentricityIdx] = min(pupilData.(p.Results.whichFitFieldMean)(:,4));
 
 % Identify the [X Y] coordinates of the most circular ellipse. Z is set to
 % an initial value of zero
 switch p.Results.projectionModel
     case 'orthogonal'
-        x0 = [pupilData.pInitialFitTransparent(minEccentricityIdx,1) ...
-            pupilData.pInitialFitTransparent(minEccentricityIdx,2) ...
+        x0 = [pupilData.(p.Results.whichFitFieldMean)(minEccentricityIdx,1) ...
+            pupilData.(p.Results.whichFitFieldMean)(minEccentricityIdx,2) ...
             0];
     case 'perspective'
         error('not yet implemented');
@@ -120,14 +123,14 @@ end
 % construct a weight vector based upon the quality of the initial fit of
 % the ellipse to the pupil perimeter
 if p.Results.nFrames ~= Inf
-    if isfield(pupilData,'pInitialFitError')
-        errorWeights = (1./pupilData.pInitialFitError(p.Results.startFrame:p.Results.nFrames));
+    if isfield(pupilData,p.Results.whichFitFieldMSE)
+        errorWeights = (1./pupilData.(p.Results.whichFitFieldMSE)(p.Results.startFrame:p.Results.nFrames));
     else
         errorWeights=ones(1,size(ellipses,1));
     end
 else
-    if isfield(pupilData,'pInitialFitError')
-        errorWeights = (1./pupilData.pInitialFitError(p.Results.startFrame:end));
+    if isfield(pupilData,p.Results.whichFitFieldMSE)
+        errorWeights = (1./pupilData.(p.Results.whichFitFieldMSE)(p.Results.startFrame:end));
     else
         errorWeights=ones(1,size(ellipses,1));
     end
