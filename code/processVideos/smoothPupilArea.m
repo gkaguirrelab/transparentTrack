@@ -229,8 +229,8 @@ likelihoodErrorExponent = p.Results.likelihoodErrorExponent;
 % parameters of the initial fit. The parameter 'whichLikelihoodSD'
 % controls which one of these is used for the likelihood. check that
 % the requested SD measure is available
-if ~isfield(whichLikelihoodSD)
-    error('The requested estimate of fit SD is not available in ellipseFitData');
+if ~isfield(pupilData,whichLikelihoodSD)
+    error('The requested estimate of fit SD is not available in pupilData');
 end
 
 % Set up the decaying exponential weighting function. The relatively large
