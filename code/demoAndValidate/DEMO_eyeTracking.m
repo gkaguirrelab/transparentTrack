@@ -97,8 +97,8 @@ figure
 plot(temporalSupport,pupilData.ellipseParamsUnconstrained_mean(:,3),'-k','LineWidth',2);
 hold on
 plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,3),'-b');
-plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,3)-pupilData.ellipseParamsSceneConstrained_splitsSD(:,3),'-','Color',[0.7 0.7 0.2])
-plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,3)+pupilData.ellipseParamsSceneConstrained_splitsSD(:,3),'-','Color',[0.7 0.7 0.2])
+plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,3)-pupilData.ellipseParamsSceneConstrained_splitsSD(:,3),'-','Color',[0 0 0.7])
+plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,3)+pupilData.ellipseParamsSceneConstrained_splitsSD(:,3),'-','Color',[0 0 0.7])
 plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,3),'-r','LineWidth',2)
 xlim([0 max(temporalSupport)]);
 xlabel('time [mins]');
@@ -110,8 +110,8 @@ hold on
 plot(temporalSupport,pupilData.ellipseParamsUnconstrained_mean(:,1),'-k','LineWidth',2);
 hold on
 plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,1),'-b');
-plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,1)-pupilData.ellipseParamsSceneConstrained_splitsSD(:,1),'-','Color',[0.7 0.7 0.2])
-plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,1)+pupilData.ellipseParamsSceneConstrained_splitsSD(:,1),'-','Color',[0.7 0.7 0.2])
+plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,1)-pupilData.ellipseParamsSceneConstrained_splitsSD(:,1),'-','Color',[0 0 0.7])
+plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,1)+pupilData.ellipseParamsSceneConstrained_splitsSD(:,1),'-','Color',[0 0 0.7])
 plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,1),'-r','LineWidth',2)
 xlim([0 max(temporalSupport)]);
 xlabel('time [mins]');
