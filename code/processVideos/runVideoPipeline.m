@@ -320,7 +320,7 @@ end % cleanupMatlabPrefs
 function makeFitVideoForThisStage(pathParams, funNames, ff, varargin)
 
 % Define the fitVideo output name
-fitVideoFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '__fitStage' num2str(ff) '.avi']);
+fitVideoFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_fitStage' num2str(ff) '.avi']);
 
 % Assemble the entire list of potential files to include in the video
 grayVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_gray.avi']);
