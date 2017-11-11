@@ -370,7 +370,7 @@ end
 
 % gather the loop vars into the ellipse structure
 pupilData.ellipseParamsAreaSmoothed_mean=loopVar_pPosteriorMeanTransparent;
-pupilData.ellipseParamsAreaSmoothed_mse=loopVar_pPosteriorFitError';
+pupilData.ellipseParamsAreaSmoothed_rmse=loopVar_pPosteriorFitError';
 
 % add a meta field with analysis details
 pupilData.meta.smoothPupilArea = p.Results;

@@ -70,7 +70,7 @@ p.addParameter('CoRLowerBound',[-500, -500, 0],@isnumeric);
 p.addParameter('CoRUpperBound',[1000, 1000, 1000],@isnumeric);
 p.addParameter('whichFitField','orthogonal', @ischar);
 p.addParameter('whichFitFieldMean','ellipseParamsUnconstrained_mean',@ischar);
-p.addParameter('whichFitFieldMSE','ellipseParamsUnconstrained_mse',@ischar);
+p.addParameter('whichFitFieldError','ellipseParamsUnconstrained_rmse',@ischar);
 
 % verbosity and plotting control
 p.addParameter('verbosity', 'none', @isstr);
@@ -123,21 +123,21 @@ end
 % construct a weight vector based upon the quality of the initial fit of
 % the ellipse to the pupil perimeter
 if p.Results.nFrames ~= Inf
-    if isfield(pupilData,p.Results.whichFitFieldMSE)
-        errorWeights = (1./pupilData.(p.Results.whichFitFieldMSE)(p.Results.startFrame:p.Results.nFrames));
+    if isfield(pupilData,p.Results.whichFitFieldError)
+        errorWeights = (1./pupilData.(p.Results.whichFitFieldError)(p.Results.startFrame:p.Results.nFrames));
     else
         errorWeights=ones(1,size(ellipses,1));
     end
 else
-    if isfield(pupilData,p.Results.whichFitFieldMSE)
-        errorWeights = (1./pupilData.(p.Results.whichFitFieldMSE)(p.Results.startFrame:end));
+    if isfield(pupilData,p.Results.whichFitFieldError)
+        errorWeights = (1./pupilData.(p.Results.whichFitFieldError)(p.Results.startFrame:end));
     else
         errorWeights=ones(1,size(ellipses,1));
     end
 end
 
-% define an anonymous function to measure mean squared error (MSE)
-errorFunc = @(x) nanmean(errorWeights.*distanceToCandidateEyeCenterOfRotation(ellipses, x, p.Results.eyeRadiusInPixels, 'projectionModel', p.Results.projectionModel).^2);
+% define an anonymous function to measure root mean squared error (RMSE)
+errorFunc = @(x) sqrt(nanmean(errorWeights.*distanceToCandidateEyeCenterOfRotation(ellipses, x, p.Results.eyeRadiusInPixels, 'projectionModel', p.Results.projectionModel).^2));
 
 % define some search options
 options = optimset('fmincon');
@@ -164,7 +164,7 @@ end
 sceneGeometry.eyeCenter.X = bestFitCoR(1);
 sceneGeometry.eyeCenter.Y = bestFitCoR(2);
 sceneGeometry.eyeCenter.Z = bestFitCoR(3);
-sceneGeometry.eyeCenter.meanSquareError = fVal;
+sceneGeometry.eyeCenter.RMSE = fVal;
 sceneGeometry.eyeRadius = p.Results.eyeRadiusInPixels;
 sceneGeometry.meta = p.Results;
 sceneGeometry.meta.units = 'pixelsOnTheScenePlane';
