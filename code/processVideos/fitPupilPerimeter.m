@@ -329,7 +329,7 @@ if isempty(p.Results.sceneGeometryFileName)
     pupilData.meta.fitPupilPerimeterUnconstrained.coordinateSystem = 'intrinsicCoordinates(pixels)';
     pupilData.ellipseParamsUnconstrained_mean = loopVar_ellipseParamsTransparent;
     pupilData.ellipseParamsUnconstrained_hessianSD = loopVar_ellipseParamsHessianSD;
-    pupilData.ellipseParamsUnconstrained_mse = loopVar_ellipseParamsError';
+    pupilData.ellipseParamsUnconstrained_rmse = loopVar_ellipseParamsError';
     if nSplits~=0
         pupilData.ellipseParamsUnconstrained_splitsSD = loopVar_ellipseParamsSplitsSD;
     end
@@ -338,7 +338,7 @@ else
     pupilData.meta.fitPupilPerimeterSceneConstrained.coordinateSystem = 'intrinsicCoordinates(pixels)';
     pupilData.ellipseParamsSceneConstrained_mean = loopVar_ellipseParamsTransparent;
     pupilData.ellipseParamsSceneConstrained_hessianSD = loopVar_ellipseParamsHessianSD;
-    pupilData.ellipseParamsSceneConstrained_mse = loopVar_ellipseParamsError';
+    pupilData.ellipseParamsSceneConstrained_rmse = loopVar_ellipseParamsError';
     if nSplits~=0
         pupilData.ellipseParamsSceneConstrained_splitsSD = loopVar_ellipseParamsSplitsSD;
     end
