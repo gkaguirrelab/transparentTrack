@@ -5,10 +5,10 @@
 
 sandboxDir = '~/Desktop/eyeTrackingDEMO';
 %% UnitVideo settings
-syntheticPerimVideoName = fullfile(sandboxDir, 'syntheticPerim.avi');
-syntheticPerimFileName = fullfile(sandboxDir, 'syntheticPerimeter.mat');
+syntheticPerimVideoName = fullfile(sandboxDir, 'synthetic.avi');
+
 % 1. define synthetic data length
-nFrames = 100;
+nFrames = 200;
 
 % 2. define frame dimention in pixels
 videoSizeX = 640;
@@ -19,10 +19,9 @@ writerObj = VideoWriter(syntheticPerimVideoName, 'Uncompressed AVI');
 writerObj.FrameRate = 60;
 
 
-
 % define eye movements
 % define rotations in deg
-allPupilAzi = linspace(0,50,nFrames); % in degrees
+allPupilAzi = linspace(0,60,nFrames); % in degrees
 allPupilEle = zeros(1,nFrames); % in degrees
 
 
@@ -44,8 +43,8 @@ rotationArmLength = eyeballR - planeDepth;
 
 % create scene plane
 sceneDistance = 100; % orthogonal distance from rotation arm
-xMax= 320; % max x size of scene (for plotting purposes)
-yMax = 240; % max y size of scene
+xMax= videoSizeX/2; % max x size of scene (for plotting purposes)
+yMax = videoSizeY/2; % max y size of scene
 scenePlane = createPlane([0 0 rotationArmLength+sceneDistance],[0 0 rotationArmLength+sceneDistance]);
 
 % center of projection
@@ -92,16 +91,18 @@ for ii = 1:length(allPupilAzi)
     % do orthogonal projeciton on the scene plane
     pupilPoints2d = projPointOnPlane(pupilPoints3d,scenePlane);
     
-    % add noise to the points
-    pupilPoints2d = awgn(pupilPoints2d,2);
+    % add a little noise to the points
+    pupilPoints2d = awgn(pupilPoints2d,3);
     
     % make the plot and save it as a frame    
-    plot(pupilPoints2d(:,1),pupilPoints2d(:,2),'w')
-    set(gca,'Color','k','PlotBoxAspectRatio',[4 3 1])
-%     set(gca,'Units','pixels', 'Position',[0 0 videoSizeX videoSizeY])
+    fill(pupilPoints2d(:,1),pupilPoints2d(:,2),'k')
+    
+    % format the axis with the correct ratio
+    set(gca,'PlotBoxAspectRatio',[4 3 1])
     xlim([-xMax xMax])
     ylim([-yMax yMax])
     
+    % get the frame
     thisFrame(ii) = getframe(gca);
 
 end
@@ -120,22 +121,19 @@ open(writerObj);
 
 for ii=1:nFrames
     indexedFrame = rgb2ind(thisFrame(ii).cdata,cmap, 'nodither');
-    indexedFrame = imresize(indexedFrame,[480 640]);
+    indexedFrame = imresize(indexedFrame,[videoSizeY videoSizeX]);
     writeVideo(writerObj,indexedFrame);
-    binP= im2bw(indexedFrame);
-    perimFrame = im2uint8(binP);
-    perimeter.data(:,:,ii) = perimFrame;
 end
 
 close (writerObj);
-save(syntheticPerimFileName,'perimeter');
 
-%% use this perimeter video in the pipeline
-
+%% use this video in the pipeline
+syntheticPerimFileName = fullfile(sandboxDir, 'synthetic_perimeter.mat');
 pupilFileName = fullfile(sandboxDir, 'syntheticPerimeter_pupil.mat');
 sceneGeometryFileName = fullfile(sandboxDir, 'syntheticPerimeter_sceneGeometry.mat');
 sceneDiagnosticPlotFileName = fullfile(sandboxDir, 'syntheticPerimeter_sceneDiagnosticPlot.pdf');
 finalFitVideoName = fullfile(sandboxDir, 'syntheticPerimeter_finalFit.avi');
 
-fitPupilPerimeter(syntheticPerimFileName, pupilFileName,'verbosity','full','ellipseTransparentLB',[0, 0, 500, 0, -0.5*pi],'ellipseTransparentUB',[640,480,20000,0.75, 0.5*pi],'nSplits',0);
+findPupilPerimeter(syntheticPerimVideoName,syntheticPerimFileName,'verbosity','full');
+fitPupilPerimeter(syntheticPerimFileName, pupilFileName,'verbosity','full','ellipseTransparentLB',[0, 0, 500, 0, -0.5*pi],'ellipseTransparentUB',[640,480,20000,0.75, 0.5*pi],'nSplits',0,'nFrames',100);
 estimateSceneGeometry(pupilFileName, sceneGeometryFileName,'sceneDiagnosticPlotFileName', sceneDiagnosticPlotFileName);
