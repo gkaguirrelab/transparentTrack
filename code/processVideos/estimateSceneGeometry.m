@@ -75,6 +75,7 @@ p.addParameter('whichFitFieldError','ellipseParamsUnconstrained_rmse',@ischar);
 % verbosity and plotting control
 p.addParameter('verbosity', 'none', @isstr);
 p.addParameter('sceneDiagnosticPlotFileName', [],@(x)(isempty(x) | ischar(x)));
+p.addParameter('sceneDiagnosticPlotSizeXY', [640 480],@isnumeric);
 
 % flow control
 p.addParameter('nFrames',Inf,@isnumeric);
@@ -155,6 +156,9 @@ if ~isempty(p.Results.sceneDiagnosticPlotFileName)
     plot(ellipsesCoRs(:,1), ellipsesCoRs(:,2), '.b')
     plot(x0(1),x0(2), 'xr')
     plot(bestFitCoR(1),bestFitCoR(2), 'og')
+    xlim ([0 p.Results.sceneDiagnosticPlotSizeXY(1)])
+    ylim ([0 p.Results.sceneDiagnosticPlotSizeXY(2)])
+    set(gca,'Ydir','reverse')
     title('Estimate Center of Rotation from pupil ellipses')
     legend('ellipse centers','CoR from each ellipse', 'Most circular ellipse','Best fit CoR')
     saveas(figHandle,p.Results.sceneDiagnosticPlotFileName);
