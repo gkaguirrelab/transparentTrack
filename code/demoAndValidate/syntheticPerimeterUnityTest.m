@@ -10,7 +10,7 @@ syntheticPerimVideoName = fullfile(sandboxDir, 'synthetic.avi');
 % 1. define synthetic data length
 nFrames = 200;
 
-% 2. define frame dimention in pixels
+% 2. define scene dimension in pixels
 videoSizeX = 640;
 videoSizeY = 480;
 
@@ -26,6 +26,9 @@ allPupilEle = zeros(1,nFrames); % in degrees
 
 
 %% construct scene geometry
+% we will construct a scene where the CoR sits right at the center, and the
+% pupil rotates on a 250 pixels radius. The first ellipse is, by
+% construction, projected as a true circle.
 
 % define the eye sphere radius
 eyeballR =  250+15;
@@ -57,9 +60,20 @@ opticalAxis = createLine3d(eyeballCenter,centerOfProjection3D);
 
 
 %% create the scene and save a frame in the video
+% we save a video here, where the background is white and the pupil ellipse
+% is black and filled.
+% by default, matlab will plot the scene with a 1:1 pixel ratio.
 
-% initialize variable to hold the perimeter data
-% perimeter_data = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
+% To try and understand if pixel ratio influences the appearence of the
+% pupil on the scene, we can comment in/out the PlotBoxAspectRatio line,
+% that would set the plot pixel ratio to 4:3. This is the pixel ratio
+% of the camera we use. We don't know for sure this is the pixel ratio of the
+% video when it is digitalized by the V.TOP, but it is likely.
+
+
+% select pixel ratio
+pixelRatio = '4:3';
+% pixelRatio = '1:1';
 
 h = figure('visible','off');
 % create scene, save a frame
@@ -94,17 +108,22 @@ for ii = 1:length(allPupilAzi)
     % add a little noise to the points
     pupilPoints2d = awgn(pupilPoints2d,3);
     
-    % make the plot and save it as a frame    
+    % make the plot and save it as a frame
     fill(pupilPoints2d(:,1),pupilPoints2d(:,2),'k')
     
-    % format the axis with the correct ratio
-    set(gca,'PlotBoxAspectRatio',[4 3 1])
+    % format the axis with a 4:3 ratio (default 1:1)
+    switch pixelRatio
+        case '4:3'
+            set(gca,'PlotBoxAspectRatio',[4 3 1])
+        case '1:1'
+            % do nothing
+    end
     xlim([-xMax xMax])
     ylim([-yMax yMax])
     
     % get the frame
     thisFrame(ii) = getframe(gca);
-
+    
 end
 
 % Create a color map for the indexed video
@@ -121,7 +140,24 @@ open(writerObj);
 
 for ii=1:nFrames
     indexedFrame = rgb2ind(thisFrame(ii).cdata,cmap, 'nodither');
-    indexedFrame = imresize(indexedFrame,[videoSizeY videoSizeX]);
+    
+    switch pixelRatio
+        case '1:1'
+            % doubling the size of this image makes the size dimensions even
+            % numbers (use for 1:1 case)
+            indexedFrame = imresize(indexedFrame,2);
+            
+        case '4:3'
+            % if the aspect ratio is corrected to 4:3, the video can be scaled to
+            % match the LiveTrack+V.TOP video resolution.
+            indexedFrame = imresize(indexedFrame,[videoSizeY videoSizeX]);
+    end
+    
+    % get video size
+    videoX = size(indexedFrame,2);
+    videoY = size(indexedFrame,1);
+    
+    % write video
     writeVideo(writerObj,indexedFrame);
 end
 
@@ -135,5 +171,5 @@ sceneDiagnosticPlotFileName = fullfile(sandboxDir, 'syntheticPerimeter_sceneDiag
 finalFitVideoName = fullfile(sandboxDir, 'syntheticPerimeter_finalFit.avi');
 
 findPupilPerimeter(syntheticPerimVideoName,syntheticPerimFileName,'verbosity','full');
-fitPupilPerimeter(syntheticPerimFileName, pupilFileName,'verbosity','full','ellipseTransparentLB',[0, 0, 500, 0, -0.5*pi],'ellipseTransparentUB',[640,480,20000,0.75, 0.5*pi],'nSplits',0,'nFrames',100);
-estimateSceneGeometry(pupilFileName, sceneGeometryFileName,'sceneDiagnosticPlotFileName', sceneDiagnosticPlotFileName);
+fitPupilPerimeter(syntheticPerimFileName, pupilFileName,'verbosity','full','ellipseTransparentLB',[0, 0, 300, 0, -0.5*pi],'ellipseTransparentUB',[videoX,videoY,20000,0.75, 0.5*pi],'nSplits',0);
+estimateSceneGeometry(pupilFileName, sceneGeometryFileName,'sceneDiagnosticPlotFileName', sceneDiagnosticPlotFileName,'sceneDiagnosticPlotSizeXY', [videoX videoY]);
