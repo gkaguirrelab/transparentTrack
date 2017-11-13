@@ -99,8 +99,9 @@ for ii = 1:length(allPupilAzi)
     xlim([-xMax xMax])
     ylim([-yMax yMax])
     
-    thisFrame = getframe(gca);
-    perimeter_data(:,:,:,ii) = thisFrame.cdata;
+    thisFrame(ii) = getframe(gca);
+    
+    perimeter_data(:,:,ii) = uint8(im2bw(thisFrame(ii).cdata));
 end
 
 % Create a color map for the indexed video
@@ -120,10 +121,19 @@ save(syntheticPerimFileName,'perimeter');
 open(writerObj);
 
 for ii=1:nFrames
-    indexedFrame = rgb2ind(squeeze(perimeter_data(:,:,:,ii)), cmap, 'nodither');
+    indexedFrame = rgb2ind(thisFrame(ii).cdata,cmap, 'nodither');
     writeVideo(writerObj,indexedFrame);
 end
 
 close (writerObj);
 
 
+%% use this perimeter video in the pipeline
+
+pupilFileName = fullfile(sandboxDir, 'syntheticPerimeter_pupil.mat');
+sceneGeometryFileName = fullfile(sandboxDir, 'syntheticPerimeter_sceneGeometry.mat');
+sceneDiagnosticPlotFileName = fullfile(sandboxDir, 'syntheticPerimeter_sceneDiagnosticPlot.pdf');
+finalFitVideoName = fullfile(sandboxDir, 'syntheticPerimeter_finalFit.avi');
+
+fitPupilPerimeter(syntheticPerimFileName, pupilFileName,'nSplits', 0);
+estimateSceneGeometry(pupilFileName, sceneGeometryFileName,'sceneDiagnosticPlotFileName', sceneDiagnosticPlotFileName);
