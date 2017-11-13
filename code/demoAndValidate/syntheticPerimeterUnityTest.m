@@ -92,6 +92,9 @@ for ii = 1:length(allPupilAzi)
     % do orthogonal projeciton on the scene plane
     pupilPoints2d = projPointOnPlane(pupilPoints3d,scenePlane);
     
+    % add noise to the points
+    pupilPoints2d = awgn(pupilPoints2d,2);
+    
     % make the plot and save it as a frame    
     plot(pupilPoints2d(:,1),pupilPoints2d(:,2),'w')
     set(gca,'Color','k','PlotBoxAspectRatio',[4 3 1])
@@ -100,8 +103,7 @@ for ii = 1:length(allPupilAzi)
     ylim([-yMax yMax])
     
     thisFrame(ii) = getframe(gca);
-    
-    perimeter_data(:,:,ii) = uint8(im2bw(thisFrame(ii).cdata));
+
 end
 
 % Create a color map for the indexed video
@@ -113,20 +115,20 @@ cmap(4,:)=[1 1 0];
 cmap(5,:)=[0 1 1];
 cmap(6,:)=[1 0 1];
 
-% save out the perimeter file
-perimeter.data = perimeter_data;
-save(syntheticPerimFileName,'perimeter');
-
 % write the video
 open(writerObj);
 
 for ii=1:nFrames
     indexedFrame = rgb2ind(thisFrame(ii).cdata,cmap, 'nodither');
+    indexedFrame = imresize(indexedFrame,[480 640]);
     writeVideo(writerObj,indexedFrame);
+    binP= im2bw(indexedFrame);
+    perimFrame = im2uint8(binP);
+    perimeter.data(:,:,ii) = perimFrame;
 end
 
 close (writerObj);
-
+save(syntheticPerimFileName,'perimeter');
 
 %% use this perimeter video in the pipeline
 
@@ -135,5 +137,5 @@ sceneGeometryFileName = fullfile(sandboxDir, 'syntheticPerimeter_sceneGeometry.m
 sceneDiagnosticPlotFileName = fullfile(sandboxDir, 'syntheticPerimeter_sceneDiagnosticPlot.pdf');
 finalFitVideoName = fullfile(sandboxDir, 'syntheticPerimeter_finalFit.avi');
 
-fitPupilPerimeter(syntheticPerimFileName, pupilFileName,'nSplits', 0);
+fitPupilPerimeter(syntheticPerimFileName, pupilFileName,'verbosity','full','ellipseTransparentLB',[0, 0, 500, 0, -0.5*pi],'ellipseTransparentUB',[640,480,20000,0.75, 0.5*pi],'nSplits',0);
 estimateSceneGeometry(pupilFileName, sceneGeometryFileName,'sceneDiagnosticPlotFileName', sceneDiagnosticPlotFileName);
