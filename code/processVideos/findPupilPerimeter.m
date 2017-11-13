@@ -312,7 +312,7 @@ end % loop through gray frames
 perimeter.data = perimeter_data;
 perimeter.meta = p.Results;
 if ~p.Results.displayMode
-    save(perimeterFileName,'perimeter');
+    save(perimeterFileName,'perimeter','-v7.3');
 else
     close(figureHandle);
 end

@@ -64,6 +64,9 @@ p.addParameter('whichFieldToPlot', 'ellipseParamsAreaSmoothed_mean',@(x)(isempty
 p.addParameter('irisFileName',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('irisColor','red',@ischar);
 p.addParameter('controlFileName',[],@(x)(isempty(x) | ischar(x)));
+p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
+p.addParameter('sceneGeometryColor','magenta',@ischar);
+
 
 % parse
 p.parse(videoInFileName, videoOutFileName, varargin{:})
@@ -162,6 +165,16 @@ else
     instructions(1).type=[];
     instructions(1).params=[];
 end
+
+% Read in the sceneGeometry file if passed
+if ~isempty(p.Results.sceneGeometryFileName)
+    dataLoad = load(p.Results.sceneGeometryFileName);
+    sceneGeometry = dataLoad.sceneGeometry;
+    clear dataLoad
+else
+    sceneGeometry=[];
+end
+
 
 % read video file into memory
 videoInObj = VideoReader(videoInFileName);
@@ -287,6 +300,11 @@ parfor (ii = 1:nFrames, nWorkers)
                 'Color',[1 0 0]);
         end
     end
+    
+    % add the center of projection
+    if ~isempty(p.Results.sceneGeometryFileName)
+             plot(sceneGeometry.eyeCenter.X,sceneGeometry.eyeCenter.Y,['x' p.Results.sceneGeometryColor]);
+    end    
     
     % Save the frame and close the figure
     tmp=getframe(frameFig);

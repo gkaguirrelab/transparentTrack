@@ -11,13 +11,14 @@ function runVideoPipeline( pathParams, varargin )
 %   makeControlFile
 %   applyControlFile
 %   fitPupilPerimeter
+%   estimateSceneGeometry
 %   smoothPupilArea
 %   fitIrisPerimeter
 %   makeFitVideo
 %
 % The user can stop the execution after any of the stages with the optional
 % param 'lastStage', or skip any number of stages listing them in a cell
-% under the optional param 'skipStage'. Every stage, however, requires the
+% under the optional param 'skipStageByName'. Every stage, however, requires the
 % existence of the output from the preceeding ones to be correctly
 % executed.
 %
@@ -40,10 +41,10 @@ function runVideoPipeline( pathParams, varargin )
 % OPTIONS
 %   lastStage - the last stage to be executed. By deafult ends with the
 %      production of the fit video.
-%   skipStage - a cell array of function calls to be skipped during
+%   skipStageByName - a cell array of function calls to be skipped during
 %      execution of the pipeline.
-%   skipStageByNumber - an array of function calls numbers to be skipped during
-%      execution of the pipeline.
+%   skipStageByNumber - an array of function calls numbers to be skipped
+%      during execution of the pipeline.
 %   displayAvailableStages - displays numbered list of the available
 %       stages, to be used as reference for skupStageByNumber. Note that if
 %       this is set to true, no analysis will be perfomed.
@@ -72,10 +73,16 @@ function runVideoPipeline( pathParams, varargin )
 %       cleanupMatlabPrefs is called. This is thought to correct a
 %       stochastic error that can occur in parpool jobs and results in the
 %       corruption of the matlab preference file, which is then deleted.
-%    makeCustomVideoAtTheEnd - when stages are listed by name, a custom
-%       video displaying only the selected stages will be produced. This is
-%       particularly useful to review intermediate results before moving on
-%       with the processing.
+%    maxAttempts - the number of times that a given stage will be re-tried
+%       in the event of an error.
+%    makeFitVideoByName - a cell array of stages for which a fit
+%       video will be produced following completion of the stage. The video
+%       file name is the run name, followed by "_fitStageX.avi" where X is
+%       the idx of the function call list.
+%    makeFitVideoByNumber - a cell array of stages for which a fit
+%       video will be produced following completion of the stage. The video
+%       file name is the run name, followed by "_fitStageX.avi" where X is
+%       the idx of the function call list.
 %
 
 
@@ -87,14 +94,16 @@ p.addRequired('pathParams',@isstruct);
 
 % optional input
 p.addParameter('lastStage', 'makePupilFitVideo', @ischar);
-p.addParameter('skipStage', {}, @iscell);
+p.addParameter('skipStageByName', {}, @iscell);
 p.addParameter('skipStageByNumber',[], @isnumeric);
 p.addParameter('displayAvailableStages', false, @islogical)
 p.addParameter('rawVideoSuffix', {'_raw.mov' '.mov'}, @iscell);
 p.addParameter('videoTypeChoice', 'LiveTrackWithVTOP_eyeNoIris', @ischar);
 p.addParameter('customFunCalls', {}, @iscell);
 p.addParameter('catchErrors', true, @islogical);
-p.addParameter('makeCustomVideoAtTheEnd',{},@iscell);
+p.addParameter('maxAttempts',3,@isnueric);
+p.addParameter('makeFitVideoByName',{},@iscell);
+p.addParameter('makeFitVideoByNumber',[],@isnumeric);
 
 % parse
 p.parse(pathParams, varargin{:})
@@ -119,9 +128,8 @@ if ~exist(pathParams.controlFileDirFull,'dir')
 end
 
 
-%% Define input and output filenames
-
-if ~any(strcmp(p.Results.skipStage,'deinterlaceVideo'))
+%% Define input filenames
+if ~any(strcmp(p.Results.skipStageByName,'deinterlaceVideo'))
     % Create a cell array of candidate raw video nmaes with the runName and
     % each of the rawVideoSuffix choices
     candidateRawVideoNames = ...
@@ -139,6 +147,8 @@ if ~any(strcmp(p.Results.skipStage,'deinterlaceVideo'))
             error('There is more than one raw video with this run name and the specified suffix');
     end
 end
+
+%% Define output filenames
 grayVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_gray.avi']);
 glintFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_glint.mat']);
 perimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_perimeter.mat']);
@@ -190,7 +200,7 @@ switch p.Results.videoTypeChoice
             'fitIrisPerimeter(grayVideoName, perimeterFileName, pupilFileName, irisFileName, varargin{:});' ...
             ['makeFitVideo(grayVideoName, finalFitVideoName,' ...
             '''glintFileName'', glintFileName, ''perimeterFileName'', correctedPerimeterFileName,'...
-            '''pupilFileName'', pupilFileName, ' ...
+            '''pupilFileName'', pupilFileName, ''sceneGeometryFileName'', sceneGeometryFileName,' ...
             '''irisFileName'', irisFileName,' ...
             '''controlFileName'',controlFileName,varargin{:});']...
             };
@@ -213,7 +223,7 @@ switch p.Results.videoTypeChoice
             'smoothPupilArea(correctedPerimeterFileName, pupilFileName, sceneGeometryFileName, varargin{:});'...
             ['makeFitVideo(grayVideoName, finalFitVideoName,' ...
             '''glintFileName'', glintFileName, ''perimeterFileName'', correctedPerimeterFileName,'...
-            '''pupilFileName'', pupilFileName, ' ...
+            '''pupilFileName'', pupilFileName, ''sceneGeometryFileName'', sceneGeometryFileName,' ...
             '''controlFileName'',controlFileName,varargin{:});']...
             };
     case 'custom'
@@ -238,78 +248,54 @@ end
 
 % Loop through the function calls
 for ff = 1:length(funCalls)
-    if ~any(strcmp(p.Results.skipStage,funNames{ff}))
-        if ~any(p.Results.skipStageByNumber == ff)
-            % check if we are going to catch or throw errors
-            if p.Results.catchErrors
-                % intialize while control
-                success = 0;
-                attempts = 1; % we will attempt to execute the instruction 3 times. If it does not work, the code will eventually break.
-                while ~success
-                    try
-                        eval(funCalls{ff});
-                        success = 1;
-                    catch ME
-                        warning ('There has been an error during execution. Cleaning matlabprefs.mat and trying again - attempt %d.',attempts)
-                        cleanupMatlabPrefs;
-                        success = 0;
-                        attempts = attempts +1;
-                        if attempts > 3
-                            rethrow(ME)
-                        end
+    
+    % Check if we are instructed to skip this stage, either by stage name
+    % or by functional call number.
+    if ~any(strcmp(p.Results.skipStageByName,funNames{ff})) || ~any(p.Results.skipStageByNumber == ff)
+        % check if we are going to catch or throw errors
+        if p.Results.catchErrors
+            success = false; % flag for successful stage execution
+            attempts = 1; % which attempt are we on?
+            % intialize while control
+            while ~success
+                try
+                    eval(funCalls{ff});
+                    success = true;
+                catch ME
+                    warning ('There has been an error during execution. Cleaning matlabprefs.mat and trying again - attempt %d.',attempts)
+                    cleanupMatlabPrefs;
+                    success = false;
+                    attempts = attempts +1;
+                    if attempts > p.Results.maxAttempts
+                        rethrow(ME)
                     end
                 end
-                % clear while and if control
-                clear success
-                clear attempts
-            else % we will throw errors
-                eval(funCalls{ff});
-            end % if catchErrors
-            
-            % clear all files (hopefully prevents 'too many files open' error)
-            fclose all ;
-            if strcmp(p.Results.lastStage,funNames{ff})
-                break
             end
-        end % if we aren't skipping this stage by number
-    end % if we aren't skipping this stage by name
+            % clear while and if control
+            clear success
+            clear attempts
+        else % we will throw errors
+            eval(funCalls{ff});
+        end % if catchErrors
+        
+        % Check if we should make a fit video for this stage
+        if any(strcmp(p.Results.makeFitVideoByName,funNames{ff})) || any(p.Results.makeFitVideoByNumber == ff)
+            makeFitVideoForThisStage(pathParams, funNames, ff, varargin{:});
+        end
+        
+        % clear all files (hopefully prevents 'too many files open' error)
+        fclose all;
+        if strcmp(p.Results.lastStage,funNames{ff})
+            break
+        end
+    end % if we aren't skipping this stage by name or number
 end % loop over function calls
 
-% if requested make a custom video
-if ~isempty(p.Results.makeCustomVideoAtTheEnd)
-    
-    customVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_customVideo.avi']);
-    
-    % check what to plot
-    glintFileNameCustomPlot = [];
-    perimeterFileNameCustomPlot = [];
-    controlFileNameCustomPlot = [];
-    pupilFileNameCustomPlot = [];
-    if any(strcmp(p.Results.makeCustomVideoAtTheEnd,'findGlint'))
-        glintFileNameCustomPlot = glintFileName;
-    end
- 
-    if any(strcmp(p.Results.makeCustomVideoAtTheEnd,'findPupilPerimeter'))
-        perimeterFileNameCustomPlot = perimeterFileName;
-    elseif any(strcmp(p.Results.makeCustomVideoAtTheEnd,'applyControlFile'))  
-        perimeterFileNameCustomPlot = correctedPerimeterFileName;
-        controlFileNameCustomPlot = controlFileName;
-    end
-    
-    if any(strcmp(p.Results.makeCustomVideoAtTheEnd,'smoothPupilArea'))
-        pupilFileNameCustomPlot = pupilFileName;
-    end
-    
-    % make the video
-    makeFitVideo(grayVideoName, customVideoName, ...
-            'glintFileName', glintFileNameCustomPlot, 'perimeterFileName', perimeterFileNameCustomPlot,...
-            'pupilFileName', pupilFileNameCustomPlot, 'whichFieldToPlot', 'pPosteriorMeanTransparent', ...
-            'controlFileName',controlFileNameCustomPlot,varargin{:});
-end 
-    
+
 end % main function
 
 
+%% LOCAL FUNCTIONS
 
 function cleanupMatlabPrefs
 % This small function closes any open parallel pool and removes the
@@ -329,3 +315,76 @@ end
 prefFile = fullfile(prefdir,'matlabprefs.mat');
 system(['rm -rf "' prefFile '"'])
 end % cleanupMatlabPrefs
+
+
+function makeFitVideoForThisStage(pathParams, funNames, ff, varargin)
+
+% Define the fitVideo output name
+fitVideoFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_fitStage' num2str(ff) '.avi']);
+
+% Assemble the entire list of potential files to include in the video
+grayVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_gray.avi']);
+glintFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_glint.mat']);
+initialPerimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_perimeter.mat']);
+controlFileName = fullfile(pathParams.controlFileDirFull, [pathParams.runName '_controlFile.csv']);
+correctedPerimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_correctedPerimeter.mat']);
+pupilFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_pupil.mat']);
+sceneGeometryFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sceneGeometry.mat']);
+irisFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_iris.mat']);
+
+% Depending upon which stage just completed, set to empty any files
+% that do not yet exist, and select the appropriate perimeter file and
+% pupil ellipse fit to display.
+switch funNames{ff}
+    case 'deinterlaceVideo'
+        glintFileName = []; perimeterFileName=[]; controlFileName=[]; pupilFileName=[]; sceneGeometryFileName=[]; irisFileName=[];
+    case 'resizeAndCropVideo'
+        glintFileName = []; perimeterFileName=[]; controlFileName=[]; pupilFileName=[]; sceneGeometryFileName=[]; irisFileName=[];
+    case 'findGlint'
+        perimeterFileName=[]; controlFileName=[]; pupilFileName=[]; sceneGeometryFileName=[]; irisFileName=[];
+    case 'findPupilPerimeter'
+        perimeterFileName=initialPerimeterFileName;
+        controlFileName=[]; pupilFileName=[]; sceneGeometryFileName=[]; irisFileName=[];
+    case 'makeControlFile'
+        perimeterFileName=initialPerimeterFileName;
+        controlFileName=[]; pupilFileName=[]; sceneGeometryFileName=[]; irisFileName=[];
+    case 'applyControlFile'
+        perimeterFileName=correctedPerimeterFileName;
+        pupilFileName=[]; sceneGeometryFileName=[]; irisFileName=[];
+    case 'fitPupilPerimeter'
+        perimeterFileName=correctedPerimeterFileName;
+        sceneGeometryFileName=[]; irisFileName=[];
+        % If the sceneGeometry has been determined by this point, we can
+        % plot the sceneConstrained ellipse fit, otherwise plot the
+        % unconstrained
+        varargin={varargin{:}, 'whichFieldToPlot', 'ellipseParamsUnconstrained_mean'};
+        sceneFunCallIdx=find(strcmp(funNames,'estimateSceneGeometry'));
+        if ~isempty(sceneFunCallIdx)
+            if sceneFunCallIdx < ff
+                varargin={varargin{:}, 'whichFieldToPlot', 'ellipseParamsSceneConstrained_mean'};
+            end
+        end
+    case 'estimateSceneGeometry'
+        perimeterFileName=correctedPerimeterFileName;
+        irisFileName=[];
+        varargin={varargin{:}, 'whichFieldToPlot', 'ellipseParamsUnconstrained_mean'};
+    case 'smoothPupilArea'
+        perimeterFileName=correctedPerimeterFileName;
+        irisFileName=[];
+    case 'fitIrisPerimeter'
+        perimeterFileName=correctedPerimeterFileName;
+    otherwise
+        warning('I do not recognize that stage. Returning without creating a stage fit video');
+        return
+end
+
+% make the video
+makeFitVideo(grayVideoName, fitVideoFileName, ...
+    'glintFileName', glintFileName, 'perimeterFileName', perimeterFileName,...
+    'controlFileName',controlFileName, 'pupilFileName', pupilFileName, ...
+    'sceneGeometryFileName', sceneGeometryFileName, 'irisFileName', irisFileName, varargin{:});
+
+end % makeFitVideoForThisStage
+
+
+
