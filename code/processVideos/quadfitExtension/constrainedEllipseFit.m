@@ -1,4 +1,4 @@
-function [transparentEllipseParams, RMSE] = constrainedEllipseFit(x, y, lb, ub, nonlinconst)
+function [transparentEllipseParams, RMSE] = constrainedEllipseFit(x, y, lb, ub, nonlinconst, varargin)
 % constrainedEllipseFit(x, y, lb, ub, nonlinconst)
 %
 % This routine is a modification of a non-linear ellipse fitting routine
@@ -44,8 +44,12 @@ p.addRequired('ub',@isnumeric);
 p.addRequired('lb',@isnumeric);
 p.addRequired('nonlinconst',@(x) (isempty(x) || isa(x, 'function_handle')) );
 
+% Optional analysis params
+p.addParameter('globalSearchMaxTimeSeconds', 5, @isnumeric);
+
+
 % Parse and check the parameters
-p.parse(x, y, ub, lb, nonlinconst);
+p.parse(x, y, ub, lb, nonlinconst, varargin{:});
 
 
 %% Calculate an initial estimate of the ellipse parameters
@@ -89,24 +93,24 @@ options = optimset(options,'Diagnostics','off','Display','off','LargeScale','off
 
 % Define the objective function, which is the RMSE of the distance values
 % of the boundary points to the ellipse fit
-myFun = @(p) sqrt(nanmean(abs(ellipsefit_distance(x,y,ellipse_transparent2ex(p))).^2));
+myFun = @(p) sqrt(nanmean(ellipsefit_distance(x,y,ellipse_transparent2ex(p)).^2));
 
 % save the current warning status and silence anticipated warnings
 warningState = warning;
 warning('off','MATLAB:nearlySingularMatrix');
 
 % Perform the non-linear search
-[transparentEllipseParams,RMSE,exitflag,output] = ...
+[transparentEllipseParams, RMSE, ~, output] = ...
     fmincon(myFun, pInitTransparent, [], [], [], [], lb, ub, nonlinconst, options);
 
 % If we received a local minimum warning on exit, re-fit the ellipse using
 % a more time-consuming global minimization approach.
-if exitflag==2 && ~isempty(strfind(output.message,'Local minimum'))
+if ~isempty(strfind(output.message,'Local minimum'))
     problem = createOptimProblem('fmincon','x0',pInitTransparent,...
         'objective',myFun,'lb',lb,'ub',ub,...
         'nonlcon',nonlinconst,'options',options);
-    gs = GlobalSearch('Display','off','MaxTime',5,'StartPointsToRun','bounds-ineqs');
-    [transparentEllipseParams,RMSE] = run(gs,problem);
+    gs = GlobalSearch('Display','off','MaxTime',p.Results.globalSearchMaxTimeSeconds,'StartPointsToRun','bounds-ineqs');
+    [transparentEllipseParams, RMSE] = run(gs,problem);
 end
 
 % Restore the warning state
