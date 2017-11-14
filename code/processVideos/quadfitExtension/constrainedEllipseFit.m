@@ -1,35 +1,22 @@
-function [pFitTransparent, pSD, e] = constrainedEllipseFit(x, y, lb, ub, nonlinconst)
-% constrainedEllipseFit(x, y, lb, ub, nonlinconst) 
+function [transparentEllipseParams, RMSE] = constrainedEllipseFit(x, y, lb, ub, nonlinconst)
+% constrainedEllipseFit(x, y, lb, ub, nonlinconst)
 %
 % This routine is a modification of a non-linear ellipse fitting routine
 % that is found within the "quadfit" matlab central toolbox. This routine
 % is dependent upon the quadfit toolbox.
 %
 % The routine fits an ellipse to data by minimizing point-to-curve
-% distance, using an iterative procedure. The fitting approach used here
-% has several customizations designed to assist the fitting of the boundary
-% of the pupil:
-%
-%  - The search is conducted over a parameterization of the ellipse that we
-%  refer to as "transparent" parameters. The transparent parameter set has
-%  explicit value for area and eccentricity (aspect ratio). This allows us
-%  to set boudnaries and non-linear constraints upon these aspects of the
-%  fit.
-%  - A standard deviation of the parameters is estimated from the inverse
-%  of the Hessian matrix. This is a flawed estimate for several reasons
-%  (not least of which is that this is a constrained search). Nonetheless,
-%  this value is found to be useful in subsequent Bayesian smoothing
-%  approaches that take place outside of this routine.
-%  - As the Hessian is sometimes not invertible, the routine detects for a
-%  singular or close to singular matrix and then will use a pseudo-inverse.
+% distance, using an iterative procedure. The search is conducted over a
+% parameterization of the ellipse that we refer to as "transparent"
+% parameters. The transparent parameter set has explicit value for area and
+% eccentricity (aspect ratio). This allows us to set boudnaries and
+% non-linear constraints upon these aspects of the fit.
 %
 % Output arguments:
-% pFitTransparent:
-%    parameters of ellipse expressed in transparent form (row vec)
-% pSD:
-%    standard deviations of the parameters estimated from the Hessian (row vec)
-% e:
-%    sqrt of the sum squared distance of the likelihood fit to the data
+%   transparentEllipseParams - parameters of ellipse expressed in transparent
+%       form (row vec)
+%   RMSE - root mean squared error of the distance of each
+%       point in the data to the fitted ellipse
 %
 % Input arguments
 % x,y:
@@ -46,9 +33,24 @@ function [pFitTransparent, pSD, e] = constrainedEllipseFit(x, y, lb, ub, nonlinc
 %    that c<=0 and ceq=0. This is an optional input or can be sent as
 %    empty.
 
-% Compute a close-enough initial estimate. This attempt is placed in a
-% try-catch block, as the attempt can fail and return non-real numbers. If
-% this happens, we exit the fitting routine with nans.
+
+%% Parse input
+p = inputParser;
+
+% Required
+p.addRequired('x',@isnumeric);
+p.addRequired('y',@isnumeric);
+p.addRequired('ub',@isnumeric);
+p.addRequired('lb',@isnumeric);
+p.addRequired('nonlinconst',@(x) (isempty(x) || isa(x, 'function_handle')) );
+
+% Parse and check the parameters
+p.parse(x, y, ub, lb, nonlinconst);
+
+
+%% Calculate an initial estimate of the ellipse parameters
+% This attempt is placed in a try-catch block, as the attempt can fail and
+% return non-real numbers.
 try
     pInitImplicit = quad2dfit_taubin(x,y);
     switch imconic(pInitImplicit,0)
@@ -58,12 +60,13 @@ try
         otherwise
             % The initial fit with Taubin's method didn't work, so try a
             % direct ellipse fit
-
+            
             % We someties obtain a singular matrix warning here; turn it
             % off temporarily
             warningState = warning;
             warning('off','MATLAB:singularMatrix');
-            % use direct least squares ellipse fit to obtain an initial estimate
+            % use direct least squares ellipse fit to obtain an initial
+            % estimate
             pInitImplicit = ellipsefit_direct(x,y);
             % Restore the warning state
             warning(warningState);
@@ -71,18 +74,18 @@ try
     % convert the initial estimate from implicit form to transparent form
     pInitTransparent = ellipse_ex2transparent(ellipse_im2ex(pInitImplicit));
 catch
-    pFitTransparent=nan(1,5);
-    pSD=nan;
-    e=nan;
+    % We couldn't find anything vaguely elliptical; return nans
+    transparentEllipseParams=nan(1,5);
+    RMSE=nan;
     return
 end
 
-% Find the ellipse parameters (in transparent form) using a non-linear
-% search.
+
+%% Perform non-linear search for transparent ellipse params
 
 % define some search options
 options = optimset('fmincon');
-options = optimset(options,'Diagnostics','off','Display','off','LargeScale','off','Algorithm','interior-point');
+options = optimset(options,'Diagnostics','off','Display','off','LargeScale','off','Algorithm','sqp');
 
 % Define the objective function, which is the RMSE of the distance values
 % of the boundary points to the ellipse fit
@@ -92,42 +95,28 @@ myFun = @(p) sqrt(nanmean(abs(ellipsefit_distance(x,y,ellipse_transparent2ex(p))
 warningState = warning;
 warning('off','MATLAB:nearlySingularMatrix');
 
-% Fit that sucker
-[pFitTransparent,e,~,~,~,~,Hessian] = fmincon(myFun, pInitTransparent, [], [], [], [], lb, ub, nonlinconst, options);
+% Perform the non-linear search
+[transparentEllipseParams,RMSE,exitflag,output] = ...
+    fmincon(myFun, pInitTransparent, [], [], [], [], lb, ub, nonlinconst, options);
+
+% If we received a local minimum warning on exit, re-fit the ellipse using
+% a more time-consuming global minimization approach.
+if exitflag==2 && ~isempty(strfind(output.message,'Local minimum'))
+    problem = createOptimProblem('fmincon','x0',pInitTransparent,...
+        'objective',myFun,'lb',lb,'ub',ub,...
+        'nonlcon',nonlinconst,'options',options);
+    gs = GlobalSearch('Display','off','MaxTime',5,'StartPointsToRun','bounds-ineqs');
+    [transparentEllipseParams,RMSE] = run(gs,problem);
+end
 
 % Restore the warning state
 warning(warningState);
 
-% The sqrt of the diagonals of the inverse Hessian matrix approxiates the
-%  standard deviation of the parameter estimates (with multiple caveats
-%  regarding how the Hessian returned by fmincon is inaccurate for this
-%  purpose).
+end % MAIN -- constrainedEllipseFit
 
-% We check to see if there was a warning regardng an inability to invert
-% the matrix, and if so we used the pseudo-inverse
 
-% save the current warning status and silence anticipated warnings
-warningState = warning;
-warning('off','MATLAB:nearlySingularMatrix');
-warning('off','MATLAB:singularMatrix');
 
-% empty the warning string
-lastwarn('');
-
-% try the inverse
-pSD = sqrt(diag(inv(Hessian)));
-
-% get the lastwarn status and used pinv if there was a problem
-[~, msgid] = lastwarn;
-switch msgid
-    case 'MATLAB:nearlySingularMatrix'
-      pSD = sqrt(diag(pinv(Hessian)));
-    case 'MATLAB:singularMatrix'
-      pSD = sqrt(diag(pinv(Hessian)));
-end
-
-% restore the warning status
-warning(warningState);
+%% LOCAL FUNCTIONS
 
 function [d,ddp] = ellipsefit_distance(x,y,p)
 % Distance of points to ellipse defined with explicit parameters (center,
@@ -179,44 +168,8 @@ if nargout > 1  % FIXME derivatives
     % derivative of distance to foot point w.r.t. parameters
     ddp = bsxfun(@rdivide, dPdp, realsqrt(dPdx.^2 + dPdy.^2));
 end
+end % ellipsefit_distance
 
-function [d,ddp] = ellipsefit_distance_kepler(x,y,p)
-% Distance of points to ellipse defined with Kepler's parameters.
-
-pcl = num2cell(p);
-[px,py,qx,qy,a] = pcl{:};
-
-% get foot points
-[xf,yf] = ellipsefit_foot_kepler(x,y,px,py,qx,qy,a);
-
-% calculate distance from foot points
-d = realsqrt((x-xf).^2 + (y-yf).^2);
-
-% use ellipse equation P = 0 to determine if point inside ellipse (P < 0)
-f = realsqrt((x-px).^2+(y-py).^2) + realsqrt((x-qx).^2+(y-qy).^2) - 2*a < 0;
-
-% convert to signed distance, d < 0 inside ellipse
-d(f) = -d(f);
-
-if nargout > 1
-    % compute partial derivatives of ellipse equation P given with Kepler's parameters
-    % in Kepler's form, the foci of an ellipse are (px;py) and (qx;qy),
-    % and 2*a is the major axis such that the parameter vector is [p1 p2 q1 q2 a]
-    
-    % Jacobian matrix, i.e. derivatives w.r.t. parameters
-    dPdp = [ ...  % Jacobian J is m-by-n, where m = numel(x) and n = numel(p) = 5
-        -(xf-px)./realsqrt((xf-px).^2+(yf-py).^2), ...
-        -(yf-py)./realsqrt((xf-px).^2+(yf-py).^2), ...
-        -(xf-qx)./realsqrt((xf-qx).^2+(yf-qy).^2), ...
-        -(yf-qy)./realsqrt((xf-qx).^2+(yf-qy).^2), ...
-        -2.*ones(size(xf)) ...
-        ];
-    dPdx = (xf-px)./realsqrt((xf-px).^2+(yf-py).^2) + (xf-qx)./realsqrt((xf-qx).^2+(yf-qy).^2);
-    dPdy = (yf-py)./realsqrt((xf-px).^2+(yf-py).^2) + (yf-qy)./realsqrt((xf-qx).^2+(yf-qy).^2);
-    
-    % derivative of distance to foot point w.r.t. parameters
-    ddp = bsxfun(@rdivide, dPdp, realsqrt(dPdx.^2 + dPdy.^2));
-end
 
 function [xf,yf] = ellipsefit_foot(x,y,cx,cy,a,b,theta)
 % Foot points obtained by projecting a set of coordinates onto an ellipse.
@@ -224,21 +177,5 @@ function [xf,yf] = ellipsefit_foot(x,y,cx,cy,a,b,theta)
 xfyf = quad2dproj([x y], [cx cy], [a b], theta);
 xf = xfyf(:,1);
 yf = xfyf(:,2);
+end % ellipsefit_foot
 
-function [xf,yf] = ellipsefit_foot_kepler(x,y,px,py,qx,qy,a)
-% Foot points obtained by projecting a set of coordinates onto an ellipse.
-%
-% Input arguments:
-% x,y:
-%    coordinates to data points to project
-% px,py,qx,qy:
-%    coordinates of ellipse foci
-% a:
-%    ellipse semi-major axis length
-
-c1 = 0.5*(px+qx);
-c2 = 0.5*(py+qy);
-cf2 = (c1-px)^2 + (c2-py)^2;  % distance squared from center to focus
-b = realsqrt(a^2 - cf2);
-theta = atan2(qy-py,qx-px);  % tilt angle
-[xf,yf] = ellipsefit_foot(x,y,c1,c2,a,b,theta);

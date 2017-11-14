@@ -76,8 +76,7 @@ function [pupilData] = smoothPupilArea(perimeterFileName, pupilFileName, sceneGe
 %   'whichLikelihoodSD' - The variance of the measured parameters for a
 %     frame can be estimated using different methods. This setting controls
 %     which of these is used to set the SD of the likelihood in the
-%     calculation of the posterior. Example valid values:
-%       'ellipseParamsSceneConstrained_hessianSD'
+%     calculation of the posterior. The usual value is:
 %       'ellipseParamsSceneConstrained_splitsSD'
 %   'areaIdx' - The index of the ellipse parameters that holds pupil area.
 %
@@ -350,7 +349,7 @@ parfor (ii = 1:nFrames, nWorkers)
         ub_pin = pupilData.(whichLikelihoodMean)(ii,:);
         lb_pin(areaIdx)=reconstructedTransparentEllipse(areaIdx);
         ub_pin(areaIdx)=reconstructedTransparentEllipse(areaIdx);
-        [pPosteriorMeanTransparent, ~, pPosteriorFitError] = constrainedEllipseFit(Xc,Yc, lb_pin, ub_pin, nonlinconst);
+        [pPosteriorMeanTransparent, pPosteriorFitError] = constrainedEllipseFit(Xc,Yc, lb_pin, ub_pin, nonlinconst);
         
     end % check if there are any perimeter points to fit
     
