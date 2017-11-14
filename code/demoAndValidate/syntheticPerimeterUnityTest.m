@@ -27,8 +27,7 @@ allPupilEle = [0 randn(1,nFrames-1)*15]; % in degrees
 
 %% construct scene geometry
 % we will construct a scene where the CoR sits right at the center, and the
-% pupil rotates on a 250 pixels radius. The first ellipse is, by
-% construction, projected as a true circle.
+% pupil rotates on a 250 pixels radius.
 
 % define the eye sphere radius
 eyeballR =  250+15;
@@ -96,7 +95,7 @@ for ii = 1:length(allPupilAzi)
     pupilPoints2d = projPointOnPlane(pupilPoints3d,scenePlane);
     
     % add a little noise to the points
-%    pupilPoints2d = awgn(pupilPoints2d,3);
+    %    pupilPoints2d = awgn(pupilPoints2d,3);
     
     % make the plot and save it as a frame
     imshow(emptyFrame);
@@ -108,7 +107,7 @@ for ii = 1:length(allPupilAzi)
     xlim([0 videoSizeX]);
     truesize;
     hold off
-
+    
     % get the frame
     thisFrame(ii) = getframe(gca);
     
@@ -148,5 +147,28 @@ sceneDiagnosticPlotFileName = fullfile(sandboxDir, 'syntheticPerimeter_sceneDiag
 finalFitVideoName = fullfile(sandboxDir, 'syntheticPerimeter_finalFit.avi');
 
 findPupilPerimeter(syntheticPerimVideoName,syntheticPerimFileName,'verbosity','full');
-fitPupilPerimeter(syntheticPerimFileName, pupilFileName,'verbosity','full','ellipseTransparentLB',[0, 0, 300, 0, -0.5*pi],'ellipseTransparentUB',[videoX,videoY,20000,0.75, 0.5*pi],'nSplits',0);
-estimateSceneGeometry(pupilFileName, sceneGeometryFileName,'sceneDiagnosticPlotFileName', sceneDiagnosticPlotFileName,'sceneDiagnosticPlotSizeXY', [videoX videoY]);
+pupilData = fitPupilPerimeter(syntheticPerimFileName, pupilFileName,'verbosity','full','ellipseTransparentLB',[0, 0, 300, 0, -0.5*pi],'ellipseTransparentUB',[videoX,videoY,20000,0.75, 0.5*pi],'nSplits',0);
+sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileName,'sceneDiagnosticPlotFileName', sceneDiagnosticPlotFileName,'sceneDiagnosticPlotSizeXY', [videoX videoY]);
+
+
+%% Verify that the scene geometry allows for the correct reconstruction of the eye movements
+
+ellipses = pupilData.ellipseParamsUnconstrained_mean;
+centerOfProjection = [sceneGeometry.eyeCenter.X sceneGeometry.eyeCenter.Y];
+projectionModel = 'orthogonal';
+
+for ii = 1:nFrames
+    [reconstructedPupilAzi(ii), reconstructedPupilEle(ii), reconstructedPupilArea(ii)] = pupilProjection_inv(ellipses(ii,:), centerOfProjection, projectionModel);
+end
+
+% plot real Azi and Ele vs reconstructed ones
+figure
+subplot(1,2,1)
+plot(allPupilAzi,reconstructedPupilAzi, '.')
+xlabel('Ground Truth Pupil Azimuth in degrees')
+ylabel('Reconstructed Pupil Azimuth in degrees')
+
+subplot(1,2,2)
+plot(allPupilEle,reconstructedPupilEle, '.')
+xlabel('Ground Truth Pupil Elevation in degrees')
+ylabel('Reconstructed Pupil Elevation in degrees')
