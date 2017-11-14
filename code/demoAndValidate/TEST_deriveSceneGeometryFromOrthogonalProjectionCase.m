@@ -1,4 +1,4 @@
-% synthetic perimeter unit test
+% TEST_deriveSceneGeometryFromOrthogonalProjectionCase
 
 % this script generates a video recording of a "pupil" moving in 3D space.
 % The pupil is centered in the scene, has a fixed area and rotates around a
@@ -12,7 +12,12 @@
 
 
 %% Define sandbox dir
-sandboxDir = '~/Desktop/eyeTrackingDEMO';
+sandboxDir = '~/Desktop/sceneGeometryFromOrthogonalTEST';
+
+% check or make a directory for output
+    if exist(sandboxDir,'dir')==0
+        mkdir(sandboxDir);
+    end
 
 %% UnitVideo settings
 syntheticPerimVideoName = fullfile(sandboxDir, 'synthetic.avi');
