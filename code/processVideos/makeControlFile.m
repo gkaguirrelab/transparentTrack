@@ -361,7 +361,7 @@ parfor (ii = 1:nFrames, nWorkers)
         % fit the ellipse fails
         try
             % fit an ellipse to the full perimeter using the constrainedEllipseFit
-            [~, ~, originalFittingError] = constrainedEllipseFit(Xp, Yp, ...
+            [~, originalFittingError] = constrainedEllipseFit(Xp, Yp, ...
                 p.Results.ellipseTransparentLB, ...
                 p.Results.ellipseTransparentUB, ...
                 nonlinconst);
@@ -555,6 +555,6 @@ end % function
 function [distanceError] = calcErrorForACut(theFrame, radiusThresh, theta, lb, ub, nonlinconst)
 [binPcut] = applyPupilCut (theFrame, radiusThresh, theta);
 [Yp, Xp] = ind2sub(size(binPcut),find(binPcut));
-[~, ~, distanceError] = constrainedEllipseFit(Xp, Yp, lb, ub, nonlinconst);
+[~, distanceError] = constrainedEllipseFit(Xp, Yp, lb, ub, nonlinconst);
 end
 
