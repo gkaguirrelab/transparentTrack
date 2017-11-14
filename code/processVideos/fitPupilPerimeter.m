@@ -249,12 +249,11 @@ parfor (ii = 1:nFrames, nWorkers)
         % fit an ellipse to the boundary (if any points exist)
         if isempty(Xc) || isempty(Yc)
             ellipseParamsTransparent=NaN(1,nEllipseParams);
-            ellipseParamsHessianSD=NaN(1,nEllipseParams);
             ellipseParamsSplitsSD=NaN(1,nEllipseParams);
             ellipseParamsError=NaN(1);
         else
             % Obtain the fit to the veridical data
-            [ellipseParamsTransparent, ellipseParamsHessianSD, ellipseParamsError] = ...
+            [ellipseParamsTransparent, ellipseParamsError] = ...
                 constrainedEllipseFit(Xc, Yc, ...
                 ellipseTransparentLB, ...
                 ellipseTransparentUB, ...
@@ -297,7 +296,6 @@ parfor (ii = 1:nFrames, nWorkers)
         
         % store results
         loopVar_ellipseParamsTransparent(ii,:) = ellipseParamsTransparent';
-        loopVar_ellipseParamsHessianSD(ii,:) = ellipseParamsHessianSD';
         loopVar_ellipseParamsSplitsSD(ii,:) = ellipseParamsSplitsSD';
         loopVar_ellipseParamsError(ii) = ellipseParamsError;
     catch ME
@@ -328,7 +326,6 @@ if isempty(p.Results.sceneGeometryFileName)
     pupilData.meta.fitPupilPerimeterUnconstrained = p.Results;
     pupilData.meta.fitPupilPerimeterUnconstrained.coordinateSystem = 'intrinsicCoordinates(pixels)';
     pupilData.ellipseParamsUnconstrained_mean = loopVar_ellipseParamsTransparent;
-    pupilData.ellipseParamsUnconstrained_hessianSD = loopVar_ellipseParamsHessianSD;
     pupilData.ellipseParamsUnconstrained_rmse = loopVar_ellipseParamsError';
     if nSplits~=0
         pupilData.ellipseParamsUnconstrained_splitsSD = loopVar_ellipseParamsSplitsSD;
@@ -337,7 +334,6 @@ else
     pupilData.meta.fitPupilPerimeterSceneConstrained = p.Results;
     pupilData.meta.fitPupilPerimeterSceneConstrained.coordinateSystem = 'intrinsicCoordinates(pixels)';
     pupilData.ellipseParamsSceneConstrained_mean = loopVar_ellipseParamsTransparent;
-    pupilData.ellipseParamsSceneConstrained_hessianSD = loopVar_ellipseParamsHessianSD;
     pupilData.ellipseParamsSceneConstrained_rmse = loopVar_ellipseParamsError';
     if nSplits~=0
         pupilData.ellipseParamsSceneConstrained_splitsSD = loopVar_ellipseParamsSplitsSD;
