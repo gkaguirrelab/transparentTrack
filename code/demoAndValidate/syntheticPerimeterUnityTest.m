@@ -21,8 +21,8 @@ writerObj.FrameRate = 60;
 
 % define eye movements
 % define rotations in deg
-allPupilAzi = linspace(0,60,nFrames); % in degrees
-allPupilEle = zeros(1,nFrames); % in degrees
+allPupilAzi = [0 randn(1,nFrames-1)*15]; % in degrees
+allPupilEle = [0 randn(1,nFrames-1)*15]; % in degrees
 
 
 %% construct scene geometry
@@ -62,18 +62,8 @@ opticalAxis = createLine3d(eyeballCenter,centerOfProjection3D);
 %% create the scene and save a frame in the video
 % we save a video here, where the background is white and the pupil ellipse
 % is black and filled.
-% by default, matlab will plot the scene with a 1:1 pixel ratio.
 
-% To try and understand if pixel ratio influences the appearence of the
-% pupil on the scene, we can comment in/out the PlotBoxAspectRatio line,
-% that would set the plot pixel ratio to 4:3. This is the pixel ratio
-% of the camera we use. We don't know for sure this is the pixel ratio of the
-% video when it is digitalized by the V.TOP, but it is likely.
-
-
-% select pixel ratio
-pixelRatio = '4:3';
-% pixelRatio = '1:1';
+emptyFrame = ones(videoSizeY, videoSizeX);
 
 h = figure('visible','off');
 % create scene, save a frame
@@ -106,21 +96,19 @@ for ii = 1:length(allPupilAzi)
     pupilPoints2d = projPointOnPlane(pupilPoints3d,scenePlane);
     
     % add a little noise to the points
-    pupilPoints2d = awgn(pupilPoints2d,3);
+%    pupilPoints2d = awgn(pupilPoints2d,3);
     
     % make the plot and save it as a frame
-    fill(pupilPoints2d(:,1),pupilPoints2d(:,2),'k')
-    
-    % format the axis with a 4:3 ratio (default 1:1)
-    switch pixelRatio
-        case '4:3'
-            set(gca,'PlotBoxAspectRatio',[4 3 1])
-        case '1:1'
-            % do nothing
-    end
-    xlim([-xMax xMax])
-    ylim([-yMax yMax])
-    
+    imshow(emptyFrame);
+    hold on
+    fill(pupilPoints2d(:,1)+xMax,pupilPoints2d(:,2)+yMax,'k')
+    axis equal
+    axis off
+    ylim([0 videoSizeY]);
+    xlim([0 videoSizeX]);
+    truesize;
+    hold off
+
     % get the frame
     thisFrame(ii) = getframe(gca);
     
@@ -141,17 +129,6 @@ open(writerObj);
 for ii=1:nFrames
     indexedFrame = rgb2ind(thisFrame(ii).cdata,cmap, 'nodither');
     
-    switch pixelRatio
-        case '1:1'
-            % doubling the size of this image makes the size dimensions even
-            % numbers (use for 1:1 case)
-            indexedFrame = imresize(indexedFrame,2);
-            
-        case '4:3'
-            % if the aspect ratio is corrected to 4:3, the video can be scaled to
-            % match the LiveTrack+V.TOP video resolution.
-            indexedFrame = imresize(indexedFrame,[videoSizeY videoSizeX]);
-    end
     
     % get video size
     videoX = size(indexedFrame,2);
