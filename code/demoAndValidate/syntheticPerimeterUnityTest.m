@@ -1,9 +1,19 @@
-% script UNITY TEST 2
+% synthetic perimeter unit test
+
+% this script generates a video recording of a "pupil" moving in 3D space.
+% The pupil is centered in the scene, has a fixed area and rotates around a
+% fixed length radius. The rotations are defined by an Azimuth and
+% an Elevation angle.
+% The video is saved and later analyzed using the standard processing
+% function up to reconstructing the scene geometry.
+% Finally the pupil is projected back in 3D space using the ellipse fits
+% and the reconstructed scene geometry, to verify that the reconstruction
+% matches the ground truth movement pattern.
 
 
-% make an artificial perimeter video, based on a "real eye"
-
+%% Define sandbox dir
 sandboxDir = '~/Desktop/eyeTrackingDEMO';
+
 %% UnitVideo settings
 syntheticPerimVideoName = fullfile(sandboxDir, 'synthetic.avi');
 
@@ -139,7 +149,7 @@ end
 
 close (writerObj);
 
-%% use this video in the pipeline
+%% use this video in the video pipeline 
 syntheticPerimFileName = fullfile(sandboxDir, 'synthetic_perimeter.mat');
 pupilFileName = fullfile(sandboxDir, 'syntheticPerimeter_pupil.mat');
 sceneGeometryFileName = fullfile(sandboxDir, 'syntheticPerimeter_sceneGeometry.mat');
