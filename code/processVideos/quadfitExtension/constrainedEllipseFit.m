@@ -105,7 +105,7 @@ if exitflag==2 && ~isempty(strfind(output.message,'Local minimum'))
     problem = createOptimProblem('fmincon','x0',pInitTransparent,...
         'objective',myFun,'lb',lb,'ub',ub,...
         'nonlcon',nonlinconst,'options',options);
-    gs = GlobalSearch('Display','off');
+    gs = GlobalSearch('Display','off','MaxTime',5,'StartPointsToRun','bounds-ineqs');
     [transparentEllipseParams,RMSE] = run(gs,problem);
 end
 
