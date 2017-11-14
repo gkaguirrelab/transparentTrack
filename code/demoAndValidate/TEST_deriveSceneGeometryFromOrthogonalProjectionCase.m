@@ -10,6 +10,10 @@
 % and the reconstructed scene geometry, to verify that the reconstruction
 % matches the ground truth movement pattern.
 
+%% Clean up
+clearvars
+close all
+
 
 %% Define sandbox dir
 sandboxDir = '~/Desktop/sceneGeometryFromOrthogonalTEST';
@@ -36,8 +40,8 @@ writerObj.FrameRate = 60;
 
 % define eye movements
 % define rotations in deg
-allPupilAzi = [0 randn(1,nFrames-1)*15]; % in degrees
-allPupilEle = [0 randn(1,nFrames-1)*15]; % in degrees
+allPupilAzi = [randn(1,nFrames)*15]; % in degrees
+allPupilEle = [randn(1,nFrames)*15]; % in degrees
 
 
 %% construct scene geometry
@@ -54,7 +58,6 @@ eyeball = [eyeballCenter eyeballR];
 planeDepth = 5;
 intersectingSphere = [eyeballCenter eyeballR-planeDepth];
 
-
 % rotation arm length
 rotationArmLength = eyeballR - planeDepth;
 
@@ -66,7 +69,6 @@ scenePlane = createPlane([0 0 rotationArmLength+sceneDistance],[0 0 rotationArmL
 
 % center of projection
 centerOfProjection3D = projPointOnPlane(eyeballCenter, scenePlane);
-
 
 % derive optical axis
 % [centerOfProjectionX,centerOfProjectionY,centerOfProjectionZ] = sph2cart(azi0,ele0,rotationArmLength);
@@ -110,7 +112,7 @@ for ii = 1:length(allPupilAzi)
     pupilPoints2d = projPointOnPlane(pupilPoints3d,scenePlane);
     
     % add a little noise to the points
-    %    pupilPoints2d = awgn(pupilPoints2d,3);
+    pupilPoints2d = awgn(pupilPoints2d,.5);
     
     % make the plot and save it as a frame
     imshow(emptyFrame);
