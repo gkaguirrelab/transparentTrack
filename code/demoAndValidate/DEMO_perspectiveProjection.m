@@ -59,7 +59,7 @@ opticalAxis = createLine3d(eyeCenter,centerOfProjection3D);
 %% rotate the optical axis along X and Y and draw the pupil
 % define rotations in deg
 pupilAzi = 20; % in degrees
-pupilEle = 20; % in degrees
+pupilEle = 50; % in degrees
 
 % first rotate along Y (azi)
 rotationX = createRotationOy(eyeCenter, deg2rad(pupilAzi));
@@ -93,7 +93,7 @@ relativeDepth = rotationArmLength*(1-(cosd(pupilEle)*cosd(pupilAzi)));
 pupilPoints2d = projPointOnPlane(pupilPoints3d,scenePlane);
 
 % scale projected points according to the relativeDepth
-pupilPoints2d = pupilPoints2d.* (rotationArmLength/(rotationArmLength + relativeDepth));
+pupilPoints2d = pupilPoints2d.* (sceneDistance/(sceneDistance + relativeDepth));
 
 %%  plots
 
