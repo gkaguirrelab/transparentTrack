@@ -59,7 +59,7 @@ opticalAxis = createLine3d(eyeCenter,centerOfProjection3D);
 %% rotate the optical axis along X and Y and draw the pupil
 % define rotations in deg
 pupilAzi = 20; % in degrees
-pupilEle = 0; % in degrees
+pupilEle = 20; % in degrees
 
 % first rotate along Y (azi)
 rotationX = createRotationOy(eyeCenter, deg2rad(pupilAzi));
@@ -83,10 +83,17 @@ pupilRadius = pupilInEye(4); % saving it explicitely for reference
 pupilPoints3d = getCirclePoints3d(pupilInEye);
 
 
-%% reconstruct scene geometry.
+%% Calculate perspective
 
+% get the relative distance of the center of the rotated circle from the original center
+% position for pseudo perspective correction
+relativeDepth = rotationArmLength*(1-(cosd(pupilEle)*cosd(pupilAzi)));
 
+% do orthogonal projeciton on the scene plane
+pupilPoints2d = projPointOnPlane(pupilPoints3d,scenePlane);
 
+% scale projected points according to the relativeDepth
+pupilPoints2d = pupilPoints2d.* (rotationArmLength/(rotationArmLength + relativeDepth));
 
 %%  plots
 
@@ -114,10 +121,14 @@ hold on
 drawLine3d(pupilAxis,'b')
 hold on
 
+% add the pupil to the scene in the figure
+plot3(pupilPoints2d(:,1),pupilPoints2d(:,2),rotationArmLength+sceneDistance *ones(length(pupilPoints2d)),'-','color','red')
 
 % add labels
 xlabel('X')
 ylabel('Y')
 zlabel('Z')
 
+% % set the scene to be viewed with perspective projection
+% set(gca,'Projection','perspective')
 axis equal
