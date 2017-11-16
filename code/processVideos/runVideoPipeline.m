@@ -343,15 +343,27 @@ switch funNames{ff}
     case 'findGlint'
         perimeterFileName=[]; controlFileName=[]; pupilFileName=[]; sceneGeometryFileName=[]; irisFileName=[];
     case 'findPupilPerimeter'
+        if ~exist(glintFileName,'file')
+            glintFileName = [];
+        end
         perimeterFileName=initialPerimeterFileName;
         controlFileName=[]; pupilFileName=[]; sceneGeometryFileName=[]; irisFileName=[];
     case 'makeControlFile'
+        if ~exist(glintFileName,'file')
+            glintFileName = [];
+        end
         perimeterFileName=initialPerimeterFileName;
         controlFileName=[]; pupilFileName=[]; sceneGeometryFileName=[]; irisFileName=[];
     case 'applyControlFile'
+        if ~exist(glintFileName,'file')
+            glintFileName = [];
+        end
         perimeterFileName=correctedPerimeterFileName;
         pupilFileName=[]; sceneGeometryFileName=[]; irisFileName=[];
     case 'fitPupilPerimeter'
+        if ~exist(glintFileName,'file')
+            glintFileName = [];
+        end
         perimeterFileName=correctedPerimeterFileName;
         sceneGeometryFileName=[]; irisFileName=[];
         % If the sceneGeometry has been determined by this point, we can
@@ -365,13 +377,22 @@ switch funNames{ff}
             end
         end
     case 'estimateSceneGeometry'
+        if ~exist(glintFileName,'file')
+            glintFileName = [];
+        end
         perimeterFileName=correctedPerimeterFileName;
         irisFileName=[];
         varargin={varargin{:}, 'whichFieldToPlot', 'ellipseParamsUnconstrained_mean'};
     case 'smoothPupilArea'
+        if ~exist(glintFileName,'file')
+            glintFileName = [];
+        end
         perimeterFileName=correctedPerimeterFileName;
         irisFileName=[];
     case 'fitIrisPerimeter'
+        if ~exist(glintFileName,'file')
+            glintFileName = [];
+        end
         perimeterFileName=correctedPerimeterFileName;
     otherwise
         warning('I do not recognize that stage. Returning without creating a stage fit video');
