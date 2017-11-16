@@ -167,7 +167,6 @@ findPupilPerimeter(syntheticPerimVideoName,syntheticPerimFileName,'verbosity','f
 pupilData = fitPupilPerimeter(syntheticPerimFileName, pupilFileName,'verbosity','full','ellipseTransparentLB',[0, 0, 300, 0, -0.5*pi],'ellipseTransparentUB',[videoX,videoY,20000,0.75, 0.5*pi],'nSplits',0);
 sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileName,'sceneDiagnosticPlotFileName', sceneDiagnosticPlotFileName,'sceneDiagnosticPlotSizeXY', [videoX videoY]);
 
-
 %% Verify that the scene geometry allows for the correct reconstruction of the eye movements
 
 ellipses = pupilData.ellipseParamsUnconstrained_mean;

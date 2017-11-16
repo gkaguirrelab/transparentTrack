@@ -202,8 +202,13 @@ outputVideo=zeros(videoSizeY,videoSizeX,3,nFrames,'uint8');
 
 % get glintData ready for the parfor. This includes transposing the
 % variables 
-glintData_X = glintData.X;
-glintData_Y = glintData.Y;
+if ~isempty(p.Results.glintFileName)
+    glintData_X = glintData.X;
+    glintData_Y = glintData.Y;
+else
+    glintData_X = nan(1,nFrames);
+    glintData_Y = nan(1,nFrames);
+end
 
 % Recast perimeter.data into a sliced cell array to reduce par for
 % broadcast overhead
