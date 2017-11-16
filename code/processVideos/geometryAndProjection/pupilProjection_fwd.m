@@ -1,4 +1,4 @@
-function reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzi, pupilEle, pupilArea, pupilCenter3D, eyeRadius, projectionModel)
+function reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzi, pupilEle, pupilArea, pupilCenter3D, eyeRadius, eyeCenter, projectionModel)
 % reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzi, pupilEle, pupilCenter3D)
 % 
 % Returns the transparent ellipse params of the pupil projection on the
@@ -36,6 +36,11 @@ function reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzi, pupilEl
 % initiate reconstructedTransparentEllipse
 reconstructedTransparentEllipse = nan(1,5);
 
+% if we have a non-defined case, just return all nans
+if any(isnan([pupilAzi pupilEle]))
+return
+end
+
 % define ellipse center
 switch projectionModel
     case 'orthogonal'
@@ -43,35 +48,19 @@ switch projectionModel
     % the ellipse center in the plane of projection.
     reconstructedTransparentEllipse(1) = pupilCenter3D(1);
     reconstructedTransparentEllipse(2) = pupilCenter3D(2);
-    case 'weakPerspectiveProjection'
+    case 'pseudoPerspectiveProjection'
         % for the weak perspective correction,we uniformly scale the
         % orthogonal projection according to the scene distance and the eye
         % radius.
         
-        % get the perspective projection correction factor (we will
-        % apply it later)
+        % get the perspective projection correction factor 
         relativeDepth = eyeRadius*(1-(cosd(pupilEle)*cosd(pupilAzi)));
-        sceneDistance = abs(pupilCenter3D(3) - eyeRadius);
+        sceneDistance = abs(eyeCenter(3) - eyeRadius);
         perspectiveCorrectionFactor = (sceneDistance/(sceneDistance + relativeDepth));
         
+        % apply perspective correction factor to the pupil center
         reconstructedTransparentEllipse(1) = pupilCenter3D(1) * perspectiveCorrectionFactor;
         reconstructedTransparentEllipse(2) = pupilCenter3D(2) * perspectiveCorrectionFactor;
-        
-        
-    case 'pseudoPerspectiveProjection'
-        error ('Not yet implemented')
-        % for the pseudo perspective correction we scale the position of
-        % the center according to scene distance and the eye radius and
-        % then we carry on the orthogonal projection.
-%         
-%         % get the perspective projection correction factor
-%         relativeDepth = pupilRadius*(1-(cosd(pupilEle)*cosd(pupilAzi)));
-%         sceneDistance = abs(pupilCenter3D(3) - pupilRadius);
-%         perspectiveCorrectionFactor = (sceneDistance/(sceneDistance + relativeDepth));
-%         
-%         % apply the correction factor to the pupi center
-%         reconstructedTransparentEllipse(1) = pupilCenter3D(1) * perspectiveCorrectionFactor;
-%         reconstructedTransparentEllipse(2) = pupilCenter3D(2) * perspectiveCorrectionFactor;
 end
 
 % derive transparent parameters
@@ -114,7 +103,8 @@ if ~isnan(pupilArea)
             % to determine the ellipse area.
             pupilRadius = sqrt(pupilArea/pi);
             semiMajorAxis = pupilRadius;
-        case 'weakPerspectiveProjection'
+        case 'pseudoPerspectiveProjection'
+            % apply scaling factor to pupil area
             pupilRadius = sqrt((pupilArea * perspectiveCorrectionFactor)/pi);
             semiMajorAxis = pupilRadius;
     end
