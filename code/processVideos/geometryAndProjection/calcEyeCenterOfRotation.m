@@ -47,8 +47,8 @@ switch p.Results.projectionModel
         else
             % Find candidate azimuth and elevation values (unless the eccentricity
             % is zero, this will return 2 values for each angle).
-            centerOfProjection = nan;
-            [reconstructedPupilAzi, reconstructedPupilEle, ~] = pupilProjection_inv(transparentEllipse, centerOfProjection, p.Results.projectionModel);
+            eyeCenter = [nan nan nan];
+            [reconstructedPupilAzi, reconstructedPupilEle, ~] = pupilProjection_inv(transparentEllipse, eyeCenter, eyeRadiusInPixels, p.Results.projectionModel);
             
             % if the pupilAzi or the pupilEle is zero
             if ~any(reconstructedPupilAzi) || ~any(reconstructedPupilEle)
@@ -70,7 +70,7 @@ switch p.Results.projectionModel
                     end
                 end
             end
-            % find the eyeball center coordinates for this ellipse
+            % find the eye center coordinates for this ellipse
             for ii = 1: length(anglePairs)
                 delta(ii,:) = eyeRadiusInPixels * [ sind(anglePairs(ii,1)) sind(anglePairs(ii,2))];
                 eyeCenterOfRotation (ii,:) = [transparentEllipse(1)-delta(ii,1) transparentEllipse(2)-delta(ii,2) 0];
