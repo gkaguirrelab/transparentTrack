@@ -1,4 +1,4 @@
-function [reconstructedPupilAzi, reconstructedPupilEle, reconstructedPupilArea] = pupilProjection_inv(transparentEllipse, centerOfProjection, eyeRadius, sceneDistance, projectionModel)
+function [reconstructedPupilAzi, reconstructedPupilEle, reconstructedPupilArea] = pupilProjection_inv(transparentEllipse, eyeCenter, eyeRadius, projectionModel)
 % [reconstructedHorizontalAngle, reconstructedVerticalAngle] =
 % pupilProjection_inv(transparentEllipse,centerOfProjection)
 %
@@ -22,15 +22,13 @@ function [reconstructedPupilAzi, reconstructedPupilEle, reconstructedPupilArea] 
 %
 % Required inputs:
 %   transparentEllipse - ellipse in transparent form
-%   center of projection -[X Y] coordinates of the center of projection on
-%       the scene. The center of projection is the center of the projected
-%       pupil that preserves its circular shape in the scene.
-%   eyeRadius - the estimate radius for the eye
-%   sceneDistance - orthogonal distance of the scene from the center of
-%       projection
+%   eyeCenter - 3D coordinates of the eye center in the scene reference
+%       system. This could be a vector assembled from the .X, .Y, and .Z
+%       vaues of the sceneGeometry.eyeCenter
+%   eyeRadius - the estimate radius for the eye (can be empty for
+%       orthogonal projection)
 %   projectionModel - string that identifies the projection model to use.
 %       Options include "orthogonal" and "pseudoPerspective"
-
 
 
 %% variable definitions
@@ -43,40 +41,39 @@ if any(isnan(transparentEllipse(1:2)))
     return
 end
 
-
 % projection variables
 k = sqrt(1 - (transparentEllipse(4)^2));
-theta = round(transparentEllipse(5),4);
+theta = (transparentEllipse(5));
 
 % pupil center
 switch projectionModel
     case 'orthogonal'
-        centerX = round(transparentEllipse(1),4);
-        centerY = round(transparentEllipse(2),4);
+        centerX = (transparentEllipse(1));
+        centerY = (transparentEllipse(2));
     case 'pseudoPerspective'
-        % at this stage we just use the ortogonal projection of the ellipse
+        % at this stage we just use the orthogonal projection of the ellipse
         % center to determine the location of the ellipse with respect to
-        % the center of correction.
-        centerX = round(transparentEllipse(1),4);
-        centerY = round(transparentEllipse(2),4);
+        % the center of projection.
+        centerX = (transparentEllipse(1));
+        centerY = (transparentEllipse(2));
 end
 
 % derive horizontal tilt angle (azimuth)
-if ~isnan(centerOfProjection)
-    if centerX > centerOfProjection(1)
+if any(~isnan(eyeCenter))
+    if centerX > eyeCenter(1)
         reconstructedPupilAzi = asind(sqrt((sin(theta))^2 * (1 -k^2)));
-    elseif centerX < centerOfProjection(1)
+    elseif centerX < eyeCenter(1)
         reconstructedPupilAzi = - asind(sqrt((sin(theta))^2 * (1 -k^2)));
-    elseif centerX == centerOfProjection(1)
+    elseif centerX == eyeCenter(1)
         reconstructedPupilAzi = 0;
     end
     
     % derive vertical tilt angle (elevation)
-    if centerY > centerOfProjection(2)
+    if centerY > eyeCenter(2)
         reconstructedPupilEle = asind(sqrt(((cos(theta))^2 *(k^2 - 1))/(((sin(theta))^2 * (1 -k^2)) -1)));
-    elseif centerY < centerOfProjection(2)
+    elseif centerY < eyeCenter(2)
         reconstructedPupilEle = -asind(sqrt(((cos(theta))^2 *(k^2 - 1))/(((sin(theta))^2 * (1 -k^2)) -1)));
-    elseif centerY == centerOfProjection(2)
+    elseif centerY == eyeCenter(2)
         reconstructedPupilEle = 0;
     end
 else
@@ -94,17 +91,21 @@ if ~isnan(transparentEllipse(3))
             reconstructedPupilRadius = sqrt(transparentEllipse(3) / (pi * k));
             reconstructedPupilArea = pi * reconstructedPupilRadius^2;
         case 'pseudoPerspective'
-            if ~isnan(centerOfProjection)
+            if ~isnan(eyeCenter)
+                
                 % calculate the perspective correction factor
+                sceneDistance = abs(eyeCenter(3) - eyeRadius);
                 relativeDepth = eyeRadius*(1-(cosd(reconstructedPupilEle)*cosd(reconstructedPupilAzi)));
                 perspectiveCorrectionFactor = (sceneDistance/(sceneDistance + relativeDepth));
                 
                 % calculate pupil radius including the perspective
                 % correction factor for the ellipse area
-                reconstructedPupilRadius = sqrt(transparentEllipse(3)*perspectiveCorrectionFactor / (pi * k));
+                apparentPupilRadius = sqrt(transparentEllipse(3)/ (pi * k));
+                
+                reconstructedPupilRadius = apparentPupilRadius./perspectiveCorrectionFactor;
                 
                 % calculate the area
-                reconstructedPupilArea = pi * reconstructedPupilRadius^2;    
+                reconstructedPupilArea = pi * reconstructedPupilRadius^2;
             else
                 error('Cannot apply perspective correction without knowing the center of projection')
             end
