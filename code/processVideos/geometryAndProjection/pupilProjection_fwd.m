@@ -18,16 +18,20 @@ function reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzi, pupilEl
 %   reconstructedTransparentEllipse - ellipse in transparent form
 % 
 % Required inputs:
-% pupilAzi - rotation of the pupil in the XY plane in degrees,
+%   pupilAzi - rotation of the pupil in the XY plane in degrees,
 %       with the center being the centerOfProjection on the scene.
-% pupilEle - elevation of the pupil from the XY plane in degrees,
+%   pupilEle - elevation of the pupil from the XY plane in degrees,
 %       with the center being the centerOfProjection on the scene.
-% pupilArea - if not set to nan, the routine will return the ellipse area
-% pupilCenter3D - center of the pupil in 3D, where X and Y are parallel to
-%	the scene plane and Z is the distance of the center of the pupil from
-%	the scene plane.
-% projectionModel - string that identifies the projection model to use.
-%   Options include "orthogonal" and "perspective"
+%   pupilArea - if not set to nan, the routine will return the ellipse area
+%   pupilCenter3D - center of the pupil in 3D, where X and Y are parallel to
+%       the scene plane and Z is the distance of the center of the pupil
+%       from the scene plane.
+%   eyeRadius - the estimate radius for the eye (can be empty for
+%       orthogonal projection)
+%   eyeCenter - 3D coordinates of the eye center in the scene reference
+%       system(can be empty for orthogonal projection)
+%   projectionModel - string that identifies the projection model to use.
+%       Options include "orthogonal" and "pseudoPerspective"
 
 
 
@@ -48,7 +52,7 @@ switch projectionModel
     % the ellipse center in the plane of projection.
     reconstructedTransparentEllipse(1) = pupilCenter3D(1);
     reconstructedTransparentEllipse(2) = pupilCenter3D(2);
-    case 'pseudoPerspectiveProjection'
+    case 'pseudoPerspective'
         % for the weak perspective correction,we uniformly scale the
         % orthogonal projection according to the scene distance and the eye
         % radius.
@@ -103,7 +107,7 @@ if ~isnan(pupilArea)
             % to determine the ellipse area.
             pupilRadius = sqrt(pupilArea/pi);
             semiMajorAxis = pupilRadius;
-        case 'pseudoPerspectiveProjection'
+        case 'pseudoPerspective'
             % apply scaling factor to pupil area
             pupilRadius = sqrt((pupilArea * perspectiveCorrectionFactor)/pi);
             semiMajorAxis = pupilRadius;
