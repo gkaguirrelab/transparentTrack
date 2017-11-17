@@ -45,6 +45,11 @@ end
 k = sqrt(1 - (transparentEllipse(4)^2));
 theta = (transparentEllipse(5));
 
+% keep theta between zero and pi
+if theta < 0
+    theta = theta + pi;
+end
+
 % pupil center
 switch projectionModel
     case 'orthogonal'
@@ -53,17 +58,19 @@ switch projectionModel
     case 'pseudoPerspective'
         % at this stage we just use the orthogonal projection of the ellipse
         % center to determine the location of the ellipse with respect to
-        % the center of projection.
+        % the center of projection. we will correct this below.
         centerX = (transparentEllipse(1));
         centerY = (transparentEllipse(2));
 end
 
 % derive horizontal tilt angle (azimuth)
-if any(~isnan(eyeCenter))
+if ~any(isnan(eyeCenter))
+    % If we have an eyeCenter defined, then we can provide a unique
+    % solution for the azimuth and elevation
     if centerX > eyeCenter(1)
         reconstructedPupilAzi = asind(sqrt((sin(theta))^2 * (1 -k^2)));
     elseif centerX < eyeCenter(1)
-        reconstructedPupilAzi = - asind(sqrt((sin(theta))^2 * (1 -k^2)));
+        reconstructedPupilAzi = -asind(sqrt((sin(theta))^2 * (1 -k^2)));
     elseif centerX == eyeCenter(1)
         reconstructedPupilAzi = 0;
     end
@@ -77,21 +84,30 @@ if any(~isnan(eyeCenter))
         reconstructedPupilEle = 0;
     end
 else
-    reconstructedPupilAzi(1) = asind(sqrt((sin(theta))^2 * (1 -k^2)));
-    reconstructedPupilAzi(2) = -asind(sqrt((sin(theta))^2 * (1 -k^2)));
-    reconstructedPupilEle(1) = asind(sqrt(((cos(theta))^2 *(k^2 - 1))/(((sin(theta))^2 * (1 -k^2)) -1)));
-    reconstructedPupilEle(2) = - asind(sqrt(((cos(theta))^2 *(k^2 - 1))/(((sin(theta))^2 * (1 -k^2)) -1)));
+    % If we do not have a defined eyeCenter, then we return both of the
+    % possible solutions
+    if theta < pi/2
+        reconstructedPupilAzi(1) = asind(sqrt((sin(theta))^2 * (1 -k^2)));
+        reconstructedPupilAzi(2) = -asind(sqrt((sin(theta))^2 * (1 -k^2)));
+        reconstructedPupilEle(1) = -asind(sqrt(((cos(theta))^2 *(k^2 - 1))/(((sin(theta))^2 * (1 -k^2)) -1)));
+        reconstructedPupilEle(2) = asind(sqrt(((cos(theta))^2 *(k^2 - 1))/(((sin(theta))^2 * (1 -k^2)) -1)));
+    else
+        reconstructedPupilAzi(1) = asind(sqrt((sin(theta))^2 * (1 -k^2)));
+        reconstructedPupilAzi(2) = -asind(sqrt((sin(theta))^2 * (1 -k^2)));
+        reconstructedPupilEle(1) = asind(sqrt(((cos(theta))^2 *(k^2 - 1))/(((sin(theta))^2 * (1 -k^2)) -1)));
+        reconstructedPupilEle(2) = -asind(sqrt(((cos(theta))^2 *(k^2 - 1))/(((sin(theta))^2 * (1 -k^2)) -1)));
+    end
 end
 
 
-% see if you can derive the pupil radius
+% If we are given an ellipse area, calculate a pupil area
 if ~isnan(transparentEllipse(3))
     switch projectionModel
         case 'orthogonal'
             reconstructedPupilRadius = sqrt(transparentEllipse(3) / (pi * k));
             reconstructedPupilArea = pi * reconstructedPupilRadius^2;
         case 'pseudoPerspective'
-            if ~isnan(eyeCenter)
+            if ~any(isnan(eyeCenter))
                 
                 % calculate the perspective correction factor
                 sceneDistance = abs(eyeCenter(3) - eyeRadius);
@@ -100,8 +116,7 @@ if ~isnan(transparentEllipse(3))
                 
                 % calculate pupil radius including the perspective
                 % correction factor for the ellipse area
-                apparentPupilRadius = sqrt(transparentEllipse(3)/ (pi * k));
-                
+                apparentPupilRadius = sqrt(transparentEllipse(3)/ (pi * k));                
                 reconstructedPupilRadius = apparentPupilRadius./perspectiveCorrectionFactor;
                 
                 % calculate the area
@@ -110,6 +125,8 @@ if ~isnan(transparentEllipse(3))
                 error('Cannot apply perspective correction without knowing the center of projection')
             end
     end
+else
+    reconstructedPupilArea = nan;
 end
 
 end % function

@@ -52,8 +52,8 @@ switch projectionModel
     case 'orthogonal'
         % under orthogonal hypothesis the ellipse center in 2D is coincident with
         % the ellipse center in the plane of projection.
-        reconstructedTransparentEllipse(1) = pupilCenter3D(1);
-        reconstructedTransparentEllipse(2) = pupilCenter3D(2);
+        reconstructedTransparentEllipse(1) = pupilCenter3D(1) + eyeCenter(1);
+        reconstructedTransparentEllipse(2) = pupilCenter3D(2) + eyeCenter(2);
     case 'pseudoPerspective'
         % for the pseudoPerspective correction, we uniformly scale the
         % orthogonal projection according to the scene distance and the eye
@@ -65,17 +65,16 @@ switch projectionModel
         perspectiveCorrectionFactor = sceneDistance/(sceneDistance + relativeDepth);
         
         % apply perspective correction factor to the pupil center
-        reconstructedTransparentEllipse(1) = pupilCenter3D(1) * perspectiveCorrectionFactor;
-        reconstructedTransparentEllipse(2) = pupilCenter3D(2) * perspectiveCorrectionFactor;
+        reconstructedTransparentEllipse(1) = (pupilCenter3D(1) * perspectiveCorrectionFactor) + eyeCenter(1);
+        reconstructedTransparentEllipse(2) = (pupilCenter3D(2) * perspectiveCorrectionFactor) + eyeCenter(2);
 end
 
-% derive transparent parameters
-% eccentricity
+% derive ellipse eccentricity
 e = sqrt((sind(pupilEle))^2 - ((sind(pupilAzi))^2 * ((sind(pupilEle))^2 - 1)));
 reconstructedTransparentEllipse(4) = e;
 
+% derive ellipse theta
 theta = nan;
-% tilt
 if pupilAzi > 0  &&  pupilEle > 0
     theta = - asin(sind(pupilAzi)/e);
 elseif pupilAzi > 0 && pupilEle < 0
@@ -97,9 +96,15 @@ else
     % event.
     theta = nan;
 end
+% keep theta values between zero and pi
+if ~isnan(theta)
+    if theta < 0
+        theta = theta + pi;
+    end
+end
 reconstructedTransparentEllipse(5) = theta;
 
-% area (if pupilRadius available)
+% area (if pupilArea available)
 if ~isnan(pupilArea)
     switch projectionModel
         case 'orthogonal'

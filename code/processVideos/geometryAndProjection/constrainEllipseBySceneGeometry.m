@@ -1,5 +1,5 @@
-function [c, ceq]=constrainEllipseBySceneGeometry(transparentEllipseParams, sceneGeometry, constraintMarginEccenMultiplier, constraintMarginThetaDegrees)
-% [c, ceq]=constrainEllipseBySceneGeometry(transparentEllipseParams, sceneGeometry, constraintMarginsEccenTheta, varargin)
+function [c, ceq]=constrainEllipseBySceneGeometry(transparentEllipseParams, sceneGeometry)
+% [c, ceq]=constrainEllipseBySceneGeometry(transparentEllipseParams, sceneGeometry)
 %
 % This function implements a non-linear constraint upon the ellipse fit
 % to the pupil boundary. The goal of the limit is to constrain the
@@ -56,11 +56,11 @@ predictedTransparentEllipse = ...
 
 
 % First constraint
-%  Ceq reflects the difference beween the predicted an passed eccentricty
+%  Ceq reflects the difference beween the predicted and passed eccentricty
 ceq = constraintFactor .* abs(transparentEllipseParams(4) - predictedTransparentEllipse(4));
 
 % Second constraint
-%  c reflects the difference beween the predicted an passed theta
+%  c reflects the difference beween the predicted and passed theta
 c = constraintFactor .* abs(transparentEllipseParams(5) - predictedTransparentEllipse(5));
 
 end
