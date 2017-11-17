@@ -64,14 +64,14 @@ p.addRequired('pupilFileName',@isstr);
 p.addRequired('sceneGeometryFileName',@isstr);
 
 % Optional analysis params
-p.addParameter('projectionModel','orthogonal',@ischar);
-p.addParameter('eyeRadius',250,@isnumeric);
+p.addParameter('projectionModel','pseudoPerspective',@ischar);
+p.addParameter('eyeRadius',125,@isnumeric);
 p.addParameter('cameraDistanceInPixels',1200,@isnumeric);
-p.addParameter('CoRLowerBound',[0, 0, 0],@isnumeric);
-p.addParameter('CoRUpperBound',[640, 480, 1400],@isnumeric);
+p.addParameter('sceneGeometryLowerBounds',[0, 0, 0, 25],@isnumeric);
+p.addParameter('sceneGeometryUpperBounds',[640, 480, 2000, 400],@isnumeric);
 p.addParameter('whichFitFieldMean','ellipseParamsUnconstrained_mean',@ischar);
 p.addParameter('whichFitFieldError','ellipseParamsUnconstrained_rmse',@ischar);
-p.addParameter('globalSearchMaxTimeSeconds', 20, @isnumeric);
+p.addParameter('globalSearchMaxTimeSeconds', 120, @isnumeric);
 
 % verbosity and plotting control
 p.addParameter('verbosity', 'none', @isstr);
@@ -117,11 +117,13 @@ switch p.Results.projectionModel
     case 'orthogonal'
         x0 = [pupilData.(p.Results.whichFitFieldMean)(minEccentricityIdx,1) ...
             pupilData.(p.Results.whichFitFieldMean)(minEccentricityIdx,2) ...
-            0];
+            0 ...
+            p.Results.eyeRadius];
     case 'pseudoPerspective'
         x0 = [pupilData.(p.Results.whichFitFieldMean)(minEccentricityIdx,1) ...
             pupilData.(p.Results.whichFitFieldMean)(minEccentricityIdx,2) ...
-            p.Results.cameraDistanceInPixels];
+            p.Results.cameraDistanceInPixels ...
+            p.Results.eyeRadius];
     otherwise
         error('I do not recognize that perspective model');
 end
@@ -145,7 +147,7 @@ else
 end
 
 % define an anonymous function to measure root mean squared error (RMSE)
-errorFunc = @(x) sqrt(nanmean((errorWeights.*ellipseCenterPredictionErrors(ellipses, x, p.Results.eyeRadius, p.Results.projectionModel)).^2));
+errorFunc = @(x) sqrt(nanmean((errorWeights.*ellipseCenterPredictionErrors(ellipses, x(1:3), x(4), p.Results.projectionModel)).^2));
 
 % define some search options
 options = optimset('fmincon');
@@ -153,24 +155,24 @@ options = optimset(options,'Diagnostics','off','Display','off','LargeScale','off
 
 % perform the fit withn a GlobalSearch to avoid local minima
 problem = createOptimProblem('fmincon','x0',x0,'objective',errorFunc,...
-    'lb',p.Results.CoRLowerBound,'ub',p.Results.CoRUpperBound,...
+    'lb',p.Results.sceneGeometryLowerBounds,'ub',p.Results.sceneGeometryUpperBounds,...
     'options',options);
 if strcmp(p.Results.verbosity,'full')
-    gs = GlobalSearch('Display','off','MaxTime',p.Results.globalSearchMaxTimeSeconds,'StartPointsToRun','bounds');
+    gs = GlobalSearch('Display','iter','MaxTime',p.Results.globalSearchMaxTimeSeconds,'StartPointsToRun','bounds');
 else
-    gs = GlobalSearch('Display','final','MaxTime',p.Results.globalSearchMaxTimeSeconds,'StartPointsToRun','bounds');
+    gs = GlobalSearch('Display','off','MaxTime',p.Results.globalSearchMaxTimeSeconds,'StartPointsToRun','bounds');
 end
-[bestFitCoR, fVal] = run(gs,problem)
+[bestFitSceneGeometry, fVal] = run(gs,problem);
 
 % plot the results of the CoP estimation if requested
 if ~isempty(p.Results.sceneDiagnosticPlotFileName)
-    [~, predictedEllipseCenterXY] = ellipseCenterPredictionErrors(ellipses, bestFitCoR, p.Results.eyeRadius, p.Results.projectionModel);
+    [~, predictedEllipseCenterXY] = ellipseCenterPredictionErrors(ellipses, bestFitSceneGeometry(1:3), bestFitSceneGeometry(4), p.Results.projectionModel);
     figHandle = figure('visible','off');
     plot(ellipses(:,1), ellipses(:,2), '.k')
     hold on
     plot(predictedEllipseCenterXY(:,1), predictedEllipseCenterXY(:,2), '.b')
     plot(x0(1),x0(2), 'xr')
-    plot(bestFitCoR(1),bestFitCoR(2), 'og')
+    plot(bestFitSceneGeometry(1),bestFitSceneGeometry(2), 'og')
     xlim ([0 p.Results.sceneDiagnosticPlotSizeXY(1)])
     ylim ([0 p.Results.sceneDiagnosticPlotSizeXY(2)])
     set(gca,'Ydir','reverse')
@@ -180,12 +182,11 @@ if ~isempty(p.Results.sceneDiagnosticPlotFileName)
 end
 
 % assemble and save the sceneGeometry
-sceneGeometry.eyeCenter.X = bestFitCoR(1);
-sceneGeometry.eyeCenter.Y = bestFitCoR(2);
-sceneGeometry.eyeCenter.Z = bestFitCoR(3);
+sceneGeometry.eyeCenter.X = bestFitSceneGeometry(1);
+sceneGeometry.eyeCenter.Y = bestFitSceneGeometry(2);
+sceneGeometry.eyeCenter.Z = bestFitSceneGeometry(3);
 sceneGeometry.eyeCenter.RMSE = fVal;
-sceneGeometry.eyeRadius = p.Results.eyeRadius;
-sceneGeometry.cameraDistance = p.Results.cameraDistanceInPixels;
+sceneGeometry.eyeRadius = bestFitSceneGeometry(4);
 sceneGeometry.meta = p.Results;
 sceneGeometry.meta.units = 'pixelsOnTheScenePlane';
 
