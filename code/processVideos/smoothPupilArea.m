@@ -174,6 +174,7 @@ for ii = 1:nFrames
         pupilProjection_inv( ...
         pupilData.(p.Results.whichLikelihoodMean)(ii,:), ...
         eyeCenterOfRotation, ...
+        sceneGeometry.eyeRadius, ...
         projectionModel);
 end
 
@@ -341,7 +342,7 @@ parfor (ii = 1:nFrames, nWorkers)
         % Convert the posterior pupil area in the eye back to area in the
         % image plane
         reconstructedTransparentEllipse = ...
-            pupilProjection_fwd(pupilAzi(ii), pupilEle(ii), posteriorPupilAreaMean, eyeCenterOfRotation, projectionModel);
+            pupilProjection_fwd(pupilAzi(ii), pupilEle(ii), posteriorPupilAreaMean, eyeCenterOfRotation, sceneGeometry.eyeRadius, projectionModel);
         
         % Pin the parameters are re-fit the ellipse to obtain the error
         % term
