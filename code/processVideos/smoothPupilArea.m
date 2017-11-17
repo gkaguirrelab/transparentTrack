@@ -153,6 +153,7 @@ clear dataLoad
 % Assemble a vector that contains the eye center of rotation and create a
 % variable to hold the projectionModel string
 eyeCenterOfRotation = [sceneGeometry.eyeCenter.X sceneGeometry.eyeCenter.Y sceneGeometry.eyeCenter.Z];
+eyeRadius = sceneGeometry.eyeRadius;
 projectionModel = sceneGeometry.meta.projectionModel;
 
 % Create a non-linear constraint for the ellipse fit
@@ -174,7 +175,7 @@ for ii = 1:nFrames
         pupilProjection_inv( ...
         pupilData.(p.Results.whichLikelihoodMean)(ii,:), ...
         eyeCenterOfRotation, ...
-        sceneGeometry.eyeRadius, ...
+        eyeRadius, ...
         projectionModel);
 end
 
@@ -342,7 +343,7 @@ parfor (ii = 1:nFrames, nWorkers)
         % Convert the posterior pupil area in the eye back to area in the
         % image plane
         reconstructedTransparentEllipse = ...
-            pupilProjection_fwd(pupilAzi(ii), pupilEle(ii), posteriorPupilAreaMean, eyeCenterOfRotation, sceneGeometry.eyeRadius, projectionModel);
+            pupilProjection_fwd(pupilAzi(ii), pupilEle(ii), posteriorPupilAreaMean, eyeCenterOfRotation, eyeRadius, projectionModel);
         
         % Pin the parameters are re-fit the ellipse to obtain the error
         % term
