@@ -112,7 +112,7 @@ for ii = 1:length(allPupilAzi)
     pupilPoints2d = projPointOnPlane(pupilPoints3d,scenePlane);
     
     % add a little noise to the points
-    pupilPoints2d = awgn(pupilPoints2d,.5);
+%     pupilPoints2d = awgn(pupilPoints2d,.5);
     
     % calculate the perspective correction factor
     relativeDepth = rotationArmLength*(1-(cosd(pupilEle)*cosd(pupilAzi)));
@@ -191,8 +191,10 @@ subplot(1,2,1)
 plot(allPupilAzi,reconstructedPupilAzi, '.')
 xlabel('Ground Truth Pupil Azimuth in degrees')
 ylabel('Reconstructed Pupil Azimuth in degrees')
+axis square
 
 subplot(1,2,2)
 plot(allPupilEle,reconstructedPupilEle, '.')
 xlabel('Ground Truth Pupil Elevation in degrees')
 ylabel('Reconstructed Pupil Elevation in degrees')
+axis square
