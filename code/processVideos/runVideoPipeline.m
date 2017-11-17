@@ -251,7 +251,7 @@ for ff = 1:length(funCalls)
     
     % Check if we are instructed to skip this stage, either by stage name
     % or by functional call number.
-    if ~any(strcmp(p.Results.skipStageByName,funNames{ff})) || ~any(p.Results.skipStageByNumber == ff)
+    if ~any(strcmp(p.Results.skipStageByName,funNames{ff})) && ~any(p.Results.skipStageByNumber == ff)
         % check if we are going to catch or throw errors
         if p.Results.catchErrors
             success = false; % flag for successful stage execution
