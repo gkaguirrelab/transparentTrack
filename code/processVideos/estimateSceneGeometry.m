@@ -71,7 +71,6 @@ p.addParameter('sceneGeometryLowerBounds',[0, 0, 0, 25],@isnumeric);
 p.addParameter('sceneGeometryUpperBounds',[640, 480, 2000, 400],@isnumeric);
 p.addParameter('whichFitFieldMean','ellipseParamsUnconstrained_mean',@ischar);
 p.addParameter('whichFitFieldError','ellipseParamsUnconstrained_rmse',@ischar);
-p.addParameter('globalSearchMaxTimeSeconds', 120, @isnumeric);
 
 % verbosity and plotting control
 p.addParameter('verbosity', 'none', @isstr);
@@ -153,16 +152,10 @@ errorFunc = @(x) sqrt(nanmean((errorWeights.*ellipseCenterPredictionErrors(ellip
 options = optimset('fmincon');
 options = optimset(options,'Diagnostics','off','Display','off','LargeScale','off','Algorithm','interior-point');
 
-% perform the fit withn a GlobalSearch to avoid local minima
-problem = createOptimProblem('fmincon','x0',x0,'objective',errorFunc,...
-    'lb',p.Results.sceneGeometryLowerBounds,'ub',p.Results.sceneGeometryUpperBounds,...
-    'options',options);
-if strcmp(p.Results.verbosity,'full')
-    gs = GlobalSearch('Display','iter','MaxTime',p.Results.globalSearchMaxTimeSeconds,'StartPointsToRun','bounds');
-else
-    gs = GlobalSearch('Display','off','MaxTime',p.Results.globalSearchMaxTimeSeconds,'StartPointsToRun','bounds');
-end
-[bestFitSceneGeometry, fVal] = run(gs,problem);
+% perform the fit
+[bestFitSceneGeometry, fVal] = ...
+    fmincon(errorFunc, x0, [], [], [], [], p.Results.sceneGeometryLowerBounds, p.Results.sceneGeometryUpperBounds, [], options);
+
 
 % plot the results of the CoP estimation if requested
 if ~isempty(p.Results.sceneDiagnosticPlotFileName)
