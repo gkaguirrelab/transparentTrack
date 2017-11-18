@@ -178,10 +178,10 @@ end
 sceneGeometry.eyeCenter.X = bestFitSceneGeometry(1);
 sceneGeometry.eyeCenter.Y = bestFitSceneGeometry(2);
 sceneGeometry.eyeCenter.Z = bestFitSceneGeometry(3);
-sceneGeometry.eyeCenter.RMSE = fVal;
 sceneGeometry.eyeRadius = bestFitSceneGeometry(4);
 sceneGeometry.meta = p.Results;
 sceneGeometry.meta.units = 'pixelsOnTheScenePlane';
+sceneGeometry.meta.RMSE = fVal;
 
 if ~isempty(sceneGeometryFileName)
     save(sceneGeometryFileName,'sceneGeometry');
