@@ -170,7 +170,7 @@ sceneDiagnosticPlotFileName = fullfile(sandboxDir, 'syntheticPerimeter_sceneDiag
 finalFitVideoName = fullfile(sandboxDir, 'syntheticPerimeter_finalFit.avi');
 
 findPupilPerimeter(syntheticPerimVideoName,syntheticPerimFileName,'verbosity','full');
-pupilData = fitPupilPerimeter(syntheticPerimFileName, pupilFileName,'verbosity','full','ellipseTransparentLB',[0, 0, 300, 0, -0.5*pi],'ellipseTransparentUB',[videoX,videoY,20000,0.75, 0.5*pi],'nSplits',0);
+pupilData = fitPupilPerimeter(syntheticPerimFileName, pupilFileName,'verbosity','full','ellipseTransparentLB',[0, 0, 300, 0, -pi],'ellipseTransparentUB',[videoX,videoY,20000,0.75, pi],'nSplits',0);
 sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileName,'sceneDiagnosticPlotFileName', sceneDiagnosticPlotFileName,'sceneDiagnosticPlotSizeXY', [videoX videoY], ...
     'projectionModel','pseudoPerspective','eyeRadius',rotationArmLength, 'cameraDistanceInPixels',sceneDistance,'verbosity','full');
 
@@ -179,10 +179,11 @@ sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileName,'scen
 
 ellipses = pupilData.ellipseParamsUnconstrained_mean;
 eyeCenter = [sceneGeometry.eyeCenter.X sceneGeometry.eyeCenter.Y, sceneGeometry.eyeCenter.Z];
+eyeRadius = sceneGeometry.eyeRadius;
 projectionModel = 'pseudoPerspective';
 
 for ii = 1:nFrames
-    [reconstructedPupilAzi(ii), reconstructedPupilEle(ii), reconstructedPupilArea(ii)] = pupilProjection_inv(ellipses(ii,:),  eyeCenter, rotationArmLength, projectionModel);
+    [reconstructedPupilAzi(ii), reconstructedPupilEle(ii), reconstructedPupilArea(ii)] = pupilProjection_inv(ellipses(ii,:),  eyeCenter, eyeRadius, projectionModel);
 end
 
 % plot real Azi and Ele vs reconstructed ones
