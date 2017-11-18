@@ -23,11 +23,12 @@ finalFitVideoName = fullfile(sandboxDir, [renderedVideoName '_finalFit.avi']);
 
 %% run the pipleline steps
 
+
 findGlint(grayVideoName, glintFileName,'verbosity','full')
 
 findPupilPerimeter(grayVideoName, perimeterFileName,'verbosity','full');
 
-makeControlFile(controlFileName, perimeterFileName, glintFileName,'verbosity','full');
+makeControlFile(controlFileName, perimeterFileName, glintFileName,'verbosity','full','candidateThetas',0:pi/16:2*pi);
 
 applyControlFile(perimeterFileName,controlFileName,correctedPerimeterFileName,'verbosity','full');
 
@@ -37,7 +38,7 @@ estimateSceneGeometry(pupilFileName, sceneGeometryFileName, ...
     'sceneDiagnosticPlotFileName', sceneDiagnosticPlotFileName,'verbosity','full');
 
 makeControlFile(controlFileName, perimeterFileName, glintFileName, ...
-            'sceneGeometryFileName', sceneGeometryFileName, 'overwriteControlFile', true,'verbosity','full');
+            'sceneGeometryFileName', sceneGeometryFileName, 'overwriteControlFile', true,'verbosity','full','candidateThetas',0:pi/16:2*pi);
             
 applyControlFile(perimeterFileName,controlFileName,correctedPerimeterFileName,'verbosity','full');
 
