@@ -129,7 +129,7 @@ p.addParameter('verbosity','none',@ischar);
 % Optional flow control params
 p.addParameter('overwriteControlFile',false,@islogical);
 p.addParameter('nFrames',Inf,@isnumeric);
-p.addParameter('useParallel',true,@islogical);
+p.addParameter('useParallel',false,@islogical);
 p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('tbtbRepoName','transparentTrack',@ischar);
 
