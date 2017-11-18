@@ -1,31 +1,19 @@
-function [c, ceq]=constrainEllipseBySceneGeometry(transparentEllipseParams, sceneGeometry, constraintMarginEccenMultiplier, constraintMarginThetaDegrees)
-% [c, ceq]=constrainEllipseBySceneGeometry(transparentEllipseParams, sceneGeometry, constraintMarginsEccenTheta, varargin)
+function [c, ceq]=constrainEllipseBySceneGeometry(pupilEllipseOnImagePlane, sceneGeometry)
+% [c, ceq]=constrainEllipseBySceneGeometry(transparentEllipseParams, sceneGeometry)
 %
 % This function implements a non-linear constraint upon the ellipse fit
 % to the pupil boundary. The goal of the limit is to constrain the
 % eccentricity and theta of the ellipse to be a close match to that
 % predicted by the x, y location of the center of the ellipse, given the
 % sceneGeometry parameters.
-
-
-% This function returns the expected eccentricity and tilt for an ellipse,
-% given the location of the center and the scene geometry. The function can
-% either use the Z coordinate for the eye in the scene geometry as the
-% distance of the eye from the scene, or a user input distance range in
-% pixel (2 elements vector). In the latter case, the routine will return
-% the range of expected eccentricity and a single theta.
 %
 % Input (required)
-% ellipseCenter - [X Y] coordinate for the ellipse center. Note that
-%   passing the full parametrization of a transparent ellipse will work as
-%   well.
-% sceneGeometry - struct with scene geometry
+%   pupilEllipseOnImagePlane - parameters of the ellipse to be fit cast in
+%       transparent form
+%   sceneGeometry - struct with scene geometry
 %
 % Output
-% eccentricity - either a one element or 2 element vector with the expected
-% 	eccentricity value or range.
-% theta -the expected tilt value for the ellipse (does not depend on the
-%   distance).
+%   c, ceq - the values of the nonlinear constraint function
 %
 
 
@@ -34,33 +22,27 @@ function [c, ceq]=constrainEllipseBySceneGeometry(transparentEllipseParams, scen
 % the error function returns if the constraint is to be respected.
 constraintFactor = 1e4;
 
+% Extract some values from the sceneGeometry file
+eyeCenterOfRotation = [sceneGeometry.eyeCenter.X sceneGeometry.eyeCenter.Y sceneGeometry.eyeCenter.Z];
+eyeRadius = sceneGeometry.eyeRadius;
+projectionModel = sceneGeometry.meta.projectionModel;
 
-%% Calculate the predicted eccentricty and theta for this pupil center
+% Calculate the predicted x and y center for this eccentricity and theta
+pupilEllipseOnImagePlane(3) = nan;
+[reconstructedPupilAzi, reconstructedPupilEle, ~] = pupilProjection_inv(pupilEllipseOnImagePlane, eyeCenterOfRotation, eyeRadius, projectionModel);
 
-% derive pupil center cartesian 3D coordinates
-pupilCenter.Z = ...
-    sqrt(...
-        sceneGeometry.eyeRadius^2 - ...
-        (transparentEllipseParams(1) - sceneGeometry.eyeCenter.X)^2 - ...
-        (transparentEllipseParams(2) - sceneGeometry.eyeCenter.Y)^2 ...
-        ) + ...
-    sceneGeometry.eyeCenter.Z;
-pupilAzi = atand((transparentEllipseParams(1) - sceneGeometry.eyeCenter.X)/(pupilCenter.Z - sceneGeometry.eyeCenter.Z));
-pupilEle = atand((transparentEllipseParams(2) - sceneGeometry.eyeCenter.Y)/(pupilCenter.Z - sceneGeometry.eyeCenter.Z));
-pupilRadius = nan;
-
-predictedTransparentEllipse = ...
-    pupilProjection_fwd(pupilAzi, pupilEle, pupilRadius,...
-    [sceneGeometry.eyeCenter.X sceneGeometry.eyeCenter.Y sceneGeometry.eyeCenter.Z],...
-    sceneGeometry.meta.projectionModel);
-
+% Obtain the x and y position of the projection of a pupil at this
+% azimuth and elevation onto the pupil plane, using the passed
+% sceneGeometry.
+projectedEllipseOnImagePlane = pupilProjection_fwd(reconstructedPupilAzi, reconstructedPupilEle, nan, eyeCenterOfRotation, eyeRadius, projectionModel);
 
 % First constraint
-%  Ceq reflects the difference beween the predicted an passed eccentricty
-ceq = constraintFactor .* abs(transparentEllipseParams(4) - predictedTransparentEllipse(4));
+%  Ceq reflects the Euclidean distance between the predicted and passed
+%  center of th ellipse
+ceq = constraintFactor .* sqrt( (pupilEllipseOnImagePlane(1) - projectedEllipseOnImagePlane(1)).^2 + (pupilEllipseOnImagePlane(2) - projectedEllipseOnImagePlane(2)).^2  );
 
 % Second constraint
-%  c reflects the difference beween the predicted an passed theta
-c = constraintFactor .* abs(transparentEllipseParams(5) - predictedTransparentEllipse(5));
+%  unused
+c = [];
 
 end
