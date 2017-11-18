@@ -84,8 +84,16 @@ end
 %% Perform non-linear search for transparent ellipse params
 
 % define some search options
-options = optimset('fmincon');
-options = optimset(options,'Diagnostics','off','Display','off','LargeScale','off','Algorithm','sqp');
+options = optimoptions(@fmincon,...
+    'Algorithm','sqp',...
+        'Diagnostics','off',...
+    'Display','off',...
+    'StepTolerance',1e-12);
+
+% Ensure that the lower bound on the eccentricity of the ellipse is
+% slightly greater than zero. This is so that subsequent routines do not 
+% have to handle perfect circles.
+lb(4) = min([lb(4) 1e-3]);
 
 % Define the objective function, which is the RMSE of the distance values
 % of the boundary points to the ellipse fit
