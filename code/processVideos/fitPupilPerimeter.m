@@ -104,8 +104,8 @@ p.addRequired('pupilFileName',@ischar);
 p.addParameter('verbosity','none',@ischar);
 
 % Optional fitting params
-p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, -0.5*pi],@isnumeric);
-p.addParameter('ellipseTransparentUB',[640,480,20000,0.75, 0.5*pi],@isnumeric);
+p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, -pi],@isnumeric);
+p.addParameter('ellipseTransparentUB',[640,480,20000,0.75, pi],@isnumeric);
 p.addParameter('nSplits',8,@isnumeric);
 
 % Optional analysis params -- sceneGeometry fitting constraint
@@ -258,6 +258,16 @@ parfor (ii = 1:nFrames, nWorkers)
                 ellipseTransparentLB, ...
                 ellipseTransparentUB, ...
                 nonlinconst);
+
+            % Sometimes the solver finds a local minimum circular ellipse.
+            % If so, search again.
+            if ellipseParamsTransparent(4)==0
+                [ellipseParamsTransparent, ellipseParamsError] = ...
+                    constrainedEllipseFit(Xc, Yc, ...
+                    ellipseTransparentLB, ...
+                    ellipseTransparentUB, ...
+                    nonlinconst);
+            end
             
             % Re-calculate fit for splits of data points, if requested
             if nSplits == 0
