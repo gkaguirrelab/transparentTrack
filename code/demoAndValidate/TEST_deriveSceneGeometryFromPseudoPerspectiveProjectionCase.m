@@ -4,8 +4,10 @@
 % The pupil is centered in the scene, has a fixed area and rotates around a
 % fixed length radius. The rotations are defined by an Azimuth and
 % an Elevation angle.
+%
 % The video is saved and later analyzed using the standard processing
 % function up to reconstructing the scene geometry.
+%
 % Finally the pupil is projected back in 3D space using the ellipse fits
 % and the reconstructed scene geometry, to verify that the reconstruction
 % matches the ground truth movement pattern.
@@ -110,10 +112,7 @@ for ii = 1:length(allPupilAzi)
     
     % do orthogonal projeciton on the scene plane
     pupilPoints2d = projPointOnPlane(pupilPoints3d,scenePlane);
-    
-    % add a little noise to the points
-%     pupilPoints2d = awgn(pupilPoints2d,.5);
-    
+        
     % calculate the perspective correction factor
     relativeDepth = rotationArmLength*(1-(cosd(pupilEle)*cosd(pupilAzi)));
     perspectiveCorrectionFactor = (sceneDistance/(sceneDistance + relativeDepth));
@@ -173,7 +172,8 @@ finalFitVideoName = fullfile(sandboxDir, 'syntheticPerimeter_finalFit.avi');
 findPupilPerimeter(syntheticPerimVideoName,syntheticPerimFileName,'verbosity','full');
 pupilData = fitPupilPerimeter(syntheticPerimFileName, pupilFileName,'verbosity','full','ellipseTransparentLB',[0, 0, 300, 0, -0.5*pi],'ellipseTransparentUB',[videoX,videoY,20000,0.75, 0.5*pi],'nSplits',0);
 sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileName,'sceneDiagnosticPlotFileName', sceneDiagnosticPlotFileName,'sceneDiagnosticPlotSizeXY', [videoX videoY], ...
-    'projectionModel','pseudoPerspective','eyeRadius',rotationArmLength, 'cameraDistanceInPixels',sceneDistance);
+    'projectionModel','pseudoPerspective','eyeRadius',rotationArmLength, 'cameraDistanceInPixels',sceneDistance,'verbosity','full');
+
 
 %% Verify that the scene geometry allows for the correct reconstruction of the eye movements
 
