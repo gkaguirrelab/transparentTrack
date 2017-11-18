@@ -116,7 +116,7 @@ for ii = 1:length(allPupilAzi)
     
     % calculate the perspective correction factor
     relativeDepth = rotationArmLength*(1-(cosd(pupilEle)*cosd(pupilAzi)));
-    perspectiveCorrectionFactor = (sceneDistance/(sceneDistance + relativeDepth))
+    perspectiveCorrectionFactor = (sceneDistance/(sceneDistance + relativeDepth));
     
     % scale the pupil points according to the perspective correction factor
     pupilPoints2d = pupilPoints2d .* perspectiveCorrectionFactor;
