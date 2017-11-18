@@ -18,9 +18,9 @@ function [c, ceq]=constrainEllipseBySceneGeometry(pupilEllipseOnImagePlane, scen
 
 
 % This is the value that is given to a violation of the constraint. This
-% number needs to be of a size comparable to or larger than the values that
-% the error function returns if the constraint is to be respected.
-constraintFactor = 1e4;
+% number needs to very large so that the constraint is respected despite
+% large values in the objective function
+constraintFactor = 1e20;
 
 % Extract some values from the sceneGeometry file
 eyeCenterOfRotation = [sceneGeometry.eyeCenter.X sceneGeometry.eyeCenter.Y sceneGeometry.eyeCenter.Z];
