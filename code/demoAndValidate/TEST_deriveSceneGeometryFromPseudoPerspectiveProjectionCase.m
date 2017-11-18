@@ -189,13 +189,22 @@ end
 % plot real Azi and Ele vs reconstructed ones
 figure
 subplot(1,2,1)
-plot(allPupilAzi,reconstructedPupilAzi, '.')
+plot(allPupilAzi,reconstructedPupilAzi, '.r')
+rl = refline(1,0);
+rl.Color = 'k';
 xlabel('Ground Truth Pupil Azimuth in degrees')
 ylabel('Reconstructed Pupil Azimuth in degrees')
+ylim([-75 75]);
+xlim([-75 75]);
 axis square
 
 subplot(1,2,2)
-plot(allPupilEle,reconstructedPupilEle, '.')
+plot(allPupilEle,reconstructedPupilEle, '.r')
+rl = refline(1,0);
+rl.Color = 'k';
 xlabel('Ground Truth Pupil Elevation in degrees')
 ylabel('Reconstructed Pupil Elevation in degrees')
+ylim([-75 75]);
+xlim([-75 75]);
 axis square
+
