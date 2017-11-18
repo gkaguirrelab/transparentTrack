@@ -224,6 +224,8 @@ areaIdx = p.Results.areaIdx;
 whichLikelihoodMean = p.Results.whichLikelihoodMean;
 whichLikelihoodSD = p.Results.whichLikelihoodSD;
 likelihoodErrorExponent = p.Results.likelihoodErrorExponent;
+ellipseTransparentLB = p.Results.ellipseTransparentLB;
+ellipseTransparentUB = p.Results.ellipseTransparentUB;
 
 
 %% Conduct empirical Bayes smoothing
@@ -345,10 +347,9 @@ parfor (ii = 1:nFrames, nWorkers)
         reconstructedTransparentEllipse = ...
             pupilProjection_fwd(pupilAzi(ii), pupilEle(ii), posteriorPupilAreaMean, eyeCenterOfRotation, eyeRadius, projectionModel);
         
-        % Pin the parameters are re-fit the ellipse to obtain the error
-        % term
-        lb_pin = pupilData.(whichLikelihoodMean)(ii,:);
-        ub_pin = pupilData.(whichLikelihoodMean)(ii,:);
+        % Pin the area parameter and re-fit the ellipse
+        lb_pin = ellipseTransparentLB;
+        ub_pin = ellipseTransparentUB;
         lb_pin(areaIdx)=reconstructedTransparentEllipse(areaIdx);
         ub_pin(areaIdx)=reconstructedTransparentEllipse(areaIdx);
         [pPosteriorMeanTransparent, pPosteriorFitError] = constrainedEllipseFit(Xc,Yc, lb_pin, ub_pin, nonlinconst);
