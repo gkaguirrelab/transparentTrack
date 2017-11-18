@@ -1,4 +1,4 @@
-function [transparentEllipseParams, RMSE] = constrainedEllipseFit(x, y, lb, ub, nonlinconst, varargin)
+function [transparentEllipseParams, RMSE] = constrainedEllipseFit(x, y, lb, ub, nonlinconst)
 % constrainedEllipseFit(x, y, lb, ub, nonlinconst)
 %
 % This routine is a modification of a non-linear ellipse fitting routine
@@ -44,12 +44,8 @@ p.addRequired('ub',@isnumeric);
 p.addRequired('lb',@isnumeric);
 p.addRequired('nonlinconst',@(x) (isempty(x) || isa(x, 'function_handle')) );
 
-% Optional analysis params
-p.addParameter('globalSearchMaxTimeSeconds', 5, @isnumeric);
-
-
 % Parse and check the parameters
-p.parse(x, y, ub, lb, nonlinconst, varargin{:});
+p.parse(x, y, ub, lb, nonlinconst);
 
 
 %% Calculate an initial estimate of the ellipse parameters
@@ -100,18 +96,8 @@ warningState = warning;
 warning('off','MATLAB:nearlySingularMatrix');
 
 % Perform the non-linear search
-[transparentEllipseParams, RMSE, ~, output] = ...
+[transparentEllipseParams, RMSE] = ...
     fmincon(myFun, pInitTransparent, [], [], [], [], lb, ub, nonlinconst, options);
-
-% If we received a local minimum warning on exit, re-fit the ellipse using
-% a more time-consuming global minimization approach.
-if ~isempty(strfind(output.message,'Local minimum'))
-    problem = createOptimProblem('fmincon','x0',pInitTransparent,...
-        'objective',myFun,'lb',lb,'ub',ub,...
-        'nonlcon',nonlinconst,'options',options);
-    gs = GlobalSearch('Display','off','MaxTime',p.Results.globalSearchMaxTimeSeconds,'StartPointsToRun','bounds-ineqs');
-    [transparentEllipseParams, RMSE] = run(gs,problem);
-end
 
 % Restore the warning state
 warning(warningState);
