@@ -80,20 +80,18 @@ catch
     return
 end
 
+% Set the start point for the search to be an ellipse with non-zero
+% eccentricity
+pInitTransparent(4) = max([pInitTransparent(4) 0.1]);
 
 %% Perform non-linear search for transparent ellipse params
 
 % define some search options
 options = optimoptions(@fmincon,...
     'Algorithm','sqp',...
-        'Diagnostics','off',...
+    'Diagnostics','off',...
     'Display','off',...
-    'StepTolerance',1e-12);
-
-% Ensure that the lower bound on the eccentricity of the ellipse is
-% slightly greater than zero. This is so that subsequent routines do not 
-% have to handle perfect circles.
-lb(4) = min([lb(4) 1e-3]);
+    'DiffMinChange', 0.001);
 
 % Define the objective function, which is the RMSE of the distance values
 % of the boundary points to the ellipse fit
@@ -106,6 +104,22 @@ warning('off','MATLAB:nearlySingularMatrix');
 % Perform the non-linear search
 [transparentEllipseParams, RMSE] = ...
     fmincon(myFun, pInitTransparent, [], [], [], [], lb, ub, nonlinconst, options);
+
+% If we hit the lower bound for eccentricity, we may be in a local
+% minimum that tends to find circles. Try a multiStart search.
+if transparentEllipseParams(4) == lb(4)
+    adjustedLB = lb;
+    adjustedLB(4) = max([lb(4) 0.1]);
+    problem = createOptimProblem('fmincon','x0',pInitTransparent,...
+        'objective',myFun,'lb',adjustedLB,'ub',ub,...
+        'nonlcon',nonlinconst,'options',options);
+    ms = MultiStart('Display','off','MaxTime',30,'StartPointsToRun','bounds-ineqs');
+    [mstransparentEllipseParams, msRMSE] = run(ms,problem,20);
+    if msRMSE <= RMSE
+        RMSE = msRMSE;
+        transparentEllipseParams = mstransparentEllipseParams;
+    end
+end
 
 % Restore the warning state
 warning(warningState);
