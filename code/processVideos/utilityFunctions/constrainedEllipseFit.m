@@ -102,10 +102,10 @@ warning('off','MATLAB:nearlySingularMatrix');
 [transparentEllipseParams, RMSE] = ...
     fmincon(myFun, pInitTransparent, [], [], [], [], lb, ub, nonlinconst, options);
 
-% If we hit the lower bound for eccentricity, we may be in a local minimum
+% If we are close to zero for eccentricity, we may be in a local minimum
 % that tends to find circles. Try a multiStart search with an increased
-% lowerb bound on eccentricity.
-if transparentEllipseParams(4) == lb(4)
+% lower bound on eccentricity.
+if transparentEllipseParams(4) < 1e-12
     adjustedLB = lb;
     adjustedLB(4) = min([max([lb(4) 0.1]) ub(4)]);
     problem = createOptimProblem('fmincon','x0',pInitTransparent,...
