@@ -532,19 +532,19 @@ fprintf(fid,'%s\n',instruction);
 fclose(fid);
 
 %% Delete the parallel pool
-if strcmp(p.Results.verbosity,'full')
-    tic
-    fprintf(['Closing parallel pool. Started ' char(datetime('now')) '\n']);
-end
 if p.Results.useParallel
+    if strcmp(p.Results.verbosity,'full')
+        tic
+        fprintf(['Closing parallel pool. Started ' char(datetime('now')) '\n']);
+    end
     poolObj = gcp;
     if ~isempty(poolObj)
         delete(poolObj);
     end
-end
-if strcmp(p.Results.verbosity,'full')
-    toc
-    fprintf('\n');
+    if strcmp(p.Results.verbosity,'full')
+        toc
+        fprintf('\n');
+    end
 end
 
 end % function
