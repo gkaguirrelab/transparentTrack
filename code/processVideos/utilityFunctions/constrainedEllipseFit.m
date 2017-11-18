@@ -107,7 +107,7 @@ warning('off','MATLAB:nearlySingularMatrix');
 % lowerb bound on eccentricity.
 if transparentEllipseParams(4) == lb(4)
     adjustedLB = lb;
-    adjustedLB(4) = max([lb(4) 0.1]);
+    adjustedLB(4) = min([max([lb(4) 0.1]) ub(4)]);
     problem = createOptimProblem('fmincon','x0',pInitTransparent,...
         'objective',myFun,'lb',adjustedLB,'ub',ub,...
         'nonlcon',nonlinconst,'options',options);
