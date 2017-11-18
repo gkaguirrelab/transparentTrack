@@ -80,9 +80,6 @@ catch
     return
 end
 
-% Set the start point for the search to be an ellipse with non-zero
-% eccentricity
-pInitTransparent(4) = max([pInitTransparent(4) 0.1]);
 
 %% Perform non-linear search for transparent ellipse params
 
@@ -105,8 +102,9 @@ warning('off','MATLAB:nearlySingularMatrix');
 [transparentEllipseParams, RMSE] = ...
     fmincon(myFun, pInitTransparent, [], [], [], [], lb, ub, nonlinconst, options);
 
-% If we hit the lower bound for eccentricity, we may be in a local
-% minimum that tends to find circles. Try a multiStart search.
+% If we hit the lower bound for eccentricity, we may be in a local minimum
+% that tends to find circles. Try a multiStart search with an increased
+% lowerb bound on eccentricity.
 if transparentEllipseParams(4) == lb(4)
     adjustedLB = lb;
     adjustedLB(4) = max([lb(4) 0.1]);
