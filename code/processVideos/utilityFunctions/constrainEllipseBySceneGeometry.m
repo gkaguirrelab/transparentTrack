@@ -1,8 +1,8 @@
 function [c, ceq]=constrainEllipseBySceneGeometry(pupilEllipseOnImagePlane, sceneGeometry)
 % [c, ceq]=constrainEllipseBySceneGeometry(transparentEllipseParams, sceneGeometry)
 %
-% This function implements a non-linear constraint upon the ellipse fit
-% to the pupil boundary. The goal of the limit is to constrain the
+% This function implements a non-linear constraint upon the ellipse fit to
+% the pupil boundary. The goal of the limit is to constrain the
 % eccentricity and theta of the ellipse to be a close match to that
 % predicted by the x, y location of the center of the ellipse, given the
 % sceneGeometry parameters.
@@ -38,7 +38,7 @@ projectedEllipseOnImagePlane = pupilProjection_fwd(reconstructedPupilAzi, recons
 
 % First constraint
 %  Ceq reflects the Euclidean distance between the predicted and passed
-%  center of th ellipse
+%  center of the ellipse
 ceq = constraintFactor .* sqrt( (pupilEllipseOnImagePlane(1) - projectedEllipseOnImagePlane(1)).^2 + (pupilEllipseOnImagePlane(2) - projectedEllipseOnImagePlane(2)).^2  );
 
 % Second constraint
