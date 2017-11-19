@@ -327,7 +327,7 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % get the data frame
     thisFrame = uint8(zeros(frameSize));
-    thisFrame(sub2ind(frameSize,frameCellArray{ii}.Yp,frameCellArray{ii}.Xp))=1;
+    thisFrame(frameCellArray{ii}.Xp,frameCellArray{ii}.Yp)=255;
     
     % make glint patch
     if ~any(isnan(glintData_X(:,ii)))

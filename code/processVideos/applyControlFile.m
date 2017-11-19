@@ -113,8 +113,9 @@ for ii = 1:nFrames
     end
     
     % Obtain this frame
+    % get the data frame
     thisFrame = uint8(zeros(originalPerimeter.size));
-    thisFrame(sub2ind(originalPerimeter.size,originalPerimeter.data{ii}.Yp,originalPerimeter.data{ii}.Xp))=1;
+    thisFrame(originalPerimeter.data{ii}.Xp,originalPerimeter.data{ii}.Yp)=255;
 
     % Proceed if there are instructions for this frame
     instructionIdx = find ([instructions.frame] == ii);    
