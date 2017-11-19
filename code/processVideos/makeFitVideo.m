@@ -213,7 +213,6 @@ end
 % broadcast overhead
 if ~isempty(perimeter)
     frameCellArray = perimeter.data(1:nFrames);
-    frameSize = perimeter.size;
     clear perimeter
 end
 
@@ -254,7 +253,8 @@ parfor (ii = 1:nFrames, nWorkers)
                 % build ellipse impicit equation
                 pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(pupilFitParams(ii,:)));
                 fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
-                % superimpose the ellipse using fimplicit or ezplot
+                % superimpose the ellipse using fimplicit or ezplot (ezplot
+                % is the fallback option for older Matlab versions)
                 if exist('fimplicit','file')==2
                     fimplicit(fh,[1, videoSizeX, 1, videoSizeY],'Color', p.Results.pupilColor,'LineWidth',1);
                     set(gca,'position',[0 0 1 1],'units','normalized')
@@ -275,7 +275,8 @@ parfor (ii = 1:nFrames, nWorkers)
                 % build ellipse impicit equation
                 pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(irisFitParams(ii,:)));
                 fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
-                % superimpose the ellipse using fimplicit or ezplot
+                % superimpose the ellipse using fimplicit or ezplot (ezplot
+                % is the fallback option for older Matlab versions)
                 if exist('fimplicit','file')==2
                     fimplicit(fh,[1, videoSizeX, 1, videoSizeY],'Color', p.Results.irisColor,'LineWidth',1);
                     set(gca,'position',[0 0 1 1],'units','normalized')

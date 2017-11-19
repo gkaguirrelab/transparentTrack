@@ -224,7 +224,7 @@ dataLoad=load(perimeterFileName);
 perimeter=dataLoad.perimeter;
 clear dataLoad
 if p.Results.nFrames == Inf
-    nFrames=size(perimeter.data,3);
+    nFrames=size(perimeter.data,1);
 else
     nFrames = p.Results.nFrames;
 end
@@ -327,7 +327,7 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % get the data frame
     thisFrame = uint8(zeros(frameSize));
-    thisFrame(frameCellArray{ii}.Xp,frameCellArray{ii}.Yp)=255;
+    thisFrame(sub2ind(frameSize,frameCellArray{ii}.Yp,frameCellArray{ii}.Xp))=255;
     
     % make glint patch
     if ~any(isnan(glintData_X(:,ii)))
