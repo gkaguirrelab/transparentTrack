@@ -163,7 +163,7 @@ nonlinconst = @(transparentEllipseParams) constrainEllipseBySceneGeometry(...
 
 % determine how many frames we will process
 if p.Results.nFrames == Inf
-    nFrames=size(perimeter.data,3);
+    nFrames=size(perimeter.data,1);
 else
     nFrames = p.Results.nFrames;
 end
@@ -216,7 +216,8 @@ end
 
 % Recast perimeter.data into a sliced cell array to reduce parfor
 % broadcast overhead
-frameCellArray = arrayfun(@(ii) {squeeze(perimeter.data(:,:,ii))},1:1:nFrames);
+frameCellArray = perimeter.data(1:nFrames);
+clear perimeter
 
 % Set-up other variables to be non-broadcast
 verbosity = p.Results.verbosity;
@@ -275,15 +276,13 @@ parfor (ii = 1:nFrames, nWorkers)
     pPosteriorMeanTransparent=NaN(1,nEllipseParams);
     pPosteriorFitError=NaN;
     
-    % get the data frame
-    thisFrame = frameCellArray{ii};
-    
     % get the boundary points
-    [Yc, Xc] = ind2sub(size(thisFrame),find(thisFrame));
+    Xp = frameCellArray{ii}.Xp;
+    Yp = frameCellArray{ii}.Yp;
     
     % if this frame has data, and the initial ellipse fit is not nan,
     % then proceed to calculate the posterior
-    if ~isempty(Xc) &&  ~isempty(Yc) && sum(isnan(pupilData.(whichLikelihoodMean)(ii,:)))==0
+    if ~isempty(Xp) &&  ~isempty(Yp) && sum(isnan(pupilData.(whichLikelihoodMean)(ii,:)))==0
         % Calculate the pupil area prior. The prior mean is given by the
         % surrounding area values, weighted by a decaying exponential in
         % time and the inverse of the standard deviation of each measure.
@@ -352,7 +351,7 @@ parfor (ii = 1:nFrames, nWorkers)
         ub_pin = ellipseTransparentUB;
         lb_pin(areaIdx)=reconstructedTransparentEllipse(areaIdx);
         ub_pin(areaIdx)=reconstructedTransparentEllipse(areaIdx);
-        [pPosteriorMeanTransparent, pPosteriorFitError] = constrainedEllipseFit(Xc,Yc, lb_pin, ub_pin, nonlinconst);
+        [pPosteriorMeanTransparent, pPosteriorFitError] = constrainedEllipseFit(Xp,Yp, lb_pin, ub_pin, nonlinconst);
         
     end % check if there are any perimeter points to fit
     

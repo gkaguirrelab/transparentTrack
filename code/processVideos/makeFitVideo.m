@@ -175,7 +175,6 @@ else
     sceneGeometry=[];
 end
 
-
 % read video file into memory
 videoInObj = VideoReader(videoInFileName);
 % get number of frames
@@ -201,7 +200,7 @@ clear videoInObj
 outputVideo=zeros(videoSizeY,videoSizeX,3,nFrames,'uint8');
 
 % get glintData ready for the parfor. This includes transposing the
-% variables 
+% variables
 if ~isempty(p.Results.glintFileName)
     glintData_X = glintData.X;
     glintData_Y = glintData.Y;
@@ -210,9 +209,14 @@ else
     glintData_Y = nan(1,nFrames);
 end
 
-% Recast perimeter.data into a sliced cell array to reduce par for
+% Recast perimeter and the video source into a sliced cell array to reduce par for
 % broadcast overhead
-frameArray = arrayfun(@(ii) {squeeze(perimeter.data(:,:,ii))},1:1:nFrames);
+if ~isempty(perimeter)
+    frameCellArray = perimeter.data(1:nFrames);
+    frameSize = perimeter.size;
+    clear perimeter
+end
+
 sourceVideoArray = arrayfun(@(ii) {squeeze(sourceVideo(:,:,ii))},1:1:nFrames);
 
 %% Loop through the frames
@@ -232,16 +236,15 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % add glint
     if ~isempty(p.Results.glintFileName)
-            plot(glintData_X(ii),glintData_Y(ii),['*' p.Results.glintColor]);
+        plot(glintData_X(ii),glintData_Y(ii),['*' p.Results.glintColor]);
     end
     
     % add pupil perimeter
     if ~isempty(p.Results.perimeterFileName)
         % get the data frame
-        % get the data frame
-        thisFrame = frameArray{ii};
-        [Yp, Xp] = ind2sub(size(thisFrame),find(thisFrame));
-        plot(Xp,Yp,['.' p.Results.perimeterColor], 'MarkerSize', 1);
+        if ~isempty(frameCellArray{ii}.Xp)
+            plot(frameCellArray{ii}.Xp,frameCellArray{ii}.Yp,['.' p.Results.perimeterColor], 'MarkerSize', 1);
+        end
     end
     
     % add pupil ellipse fit
@@ -308,8 +311,8 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % add the center of projection
     if ~isempty(p.Results.sceneGeometryFileName)
-             plot(sceneGeometry.eyeCenter.X,sceneGeometry.eyeCenter.Y,['x' p.Results.sceneGeometryColor]);
-    end    
+        plot(sceneGeometry.eyeCenter.X,sceneGeometry.eyeCenter.Y,['x' p.Results.sceneGeometryColor]);
+    end
     
     % Save the frame and close the figure
     tmp=getframe(frameFig);

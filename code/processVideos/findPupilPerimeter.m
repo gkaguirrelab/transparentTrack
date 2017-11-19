@@ -156,11 +156,13 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 % initialize variable to hold the perimeter data
-perimeter_data = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
+perimeter = struct();
+perimeter.size = [size(thisFrame,1) size(thisFrame,2)];
+perimeter.data = cell(nFrames,1);
 
 % Initialize the pupilRange with the parameter value. This value is updated
 % as we progress through the frames
-pupilRange= p.Results.pupilRange;
+pupilRange = p.Results.pupilRange;
 
 % loop through gray frames
 for ii = p.Results.startFrame:nFrames
@@ -287,19 +289,16 @@ for ii = p.Results.startFrame:nFrames
         binP = bwperim(binP);
         
         % save the perimeter
-        perimFrame = im2uint8(binP);
-        perimeter_data(:,:,ii) = perimFrame;
+        [perimeter.data{ii}.Yp, perimeter.data{ii}.Xp] = ind2sub(size(binP),find(binP));
     else
-        perimFrame = im2uint8(zeros(size(thisFrame)));
-        perimeter_data(:,:,ii) = perimFrame;
-        pupilRange = initialPupilRange;
+        perimeter.data{ii}.Yp = [];
+        perimeter.data{ii}.Xp = [];
     end
     
     if p.Results.displayMode
         displayFrame=thisFrame;
-        [Yp, Xp] = ind2sub(size(perimFrame),find(perimFrame));
-        if ~isempty(Xp)
-            displayFrame(sub2ind(size(perimFrame),Yp,Xp))=255;
+        if ~isempty(perimeter.data{ii}.Xp)
+            displayFrame(sub2ind(size(perimFrame),perimeter.data{ii}.Yp,perimeter.data{ii}.Xp))=255;
         end
         imshow(displayFrame, 'Border', 'tight');
     end
@@ -309,7 +308,6 @@ end % loop through gray frames
 %% Clean up and close
 
 % save mat file with the video and analysis details
-perimeter.data = perimeter_data;
 perimeter.meta = p.Results;
 if ~p.Results.displayMode
     save(perimeterFileName,'perimeter','-v7.3');
@@ -327,6 +325,9 @@ end
 
 end %  main function
 
+
+
+%% LOCAL FUNCTIONS
 
 function [pCenters, pRadii,pMetric, pupilRange] = findPupilCircle(I,pupilCircleThresh,pupilRange,imfindcirclesSensitivity,rangeAdjust)
 % findGlintAndPupilCircles(I,pupilCircleThresh,glintCircleThresh,pupilRange,glintRange,pupilOnly,glintOut,dilateGlint,imfindcirclesSensitivity,rangeAdjust)
