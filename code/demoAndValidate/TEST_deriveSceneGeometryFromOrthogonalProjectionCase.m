@@ -170,10 +170,11 @@ sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileName,'scen
 
 ellipses = pupilData.ellipseParamsUnconstrained_mean;
 centerOfProjection = [sceneGeometry.eyeCenter.X sceneGeometry.eyeCenter.Y];
+eyeRadius = sceneGeometry.eyeRadius;
 projectionModel = 'orthogonal';
 
 for ii = 1:nFrames
-    [reconstructedPupilAzi(ii), reconstructedPupilEle(ii), reconstructedPupilArea(ii)] = pupilProjection_inv(ellipses(ii,:), centerOfProjection, projectionModel);
+    [reconstructedPupilAzi(ii), reconstructedPupilEle(ii), reconstructedPupilArea(ii)] = pupilProjection_inv(ellipses(ii,:), centerOfProjection, eyeRadius, projectionModel);
 end
 
 % plot real Azi and Ele vs reconstructed ones

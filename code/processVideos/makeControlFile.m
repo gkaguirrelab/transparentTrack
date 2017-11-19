@@ -309,18 +309,25 @@ glintData_Y = glintData.Y';
 
 % Recast perimeter.data into a sliced cell array to reduce par for
 % broadcast overhead
-frameArray = arrayfun(@(ii) {squeeze(perimeter.data(:,:,ii))},1:1:nFrames);
+frameCellArray = perimeter.data(1:nFrames);
+frameSize = perimeter.size;
+clear perimeter
+
+% Remove some other broadcast variables
+verbosity = p.Results.verbosity;
+
 
 % Loop through the video frames
 parfor (ii = 1:nFrames, nWorkers)
     
     % Update progress
-    if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
+    if strcmp(verbosity,'full') && mod(ii,round(nFrames/50))==0
         fprintf('\b.\n');
     end
     
     % get the data frame
-    thisFrame = frameArray{ii};
+    thisFrame = uint8(zeros(frameSize));
+    thisFrame(sub2ind(frameSize,frameCellArray{ii}.Yp,frameCellArray{ii}.Xp))=1;
     
     % make glint patch
     if ~any(isnan(glintData_X(:,ii)))
@@ -441,6 +448,7 @@ if strcmp(p.Results.verbosity,'full')
     fprintf('\n');
 end
 
+
 %% Write out control file instructions
 fid = fopen(controlFileName,'a');
 % write out blinks
@@ -530,6 +538,7 @@ clear instruction
 instruction = ['%' ',' '%' ',' 'end of automatic instructions'];
 fprintf(fid,'%s\n',instruction);
 fclose(fid);
+
 
 %% Delete the parallel pool
 if p.Results.useParallel

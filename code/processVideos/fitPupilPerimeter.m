@@ -168,7 +168,7 @@ clear dataLoad
 
 % determine how many frames we will process
 if p.Results.nFrames == Inf
-    nFrames=size(perimeter.data,3);
+    nFrames=size(perimeter.data,1);
 else
     nFrames = p.Results.nFrames;
 end
@@ -211,9 +211,10 @@ end
 
 %% Calculate an ellipse fit for each video frame
 
-% Recast perimeter.data into a sliced cell array to reduce par for
+% Recast perimeter into a sliced cell array to reduce par for
 % broadcast overhead
-frameCellArray = arrayfun(@(ii) {squeeze(perimeter.data(:,:,ii))},1:1:nFrames);
+frameCellArray = perimeter.data(1:nFrames);
+clear perimeter
 
 % Set-up other variables to be non-broadcast
 verbosity = p.Results.verbosity;
@@ -240,21 +241,19 @@ parfor (ii = 1:nFrames, nWorkers)
     end
     try % this is to have information on which frame caused an error
 
-        % get the data frame
-        thisFrame = frameCellArray{ii};
-
         % get the boundary points
-        [Yc, Xc] = ind2sub(size(thisFrame),find(thisFrame));
+        Xp = frameCellArray{ii}.Xp;
+        Yp = frameCellArray{ii}.Yp;
         
         % fit an ellipse to the boundary (if any points exist)
-        if isempty(Xc) || isempty(Yc)
+        if isempty(Xp) || isempty(Yp)
             ellipseParamsTransparent=NaN(1,nEllipseParams);
             ellipseParamsSplitsSD=NaN(1,nEllipseParams);
             ellipseParamsError=NaN(1);
         else
             % Obtain the fit to the veridical data
             [ellipseParamsTransparent, ellipseParamsError] = ...
-                constrainedEllipseFit(Xc, Yc, ...
+                constrainedEllipseFit(Xp, Yp, ...
                 ellipseTransparentLB, ...
                 ellipseTransparentUB, ...
                 nonlinconst);
@@ -263,7 +262,7 @@ parfor (ii = 1:nFrames, nWorkers)
             % If so, search again.
             if ellipseParamsTransparent(4)==0
                 [ellipseParamsTransparent, ellipseParamsError] = ...
-                    constrainedEllipseFit(Xc, Yc, ...
+                    constrainedEllipseFit(Xp, Yp, ...
                     ellipseTransparentLB, ...
                     ellipseTransparentUB, ...
                     nonlinconst);
@@ -275,23 +274,23 @@ parfor (ii = 1:nFrames, nWorkers)
             else
                 % Find the center of the pupil boundary points, place the boundary
                 % points in a matrix and shift them to the center position
-                xCenter=mean(Xc); yCenter=mean(Yc);
-                centerMatrix = repmat([xCenter'; yCenter'], 1, length(Xc));
+                xCenter=mean(Xp); yCenter=mean(Yp);
+                centerMatrix = repmat([xCenter'; yCenter'], 1, length(Xp));
                 
                 % Rotate the data and split in half through the center
                 pFitTransparentSplit=NaN(2,nSplits,nEllipseParams);
                 for ss=1:nSplits
                     theta=((pi/2)/nSplits)*ss;
-                    forwardPoints = feval(returnRotMat,theta) * ([Xc,Yc]' - centerMatrix) + centerMatrix;
+                    forwardPoints = feval(returnRotMat,theta) * ([Xp,Yp]' - centerMatrix) + centerMatrix;
                     splitIdx1 = find((forwardPoints(1,:) < median(forwardPoints(1,:))))';
                     splitIdx2 = find((forwardPoints(1,:) >= median(forwardPoints(1,:))))';
                     pFitTransparentSplit(1,ss,:) = ...
-                        constrainedEllipseFit(Xc(splitIdx1), Yc(splitIdx1), ...
+                        constrainedEllipseFit(Xp(splitIdx1), Yp(splitIdx1), ...
                         ellipseTransparentLB, ...
                         ellipseTransparentUB, ...
                         nonlinconst);
                     pFitTransparentSplit(2,ss,:) = ...
-                        constrainedEllipseFit(Xc(splitIdx2), Yc(splitIdx2), ...
+                        constrainedEllipseFit(Xp(splitIdx2), Yp(splitIdx2), ...
                         ellipseTransparentLB, ...
                         ellipseTransparentUB, ...
                         nonlinconst);

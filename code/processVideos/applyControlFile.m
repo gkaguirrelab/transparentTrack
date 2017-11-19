@@ -89,9 +89,11 @@ originalPerimeter=dataLoad.perimeter;
 clear dataLoad
 
 % Set up some variables to guide the analysis and hold the result
-nFrames=size(originalPerimeter.data,3);
-blankFrame=uint8(zeros(size(originalPerimeter.data,1), size(originalPerimeter.data,2)) );
-perimeter.data=uint8(zeros(size(originalPerimeter.data)));
+nFrames=size(originalPerimeter.data,1);
+perimeter = struct();
+perimeter.size = originalPerimeter.size;
+perimeter.data = cell(nFrames,1);
+blankFrame = uint8(zeros(perimeter.size));
 
 % alert the user
 if strcmp(p.Results.verbosity,'full')
@@ -111,44 +113,44 @@ for ii = 1:nFrames
     end
     
     % Obtain this frame
-    img = squeeze(originalPerimeter.data(:,:,ii));
+    thisFrame = uint8(zeros(originalPerimeter.size));
+    thisFrame(sub2ind(originalPerimeter.size,originalPerimeter.data{ii}.Yp,originalPerimeter.data{ii}.Xp))=1;
 
     % Proceed if there are instructions for this frame
     instructionIdx = find ([instructions.frame] == ii);    
     if ~isempty(instructionIdx)
         
-
         for dd=1:length(instructionIdx)
             switch instructions(instructionIdx(dd)).type
                 case 'blink'
-                    img=blankFrame;
+                    thisFrame=blankFrame;
                 case 'bad'
-                    img=blankFrame;
+                    thisFrame=blankFrame;
                 case 'error'
-                    img=blankFrame;
+                    thisFrame=blankFrame;
                 case 'ellipse'
                     % get the instruction params
                     [cx, cy, a, b, phi] = parseControlInstructions(instructions(instructionIdx(dd)));
                     % start from back frame
-                    img = blankFrame;
+                    thisFrame = blankFrame;
                     % find ellipse points
                     [Xe,Ye] = ellipse(N, cx, cy, a, b, phi);
                     Xe = round(Xe);
                     Ye = round(Ye);
                     % draw ellipse in frame
-                    img(sub2ind(size(img),Ye(:),Xe(:))) = 1;
+                    thisFrame(sub2ind(size(thisFrame),Ye(:),Xe(:))) = 1;
                 case 'cut'
                     % get cut params
                     [radiusThresh,theta] = parseControlInstructions(instructions(instructionIdx(dd)));
-                    [img] = applyPupilCut(img,radiusThresh,theta);
+                    [thisFrame] = applyPupilCut(thisFrame,radiusThresh,theta);
                 case 'glintPatch'
                     % get cut params
                     [glintX,glintY,glintPatchRadius] = parseControlInstructions(instructions(instructionIdx(dd)));
                     % apply patch
-                    glintPatch = ones(size(img));
+                    glintPatch = ones(size(thisFrame));
                     glintPatch = insertShape(glintPatch,'FilledCircle',[glintX glintY glintPatchRadius],'Color','black');
                     glintPatch = im2bw(glintPatch);
-                    img = immultiply(img,glintPatch);
+                    thisFrame = immultiply(thisFrame,glintPatch);
                 otherwise
                     warning(['Instruction ' instructions(instructionIdx(dd)).type ' for frame ' num2str(ii) ' is unrecognized.']);
             end % switch instruction types
@@ -156,7 +158,7 @@ for ii = 1:nFrames
     end % we have instructions for this frame
         
     % save the frame, which may include modifications
-    perimeter.data(:,:,ii)=img;
+    [perimeter.data{ii}.Yp, perimeter.data{ii}.Xp] = ind2sub(size(thisFrame),find(thisFrame));
 
 end % loop through frames
 
