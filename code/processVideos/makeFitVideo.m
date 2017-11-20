@@ -196,8 +196,11 @@ end
 % close the video object
 clear videoInObj
 
-% prepare the outputVideo
-outputVideo=zeros(videoSizeY,videoSizeX,3,nFrames,'uint8');
+% create a temp directory for the output frames
+scratchDirectoryName = [videoOutFileName '_scratch'];
+if ~exist(scratchDirectoryName,'dir')
+    mkdir(scratchDirectoryName)
+end
 
 % get glintData ready for the parfor. This includes transposing the
 % variables
@@ -315,9 +318,11 @@ parfor (ii = 1:nFrames, nWorkers)
         plot(sceneGeometry.eyeCenter.X,sceneGeometry.eyeCenter.Y,['x' p.Results.sceneGeometryColor]);
     end
     
-    % Save the frame and close the figure
+    % Save the frame to the scratch directory and close the figure
     tmp=getframe(frameFig);
-    outputVideo(:,:,:,ii)=tmp.cdata;
+    thisVideoFrame=uint8(tmp.cdata);
+    thisFrameFileName= fullfile(scratchDirectoryName,sprintf('%05d.mat',ii));
+    parsave(thisFrameFileName, thisVideoFrame);
     close(frameFig);
     
 end
@@ -341,11 +346,17 @@ open(videoOutObj);
 
 % loop through the frames and save them
 for ii=1:nFrames
-    indexedFrame = rgb2ind(squeeze(outputVideo(:,:,:,ii)), cmap, 'nodither');
+    thisFrameFileName=  fullfile(scratchDirectoryName,sprintf('%05d.mat',ii));
+    tmp=load(thisFrameFileName);
+    thisVideoFrame=tmp.dataout;
+    indexedFrame = rgb2ind(thisVideoFrame, cmap, 'nodither');
     writeVideo(videoOutObj,indexedFrame);
 end
 % close the videoObj
 clear videoOutObj
+
+% delete the scratch directory
+rmdir(scratchDirectoryName,'s');
 
 % report completion of fit video generation
 if strcmp(p.Results.verbosity,'full')
@@ -370,3 +381,10 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 end % function
+
+
+%% LOCAL FUNCTIONS
+
+function parsave(fname, dataout)
+save(fname, 'dataout')
+end
