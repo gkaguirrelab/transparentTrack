@@ -346,12 +346,21 @@ parfor (ii = 1:nFrames, nWorkers)
         reconstructedTransparentEllipse = ...
             pupilProjection_fwd(pupilAzi(ii), pupilEle(ii), posteriorPupilAreaMean, eyeCenterOfRotation, eyeRadius, projectionModel);
         
-        % Pin the area parameter and re-fit the ellipse
-        lb_pin = ellipseTransparentLB;
-        ub_pin = ellipseTransparentUB;
-        lb_pin(areaIdx)=reconstructedTransparentEllipse(areaIdx);
-        ub_pin(areaIdx)=reconstructedTransparentEllipse(areaIdx);
-        [pPosteriorMeanTransparent, pPosteriorFitError] = constrainedEllipseFit(Xp,Yp, lb_pin, ub_pin, nonlinconst);
+        % Occasionally nan is returned for pupil area. If so, retain the
+        % original ellipse fit. If not, re-fit the ellipse with the area
+        % constrained to the posterior value
+        
+        if isnan(reconstructedTransparentEllipse(areaIdx))
+            pPosteriorMeanTransparent = pupilData.(whichLikelihoodMean)(ii,:);
+            pPosteriorFitError = nan;
+        else
+            % Pin the area parameter and re-fit the ellipse
+            lb_pin = ellipseTransparentLB;
+            ub_pin = ellipseTransparentUB;
+            lb_pin(areaIdx)=reconstructedTransparentEllipse(areaIdx);
+            ub_pin(areaIdx)=reconstructedTransparentEllipse(areaIdx);
+            [pPosteriorMeanTransparent, pPosteriorFitError] = constrainedEllipseFit(Xp,Yp, lb_pin, ub_pin, nonlinconst);
+        end
         
     end % check if there are any perimeter points to fit
     

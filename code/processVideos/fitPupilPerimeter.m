@@ -309,7 +309,9 @@ parfor (ii = 1:nFrames, nWorkers)
         loopVar_ellipseParamsError(ii) = ellipseParamsError;
     catch ME
         warning ('Error while processing frame: %d', ii)
-        rethrow(ME)
+            ellipseParamsTransparent=NaN(1,nEllipseParams);
+            ellipseParamsSplitsSD=NaN(1,nEllipseParams);
+            ellipseParamsError=NaN(1);
     end % try catch
 end % loop over frames
 
