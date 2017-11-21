@@ -298,7 +298,7 @@ for ii = p.Results.startFrame:nFrames
     if p.Results.displayMode
         displayFrame=thisFrame;
         if ~isempty(perimeter.data{ii}.Xp)
-            displayFrame(sub2ind(size(perimFrame),perimeter.data{ii}.Yp,perimeter.data{ii}.Xp))=255;
+            displayFrame(sub2ind(size(thisFrame),perimeter.data{ii}.Yp,perimeter.data{ii}.Xp))=255;
         end
         imshow(displayFrame, 'Border', 'tight');
     end

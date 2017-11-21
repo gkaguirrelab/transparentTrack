@@ -87,7 +87,8 @@ end
 if ~isempty(nonlinconst)
     % Force the X and Y values of the initial guess to satisfy the
     % nonlinear constraint
-    [~, ~, pInitTransparent(1), pInitTransparent(2)] = nonlinconst(pInitTransparent);
+    [~, ~, projectedEllipseOnImagePlane] = nonlinconst(pInitTransparent);
+    pInitTransparent(4:5)=projectedEllipseOnImagePlane(4:5);
 end
 
 % define some search options

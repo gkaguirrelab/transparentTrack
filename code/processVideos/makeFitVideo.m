@@ -11,6 +11,9 @@ function makeFitVideo(videoInFileName, videoOutFileName, varargin)
 % Optional key/value pairs (display and I/O)
 %  'verbosity' - level of verbosity. [none, full]
 %  'videoOutFrameRate' - frame rate (in Hz) of saved video
+%  'saveUncompressedVideo' - set as true to save an uncompressed fit video.
+%       Be aware that the video will be 10x bigger than the default
+%       compressed version.
 %
 % Optional key/value pairs (flow control)
 %  'nFrames' - analyze fewer than the total number of frames.
@@ -46,6 +49,7 @@ p.addRequired('videoOutFileName', @ischar);
 % Optional display and I/O params
 p.addParameter('verbosity','none', @ischar);
 p.addParameter('videoOutFrameRate', 60, @isnumeric);
+p.addParameter('saveUncompressedVideo', false, @islogical);
 
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
@@ -196,12 +200,6 @@ end
 % close the video object
 clear videoInObj
 
-% create a temp directory for the output frames
-scratchDirectoryName = [videoOutFileName '_scratch'];
-if ~exist(scratchDirectoryName,'dir')
-    mkdir(scratchDirectoryName)
-end
-
 % get glintData ready for the parfor. This includes transposing the
 % variables
 if ~isempty(p.Results.glintFileName)
@@ -220,6 +218,10 @@ if ~isempty(perimeter)
 end
 
 sourceVideoArray = arrayfun(@(ii) {squeeze(sourceVideo(:,:,ii))},1:1:nFrames);
+
+
+% Prepare output video
+outputVideo=zeros(videoSizeY,videoSizeX,3,nFrames,'uint8');
 
 %% Loop through the frames
 parfor (ii = 1:nFrames, nWorkers)
@@ -318,45 +320,52 @@ parfor (ii = 1:nFrames, nWorkers)
         plot(sceneGeometry.eyeCenter.X,sceneGeometry.eyeCenter.Y,['x' p.Results.sceneGeometryColor]);
     end
     
-    % Save the frame to the scratch directory and close the figure
+    % Save the frame and close the figure
     tmp=getframe(frameFig);
-    thisVideoFrame=uint8(tmp.cdata);
-    thisFrameFileName= fullfile(scratchDirectoryName,sprintf('%05d.mat',ii));
-    parsave(thisFrameFileName, thisVideoFrame);
+    outputVideo(:,:,:,ii) =tmp.cdata;
     close(frameFig);
-    
 end
 
 %% Save and cleanup
 
-% Create a color map
-cmap = [linspace(0,1,256)' linspace(0,1,256)' linspace(0,1,256)'];
-cmap(1,:)=[1 0 0];
-cmap(2,:)=[0 1 0];
-cmap(3,:)=[0 0 1];
-cmap(4,:)=[1 1 0];
-cmap(5,:)=[0 1 1];
-cmap(6,:)=[1 0 1];
-
-% write the outputVideo to file
-videoOutObj = VideoWriter(videoOutFileName,'Indexed AVI');
-videoOutObj.FrameRate = p.Results.videoOutFrameRate;
-videoOutObj.Colormap = cmap;
-open(videoOutObj);
-
-% loop through the frames and save them
-for ii=1:nFrames
-    thisFrameFileName=  fullfile(scratchDirectoryName,sprintf('%05d.mat',ii));
-    tmp=load(thisFrameFileName);
-    thisVideoFrame=tmp.dataout;
-    indexedFrame = rgb2ind(thisVideoFrame, cmap, 'nodither');
-    writeVideo(videoOutObj,indexedFrame);
+if ~p.Results.saveUncompressedVideo
+    % write the outputVideo to file
+    videoOutObj = VideoWriter(videoOutFileName);
+    videoOutObj.FrameRate = p.Results.videoOutFrameRate;
+    open(videoOutObj);
+    
+    % loop through the frames and save them
+    for ii=1:nFrames
+        thisFrame = squeeze(outputVideo(:,:,:,ii));
+        writeVideo(videoOutObj,thisFrame);
+    end
+    % close the videoObj
+    clear videoOutObj
+else
+    % Create a color map
+    cmap = [linspace(0,1,256)' linspace(0,1,256)' linspace(0,1,256)'];
+    cmap(1,:)=[1 0 0];
+    cmap(2,:)=[0 1 0];
+    cmap(3,:)=[0 0 1];
+    cmap(4,:)=[1 1 0];
+    cmap(5,:)=[0 1 1];
+    cmap(6,:)=[1 0 1];
+    
+    % write the outputVideo to file
+    videoOutObj = VideoWriter(videoOutFileName,'Indexed AVI');
+    videoOutObj.FrameRate = p.Results.videoOutFrameRate;
+    videoOutObj.Colormap = cmap;
+    open(videoOutObj);
+    
+    % loop through the frames and save them
+    for ii=1:nFrames
+        indexedFrame = rgb2ind(squeeze(outputVideo(:,:,:,ii)), cmap, 'nodither');
+        writeVideo(videoOutObj,indexedFrame);
+    end
+    
+    % close the videoObj
+    clear videoOutObj    
 end
-% close the videoObj
-clear videoOutObj
-
-% delete the scratch directory
-rmdir(scratchDirectoryName,'s');
 
 % report completion of fit video generation
 if strcmp(p.Results.verbosity,'full')
@@ -381,10 +390,3 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 end % function
-
-
-%% LOCAL FUNCTIONS
-
-function parsave(fname, dataout)
-save(fname, 'dataout')
-end

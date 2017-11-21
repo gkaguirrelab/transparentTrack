@@ -1,4 +1,4 @@
-function [c, ceq, predictedX, predictedY]=constrainEllipseBySceneGeometry(pupilEllipseOnImagePlane, sceneGeometry, constraintFactor)
+function [c, ceq, projectedEllipseOnImagePlane]=constrainEllipseBySceneGeometry(pupilEllipseOnImagePlane, sceneGeometry, constraintFactor)
 % [c, ceq]=constrainEllipseBySceneGeometry(transparentEllipseParams, sceneGeometry)
 %
 % This function implements a non-linear constraint upon the ellipse fit to

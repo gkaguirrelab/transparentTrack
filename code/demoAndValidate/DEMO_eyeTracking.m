@@ -37,6 +37,7 @@ pathParams.projectSubfolder = 'session2_spatialStimuli';
 pathParams.eyeTrackingDir = 'EyeTracking';
 pathParams.subjectID = 'TOME_3020';
 pathParams.sessionDate = '050517';
+%pathParams.runName = 'tfMRI_RETINO_PA_run01';
 pathParams.runName = 'GazeCal01';
 
 
@@ -81,7 +82,9 @@ end
 runVideoPipeline( pathParams, ...
     'nFrames',nFrames,'verbosity', verbosity, 'tbSnapshot',tbSnapshot, 'useParallel',true, ...
     'pupilRange', [40 200], 'pupilCircleThresh', 0.04, 'pupilGammaCorrection', 1.5, ...
+    'skipStageByNumber',1:1:7,...
     'overwriteControlFile', true, 'catchErrors', false, 'makeFitVideoByName', {'fitPupilPerimeter'});
+
 
 
 %% Plot some fits
