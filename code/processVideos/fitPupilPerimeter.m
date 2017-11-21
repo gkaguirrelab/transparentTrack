@@ -110,6 +110,7 @@ p.addParameter('nSplits',8,@isnumeric);
 
 % Optional analysis params -- sceneGeometry fitting constraint
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
+p.addParameter('nonLinearConstraintFactor',1,@isnumeric);
 
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
@@ -150,10 +151,11 @@ else
     dataLoad=load(p.Results.sceneGeometryFileName);
     sceneGeometry=dataLoad.sceneGeometry;
     clear dataLoad
-
+    
     nonlinconst = @(transparentEllipseParams) constrainEllipseBySceneGeometry(...
         transparentEllipseParams, ...
-        sceneGeometry);
+        sceneGeometry, ...
+        p.Results.nonLinearConstraintFactor);
 end
 
 % Create an anonymous function to return a rotation matrix given theta in
@@ -231,6 +233,7 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 % Loop through the frames
+%for ii = 1:nFrames
 parfor (ii = 1:nFrames, nWorkers)
     
     % Update progress
@@ -239,29 +242,33 @@ parfor (ii = 1:nFrames, nWorkers)
             fprintf('\b.\n');
         end
     end
-    try % this is to have information on which frame caused an error
-
-        % get the boundary points
-        Xp = frameCellArray{ii}.Xp;
-        Yp = frameCellArray{ii}.Yp;
-        
-        % fit an ellipse to the boundary (if any points exist)
-        if isempty(Xp) || isempty(Yp)
-            ellipseParamsTransparent=NaN(1,nEllipseParams);
-            ellipseParamsSplitsSD=NaN(1,nEllipseParams);
-            ellipseParamsError=NaN(1);
-        else
+    
+    % Initialize the results variables
+    ellipseParamsTransparent=NaN(1,nEllipseParams);
+    ellipseParamsSplitsSD=NaN(1,nEllipseParams);
+    ellipseParamsObjectiveError=NaN(1);
+    ellipseParamsConstraintError=NaN(1);
+    
+    % get the boundary points
+    Xp = frameCellArray{ii}.Xp;
+    Yp = frameCellArray{ii}.Yp;
+    
+    % fit an ellipse to the boundary (if any points exist)
+    if ~isempty(Xp) && ~isempty(Yp)
+        try % this is to have information on which frame caused an error
+            
             % Obtain the fit to the veridical data
-            [ellipseParamsTransparent, ellipseParamsError] = ...
+            [ellipseParamsTransparent, ellipseParamsObjectiveError, ellipseParamsConstraintError] = ...
                 constrainedEllipseFit(Xp, Yp, ...
                 ellipseTransparentLB, ...
                 ellipseTransparentUB, ...
-                nonlinconst);
-
+                nonlinconst);           
+            
             % Sometimes the solver finds a local minimum circular ellipse.
             % If so, search again.
             if ellipseParamsTransparent(4)==0
-                [ellipseParamsTransparent, ellipseParamsError] = ...
+                warning ('Hit local minimum while processing frame: %d', ii)
+                [ellipseParamsTransparent, ellipseParamsObjectiveError, ellipseParamsConstraintError] = ...
                     constrainedEllipseFit(Xp, Yp, ...
                     ellipseTransparentLB, ...
                     ellipseTransparentUB, ...
@@ -300,19 +307,18 @@ parfor (ii = 1:nFrames, nWorkers)
                 % sqrt(2) to roughly account for our use of just half the data
                 ellipseParamsSplitsSD=nanstd(reshape(pFitTransparentSplit,ss*2,nEllipseParams))/sqrt(2);
             end % check if we want to do splits
-                        
-        end % check if there are pupil boundary data to be fit
-        
-        % store results
-        loopVar_ellipseParamsTransparent(ii,:) = ellipseParamsTransparent';
-        loopVar_ellipseParamsSplitsSD(ii,:) = ellipseParamsSplitsSD';
-        loopVar_ellipseParamsError(ii) = ellipseParamsError;
-    catch ME
-        warning ('Error while processing frame: %d', ii)
-            ellipseParamsTransparent=NaN(1,nEllipseParams);
-            ellipseParamsSplitsSD=NaN(1,nEllipseParams);
-            ellipseParamsError=NaN(1);
-    end % try catch
+            
+        catch ME
+            warning ('Error while processing frame: %d', ii)
+        end % try catch
+    end % check if there are pupil boundary data to be fit
+    
+    % store results
+    loopVar_ellipseParamsTransparent(ii,:) = ellipseParamsTransparent';
+    loopVar_ellipseParamsSplitsSD(ii,:) = ellipseParamsSplitsSD';
+    loopVar_ellipseParamsObjectiveError(ii) = ellipseParamsObjectiveError;
+    loopVar_ellipseParamsConstraintError(ii) = ellipseParamsConstraintError;
+    
 end % loop over frames
 
 % alert the user that we are done with the fit loop
@@ -337,7 +343,8 @@ if isempty(p.Results.sceneGeometryFileName)
     pupilData.meta.fitPupilPerimeterUnconstrained = p.Results;
     pupilData.meta.fitPupilPerimeterUnconstrained.coordinateSystem = 'intrinsicCoordinates(pixels)';
     pupilData.ellipseParamsUnconstrained_mean = loopVar_ellipseParamsTransparent;
-    pupilData.ellipseParamsUnconstrained_rmse = loopVar_ellipseParamsError';
+    pupilData.ellipseParamsUnconstrained_rmse = loopVar_ellipseParamsObjectiveError';
+    pupilData.ellipseParamsUnconstrained_constraint = loopVar_ellipseParamsConstraintError';
     if nSplits~=0
         pupilData.ellipseParamsUnconstrained_splitsSD = loopVar_ellipseParamsSplitsSD;
     end
@@ -345,7 +352,8 @@ else
     pupilData.meta.fitPupilPerimeterSceneConstrained = p.Results;
     pupilData.meta.fitPupilPerimeterSceneConstrained.coordinateSystem = 'intrinsicCoordinates(pixels)';
     pupilData.ellipseParamsSceneConstrained_mean = loopVar_ellipseParamsTransparent;
-    pupilData.ellipseParamsSceneConstrained_rmse = loopVar_ellipseParamsError';
+    pupilData.ellipseParamsSceneConstrained_rmse = loopVar_ellipseParamsObjectiveError';
+    pupilData.ellipseParamsSceneConstrained_constraint = loopVar_ellipseParamsConstraintError';
     if nSplits~=0
         pupilData.ellipseParamsSceneConstrained_splitsSD = loopVar_ellipseParamsSplitsSD;
     end

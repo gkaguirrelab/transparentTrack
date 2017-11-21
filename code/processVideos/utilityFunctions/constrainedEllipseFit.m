@@ -1,4 +1,4 @@
-function [transparentEllipseParams, RMSE] = constrainedEllipseFit(x, y, lb, ub, nonlinconst)
+function [transparentEllipseParams, RMSE, constraintError] = constrainedEllipseFit(x, y, lb, ub, nonlinconst)
 % constrainedEllipseFit(x, y, lb, ub, nonlinconst)
 %
 % This routine is a modification of a non-linear ellipse fitting routine
@@ -83,9 +83,16 @@ end
 
 %% Perform non-linear search for transparent ellipse params
 
+% clean up the initial guess
+if ~isempty(nonlinconst)
+    % Force the X and Y values of the initial guess to satisfy the
+    % nonlinear constraint
+    [~, ~, pInitTransparent(1), pInitTransparent(2)] = nonlinconst(pInitTransparent);
+end
+
 % define some search options
 options = optimoptions(@fmincon,...
-    'Algorithm','sqp',...
+    'Algorithm','interior-point',...
     'Diagnostics','off',...
     'Display','off',...
     'DiffMinChange', 0.001);
@@ -99,8 +106,10 @@ warningState = warning;
 warning('off','MATLAB:nearlySingularMatrix');
 
 % Perform the non-linear search
-[transparentEllipseParams, RMSE] = ...
+[transparentEllipseParams, RMSE, ~, output] = ...
     fmincon(myFun, pInitTransparent, [], [], [], [], lb, ub, nonlinconst, options);
+
+constraintError = output.constrviolation;
 
 % If we are close to zero for eccentricity, we may be in a local minimum
 % that tends to find circles. Try a multiStart search with an increased
@@ -112,10 +121,11 @@ if transparentEllipseParams(4) < 1e-12
         'objective',myFun,'lb',adjustedLB,'ub',ub,...
         'nonlcon',nonlinconst,'options',options);
     ms = MultiStart('Display','off','MaxTime',30,'StartPointsToRun','bounds-ineqs');
-    [mstransparentEllipseParams, msRMSE] = run(ms,problem,20);
+    [mstransparentEllipseParams, msRMSE, ~, msOutput] = run(ms,problem,20);
     if msRMSE <= RMSE
         RMSE = msRMSE;
         transparentEllipseParams = mstransparentEllipseParams;
+        constraintError = msOutput.constrviolation;
     end
 end
 

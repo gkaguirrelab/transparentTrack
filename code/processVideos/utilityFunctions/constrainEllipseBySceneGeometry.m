@@ -1,4 +1,4 @@
-function [c, ceq]=constrainEllipseBySceneGeometry(pupilEllipseOnImagePlane, sceneGeometry)
+function [c, ceq, predictedX, predictedY]=constrainEllipseBySceneGeometry(pupilEllipseOnImagePlane, sceneGeometry, constraintFactor)
 % [c, ceq]=constrainEllipseBySceneGeometry(transparentEllipseParams, sceneGeometry)
 %
 % This function implements a non-linear constraint upon the ellipse fit to
@@ -11,16 +11,15 @@ function [c, ceq]=constrainEllipseBySceneGeometry(pupilEllipseOnImagePlane, scen
 %   pupilEllipseOnImagePlane - parameters of the ellipse to be fit cast in
 %       transparent form
 %   sceneGeometry - struct with scene geometry
+%   constraintFactor - a positive multiplicative factor that adjusts how 
+%       stingently the nonlinear constraint is evaluated. Values > 1
+%       represent greater stringency, while values < 1 produce reduced
+%       stringency.
 %
 % Output
 %   c, ceq - the values of the nonlinear constraint function
 %
 
-
-% This is the value that is given to a violation of the constraint. This
-% number needs to very large so that the constraint is respected despite
-% large values in the objective function
-constraintFactor = 1e20;
 
 % Extract some values from the sceneGeometry file
 eyeCenterOfRotation = [sceneGeometry.eyeCenter.X sceneGeometry.eyeCenter.Y sceneGeometry.eyeCenter.Z];
@@ -36,13 +35,17 @@ pupilEllipseOnImagePlane(3) = nan;
 % sceneGeometry.
 projectedEllipseOnImagePlane = pupilProjection_fwd(reconstructedPupilAzi, reconstructedPupilEle, nan, eyeCenterOfRotation, eyeRadius, projectionModel);
 
+% Break out the predicted X and Y locations
+predictedX = projectedEllipseOnImagePlane(1);
+predictedY = projectedEllipseOnImagePlane(2);
+
 % First constraint
 %  Ceq reflects the Euclidean distance between the predicted and passed
 %  center of the ellipse
-ceq = constraintFactor .* sqrt( (pupilEllipseOnImagePlane(1) - projectedEllipseOnImagePlane(1)).^2 + (pupilEllipseOnImagePlane(2) - projectedEllipseOnImagePlane(2)).^2  );
+c = constraintFactor .* sqrt( (pupilEllipseOnImagePlane(1) - predictedX).^2 + (pupilEllipseOnImagePlane(2) - predictedY).^2  );
 
 % Second constraint
 %  unused
-c = [];
+ceq = [];
 
 end

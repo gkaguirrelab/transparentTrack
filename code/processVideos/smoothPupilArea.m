@@ -116,6 +116,7 @@ p.addParameter('likelihoodErrorExponent',1.0,@isnumeric);
 p.addParameter('whichLikelihoodMean','ellipseParamsSceneConstrained_mean',@ischar);
 p.addParameter('whichLikelihoodSD','ellipseParamsSceneConstrained_splitsSD',@ischar);
 p.addParameter('areaIdx',3,@isnumeric);
+p.addParameter('nonLinearConstraintFactor',1,@isnumeric);
 
 
 %% Parse and check the parameters
@@ -159,7 +160,8 @@ projectionModel = sceneGeometry.meta.projectionModel;
 % Create a non-linear constraint for the ellipse fit
 nonlinconst = @(transparentEllipseParams) constrainEllipseBySceneGeometry(...
     transparentEllipseParams, ...
-    sceneGeometry);
+    sceneGeometry, ...
+    p.Results.nonLinearConstraintFactor);
 
 % determine how many frames we will process
 if p.Results.nFrames == Inf

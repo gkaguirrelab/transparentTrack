@@ -121,6 +121,7 @@ p.addParameter('minRadiusProportion',0,@isnumeric);
 
 % Optional analysis params -- sceneGeometry fitting constraint
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
+p.addParameter('nonLinearConstraintFactor',1,@isnumeric);
 p.addParameter('badFrameErrorThresholdWithSceneConstraint', 3, @isnumeric);
     
 % Optional display params
@@ -211,7 +212,8 @@ else
 
     nonlinconst = @(transparentEllipseParams) constrainEllipseBySceneGeometry(...
         transparentEllipseParams, ...
-        sceneGeometry);
+        sceneGeometry, ...
+        p.Results.nonLinearConstraintFactor);
 
     cutErrorThreshold = p.Results.cutErrorThreshold;
     badFrameErrorThreshold = p.Results.badFrameErrorThresholdWithSceneConstraint;
