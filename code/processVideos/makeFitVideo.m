@@ -49,7 +49,7 @@ p.addRequired('videoOutFileName', @ischar);
 % Optional display and I/O params
 p.addParameter('verbosity','none', @ischar);
 p.addParameter('videoOutFrameRate', 60, @isnumeric);
-p.addParameter('savedUncompressedVideo', false, @islogical);
+p.addParameter('saveUncompressedVideo', false, @islogical);
 
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
