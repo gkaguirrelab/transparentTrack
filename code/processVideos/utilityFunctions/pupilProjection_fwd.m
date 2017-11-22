@@ -82,7 +82,9 @@ elseif pupilAzi > 0 && pupilEle < 0
 elseif pupilAzi < 0  &&  pupilEle > 0
     theta = pi/2 + asin(sind(pupilAzi)/e);
 elseif pupilAzi < 0 && pupilEle < 0
-    theta =  pi/2 - asin(sind(pupilAzi)/e);
+    %% GEOFF THINKS THERE WAS AN ERROR HERE AND CHANGED IT
+    %    theta =  pi/2 - asin(sind(pupilAzi)/e);
+    theta =  asin(sind(pupilAzi)/e);
 elseif pupilAzi == 0 && pupilEle == 0
     theta = 0;
 elseif pupilAzi ==  0 && pupilEle ~= 0
