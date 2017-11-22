@@ -110,7 +110,7 @@ for ii = 1:length(allPupilAzi)
     %  get the 3d cartesian coordinates of the pupil perimeter points
     pupilPoints3d = getCirclePoints3d(pupilInEye);
     
-    % do orthogonal projeciton on the scene plane
+    % do orthogonal projection on the scene plane
     pupilPoints2d = projPointOnPlane(pupilPoints3d,scenePlane);
         
     % calculate the perspective correction factor
@@ -173,7 +173,8 @@ findPupilPerimeter(syntheticPerimVideoName,syntheticPerimFileName,'verbosity','f
 pupilData = fitPupilPerimeter(syntheticPerimFileName, pupilFileName,'verbosity','full','ellipseTransparentLB',[0, 0, 300, 0, -pi],'ellipseTransparentUB',[videoX,videoY,20000,0.75, pi],'nSplits',0);
 sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileName,'sceneDiagnosticPlotFileName', sceneDiagnosticPlotFileName,'sceneDiagnosticPlotSizeXY', [videoX videoY], ...
     'projectionModel','pseudoPerspective','eyeRadius',rotationArmLength, 'cameraDistanceInPixels',sceneDistance,'verbosity','full');
-
+fitPupilPerimeter(syntheticPerimFileName,pupilFileName,'sceneGeometryFileName',sceneGeometryFileName,'verbosity','full');
+makeFitVideo(syntheticPerimVideoName, finalFitVideoName, 'pupilFileName',pupilFileName,'sceneGeometryFileName',sceneGeometryFileName,'perimeterFileName',syntheticPerimFileName,'whichFieldToPlot','ellipseParamsSceneConstrained_mean')
 
 %% Verify that the scene geometry allows for the correct reconstruction of the eye movements
 
