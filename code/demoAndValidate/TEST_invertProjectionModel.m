@@ -4,20 +4,21 @@ tolerance = 1e-9;
 
 eyeCenter = [320 240 1500];
 eyeRadius = 150;
-
-rotationMax = 89;
-
+pupilArea = 1000;
 projectionModels = {'pseudoPerspective' 'orthogonal' };
 
+% Test if we can recover the azimuth and elevation of the eye after
+% projecting the pupil to the image plane
+rotationMax = 89;
 for models = 1:length(projectionModels)
-    fprintf(['testing ' projectionModels{models} ' model \n']);
+    fprintf(['testing ' projectionModels{models} ' model for eye --> ellipse --> eye \n']);
     for pupilAzimuth = -rotationMax:1:rotationMax
         for pupilElevation = -rotationMax:rotationMax:rotationMax
-            reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzimuth, pupilElevation, nan, eyeCenter, eyeRadius, projectionModels{models});
-            [reconstructedPupilAzi, reconstructedPupilEle, ~] = pupilProjection_inv(reconstructedTransparentEllipse, eyeCenter, eyeRadius, projectionModels{models});
-            if abs(reconstructedPupilAzi-pupilAzimuth) > tolerance || abs(reconstructedPupilEle-pupilElevation) > tolerance
+            reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzimuth, pupilElevation, pupilArea, eyeCenter, eyeRadius, projectionModels{models});
+            [reconstructedPupilAzi, reconstructedPupilEle, reconstructedPupilArea] = pupilProjection_inv(reconstructedTransparentEllipse, eyeCenter, eyeRadius, projectionModels{models});
+            if abs(reconstructedPupilAzi-pupilAzimuth) > tolerance || abs(reconstructedPupilEle-pupilElevation) > tolerance || abs(reconstructedPupilArea-pupilArea) > tolerance
                 fprintf('Failed inversion check for azimuth %d, elevation %d \n',pupilAzimuth,pupilElevation);
-                fprintf('   reconstruced azimuth %0.3f, reconstructed elevation %0.3f \n',reconstructedPupilAzi,reconstructedPupilEle);                
+                fprintf('   reconstruced azimuth %0.3f, reconstructed elevation %0.3f, reconstructed pupil area %0.3f \n',reconstructedPupilAzi,reconstructedPupilEle,reconstructedPupilArea);                
             end
         end
     end
