@@ -61,6 +61,8 @@ switch projectionModel
         % the center of projection. we will correct this below.
         centerX = (transparentEllipse(1));
         centerY = (transparentEllipse(2));
+    otherwise
+        error('I do not know that projection case');
 end
 
 % derive horizontal tilt angle (azimuth)
