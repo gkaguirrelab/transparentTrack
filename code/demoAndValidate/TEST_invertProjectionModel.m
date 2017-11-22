@@ -1,6 +1,6 @@
 %% UNIT TEST OF FORWARD AND INVERSE PUPIL PROJECTION MODELS
 
-tolerance = 1e-6;
+tolerance = 1e-9;
 
 eyeCenter = [320 240 1500];
 eyeRadius = 150;
@@ -14,7 +14,9 @@ for models = 1:length(projectionModels)
             reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzimuth, pupilElevation, nan, eyeCenter, eyeRadius, projectionModels{models});
             [reconstructedPupilAzi, reconstructedPupilEle, ~] = pupilProjection_inv(reconstructedTransparentEllipse, eyeCenter, eyeRadius, projectionModels{models});
             if abs(reconstructedPupilAzi-pupilAzimuth) > tolerance || abs(reconstructedPupilEle-pupilElevation) > tolerance
-                error('Failed inversion check for azimuth %d, elevation %d',pupilAzimuth,pupilElevation);
+                fprintf('Failed inversion check for azimuth %d, elevation %d \n',pupilAzimuth,pupilElevation);
+                fprintf('   reconstruced azimuth %0.3f, reconstructed elevation %0.3f \n',reconstructedPupilAzi,reconstructedPupilEle);                
+            end
         end
     end
 end
