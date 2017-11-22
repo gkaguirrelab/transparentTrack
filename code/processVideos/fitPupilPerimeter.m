@@ -75,12 +75,12 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %
 %  'ellipseTransparentLB/UB' - Define the hard upper and lower boundaries
 %     for the ellipse fit, in units of pixels of the video. The center
-%     points should be constrained to the size of the video. Eccentricity
-%     is related to ratio of the semimajor and semiminor axes, and can be
-%     calculated using:
+%     points should be constrained to the size of the video.
+%     Eccentricity is related to ratio of the semimajor and semiminor axes,
+%     and can be calculated using:
 %           eccentricity = axes2ecc(semimajor, semiminor)
-%     If we wish to prevent ellipses with an aspect ratio greater than
-%     3 : 2, this gives us an eccentricity UB threshold of ~0.75.
+%     For example, if we wish to prevent ellipses with an aspect ratio
+%     greater than 3 : 2, this gives us an eccentricity UB of ~0.75.
 %   'nSplits' - The number of tests upon the spatial split-halves of the
 %     pupil boundary values to examine to estimate a likelihood SD.
 %   'nBoots' - The number of bootstrap resamples of the pupil boundary
@@ -105,7 +105,7 @@ p.addParameter('verbosity','none',@ischar);
 
 % Optional fitting params
 p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, -pi],@isnumeric);
-p.addParameter('ellipseTransparentUB',[640,480,20000,0.75, pi],@isnumeric);
+p.addParameter('ellipseTransparentUB',[640,480,20000,1, pi],@isnumeric);
 p.addParameter('nSplits',8,@isnumeric);
 
 % Optional analysis params -- sceneGeometry fitting constraint

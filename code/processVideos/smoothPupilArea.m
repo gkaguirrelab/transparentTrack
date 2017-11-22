@@ -59,12 +59,12 @@ function [pupilData] = smoothPupilArea(perimeterFileName, pupilFileName, sceneGe
 %
 %  'ellipseTransparentLB/UB' - Define the hard upper and lower boundaries
 %     for the ellipse fit, in units of pixels of the video. The center
-%     points should be constrained to the size of the video. Eccentricity
-%     is related to ratio of the semimajor and semiminor axes, and can be
-%     calculated using:
+%     points should be constrained to the size of the video.
+%     Eccentricity is related to ratio of the semimajor and semiminor axes,
+%     and can be calculated using:
 %           eccentricity = axes2ecc(semimajor, semiminor)
-%     If we wish to prevent ellipses with an aspect ratio greater than
-%     3 : 2, this gives us an eccentricity UB threshold of ~0.75.
+%     For example, if we wish to prevent ellipses with an aspect ratio
+%     greater than 3 : 2, this gives us an eccentricity UB of ~0.75.
 %  'exponentialTauParam' - The time constant (in video frames) of the
 %     decaying exponential weighting function for pupil area.
 %   'likelihoodErrorExponent' - The SD of the parameters estimated for each
@@ -110,7 +110,7 @@ p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@i
 
 % Optional fitting params
 p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, -pi],@isnumeric);
-p.addParameter('ellipseTransparentUB',[640,480,20000,0.75, pi],@isnumeric);
+p.addParameter('ellipseTransparentUB',[640,480,20000,1, pi],@isnumeric);
 p.addParameter('exponentialTauParam',5,@isnumeric);
 p.addParameter('likelihoodErrorExponent',1.0,@isnumeric);
 p.addParameter('whichLikelihoodMean','ellipseParamsSceneConstrained_mean',@ischar);

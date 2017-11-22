@@ -58,8 +58,14 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 %       marked as bad
 %   cutErrorThreshold - the distance error tolerated before attempting to
 %       cut
-%   ellipseTransparentLB/UB - the lower and upper bounds of the constrained
-%      ellipse fit that is used to judge the quality of different cuts.
+%  'ellipseTransparentLB/UB' - Define the hard upper and lower boundaries
+%     for the ellipse fit, in units of pixels of the video. The center
+%     points should be constrained to the size of the video.
+%     Eccentricity is related to ratio of the semimajor and semiminor axes,
+%     and can be calculated using:
+%           eccentricity = axes2ecc(semimajor, semiminor)
+%     For example, if we wish to prevent ellipses with an aspect ratio
+%     greater than 3 : 2, this gives us an eccentricity UB of ~0.75.
 %   radiusDivisions - Controls how many divisions between the geometric
 %       center of the pupil perimeter and the outer edge are examined with
 %       a pupil cut.
@@ -114,7 +120,7 @@ p.addParameter('pixelBoundaryThreshold', 100, @isnumeric);
 p.addParameter('cutErrorThreshold', 1, @isnumeric);
 p.addParameter('badFrameErrorThresholdWithoutSceneConstraint', 2, @isnumeric);
 p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, -pi],@isnumeric);
-p.addParameter('ellipseTransparentUB',[640,480,20000,0.75, pi],@isnumeric);
+p.addParameter('ellipseTransparentUB',[640,480,20000,1, pi],@isnumeric);
 p.addParameter('candidateThetas',pi/2:pi/16:pi,@isnumeric);
 p.addParameter('radiusDivisions',5,@isnumeric);
 p.addParameter('minRadiusProportion',0,@isnumeric);
