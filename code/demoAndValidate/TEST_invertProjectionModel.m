@@ -5,13 +5,13 @@ tolerance = 1e-9;
 eyeCenter = [320 240 1500];
 eyeRadius = 150;
 
-rotationMax = 30;
+rotationMax = 89;
 
 projectionModels = {'pseudoPerspective' 'orthogonal' };
 
 for models = 1:length(projectionModels)
     fprintf(['testing ' projectionModels{models} ' model \n']);
-    for pupilAzimuth = -rotationMax:rotationMax:rotationMax
+    for pupilAzimuth = -rotationMax:1:rotationMax
         for pupilElevation = -rotationMax:rotationMax:rotationMax
             reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzimuth, pupilElevation, nan, eyeCenter, eyeRadius, projectionModels{models});
             [reconstructedPupilAzi, reconstructedPupilEle, ~] = pupilProjection_inv(reconstructedTransparentEllipse, eyeCenter, eyeRadius, projectionModels{models});
