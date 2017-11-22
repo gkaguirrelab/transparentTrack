@@ -31,8 +31,9 @@ pupilEllipseOnImagePlane(3) = nan;
 [reconstructedPupilAzi, reconstructedPupilEle, ~] = pupilProjection_inv(pupilEllipseOnImagePlane, eyeCenterOfRotation, eyeRadius, projectionModel);
 
 % Obtain the x and y position of the projection of a pupil at this
-% azimuth and elevation onto the pupil plane, using the passed
-% sceneGeometry.
+% azimuth and elevation onto the pupil plane. We do this for the passed
+% scene geometry, incorporating our uncertainty in the scene geometry to
+% establish the range of X and Y points that could be plausible.
 projectedEllipseOnImagePlane = pupilProjection_fwd(reconstructedPupilAzi, reconstructedPupilEle, nan, eyeCenterOfRotation, eyeRadius, projectionModel);
 
 % Break out the predicted X and Y locations
