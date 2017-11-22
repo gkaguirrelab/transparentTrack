@@ -50,8 +50,8 @@ pupilCenter3D(3) = eyeRadius*(cosd(pupilEle)*cosd(pupilAzi));
 % define ellipse center
 switch projectionModel
     case 'orthogonal'
-        % under orthogonal hypothesis the ellipse center in 2D is coincident with
-        % the ellipse center in the plane of projection.
+        % under orthogonal hypothesis the ellipse center in 2D is
+        % coincident with the ellipse center in the plane of projection.
         reconstructedTransparentEllipse(1) = pupilCenter3D(1) + eyeCenter(1);
         reconstructedTransparentEllipse(2) = pupilCenter3D(2) + eyeCenter(2);
     case 'pseudoPerspective'
@@ -83,18 +83,15 @@ elseif pupilAzi < 0  &&  pupilEle > 0
     theta = - asin(sind(pupilAzi)/e);
 elseif pupilAzi < 0 && pupilEle < 0
     theta =  asin(sind(pupilAzi)/e);
-elseif pupilAzi == 0 && pupilEle == 0
+elseif abs(pupilAzi) < 1e-12 && abs(pupilEle) < 1e-12
     theta = 0;
-elseif pupilAzi ==  0 && pupilEle ~= 0
+elseif abs(pupilAzi) < 1e-12 && abs(pupilEle) >= 1e-12
     theta = 0;
-elseif pupilEle == 0 && pupilAzi ~= 0
+elseif abs(pupilEle) < 1e-12 && abs(pupilAzi) >= 1e-12
     theta = pi/2;
 else
-    % Couldn't constrain the theta
-    % TO INVESTIGATE: If it is the case that this occurs when the ellipse
-    % if very close to circular, we may choose to set theta to zero in this
-    % event.
-    theta = nan;
+    % Couldn't constrain the theta. This shouldn't happen
+    warning('For some reason the theta was unconstrained. Setting to nan'); 
 end
 % keep theta values between zero and pi
 if ~isnan(theta)
