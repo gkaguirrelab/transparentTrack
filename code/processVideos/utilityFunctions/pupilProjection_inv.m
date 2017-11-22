@@ -56,9 +56,9 @@ switch projectionModel
         centerX = (transparentEllipse(1));
         centerY = (transparentEllipse(2));
     case 'pseudoPerspective'
-        % at this stage we just use the orthogonal projection of the ellipse
-        % center to determine the location of the ellipse with respect to
-        % the center of projection. we will correct this below.
+        % at this stage we just use the orthogonal projection of the
+        % ellipse center to determine the location of the ellipse with
+        % respect to the center of projection. we will correct this below.
         centerX = (transparentEllipse(1));
         centerY = (transparentEllipse(2));
     otherwise
