@@ -233,7 +233,6 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 % Loop through the frames
-%for ii = 1:nFrames
 parfor (ii = 1:nFrames, nWorkers)
     
     % Update progress
