@@ -170,10 +170,19 @@ sceneDiagnosticPlotFileName = fullfile(sandboxDir, 'syntheticPerimeter_sceneDiag
 finalFitVideoName = fullfile(sandboxDir, 'syntheticPerimeter_finalFit.avi');
 
 findPupilPerimeter(syntheticPerimVideoName,syntheticPerimFileName,'verbosity','full');
-pupilData = fitPupilPerimeter(syntheticPerimFileName, pupilFileName,'verbosity','full','ellipseTransparentLB',[0, 0, 300, 0, -pi],'ellipseTransparentUB',[videoX,videoY,20000,0.75, pi],'nSplits',0);
+pupilData = fitPupilPerimeter(syntheticPerimFileName, pupilFileName,'verbosity','full','ellipseTransparentLB',[],'ellipseTransparentUB',[],'nSplits',0);
 sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileName,'sceneDiagnosticPlotFileName', sceneDiagnosticPlotFileName,'sceneDiagnosticPlotSizeXY', [videoX videoY], ...
     'projectionModel','pseudoPerspective','eyeRadius',rotationArmLength, 'cameraDistanceInPixels',sceneDistance,'verbosity','full');
-fitPupilPerimeter(syntheticPerimFileName,pupilFileName,'sceneGeometryFileName',sceneGeometryFileName,'verbosity','full');
+
+% % Replace the estimated scene geometry with the veridian scenegeometry
+% sceneGeometry.eyeCenter.X = 320;
+% sceneGeometry.eyeCenter.Y = 240;
+% sceneGeometry.eyeCenter.Z = rotationArmLength+sceneDistance;
+% sceneGeometry.eyeRadius = eyeballR;
+% save(sceneGeometryFileName,'sceneGeometry');
+
+% Create the scene-constrained ellipse fits
+fitPupilPerimeter(syntheticPerimFileName,pupilFileName,'sceneGeometryFileName',sceneGeometryFileName,'ellipseTransparentLB',[0, 0, 300, 0, 0],'ellipseTransparentUB',[videoX,videoY,20000,1.0, pi],'verbosity','full');
 makeFitVideo(syntheticPerimVideoName, finalFitVideoName, 'pupilFileName',pupilFileName,'sceneGeometryFileName',sceneGeometryFileName,'perimeterFileName',syntheticPerimFileName,'whichFieldToPlot','ellipseParamsSceneConstrained_mean')
 
 %% Verify that the scene geometry allows for the correct reconstruction of the eye movements
