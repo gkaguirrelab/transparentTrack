@@ -1,4 +1,4 @@
-function [transparentEllipseParams, RMSE, constraintError] = constrainedEllipseFit(x, y, lb, ub, nonlinconst)
+function [transparentEllipseParams, RMSE, constraintError] = constrainedEllipseFit(Xp, Yp, lb, ub, nonlinconst)
 % constrainedEllipseFit(x, y, lb, ub, nonlinconst)
 %
 % This routine is a modification of a non-linear ellipse fitting routine
@@ -38,45 +38,53 @@ function [transparentEllipseParams, RMSE, constraintError] = constrainedEllipseF
 p = inputParser;
 
 % Required
-p.addRequired('x',@isnumeric);
-p.addRequired('y',@isnumeric);
+p.addRequired('Xp',@isnumeric);
+p.addRequired('Yp',@isnumeric);
 p.addRequired('ub',@isnumeric);
 p.addRequired('lb',@isnumeric);
 p.addRequired('nonlinconst',@(x) (isempty(x) || isa(x, 'function_handle')) );
 
 % Parse and check the parameters
-p.parse(x, y, ub, lb, nonlinconst);
+p.parse(Xp, Yp, ub, lb, nonlinconst);
 
 
 %% Calculate an initial estimate of the ellipse parameters
 % This attempt is placed in a try-catch block, as the attempt can fail and
 % return non-real numbers.
 try
-    pInitImplicit = quad2dfit_taubin(x,y);
-    switch imconic(pInitImplicit,0)
-        case 'ellipse'
-            % the initial fit returned an ellipse using Taubin's method. No
-            % further action is required.
-        otherwise
-            % The initial fit with Taubin's method didn't work, so try a
-            % direct ellipse fit
-            
-            % We someties obtain a singular matrix warning here; turn it
-            % off temporarily
-            warningState = warning;
-            warning('off','MATLAB:singularMatrix');
-            % use direct least squares ellipse fit to obtain an initial
-            % estimate
-            pInitImplicit = ellipsefit_direct(x,y);
-            % Restore the warning state
-            warning(warningState);
-    end
+    % We sometimes obtain a singular matrix warning here; turn it
+    % off temporarily
+    warningState = warning;
+    warning('off','MATLAB:singularMatrix');
+    % use direct least squares ellipse fit to obtain an initial
+    % estimate
+    pInitImplicit = ellipsefit_direct(Xp,Yp);
+    % Restore the warning state
+    warning(warningState);
     % convert the initial estimate from implicit form to transparent form
     pInitTransparent = ellipse_ex2transparent(ellipse_im2ex(pInitImplicit));
+    % place theta within the range of 0 to pi
+    if pInitTransparent(5) < 0
+        pInitTransparent(5) = pInitTransparent(5)+pi;
+    end
 catch
     % We couldn't find anything vaguely elliptical; return nans
     transparentEllipseParams=nan(1,5);
     RMSE=nan;
+    constraintError=nan;
+    return
+end
+
+% Define the objective function, which is the RMSE of the distance values
+% of the boundary points to the ellipse fit
+myFun = @(p) sqrt(nanmean(ellipsefit_distance(Xp,Yp,ellipse_transparent2ex(p)).^2));
+
+% If the bounds and the nonlinear constraint function are all empty, then
+% just return the initial estimate (and RMSE) obtained by direct fitting
+if isempty(ub) && isempty(lb) && isempty(nonlinconst)
+    transparentEllipseParams = pInitTransparent;
+    RMSE = myFun(transparentEllipseParams);
+    constraintError = nan;
     return
 end
 
@@ -97,10 +105,6 @@ options = optimoptions(@fmincon,...
     'Diagnostics','off',...
     'Display','off',...
     'DiffMinChange', 0.001);
-
-% Define the objective function, which is the RMSE of the distance values
-% of the boundary points to the ellipse fit
-myFun = @(p) sqrt(nanmean(ellipsefit_distance(x,y,ellipse_transparent2ex(p)).^2));
 
 % save the current warning status and silence anticipated warnings
 warningState = warning;
