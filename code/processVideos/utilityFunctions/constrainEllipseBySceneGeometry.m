@@ -27,23 +27,50 @@ eyeRadius = sceneGeometry.eyeRadius;
 projectionModel = sceneGeometry.meta.projectionModel;
 
 % Calculate the predicted x and y center for this eccentricity and theta
-pupilEllipseOnImagePlane(3) = nan;
-[reconstructedPupilAzi, reconstructedPupilEle, ~] = pupilProjection_inv(pupilEllipseOnImagePlane, eyeCenterOfRotation, eyeRadius, projectionModel);
+[reconstructedPupilAzi, reconstructedPupilEle, reconstructedPupilArea] = ...
+    pupilProjection_inv(pupilEllipseOnImagePlane, eyeCenterOfRotation, eyeRadius, projectionModel);
+
+% Calculate the projected ellipse on the image plane for the reconstructed
+% azimuth and elevation
+projectedEllipseOnImagePlane = ...
+    pupilProjection_fwd(reconstructedPupilAzi, reconstructedPupilEle, reconstructedPupilArea, eyeCenterOfRotation, eyeRadius, projectionModel);
+
+predictedX = projectedEllipseOnImagePlane(1);
+predictedY = projectedEllipseOnImagePlane(2);
+closestXidx = 1;
+closestYidx = 1;
 
 % Obtain the x and y position of the projection of a pupil at this
 % azimuth and elevation onto the pupil plane. We do this for the passed
 % scene geometry, incorporating our uncertainty in the scene geometry to
 % establish the range of X and Y points that could be plausible.
-projectedEllipseOnImagePlane = pupilProjection_fwd(reconstructedPupilAzi, reconstructedPupilEle, nan, eyeCenterOfRotation, eyeRadius, projectionModel);
-
-% Break out the predicted X and Y locations
-predictedX = projectedEllipseOnImagePlane(1);
-predictedY = projectedEllipseOnImagePlane(2);
+% 
+% predictedX = [];
+% predictedY = [];
+% 
+% for x=1:2
+%     for y=1:2
+%         for z=1:2
+%             for r=1:2
+%                 tmp_eyeCenterOfRotation = [sceneGeometry.eyeCenter.X_bounds(x) ...
+%                     sceneGeometry.eyeCenter.Y_bounds(y) ...
+%                     sceneGeometry.eyeCenter.Z_bounds(z)];
+%                 tmp_eyeRadius = sceneGeometry.eyeRadius_bounds(r);
+%                 tmp_projectedEllipseOnImagePlane = pupilProjection_fwd(reconstructedPupilAzi, reconstructedPupilEle, nan, tmp_eyeCenterOfRotation, tmp_eyeRadius, projectionModel);
+%                 predictedX=[predictedX tmp_projectedEllipseOnImagePlane(1)];
+%                 predictedY=[predictedY tmp_projectedEllipseOnImagePlane(2)];
+%             end
+%         end
+%     end
+% end
+% 
+% [~,closestXidx] = min(abs(predictedX - pupilEllipseOnImagePlane(1)));
+% [~,closestYidx] = min(abs(predictedY - pupilEllipseOnImagePlane(2)));
 
 % First constraint
 %  Ceq reflects the Euclidean distance between the predicted and passed
 %  center of the ellipse
-c = constraintFactor .* sqrt( (pupilEllipseOnImagePlane(1) - predictedX).^2 + (pupilEllipseOnImagePlane(2) - predictedY).^2  );
+c = constraintFactor .* sqrt( (pupilEllipseOnImagePlane(1) - predictedX(closestXidx)).^2 + (pupilEllipseOnImagePlane(2) - predictedY(closestYidx)).^2  );
 
 % Second constraint
 %  unused
