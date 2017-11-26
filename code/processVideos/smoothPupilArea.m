@@ -109,8 +109,8 @@ p.addParameter('hostname',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional fitting params
-p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, -pi],@isnumeric);
-p.addParameter('ellipseTransparentUB',[640,480,20000,1, pi],@isnumeric);
+p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, 0],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('ellipseTransparentUB',[640,480,20000,1, pi],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('exponentialTauParam',5,@isnumeric);
 p.addParameter('likelihoodErrorExponent',1.0,@isnumeric);
 p.addParameter('whichLikelihoodMean','ellipseParamsSceneConstrained_mean',@ischar);
