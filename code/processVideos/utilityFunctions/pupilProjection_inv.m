@@ -6,8 +6,8 @@ function [reconstructedPupilAzi, reconstructedPupilEle, reconstructedPupilArea] 
 % with reference to the scene plane using the params of the transparent
 % ellipse and the coordinates of the center of projection on the scene.
 %
-% Note that the linear units must be uniform (eg. all pixels or all mm) for
-% both the transparent ellipse (where applicable) and the center of
+% Note that the linear units must be uniform (e.g. all pixels or all mm)
+% for both the transparent ellipse (where applicable) and the center of
 % projection coordinates.
 %
 % ref http://web.ncf.ca/aa456/scale/ellipse.html
@@ -16,9 +16,9 @@ function [reconstructedPupilAzi, reconstructedPupilEle, reconstructedPupilArea] 
 %   reconstructedPupilAzi - rotation of the pupil in the XY plane in
 %       degrees, with the center being the centerOfProjection on the scene
 %   reconstructedPupilEle - elevation of the pupil from the XY plane in
-%       degrees, with the center being the centerOfProjection on the scene.
+%       degrees, with the center being the centerOfProjection on the scene
 %   reconstructedPupilArea - pupil area, in the same (squared) units as the
-%       transparent ellipse center.
+%       transparent ellipse center
 %
 % Required inputs:
 %   transparentEllipse - ellipse in transparent form
@@ -44,11 +44,6 @@ end
 % projection variables
 k = sqrt(1 - (transparentEllipse(4)^2));
 theta = (transparentEllipse(5));
-
-% keep theta between zero and pi
-if theta < 0
-    theta = theta + pi;
-end
 
 % pupil center
 switch projectionModel
