@@ -119,8 +119,8 @@ p.addParameter('glintPatchRadius', 20, @isnumeric);
 p.addParameter('pixelBoundaryThreshold', 100, @isnumeric);
 p.addParameter('cutErrorThreshold', 1, @isnumeric);
 p.addParameter('badFrameErrorThresholdWithoutSceneConstraint', 2, @isnumeric);
-p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, -pi],@isnumeric);
-p.addParameter('ellipseTransparentUB',[640,480,20000,1, pi],@isnumeric);
+p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, 0],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('ellipseTransparentUB',[640,480,20000,1, pi],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('candidateThetas',pi/2:pi/16:pi,@isnumeric);
 p.addParameter('radiusDivisions',5,@isnumeric);
 p.addParameter('minRadiusProportion',0,@isnumeric);
@@ -389,8 +389,8 @@ parfor (ii = 1:nFrames, nWorkers)
                 stillSearching = false;
             end
             
-            % We start with a cut radius that is one division below the maxium
-            % radius in the pupil boundary
+            % We start with a cut radius that is one division below the
+            % maximum radius in the pupil boundary
             maxRadius=round(max([max(Xp)-min(Xp),max(Yp)-min(Yp)])/2);
             stepReducer = max([1,floor(maxRadius/p.Results.radiusDivisions)]);
             candidateRadius=maxRadius - stepReducer;
