@@ -67,8 +67,9 @@ p.addRequired('sceneGeometryFileName',@isstr);
 p.addParameter('projectionModel','pseudoPerspective',@ischar);
 p.addParameter('eyeRadius',125,@isnumeric);
 p.addParameter('cameraDistanceInPixels',1200,@isnumeric);
-p.addParameter('sceneGeometryLowerBounds',[0, 0, 0, 25],@isnumeric);
-p.addParameter('sceneGeometryUpperBounds',[640, 480, 2000, 400],@isnumeric);
+p.addParameter('sceneGeometryLowerBounds',[0, 0, 1325, 25],@isnumeric);
+p.addParameter('sceneGeometryUpperBounds',[640, 480, 1325, 500],@isnumeric);
+p.addParameter('numberFitDivisions',2,@isnumeric);
 p.addParameter('whichFitFieldMean','ellipseParamsUnconstrained_mean',@ischar);
 p.addParameter('whichFitFieldError','ellipseParamsUnconstrained_rmse',@ischar);
 
@@ -121,7 +122,7 @@ switch p.Results.projectionModel
     case 'pseudoPerspective'
         x0 = [pupilData.(p.Results.whichFitFieldMean)(minEccentricityIdx,1) ...
             pupilData.(p.Results.whichFitFieldMean)(minEccentricityIdx,2) ...
-            p.Results.cameraDistanceInPixels ...
+            p.Results.cameraDistanceInPixels + p.Results.eyeRadius ...
             p.Results.eyeRadius];
     otherwise
         error('I do not recognize that perspective model');
@@ -145,17 +146,34 @@ else
     end
 end
 
-% define an anonymous function to measure root mean squared error (RMSE)
-errorFunc = @(x) sqrt(nanmean((errorWeights.*ellipseCenterPredictionErrors(ellipses, x(1:3), x(4), p.Results.projectionModel)).^2));
+% define an anonymous function to measure mean error (the L1 norm)
+errorFunc = @(x) nanmean( errorWeights.*ellipseCenterPredictionErrors(ellipses, x(1:3), x(4), p.Results.projectionModel) );
 
 % define some search options
 options = optimset('fmincon');
 options = optimset(options,'Diagnostics','off','Display','off','LargeScale','off','Algorithm','interior-point');
 
-% perform the fit
+% perform an initial fit
 [bestFitSceneGeometry, fVal] = ...
     fmincon(errorFunc, x0, [], [], [], [], p.Results.sceneGeometryLowerBounds, p.Results.sceneGeometryUpperBounds, [], options);
 
+% Split the ellipses by quantiles of distance error and then repeat the
+% fit. This helps us estimate the range of acceptable scene parameters
+distanceError = ellipseCenterPredictionErrors(ellipses, bestFitSceneGeometry(1:3), bestFitSceneGeometry(4), p.Results.projectionModel);
+for nn = 1:p.Results.numberFitDivisions
+    quantileLowBound = quantile(distanceError,(nn-1)/p.Results.numberFitDivisions);
+    quantileUpperBound = quantile(distanceError,nn/p.Results.numberFitDivisions);
+    withinBoundIdx = find((distanceError > quantileLowBound) .* (distanceError <= quantileUpperBound));
+    errorFuncByQuantile = @(x) nanmean( errorWeights(withinBoundIdx).*ellipseCenterPredictionErrors(ellipses(withinBoundIdx,:), x(1:3), x(4), p.Results.projectionModel) );
+    fitSceneGeometryByQuantile(nn,:) = ...
+        fmincon(errorFuncByQuantile, bestFitSceneGeometry, [], [], [], [], p.Results.sceneGeometryLowerBounds, p.Results.sceneGeometryUpperBounds, [], options);    
+end
+
+% Derive the upper and lower bounds for the scene geometry, accounting for
+% the possibility that the bestFitSceneGeometry has values that are higher
+% or lower than any of the quantile split results.
+lbSceneGeometrty = min([fitSceneGeometryByQuantile; bestFitSceneGeometry]);
+ubSceneGeometrty = max([fitSceneGeometryByQuantile; bestFitSceneGeometry]);
 
 % plot the results of the CoP estimation if requested
 if ~isempty(p.Results.sceneDiagnosticPlotFileName)
@@ -176,12 +194,16 @@ end
 
 % assemble and save the sceneGeometry
 sceneGeometry.eyeCenter.X = bestFitSceneGeometry(1);
+sceneGeometry.eyeCenter.X_bounds = [lbSceneGeometrty(1) ubSceneGeometrty(1)];
 sceneGeometry.eyeCenter.Y = bestFitSceneGeometry(2);
+sceneGeometry.eyeCenter.Y_bounds = [lbSceneGeometrty(2) ubSceneGeometrty(2)];
 sceneGeometry.eyeCenter.Z = bestFitSceneGeometry(3);
+sceneGeometry.eyeCenter.Z_bounds = [lbSceneGeometrty(3) ubSceneGeometrty(3)];
 sceneGeometry.eyeRadius = bestFitSceneGeometry(4);
+sceneGeometry.eyeRadius_bounds = [lbSceneGeometrty(4) ubSceneGeometrty(4)];
 sceneGeometry.meta = p.Results;
 sceneGeometry.meta.units = 'pixelsOnTheScenePlane';
-sceneGeometry.meta.RMSE = fVal;
+sceneGeometry.meta.meanDistanceError = fVal;
 
 if ~isempty(sceneGeometryFileName)
     save(sceneGeometryFileName,'sceneGeometry');
