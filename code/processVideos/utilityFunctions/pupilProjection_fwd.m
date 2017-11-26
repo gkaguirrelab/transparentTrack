@@ -43,7 +43,13 @@ if any(isnan([pupilAzi pupilEle]))
 end
 
 % calculate the pupilCenter3D
-pupilCenter3D(1) = eyeRadius*(cosd(pupilEle)*sind(pupilAzi));
+
+%pupilCenter3D(1) = eyeRadius*(cosd(pupilEle)*sind(pupilAzi));
+
+%% CHANGED BY GKA -- I Can't understand why just the X axis would be influened by both
+%% azimuth and elevation while the Y axis is influenced just by elevation...
+
+pupilCenter3D(1) = eyeRadius*sind(pupilAzi);
 pupilCenter3D(2) = eyeRadius*sind(pupilEle);
 pupilCenter3D(3) = eyeRadius*(cosd(pupilEle)*cosd(pupilAzi));
 
@@ -93,12 +99,15 @@ else
     % Couldn't constrain the theta. This shouldn't happen
     warning('For some reason the theta was unconstrained. Setting to nan'); 
 end
-% keep theta values between zero and pi
-if ~isnan(theta)
-    if theta < 0
-        theta = theta + pi;
-    end
+
+% Keep the theta values between 0 and pi
+if theta < 0
+    theta = theta+pi;
 end
+if theta > pi
+    theta = theta - pi;
+end
+
 reconstructedTransparentEllipse(5) = theta;
 
 % area (if pupilArea available)
