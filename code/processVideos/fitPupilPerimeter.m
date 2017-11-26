@@ -104,8 +104,8 @@ p.addRequired('pupilFileName',@ischar);
 p.addParameter('verbosity','none',@ischar);
 
 % Optional fitting params
-p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, -pi],@isnumeric);
-p.addParameter('ellipseTransparentUB',[640,480,20000,1, pi],@isnumeric);
+p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, 0],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('ellipseTransparentUB',[640,480,20000,1, pi],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nSplits',8,@isnumeric);
 
 % Optional analysis params -- sceneGeometry fitting constraint
@@ -128,17 +128,6 @@ p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@i
 p.parse(perimeterFileName, pupilFileName, varargin{:});
 
 nEllipseParams=5; % 5 params in the transparent ellipse form
-
-if length(p.Results.ellipseTransparentLB)~=nEllipseParams
-    error('Wrong number of elements in ellipseTransparentLB');
-end
-if length(p.Results.ellipseTransparentUB)~=nEllipseParams
-    error('Wrong number of elements in ellipseTransparentUB');
-end
-if sum(p.Results.ellipseTransparentUB>=p.Results.ellipseTransparentLB)~=nEllipseParams
-    error('Lower bounds must be equal to or less than upper bounds');
-end
-
 
 %% Prepare some anonymous functions and load the pupil perimeter data
 % Create a non-linear constraint for the ellipse fit. If no parameters are
