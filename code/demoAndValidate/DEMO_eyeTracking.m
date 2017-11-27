@@ -82,9 +82,8 @@ end
 runVideoPipeline( pathParams, ...
     'nFrames',nFrames,'verbosity', verbosity, 'tbSnapshot',tbSnapshot, 'useParallel',true, ...
     'pupilRange', [40 200], 'pupilCircleThresh', 0.04, 'pupilGammaCorrection', 1.5, ...
-    'skipStageByNumber',1:1:7,...
+    'skipStageByNumber',1:1:8,...
     'overwriteControlFile', true, 'catchErrors', false, 'makeFitVideoByName', {'fitPupilPerimeter'});
-
 
 
 %% Plot some fits
@@ -102,10 +101,10 @@ hold on
 plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,3),'-b');
 plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,3)-pupilData.ellipseParamsSceneConstrained_splitsSD(:,3),'-','Color',[0 0 0.7])
 plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,3)+pupilData.ellipseParamsSceneConstrained_splitsSD(:,3),'-','Color',[0 0 0.7])
-plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,3),'-r','LineWidth',2)
+plot(temporalSupport,pupilData.ellipseParamsAreaSmoothed_mean(:,3),'-r','LineWidth',2)
 xlim([0 max(temporalSupport)]);
 xlabel('time [mins]');
-ylabel('area [pixels]');
+ylabel('area [pixels in plane]');
 hold off
 
 figure
@@ -115,8 +114,19 @@ hold on
 plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,1),'-b');
 plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,1)-pupilData.ellipseParamsSceneConstrained_splitsSD(:,1),'-','Color',[0 0 0.7])
 plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,1)+pupilData.ellipseParamsSceneConstrained_splitsSD(:,1),'-','Color',[0 0 0.7])
-plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,1),'-r','LineWidth',2)
+plot(temporalSupport,pupilData.ellipseParamsAreaSmoothed_mean(:,1),'-r','LineWidth',2)
 xlim([0 max(temporalSupport)]);
 xlabel('time [mins]');
 ylabel('position [pixels]');
+hold off
+
+figure
+plot(temporalSupport,pupilData.meta.smoothPupilArea.pupilAreaMean,'-k');
+hold on
+plot(temporalSupport,pupilData.meta.smoothPupilArea.pupilAreaMean-pupilData.meta.smoothPupilArea.pupilAreaSD,'-','Color',[0 0 0.7])
+plot(temporalSupport,pupilData.meta.smoothPupilArea.pupilAreaMean+pupilData.meta.smoothPupilArea.pupilAreaSD,'-','Color',[0 0 0.7])
+plot(temporalSupport,pupilData.meta.smoothPupilArea.pupilAreaMean,'-r','LineWidth',2)
+xlim([0 max(temporalSupport)]);
+xlabel('time [mins]');
+ylabel('area [pixels on pupil]');
 hold off
