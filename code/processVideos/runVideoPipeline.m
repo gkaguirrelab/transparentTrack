@@ -1,7 +1,5 @@
 function runVideoPipeline( pathParams, varargin )
-% runVideoPipeline( pathParams, varargin )
-%
-% this is the standard processing pipeline for eye tracking videos.
+% runVideoPipeline( pathParams, varargin ) - A standard processing pipeline for eye tracking videos.
 %
 % The pipeline consists of the following stages:
 %   deinterlaceVideo
@@ -13,7 +11,6 @@ function runVideoPipeline( pathParams, varargin )
 %   fitPupilPerimeter
 %   estimateSceneGeometry
 %   smoothPupilArea
-%   fitIrisPerimeter
 %   makeFitVideo
 %
 % The user can stop the execution after any of the stages with the optional
