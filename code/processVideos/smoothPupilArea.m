@@ -116,7 +116,7 @@ p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@i
 % Optional fitting params
 p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, 0],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('ellipseTransparentUB',[640,480,20000,1, pi],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('exponentialTauParam',5,@isnumeric);
+p.addParameter('exponentialTauParam',3,@isnumeric);
 p.addParameter('likelihoodErrorExponent',1.0,@isnumeric);
 p.addParameter('badFrameErrorThreshold', 2, @isnumeric);
 p.addParameter('whichLikelihoodMean','ellipseParamsSceneConstrained_mean',@ischar);
@@ -243,10 +243,10 @@ if ~isfield(pupilData,whichLikelihoodRMSE)
 end
 
 % Set up the decaying exponential weighting function. The relatively large
-% window (8 times the time constant) is used to handle the case in
-% which there is a stretch of missing data, in which case the long tails of
-% the exponential can provide the prior.
-window=ceil(max([p.Results.exponentialTauParam*8,8]));
+% window (10 times the time constant) is used to handle the case in which
+% there is a stretch of missing data, in which case the long tails of the
+% exponential can provide the prior.
+window=ceil(max([p.Results.exponentialTauParam*10,10]));
 windowSupport=1:1:window;
 baseExpFunc=exp(-1/p.Results.exponentialTauParam*windowSupport);
 
