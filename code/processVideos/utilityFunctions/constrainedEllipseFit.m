@@ -13,10 +13,11 @@ function [transparentEllipseParams, RMSE, constraintError] = constrainedEllipseF
 % non-linear constraints upon these aspects of the fit.
 %
 % Output arguments:
-%   transparentEllipseParams - parameters of ellipse expressed in transparent
-%       form (row vec)
-%   RMSE - root mean squared error of the distance of each
-%       point in the data to the fitted ellipse
+%   transparentEllipseParams - parameters of ellipse expressed in
+%       transparent form (row vec)
+%   RMSE - root mean squared error of the distance of each point in the
+%       data to the fitted ellipse
+%   constraintError - the value of the nonlinear constraint function
 %
 % Input arguments
 % x,y:
@@ -91,10 +92,9 @@ end
 
 %% Perform non-linear search for transparent ellipse params
 
-% clean up the initial guess
+% Force the X and Y values of the initial guess to satisfy the nonlinear
+% constraint
 if ~isempty(nonlinconst)
-    % Force the X and Y values of the initial guess to satisfy the
-    % nonlinear constraint
     [~, ~, projectedEllipseOnImagePlane] = nonlinconst(pInitTransparent);
     pInitTransparent(4:5)=projectedEllipseOnImagePlane(4:5);
 end

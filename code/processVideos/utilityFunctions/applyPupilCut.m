@@ -3,8 +3,8 @@ function [binPcut] = applyPupilCut(binP,radiusThresh,theta)
 %
 % cuts the pupil perimeter according to the instructions in radius and
 % theta where:
-% radius = distance in pixels from the glint
-% theta = polar angle, ranging from zero (superior vertical) to 2*pi
+%   radius = distance in pixels from the center of the perimeter
+%   theta = polar angle, ranging from zero (superior vertical) to 2*pi
 %
 
 binPcut = binP*0;
