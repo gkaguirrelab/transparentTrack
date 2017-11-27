@@ -386,8 +386,8 @@ parfor (ii = 1:nFrames, nWorkers)
     % store results
     loopVar_pPosteriorMeanTransparent(ii,:) = pPosteriorMeanTransparent';
     loopVar_pPosteriorFitError(ii) = pPosteriorFitError;
-    loopVar_pupilAreaMean(ii) = posteriorPupilAreaMean';
-    loopVar_pupilAreaSD(ii) = posteriorPupilAreaSD';
+    loopVar_pupilAreaMean(ii) = posteriorPupilAreaMean;
+    loopVar_pupilAreaSD(ii) = posteriorPupilAreaSD;
     
     
 end % loop over frames to calculate the posterior
@@ -407,8 +407,8 @@ pupilData.ellipseParamsAreaSmoothed_rmse=loopVar_pPosteriorFitError';
 % add a meta field with analysis details
 pupilData.meta.smoothPupilArea = p.Results;
 pupilData.meta.smoothPupilArea.coordinateSystem = 'intrinsicCoordinates(pixels)';
-pupilData.meta.smoothPupilArea.pupilAreaMean = loopVar_pupilAreaMean;
-pupilData.meta.smoothPupilArea.pupilAreaSD = loopVar_pupilAreaSD;
+pupilData.meta.smoothPupilArea.pupilAreaMean = loopVar_pupilAreaMean';
+pupilData.meta.smoothPupilArea.pupilAreaSD = loopVar_pupilAreaSD';
 
 % save the pupilData
 save(p.Results.pupilFileName,'pupilData')
