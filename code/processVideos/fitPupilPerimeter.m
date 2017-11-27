@@ -110,7 +110,6 @@ p.addParameter('nSplits',8,@isnumeric);
 
 % Optional analysis params -- sceneGeometry fitting constraint
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('nonLinearConstraintFactor',1,@isnumeric);
 
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
@@ -143,8 +142,7 @@ else
     
     nonlinconst = @(transparentEllipseParams) constrainEllipseBySceneGeometry(...
         transparentEllipseParams, ...
-        sceneGeometry, ...
-        p.Results.nonLinearConstraintFactor);
+        sceneGeometry);
 end
 
 % Create an anonymous function to return a rotation matrix given theta in
@@ -251,18 +249,7 @@ parfor (ii = 1:nFrames, nWorkers)
                 ellipseTransparentLB, ...
                 ellipseTransparentUB, ...
                 nonlinconst);           
-            
-            % Sometimes the solver finds a local minimum circular ellipse.
-            % If so, search again.
-            if ellipseParamsTransparent(4)==0
-                warning ('Hit local minimum while processing frame: %d', ii)
-                [ellipseParamsTransparent, ellipseParamsObjectiveError, ellipseParamsConstraintError] = ...
-                    constrainedEllipseFit(Xp, Yp, ...
-                    ellipseTransparentLB, ...
-                    ellipseTransparentUB, ...
-                    nonlinconst);
-            end
-            
+                        
             % Re-calculate fit for splits of data points, if requested
             if nSplits == 0
                 ellipseParamsSplitsSD=NaN(1,nEllipseParams);
@@ -291,9 +278,8 @@ parfor (ii = 1:nFrames, nWorkers)
                         nonlinconst);
                 end % loop through splits
                 
-                % Calculate the SD of the parameters across splits, scaling by
-                % sqrt(2) to roughly account for our use of just half the data
-                ellipseParamsSplitsSD=nanstd(reshape(pFitTransparentSplit,ss*2,nEllipseParams))/sqrt(2);
+                % Calculate the SD of the parameters across splits
+                ellipseParamsSplitsSD=nanstd(reshape(pFitTransparentSplit,ss*2,nEllipseParams));
             end % check if we want to do splits
             
         catch ME

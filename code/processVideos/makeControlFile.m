@@ -118,7 +118,7 @@ p.addParameter('glintPatchRadius', 20, @isnumeric);
 % Optional analysis params -- search over pupil cuts
 p.addParameter('pixelBoundaryThreshold', 100, @isnumeric);
 p.addParameter('cutErrorThreshold', 1, @isnumeric);
-p.addParameter('badFrameErrorThresholdWithoutSceneConstraint', 2, @isnumeric);
+p.addParameter('badFrameErrorThreshold', 2, @isnumeric);
 p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, 0],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('ellipseTransparentUB',[640,480,20000,1, pi],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('candidateThetas',pi/2:pi/16:pi,@isnumeric);
@@ -127,8 +127,6 @@ p.addParameter('minRadiusProportion',0,@isnumeric);
 
 % Optional analysis params -- sceneGeometry fitting constraint
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('nonLinearConstraintFactor',1,@isnumeric);
-p.addParameter('badFrameErrorThresholdWithSceneConstraint', 3, @isnumeric);
     
 % Optional display params
 p.addParameter('verbosity','none',@ischar);
@@ -208,8 +206,6 @@ end
 % presence or absence of a sceneGeometry constraint
 if isempty(p.Results.sceneGeometryFileName)
     nonlinconst = [];
-    cutErrorThreshold = p.Results.cutErrorThreshold;
-    badFrameErrorThreshold = p.Results.badFrameErrorThresholdWithoutSceneConstraint;
 else
     % load the sceneGeometry structure
     dataLoad=load(p.Results.sceneGeometryFileName);
@@ -218,11 +214,7 @@ else
 
     nonlinconst = @(transparentEllipseParams) constrainEllipseBySceneGeometry(...
         transparentEllipseParams, ...
-        sceneGeometry, ...
-        p.Results.nonLinearConstraintFactor);
-
-    cutErrorThreshold = p.Results.cutErrorThreshold;
-    badFrameErrorThreshold = p.Results.badFrameErrorThresholdWithSceneConstraint;
+        sceneGeometry);
 end
 
 
@@ -321,15 +313,11 @@ frameCellArray = perimeter.data(1:nFrames);
 frameSize = perimeter.size;
 clear perimeter
 
-% Remove some other broadcast variables
-verbosity = p.Results.verbosity;
-
-
 % Loop through the video frames
 parfor (ii = 1:nFrames, nWorkers)
     
     % Update progress
-    if strcmp(verbosity,'full') && mod(ii,round(nFrames/50))==0
+    if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
         fprintf('\b.\n');
     end
     
@@ -382,7 +370,7 @@ parfor (ii = 1:nFrames, nWorkers)
                 nonlinconst);
             
             % if the fitting error is above the threshold, search over cuts
-            if originalFittingError > cutErrorThreshold
+            if originalFittingError > p.Results.cutErrorThreshold
                 smallestFittingError = originalFittingError;
                 stillSearching = true;
             else
@@ -422,7 +410,7 @@ parfor (ii = 1:nFrames, nWorkers)
                 end
                 
                 % Are we done searching? If not, shrink the radius
-                if bestFitOnThisSearch < cutErrorThreshold
+                if bestFitOnThisSearch < p.Results.cutErrorThreshold
                     stillSearching = false;
                 else
                     candidateRadius=candidateRadius - stepReducer;
@@ -439,7 +427,7 @@ parfor (ii = 1:nFrames, nWorkers)
         % If, after finishing the search, the bestFitOnThisSearch is larger
         % than the badFrameErrorThreshold, or there are too few pixels that
         % compose the boundary in this frame, then tag this frame bad.
-        if bestFitOnThisSearch > badFrameErrorThreshold || ...
+        if bestFitOnThisSearch > p.Results.badFrameErrorThreshold || ...
                 numberPerimeterPixels < p.Results.pixelBoundaryThreshold
             frameBads(ii)=1;
             frameThetas(ii)=nan;

@@ -55,7 +55,7 @@ sceneGeometry.meta.projectionModel = projectionModel;
 % Set up anonymous function for nonlinear constraint
 nonlinconst = @(transparentEllipseParams) constrainEllipseBySceneGeometry(...
     transparentEllipseParams, ...
-    sceneGeometry, 1);
+    sceneGeometry);
 
 fprintf('Generating ellipses on the image plane...\n');
 

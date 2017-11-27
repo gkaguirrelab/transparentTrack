@@ -1,4 +1,4 @@
-function [c, ceq, projectedEllipseOnImagePlane]=constrainEllipseBySceneGeometry(pupilEllipseOnImagePlane, sceneGeometry, constraintFactor)
+function [c, ceq, projectedEllipseOnImagePlane]=constrainEllipseBySceneGeometry(pupilEllipseOnImagePlane, sceneGeometry)
 % [c, ceq]=constrainEllipseBySceneGeometry(transparentEllipseParams, sceneGeometry)
 %
 % This function implements a non-linear constraint upon the ellipse fit to
@@ -11,10 +11,6 @@ function [c, ceq, projectedEllipseOnImagePlane]=constrainEllipseBySceneGeometry(
 %   pupilEllipseOnImagePlane - parameters of the ellipse to be fit cast in
 %       transparent form
 %   sceneGeometry - struct with scene geometry
-%   constraintFactor - a positive multiplicative factor that adjusts how 
-%       stingently the nonlinear constraint is evaluated. Values > 1
-%       represent greater stringency, while values < 1 produce reduced
-%       stringency.
 %
 % Output
 %   c, ceq - the values of the nonlinear constraint function
@@ -70,7 +66,7 @@ closestYidx = 1;
 % First constraint
 %  Ceq reflects the Euclidean distance between the predicted and passed
 %  center of the ellipse
-c = constraintFactor .* sqrt( (pupilEllipseOnImagePlane(1) - predictedX(closestXidx)).^2 + (pupilEllipseOnImagePlane(2) - predictedY(closestYidx)).^2  );
+c = sqrt( (pupilEllipseOnImagePlane(1) - predictedX(closestXidx)).^2 + (pupilEllipseOnImagePlane(2) - predictedY(closestYidx)).^2  );
 
 % Second constraint
 %  unused
