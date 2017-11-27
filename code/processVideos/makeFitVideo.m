@@ -219,128 +219,12 @@ end
 
 sourceVideoArray = arrayfun(@(ii) {squeeze(sourceVideo(:,:,ii))},1:1:nFrames);
 
-
-% Prepare output video
-outputVideo=zeros(videoSizeY,videoSizeX,3,nFrames,'uint8');
-
-%% Loop through the frames
-parfor (ii = 1:nFrames, nWorkers)
-    
-    % Update the progress display
-    if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
-        fprintf('\b.\n');
-    end
-    
-    % Create a figure
-    frameFig = figure( 'Visible', 'off');
-    
-    % show the initial frame
-    imshow(sourceVideoArray{ii}, 'Border', 'tight');
-    hold on
-    
-    % add glint
-    if ~isempty(p.Results.glintFileName)
-        plot(glintData_X(ii),glintData_Y(ii),['*' p.Results.glintColor]);
-    end
-    
-    % add pupil perimeter
-    if ~isempty(p.Results.perimeterFileName)
-        % get the data frame
-        if ~isempty(frameCellArray{ii}.Xp)
-            plot(frameCellArray{ii}.Xp,frameCellArray{ii}.Yp,['.' p.Results.perimeterColor], 'MarkerSize', 1);
-        end
-    end
-    
-    % add pupil ellipse fit
-    if ~isempty(p.Results.pupilFileName)
-        if ~isempty(pupilFitParams)
-            if sum(isnan(pupilFitParams(ii,:)))==0
-                % build ellipse impicit equation
-                pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(pupilFitParams(ii,:)));
-                fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
-                % superimpose the ellipse using fimplicit or ezplot (ezplot
-                % is the fallback option for older Matlab versions)
-                if exist('fimplicit','file')==2
-                    fimplicit(fh,[1, videoSizeX, 1, videoSizeY],'Color', p.Results.pupilColor,'LineWidth',1);
-                    set(gca,'position',[0 0 1 1],'units','normalized')
-                    axis off;
-                else
-                    plotHandle=ezplot(fh,[1, videoSizeX, 1, videoSizeY]);
-                    set(plotHandle, 'Color', p.Results.pupilColor)
-                    set(plotHandle,'LineWidth',1);
-                end
-            end
-        end
-    end
-    
-    % add iris ellipse fit
-    if ~isempty(p.Results.irisFileName)
-        if ~isempty(irisFitParams)
-            if sum(isnan(irisFitParams(ii,:)))==0
-                % build ellipse impicit equation
-                pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(irisFitParams(ii,:)));
-                fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
-                % superimpose the ellipse using fimplicit or ezplot (ezplot
-                % is the fallback option for older Matlab versions)
-                if exist('fimplicit','file')==2
-                    fimplicit(fh,[1, videoSizeX, 1, videoSizeY],'Color', p.Results.irisColor,'LineWidth',1);
-                    set(gca,'position',[0 0 1 1],'units','normalized')
-                    axis off;
-                else
-                    plotHandle=ezplot(fh,[1, videoSizeX, 1, videoSizeY]);
-                    set(plotHandle, 'Color', p.Results.irisColor)
-                    set(plotHandle,'LineWidth',1);
-                end
-            end
-        end
-    end
-    
-    % add an instruction label
-    if ~isempty(p.Results.controlFileName)
-        instructionIdx = find ([instructions.frame] == ii);
-        if ~isempty(instructionIdx)
-            text_str = instructions(instructionIdx(end)).type;
-            annotation('textbox',...
-                [.80 .85 .1 .1],...
-                'HorizontalAlignment','center',...
-                'VerticalAlignment','middle',...
-                'Margin',1,...
-                'String',text_str,...
-                'FontSize',9,...
-                'FontName','Helvetica',...
-                'EdgeColor',[1 1 1],...
-                'LineWidth',1,...
-                'BackgroundColor',[0.9  0.9 0.9],...
-                'Color',[1 0 0]);
-        end
-    end
-    
-    % add the center of projection
-    if ~isempty(p.Results.sceneGeometryFileName)
-        plot(sceneGeometry.eyeCenter.X,sceneGeometry.eyeCenter.Y,['x' p.Results.sceneGeometryColor]);
-    end
-    
-    % Save the frame and close the figure
-    tmp=getframe(frameFig);
-    outputVideo(:,:,:,ii) =tmp.cdata;
-    close(frameFig);
-end
-
-%% Save and cleanup
-
+% Open the video object for writing
 if ~p.Results.saveUncompressedVideo
     % write the outputVideo to file
     videoOutObj = VideoWriter(videoOutFileName);
     videoOutObj.FrameRate = p.Results.videoOutFrameRate;
     open(videoOutObj);
-    
-    % loop through the frames and save them
-    for ii=1:nFrames
-        thisFrame = squeeze(outputVideo(:,:,:,ii));
-        writeVideo(videoOutObj,thisFrame);
-    end
-    % close the videoObj
-    clear videoOutObj
 else
     % Create a color map
     cmap = [linspace(0,1,256)' linspace(0,1,256)' linspace(0,1,256)'];
@@ -356,16 +240,145 @@ else
     videoOutObj.FrameRate = p.Results.videoOutFrameRate;
     videoOutObj.Colormap = cmap;
     open(videoOutObj);
+end
+
+% Create an outer loop that will break the video into 1000 or fewer frames
+% at a time to reduce memory overhead
+sectionSize = 1000;
+nSections = ceil(nFrames / sectionSize);
+for ss = 1:nSections
+    sectionStartFrame = (ss-1)*sectionSize+1;
+    sectionFinishFrame = min([ss*sectionSize nFrames]);
+    sectionLength = sectionFinishFrame - sectionStartFrame + 1;
     
-    % loop through the frames and save them
-    for ii=1:nFrames
-        indexedFrame = rgb2ind(squeeze(outputVideo(:,:,:,ii)), cmap, 'nodither');
-        writeVideo(videoOutObj,indexedFrame);
+    % Prepare output video
+    outputVideoSection=zeros(videoSizeY,videoSizeX,3,sectionLength,'uint8');
+    
+    %% Loop through the frames
+    parfor (ff = 1:sectionLength, nWorkers)
+        
+        ii = ff + sectionStartFrame-1;
+        
+        % Update the progress display
+        if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
+            fprintf('\b.\n');
+        end
+        
+        % Create a figure
+        frameFig = figure( 'Visible', 'off');
+        
+        % show the initial frame
+        imshow(sourceVideoArray{ii}, 'Border', 'tight');
+        hold on
+        
+        % add glint
+        if ~isempty(p.Results.glintFileName)
+            plot(glintData_X(ii),glintData_Y(ii),['*' p.Results.glintColor]);
+        end
+        
+        % add pupil perimeter
+        if ~isempty(p.Results.perimeterFileName)
+            % get the data frame
+            if ~isempty(frameCellArray{ii}.Xp)
+                plot(frameCellArray{ii}.Xp,frameCellArray{ii}.Yp,['.' p.Results.perimeterColor], 'MarkerSize', 1);
+            end
+        end
+        
+        % add pupil ellipse fit
+        if ~isempty(p.Results.pupilFileName)
+            if ~isempty(pupilFitParams)
+                if sum(isnan(pupilFitParams(ii,:)))==0
+                    % build ellipse impicit equation
+                    pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(pupilFitParams(ii,:)));
+                    fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
+                    % superimpose the ellipse using fimplicit or ezplot (ezplot
+                    % is the fallback option for older Matlab versions)
+                    if exist('fimplicit','file')==2
+                        fimplicit(fh,[1, videoSizeX, 1, videoSizeY],'Color', p.Results.pupilColor,'LineWidth',1);
+                        set(gca,'position',[0 0 1 1],'units','normalized')
+                        axis off;
+                    else
+                        plotHandle=ezplot(fh,[1, videoSizeX, 1, videoSizeY]);
+                        set(plotHandle, 'Color', p.Results.pupilColor)
+                        set(plotHandle,'LineWidth',1);
+                    end
+                end
+            end
+        end
+        
+        % add iris ellipse fit
+        if ~isempty(p.Results.irisFileName)
+            if ~isempty(irisFitParams)
+                if sum(isnan(irisFitParams(ii,:)))==0
+                    % build ellipse impicit equation
+                    pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(irisFitParams(ii,:)));
+                    fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
+                    % superimpose the ellipse using fimplicit or ezplot (ezplot
+                    % is the fallback option for older Matlab versions)
+                    if exist('fimplicit','file')==2
+                        fimplicit(fh,[1, videoSizeX, 1, videoSizeY],'Color', p.Results.irisColor,'LineWidth',1);
+                        set(gca,'position',[0 0 1 1],'units','normalized')
+                        axis off;
+                    else
+                        plotHandle=ezplot(fh,[1, videoSizeX, 1, videoSizeY]);
+                        set(plotHandle, 'Color', p.Results.irisColor)
+                        set(plotHandle,'LineWidth',1);
+                    end
+                end
+            end
+        end
+        
+        % add an instruction label
+        if ~isempty(p.Results.controlFileName)
+            instructionIdx = find ([instructions.frame] == ii);
+            if ~isempty(instructionIdx)
+                text_str = instructions(instructionIdx(end)).type;
+                annotation('textbox',...
+                    [.80 .85 .1 .1],...
+                    'HorizontalAlignment','center',...
+                    'VerticalAlignment','middle',...
+                    'Margin',1,...
+                    'String',text_str,...
+                    'FontSize',9,...
+                    'FontName','Helvetica',...
+                    'EdgeColor',[1 1 1],...
+                    'LineWidth',1,...
+                    'BackgroundColor',[0.9  0.9 0.9],...
+                    'Color',[1 0 0]);
+            end
+        end
+        
+        % add the center of projection
+        if ~isempty(p.Results.sceneGeometryFileName)
+            plot(sceneGeometry.eyeCenter.X,sceneGeometry.eyeCenter.Y,['x' p.Results.sceneGeometryColor]);
+        end
+        
+        % Save the frame and close the figure
+        tmp=getframe(frameFig);
+        outputVideoSection(:,:,:,ff) =tmp.cdata;
+        close(frameFig);
+    end % parfor loop
+    
+    % Write out this section of video
+    if ~p.Results.saveUncompressedVideo
+        for ff=1:sectionLength
+            thisFrame = squeeze(outputVideoSection(:,:,:,ff));
+            writeVideo(videoOutObj,thisFrame);
+        end
+    else
+        for ff=1:sectionLength
+            indexedFrame = rgb2ind(squeeze(outputVideoSection(:,:,:,ff)), cmap, 'nodither');
+            writeVideo(videoOutObj,indexedFrame);
+        end
     end
     
-    % close the videoObj
-    clear videoOutObj    
-end
+end % Loop over video sections
+
+
+%% Save and cleanup
+
+% close the videoObj
+clear videoOutObj
 
 % report completion of fit video generation
 if strcmp(p.Results.verbosity,'full')
