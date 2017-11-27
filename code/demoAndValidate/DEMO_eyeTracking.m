@@ -82,7 +82,6 @@ end
 runVideoPipeline( pathParams, ...
     'nFrames',nFrames,'verbosity', verbosity, 'tbSnapshot',tbSnapshot, 'useParallel',true, ...
     'pupilRange', [40 200], 'pupilCircleThresh', 0.04, 'pupilGammaCorrection', 1.5, ...
-    'skipStageByNumber',1:1:8,...
     'overwriteControlFile', true, 'catchErrors', false, 'makeFitVideoByName', {'fitPupilPerimeter'});
 
 
@@ -95,7 +94,9 @@ clear dataLoad
 temporalSupport = 0:1/60.:(size(pupilData.ellipseParamsSceneConstrained_mean,1)-1)/60; % seconds
 temporalSupport = temporalSupport / 60; % minutes
 
+% Make a plot of pupil area, both on the image plane and on the eye
 figure
+subplot(2,1,1)
 plot(temporalSupport,pupilData.ellipseParamsUnconstrained_mean(:,3),'-k','LineWidth',2);
 hold on
 plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,3),'-b');
@@ -104,10 +105,23 @@ plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,3)+pupilData
 plot(temporalSupport,pupilData.ellipseParamsAreaSmoothed_mean(:,3),'-r','LineWidth',2)
 xlim([0 max(temporalSupport)]);
 xlabel('time [mins]');
-ylabel('area [pixels in plane]');
+ylabel('pupil area [pixels in plane]');
 hold off
 
+subplot(2,1,2)
+plot(temporalSupport,pupilData.meta.smoothPupilArea.pupilAreaMean,'-k');
+hold on
+plot(temporalSupport,pupilData.meta.smoothPupilArea.pupilAreaMean-pupilData.meta.smoothPupilArea.pupilAreaSD,'-','Color',[0 0 0.7])
+plot(temporalSupport,pupilData.meta.smoothPupilArea.pupilAreaMean+pupilData.meta.smoothPupilArea.pupilAreaSD,'-','Color',[0 0 0.7])
+plot(temporalSupport,pupilData.meta.smoothPupilArea.pupilAreaMean,'-r','LineWidth',2)
+xlim([0 max(temporalSupport)]);
+xlabel('time [mins]');
+ylabel('pupil area [pixels on eye]');
+hold off
+
+% Make a plot of X and Y eye pupil position on the image plane
 figure
+subplot(2,1,1)
 hold on
 plot(temporalSupport,pupilData.ellipseParamsUnconstrained_mean(:,1),'-k','LineWidth',2);
 hold on
@@ -117,16 +131,18 @@ plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,1)+pupilData
 plot(temporalSupport,pupilData.ellipseParamsAreaSmoothed_mean(:,1),'-r','LineWidth',2)
 xlim([0 max(temporalSupport)]);
 xlabel('time [mins]');
-ylabel('position [pixels]');
+ylabel('X position [pixels]');
 hold off
 
-figure
-plot(temporalSupport,pupilData.meta.smoothPupilArea.pupilAreaMean,'-k');
+subplot(2,1,2)
 hold on
-plot(temporalSupport,pupilData.meta.smoothPupilArea.pupilAreaMean-pupilData.meta.smoothPupilArea.pupilAreaSD,'-','Color',[0 0 0.7])
-plot(temporalSupport,pupilData.meta.smoothPupilArea.pupilAreaMean+pupilData.meta.smoothPupilArea.pupilAreaSD,'-','Color',[0 0 0.7])
-plot(temporalSupport,pupilData.meta.smoothPupilArea.pupilAreaMean,'-r','LineWidth',2)
+plot(temporalSupport,pupilData.ellipseParamsUnconstrained_mean(:,2),'-k','LineWidth',2);
+hold on
+plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,2),'-b');
+plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,2)-pupilData.ellipseParamsSceneConstrained_splitsSD(:,2),'-','Color',[0 0 0.7])
+plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,2)+pupilData.ellipseParamsSceneConstrained_splitsSD(:,2),'-','Color',[0 0 0.7])
+plot(temporalSupport,pupilData.ellipseParamsAreaSmoothed_mean(:,2),'-r','LineWidth',2)
 xlim([0 max(temporalSupport)]);
 xlabel('time [mins]');
-ylabel('area [pixels on pupil]');
+ylabel('Y position [pixels]');
 hold off
