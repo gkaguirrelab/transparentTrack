@@ -69,7 +69,7 @@ p.addParameter('eyeRadius',125,@isnumeric);
 p.addParameter('cameraDistanceInPixels',1200,@isnumeric);
 p.addParameter('sceneGeometryLowerBounds',[0, 0, 1325, 25],@isnumeric);
 p.addParameter('sceneGeometryUpperBounds',[640, 480, 1325, 500],@isnumeric);
-p.addParameter('numberFitDivisions',2,@isnumeric);
+p.addParameter('numberFitDivisions',4,@isnumeric);
 p.addParameter('whichFitFieldMean','ellipseParamsUnconstrained_mean',@ischar);
 p.addParameter('whichFitFieldError','ellipseParamsUnconstrained_rmse',@ischar);
 
@@ -111,8 +111,9 @@ end
 % guess for the CoP XY coordinates
 [~, minEccentricityIdx] = min(pupilData.(p.Results.whichFitFieldMean)(:,4));
 
-% Identify the [X Y] coordinates of the most circular ellipse. Z is set to
-% an initial value of zero
+% Identify the [X Y] coordinates of the most circular ellipse. These, along
+% with the eye radius and cameraDistance, are used for the initial guess at
+% the sceneGeometry.
 switch p.Results.projectionModel
     case 'orthogonal'
         x0 = [pupilData.(p.Results.whichFitFieldMean)(minEccentricityIdx,1) ...
