@@ -1,9 +1,9 @@
 % TEST_simulatedSceneGeometryConstraint
 
-% This script generates a video composed of ellipses on the image plane that are
-% pseudoPerspective projections of a model pupil. This video is then run
-% through the pupil analysis pipeline, including derivation of the scene
-% geometry and sceneConstrained ellipse fitting.
+% This script generates a video composed of ellipses on the image plane
+% that are pseudoPerspective projections of a model pupil. This video is
+% then run through the pupil analysis pipeline, including derivation of the
+% scene geometry and sceneConstrained ellipse fitting.
 
 %% Clean up
 clearvars
@@ -27,10 +27,10 @@ if exist(sandboxDir,'dir')==0
     mkdir(sandboxDir);
 end
 
-syntheticPerimVideoName = fullfile(sandboxDir, 'synthetic.avi');
+syntheticVideoName = fullfile(sandboxDir, 'synthetic.avi');
 
 % create the video writer object
-writerObj = VideoWriter(syntheticPerimVideoName, 'Uncompressed AVI');
+writerObj = VideoWriter(syntheticVideoName, 'Uncompressed AVI');
 writerObj.FrameRate = 60;
 
 % define positions in degrees of azimuth and elevation
@@ -42,7 +42,7 @@ allPupilEle = randn(1,nFrames)*15; % in degrees
 % pupil rotates on a 150 pixel radius.
 
 % define the eye sphere radius
-eyeRadius =  150;
+eyeRadius =  125;
 pupilRadius = 30;
 sceneDistance = 1200;
 
@@ -98,10 +98,6 @@ open(writerObj);
 
 for ii=1:nFrames
     indexedFrame = rgb2ind(thisFrame(ii).cdata,cmap, 'nodither');
-        
-    % get video size
-    videoX = size(indexedFrame,2);
-    videoY = size(indexedFrame,1);
     
     % write video
     writeVideo(writerObj,indexedFrame);
@@ -116,13 +112,13 @@ sceneGeometryFileName = fullfile(sandboxDir, 'syntheticPerimeter_sceneGeometry.m
 sceneDiagnosticPlotFileName = fullfile(sandboxDir, 'syntheticPerimeter_sceneDiagnosticPlot.pdf');
 finalFitVideoName = fullfile(sandboxDir, 'syntheticPerimeter_finalFit.avi');
 
-findPupilPerimeter(syntheticPerimVideoName,perimeterFileName,'verbosity','full');
+findPupilPerimeter(syntheticVideoName,perimeterFileName,'verbosity','full','pupilRange', [20 400]);
 fitPupilPerimeter(perimeterFileName, pupilFileName,'verbosity','full','ellipseTransparentLB',[],'ellipseTransparentUB',[],'nSplits',0);
-sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileName,'sceneDiagnosticPlotFileName', sceneDiagnosticPlotFileName,'sceneDiagnosticPlotSizeXY', [videoX videoY], ...
+sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileName,'sceneDiagnosticPlotFileName', sceneDiagnosticPlotFileName,'sceneDiagnosticPlotSizeXY', [videoSizeX videoSizeY], ...
     'projectionModel','pseudoPerspective','eyeRadius',eyeRadius, 'cameraDistanceInPixels',sceneDistance,'verbosity','full');
-fitPupilPerimeter(perimeterFileName,pupilFileName,'sceneGeometryFileName',sceneGeometryFileName,'ellipseTransparentLB',[0, 0, 300, 0, 0],'ellipseTransparentUB',[videoX,videoY,20000,1.0, pi],'verbosity','full');
+fitPupilPerimeter(perimeterFileName,pupilFileName,'sceneGeometryFileName',sceneGeometryFileName,'ellipseTransparentLB',[0, 0, 300, 0, 0],'ellipseTransparentUB',[videoSizeX,videoSizeY,20000,1.0, pi],'verbosity','full');
 pupilData = smoothPupilArea(perimeterFileName, pupilFileName, sceneGeometryFileName,'verbosity','full');
-makeFitVideo(syntheticPerimVideoName, finalFitVideoName, 'pupilFileName',pupilFileName,'sceneGeometryFileName',sceneGeometryFileName,'perimeterFileName',perimeterFileName,'whichFieldToPlot','ellipseParamsAreaSmoothed_mean')
+makeFitVideo(syntheticVideoName, finalFitVideoName, 'pupilFileName',pupilFileName,'sceneGeometryFileName',sceneGeometryFileName,'perimeterFileName',perimeterFileName,'whichFieldToPlot','ellipseParamsAreaSmoothed_mean')
 
 
 %% Verify that the scene geometry allows for the correct reconstruction of the eye position

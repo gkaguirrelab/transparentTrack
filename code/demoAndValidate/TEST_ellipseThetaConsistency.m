@@ -15,7 +15,7 @@ close all
 % Reset the random number generator so that we have reproducible results
 rng default
 
-thetaDifferenceTolerance = 0.05;     % How much variance in theta is allowed?
+thetaDifferenceTolerance = 0.025;     % How much variance in theta is allowed?
 eccentricityThresh = 0.1;           % Only test ellipses more eccentric than this
 
 % 1. define synthetic data length
@@ -35,7 +35,7 @@ allPupilEle = randn(1,nFrames)*15; % in degrees
 % pupil rotates on a 150 pixel radius.
 
 % define the eye sphere radius
-eyeRadius =  150;
+eyeRadius =  125;
 pupilRadius = 30;
 
 % create scene plane
