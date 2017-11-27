@@ -1,14 +1,18 @@
 function [reconstructedPupilAzi, reconstructedPupilEle, reconstructedPupilArea] = pupilProjection_inv(transparentEllipse, eyeCenter, eyeRadius, projectionModel)
-% [reconstructedHorizontalAngle, reconstructedVerticalAngle] =
-% pupilProjection_inv(transparentEllipse,centerOfProjection)
+% [reconstructedPupilAzi, reconstructedPupilEle, reconstructedPupilArea] =
+%   pupilProjection_inv(transparentEllipse,centerOfProjection)
 %
 % Returns the horiziontal and vertical angles of tilt of the pupil plane
 % with reference to the scene plane using the params of the transparent
-% ellipse and the coordinates of the center of projection on the scene.
+% ellipse and scene geometry.
+%
+% Note that we use degrees to specify pupil azimuth and elevation, but
+% radians for the theta value in the transparent ellipse formulation. This
+% is in part to help us keep the two conceptually separate.
 %
 % Note that the linear units must be uniform (e.g. all pixels or all mm)
-% for both the transparent ellipse (where applicable) and the center of
-% projection coordinates.
+% for both the transparent ellipse (where applicable) and the scene
+% geometry coordinates.
 %
 % ref http://web.ncf.ca/aa456/scale/ellipse.html
 %
@@ -96,7 +100,6 @@ else
     end
 end
 
-
 % If we are given an ellipse area, calculate a pupil area
 if ~isnan(transparentEllipse(3))
     switch projectionModel
@@ -107,9 +110,9 @@ if ~isnan(transparentEllipse(3))
             if ~any(isnan(eyeCenter))
                 
                 % calculate the perspective correction factor
-                sceneDistance = abs(eyeCenter(3) - eyeRadius);
-                relativeDepth = eyeRadius*(1-(cosd(reconstructedPupilEle)*cosd(reconstructedPupilAzi)));
-                perspectiveCorrectionFactor = (sceneDistance/(sceneDistance + relativeDepth));
+                sceneDistance = eyeCenter(3) - eyeRadius;
+                pupilCenter3D_Depth = eyeRadius - eyeRadius*(cosd(reconstructedPupilEle)*cosd(reconstructedPupilAzi));
+                perspectiveCorrectionFactor = sceneDistance/(sceneDistance + pupilCenter3D_Depth);
                 
                 % calculate pupil radius including the perspective
                 % correction factor for the ellipse area

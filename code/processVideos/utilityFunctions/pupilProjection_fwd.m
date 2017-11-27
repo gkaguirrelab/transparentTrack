@@ -1,14 +1,13 @@
 function reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzi, pupilEle, pupilArea, eyeCenter, eyeRadius, projectionModel)
-% reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzi, pupilEle, pupilCenter3D)
+% reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzi, pupilEle, pupilArea, eyeCenter, eyeRadius, projectionModel)
 %
 % Returns the transparent ellipse params of the pupil projection on the
-% scene, using the 3D pupil center coordinates and the horiziontal and
-% vertical angles of tilt (in degrees) of the pupil center with reference
-% to the scene plane.
+% image plane, using the horiziontal and vertical angles of tilt (in
+% degrees) of the pupil center along with the scene geometry.
 %
-% If the pupil area is available, the transparent param for the ellipse
-% area will return the projected ellipse area, otherwise it will be left as
-% NaN.
+% Note that we use degrees to specify pupil azimuth and elevation, but
+% radians for the theta value in the transparent ellipse formulation. This
+% is in part to help us keep the two conceptually separate.
 %
 % Note that the linear units must be uniform (eg. all pixels or all mm) for
 % both the pupil center and the transparent ellipse parameters (where
@@ -19,9 +18,11 @@ function reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzi, pupilEl
 %
 % Required inputs:
 %   pupilAzi - rotation of the pupil in the XY plane in degrees, with
-%       the center being the centerOfProjection on the scene.
+%       the center being the center of projection of the eye on the image
+%       plane.
 %   pupilEle - elevation of the pupil from the XY plane in degrees, with
-%       the center being the centerOfProjection on the scene.
+%       the center being the center of projection of the eye on the image
+%       plane.
 %   pupilArea - if not set to nan, the routine will return the ellipse area
 %   eyeCenter - 3D coordinates of the eye center in the scene reference
 %       system. This could be a vector assembled from the .X, .Y, and .Z
@@ -43,15 +44,9 @@ if any(isnan([pupilAzi pupilEle]))
 end
 
 % calculate the pupilCenter3D
-
-%pupilCenter3D(1) = eyeRadius*(cosd(pupilEle)*sind(pupilAzi));
-
-%% CHANGED BY GKA -- I Can't understand why just the X axis would be influened by both
-%% azimuth and elevation while the Y axis is influenced just by elevation...
-
 pupilCenter3D(1) = eyeRadius*sind(pupilAzi);
 pupilCenter3D(2) = eyeRadius*sind(pupilEle);
-pupilCenter3D(3) = eyeRadius*(cosd(pupilEle)*cosd(pupilAzi));
+pupilCenter3D(3) = eyeRadius - eyeRadius*(cosd(pupilEle)*cosd(pupilAzi));
 
 % define ellipse center
 switch projectionModel
@@ -66,9 +61,8 @@ switch projectionModel
         % radius.
         
         % get the perspective projection correction factor
-        relativeDepth = eyeRadius*(1-(cosd(pupilEle)*cosd(pupilAzi)));
-        sceneDistance = abs(eyeCenter(3) - eyeRadius);
-        perspectiveCorrectionFactor = sceneDistance/(sceneDistance + relativeDepth);
+        sceneDistance = eyeCenter(3) - eyeRadius;
+        perspectiveCorrectionFactor = sceneDistance/(sceneDistance + pupilCenter3D(3));
         
         % apply perspective correction factor to the pupil center
         reconstructedTransparentEllipse(1) = (pupilCenter3D(1) * perspectiveCorrectionFactor) + eyeCenter(1);
