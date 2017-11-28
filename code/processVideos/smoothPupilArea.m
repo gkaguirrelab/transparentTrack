@@ -167,13 +167,13 @@ end
 % The parameters that begin 'whichLikelihood...' control which one of the
 % available pupil ellipse fits are to be smoothed. Check here that these
 % fields exist.
-if ~isfield(pupilData,whichLikelihoodSD)
+if ~isfield(pupilData,p.Results.whichLikelihoodSD)
     error('The requested estimate of fit SD is not available in pupilData');
 end
-if ~isfield(pupilData,whichLikelihoodMean)
+if ~isfield(pupilData,p.Results.whichLikelihoodMean)
     error('The requested fit values are not available in pupilData');
 end
-if ~isfield(pupilData,whichLikelihoodRMSE)
+if ~isfield(pupilData,p.Results.whichLikelihoodRMSE)
     error('The requested RMSE of the ellipse fit are not available in pupilData');
 end
 
