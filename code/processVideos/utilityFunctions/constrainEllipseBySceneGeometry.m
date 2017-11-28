@@ -16,6 +16,9 @@ function [c, ceq, projectedEllipseOnImagePlane]=constrainEllipseBySceneGeometry(
 %   c, ceq - the values of the nonlinear constraint function
 %
 
+% We increase the weight of the constraint by this factor to force
+% compliance with the constraint in fitting
+constraintFactor = 1e6;
 
 % Extract some values from the sceneGeometry file
 eyeCenterOfRotation = [sceneGeometry.eyeCenter.X sceneGeometry.eyeCenter.Y sceneGeometry.eyeCenter.Z];
@@ -34,7 +37,7 @@ projectedEllipseOnImagePlane = ...
 % First constraint
 %  Ceq reflects the Euclidean distance between the predicted and passed
 %  center of the ellipse
-c = sqrt( (pupilEllipseOnImagePlane(1) - projectedEllipseOnImagePlane(1)).^2 + (pupilEllipseOnImagePlane(2) - projectedEllipseOnImagePlane(2)).^2  );
+c = constraintFactor * sqrt( (pupilEllipseOnImagePlane(1) - projectedEllipseOnImagePlane(1)).^2 + (pupilEllipseOnImagePlane(2) - projectedEllipseOnImagePlane(2)).^2  );
 
 % Second constraint
 %  unused
