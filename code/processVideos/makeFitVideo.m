@@ -53,9 +53,6 @@ p.addParameter('saveUncompressedVideo', false, @islogical);
 
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
-p.addParameter('useParallel',false,@islogical);
-p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('tbtbRepoName','transparentTrack',@ischar);
 
 % Optional items to include in the video
 p.addParameter('glintFileName',[],@(x)(isempty(x) | ischar(x)));
@@ -71,44 +68,8 @@ p.addParameter('controlFileName',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('sceneGeometryColor','magenta',@ischar);
 
-
 % parse
 p.parse(videoInFileName, videoOutFileName, varargin{:})
-
-
-%% Set up the parallel pool
-if p.Results.useParallel
-    if strcmp(p.Results.verbosity,'full')
-        tic
-        fprintf(['Opening parallel pool. Started ' char(datetime('now')) '\n']);
-    end
-    if isempty(p.Results.nWorkers)
-        parpool;
-    else
-        parpool(p.Results.nWorkers);
-    end
-    poolObj = gcp;
-    if isempty(poolObj)
-        nWorkers=0;
-    else
-        nWorkers = poolObj.NumWorkers;
-        % Use TbTb to configure the workers.
-        if ~isempty(p.Results.tbtbRepoName)
-            spmd
-                tbUse(p.Results.tbtbRepoName,'reset','full','verbose',false,'online',false);
-            end
-            if strcmp(p.Results.verbosity,'full')
-                fprintf('CAUTION: Any TbTb messages from the workers will not be shown.\n');
-            end
-        end
-    end
-    if strcmp(p.Results.verbosity,'full')
-        toc
-        fprintf('\n');
-    end
-else
-    nWorkers=0;
-end
 
 
 %% Alert the user and prepare variables
@@ -118,10 +79,6 @@ if strcmp(p.Results.verbosity,'full')
     fprintf('| 0                      50                   100%% |\n');
     fprintf('.\n');
 end
-
-% Read in the variables to display. If not loaded, explicitly set the
-% variable to empty so that the parfor loop does not panic about uncalled
-% lines of code that make reference to non-existent variables.
 
 % Read in the glint file if passed
 if ~isempty(p.Results.glintFileName)
@@ -179,49 +136,22 @@ else
     sceneGeometry=[];
 end
 
-% read video file into memory
+% Open a video object for reading
 videoInObj = VideoReader(videoInFileName);
+
 % get number of frames
 if p.Results.nFrames == Inf
     nFrames = floor(videoInObj.Duration*videoInObj.FrameRate);
 else
     nFrames = p.Results.nFrames;
 end
+
 % get video dimensions
 videoSizeX = videoInObj.Width;
 videoSizeY = videoInObj.Height;
-% initialize variable to hold the perimeter data
-sourceVideo = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
-% read the video into memory
-for ii = 1:nFrames
-    thisFrame = readFrame(videoInObj);
-    sourceVideo(:,:,ii) = rgb2gray (thisFrame);
-end
-% close the video object
-clear videoInObj
 
-% get glintData ready for the parfor. This includes transposing the
-% variables
-if ~isempty(p.Results.glintFileName)
-    glintData_X = glintData.X;
-    glintData_Y = glintData.Y;
-else
-    glintData_X = nan(1,nFrames);
-    glintData_Y = nan(1,nFrames);
-end
-
-% Recast perimeter and the video source into a sliced cell array to reduce par for
-% broadcast overhead
-if ~isempty(perimeter)
-    frameCellArray = perimeter.data(1:nFrames);
-    clear perimeter
-end
-
-sourceVideoArray = arrayfun(@(ii) {squeeze(sourceVideo(:,:,ii))},1:1:nFrames);
-
-% Open the video object for writing
+% Open a video object for writing
 if ~p.Results.saveUncompressedVideo
-    % write the outputVideo to file
     videoOutObj = VideoWriter(videoOutFileName);
     videoOutObj.FrameRate = p.Results.videoOutFrameRate;
     open(videoOutObj);
@@ -235,150 +165,112 @@ else
     cmap(5,:)=[0 1 1];
     cmap(6,:)=[1 0 1];
     
-    % write the outputVideo to file
     videoOutObj = VideoWriter(videoOutFileName,'Indexed AVI');
     videoOutObj.FrameRate = p.Results.videoOutFrameRate;
     videoOutObj.Colormap = cmap;
     open(videoOutObj);
 end
 
-% Create an outer loop that will break the video into 1000 or fewer frames
-% at a time to reduce memory overhead
-sectionSize = 1000;
-nSections = ceil(nFrames / sectionSize);
-for ss = 1:nSections
-    sectionStartFrame = (ss-1)*sectionSize+1;
-    sectionFinishFrame = min([ss*sectionSize nFrames]);
-    sectionLength = sectionFinishFrame - sectionStartFrame + 1;
+
+%% Loop through the frames
+for ii = 1:nFrames
     
-    % Prepare output video
-    outputVideoSection=zeros(videoSizeY,videoSizeX,3,sectionLength,'uint8');
+    % Update the progress display
+    if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
+        fprintf('\b.\n');
+    end
     
-    %% Loop through the frames
-    parfor (ff = 1:sectionLength, nWorkers)
-        
-        ii = ff + sectionStartFrame-1;
-        
-        % Update the progress display
-        if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
-            fprintf('\b.\n');
-        end
-        
-        % Create a figure
-        frameFig = figure( 'Visible', 'off');
-        
-        % show the initial frame
-        imshow(sourceVideoArray{ii}, 'Border', 'tight');
-        hold on
-        
-        % add glint
-        if ~isempty(p.Results.glintFileName)
-            plot(glintData_X(ii),glintData_Y(ii),['*' p.Results.glintColor]);
-        end
-        
-        % add pupil perimeter
-        if ~isempty(p.Results.perimeterFileName)
-            % get the data frame
-            if ~isempty(frameCellArray{ii}.Xp)
-                plot(frameCellArray{ii}.Xp,frameCellArray{ii}.Yp,['.' p.Results.perimeterColor], 'MarkerSize', 1);
-            end
-        end
-        
-        % add pupil ellipse fit
-        if ~isempty(p.Results.pupilFileName)
-            if ~isempty(pupilFitParams)
-                if sum(isnan(pupilFitParams(ii,:)))==0
-                    % build ellipse impicit equation
-                    pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(pupilFitParams(ii,:)));
-                    fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
-                    % superimpose the ellipse using fimplicit or ezplot (ezplot
-                    % is the fallback option for older Matlab versions)
-                    if exist('fimplicit','file')==2
-                        fimplicit(fh,[1, videoSizeX, 1, videoSizeY],'Color', p.Results.pupilColor,'LineWidth',1);
-                        set(gca,'position',[0 0 1 1],'units','normalized')
-                        axis off;
-                    else
-                        plotHandle=ezplot(fh,[1, videoSizeX, 1, videoSizeY]);
-                        set(plotHandle, 'Color', p.Results.pupilColor)
-                        set(plotHandle,'LineWidth',1);
-                    end
-                end
-            end
-        end
-        
-        % add iris ellipse fit
-        if ~isempty(p.Results.irisFileName)
-            if ~isempty(irisFitParams)
-                if sum(isnan(irisFitParams(ii,:)))==0
-                    % build ellipse impicit equation
-                    pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(irisFitParams(ii,:)));
-                    fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
-                    % superimpose the ellipse using fimplicit or ezplot (ezplot
-                    % is the fallback option for older Matlab versions)
-                    if exist('fimplicit','file')==2
-                        fimplicit(fh,[1, videoSizeX, 1, videoSizeY],'Color', p.Results.irisColor,'LineWidth',1);
-                        set(gca,'position',[0 0 1 1],'units','normalized')
-                        axis off;
-                    else
-                        plotHandle=ezplot(fh,[1, videoSizeX, 1, videoSizeY]);
-                        set(plotHandle, 'Color', p.Results.irisColor)
-                        set(plotHandle,'LineWidth',1);
-                    end
-                end
-            end
-        end
-        
-        % add an instruction label
-        if ~isempty(p.Results.controlFileName)
-            instructionIdx = find ([instructions.frame] == ii);
-            if ~isempty(instructionIdx)
-                text_str = instructions(instructionIdx(end)).type;
-                annotation('textbox',...
-                    [.80 .85 .1 .1],...
-                    'HorizontalAlignment','center',...
-                    'VerticalAlignment','middle',...
-                    'Margin',1,...
-                    'String',text_str,...
-                    'FontSize',9,...
-                    'FontName','Helvetica',...
-                    'EdgeColor',[1 1 1],...
-                    'LineWidth',1,...
-                    'BackgroundColor',[0.9  0.9 0.9],...
-                    'Color',[1 0 0]);
-            end
-        end
-        
-        % add the center of projection
-        if ~isempty(p.Results.sceneGeometryFileName)
-            plot(sceneGeometry.eyeCenter.X,sceneGeometry.eyeCenter.Y,['x' p.Results.sceneGeometryColor]);
-        end
-        
-        % Save the frame and close the figure
-        tmp=getframe(frameFig);
-        outputVideoSection(:,:,:,ff) =tmp.cdata;
-        close(frameFig);
-    end % parfor loop
+    % read the source video frame into memory
+    sourceFrame = readFrame(videoInObj);
+    sourceFrame = rgb2gray (sourceFrame);
     
-    % Write out this section of video
-    if ~p.Results.saveUncompressedVideo
-        for ff=1:sectionLength
-            thisFrame = squeeze(outputVideoSection(:,:,:,ff));
-            writeVideo(videoOutObj,thisFrame);
-        end
-    else
-        for ff=1:sectionLength
-            indexedFrame = rgb2ind(squeeze(outputVideoSection(:,:,:,ff)), cmap, 'nodither');
-            writeVideo(videoOutObj,indexedFrame);
+    % Create a figure
+    frameFig = figure( 'Visible', 'off');
+    
+    % show the initial frame
+    imshow(sourceFrame, 'Border', 'tight');
+    hold on
+    
+    % add glint
+    if ~isempty(p.Results.glintFileName)
+        plot(glintData.X(ii),glintData.Y(ii),['*' p.Results.glintColor]);
+    end
+    
+    % add pupil perimeter
+    if ~isempty(p.Results.perimeterFileName)
+        % get the data frame
+        if ~isempty(perimeter.data{ii}.Xp)
+            plot(perimeter.data{ii}.Xp ,perimeter.data{ii}.Yp, ['.' p.Results.perimeterColor], 'MarkerSize', 1);
         end
     end
     
-end % Loop over video sections
+    % add pupil ellipse fit
+    if ~isempty(p.Results.pupilFileName)
+        if ~isempty(pupilFitParams)
+            if sum(isnan(pupilFitParams(ii,:)))==0
+                % build ellipse impicit equation
+                pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(pupilFitParams(ii,:)));
+                fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
+                % superimpose the ellipse using fimplicit or ezplot (ezplot
+                % is the fallback option for older Matlab versions)
+                if exist('fimplicit','file')==2
+                    fimplicit(fh,[1, videoSizeX, 1, videoSizeY],'Color', p.Results.pupilColor,'LineWidth',1);
+                    set(gca,'position',[0 0 1 1],'units','normalized')
+                    axis off;
+                else
+                    plotHandle=ezplot(fh,[1, videoSizeX, 1, videoSizeY]);
+                    set(plotHandle, 'Color', p.Results.pupilColor)
+                    set(plotHandle,'LineWidth',1);
+                end
+            end
+        end
+    end
+        
+    % add an instruction label
+    if ~isempty(p.Results.controlFileName)
+        instructionIdx = find ([instructions.frame] == ii);
+        if ~isempty(instructionIdx)
+            text_str = instructions(instructionIdx(end)).type;
+            annotation('textbox',...
+                [.80 .85 .1 .1],...
+                'HorizontalAlignment','center',...
+                'VerticalAlignment','middle',...
+                'Margin',1,...
+                'String',text_str,...
+                'FontSize',9,...
+                'FontName','Helvetica',...
+                'EdgeColor',[1 1 1],...
+                'LineWidth',1,...
+                'BackgroundColor',[0.9  0.9 0.9],...
+                'Color',[1 0 0]);
+        end
+    end
+    
+    % add the center of projection
+    if ~isempty(p.Results.sceneGeometryFileName)
+        plot(sceneGeometry.eyeCenter.X,sceneGeometry.eyeCenter.Y,['x' p.Results.sceneGeometryColor]);
+    end
+    
+    % Get the frame and close the figure
+    thisFrame=getframe(frameFig);
+    close(frameFig);
+    
+    % Write out this frame
+    if ~p.Results.saveUncompressedVideo
+        thisFrame = squeeze(thisFrame);
+        writeVideo(videoOutObj,thisFrame);
+    else
+        indexedFrame = rgb2ind(thisFrame, cmap, 'nodither');
+        writeVideo(videoOutObj,indexedFrame);
+    end
+    
+end % Loop over frames
 
 
 %% Save and cleanup
 
-% close the videoObj
-clear videoOutObj
+% close the video objects
+clear videoOutObj videoInObj
 
 % report completion of fit video generation
 if strcmp(p.Results.verbosity,'full')
@@ -386,20 +278,5 @@ if strcmp(p.Results.verbosity,'full')
     fprintf('\n');
 end
 
-% Delete the parallel pool
-if strcmp(p.Results.verbosity,'full')
-    tic
-    fprintf(['Closing parallel pool. Started ' char(datetime('now')) '\n']);
-end
-if p.Results.useParallel
-    poolObj = gcp;
-    if ~isempty(poolObj)
-        delete(poolObj);
-    end
-end
-if strcmp(p.Results.verbosity,'full')
-    toc
-    fprintf('\n');
-end
 
 end % function
