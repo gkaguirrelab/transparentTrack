@@ -18,7 +18,8 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %
 %
 % Input
-%	pupilFileName - Full path to a pupilData file
+%	pupilFileName - full path to a pupilData file, or a cell array of such
+%      paths
 %   sceneGeometryFileName -  Full path to the file in which the
 %      sceneGeometry data should be saved.
 %
@@ -44,10 +45,6 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %   verbosity - controls console status updates
 %   displayMode - when set to true, displays the results of the fit
 %
-% Optional key/value pairs (flow control)
-%  'nFrames' - analyze fewer than the total number of frames.
-%  'startFrame' - which frame to start on
-%
 % Options (environment)
 %   tbSnapshot - the passed tbSnapshot output that is to be saved along
 %      with the data
@@ -60,8 +57,8 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 p = inputParser; p.KeepUnmatched = true;
 
 % required input
-p.addRequired('pupilFileName',@isstr);
-p.addRequired('sceneGeometryFileName',@isstr);
+p.addRequired('pupilFileName',@(x)(iscell(x) | ischar(x)));
+p.addRequired('sceneGeometryFileName',@ischar);
 
 % Optional analysis params
 p.addParameter('projectionModel','pseudoPerspective',@ischar);
@@ -69,7 +66,6 @@ p.addParameter('eyeRadius',125,@isnumeric);
 p.addParameter('cameraDistanceInPixels',1200,@isnumeric);
 p.addParameter('sceneGeometryLowerBounds',[0, 0, 1325, 100],@isnumeric);
 p.addParameter('sceneGeometryUpperBounds',[640, 480, 1325, 150],@isnumeric);
-p.addParameter('numberFitDivisions',4,@isnumeric);
 p.addParameter('whichFitFieldMean','ellipseParamsUnconstrained_mean',@ischar);
 p.addParameter('whichFitFieldError','ellipseParamsUnconstrained_rmse',@ischar);
 
@@ -77,10 +73,6 @@ p.addParameter('whichFitFieldError','ellipseParamsUnconstrained_rmse',@ischar);
 p.addParameter('verbosity', 'none', @isstr);
 p.addParameter('sceneDiagnosticPlotFileName', [],@(x)(isempty(x) | ischar(x)));
 p.addParameter('sceneDiagnosticPlotSizeXY', [640 480],@isnumeric);
-
-% flow control
-p.addParameter('nFrames',Inf,@isnumeric);
-p.addParameter('startFrame',1,@isnumeric);
 
 % Environment parameters
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
@@ -100,11 +92,17 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 % load pupil data
-load(pupilFileName)
-if p.Results.nFrames ~= Inf
-    ellipses = pupilData.(p.Results.whichFitFieldMean)(p.Results.startFrame:p.Results.nFrames,:);
+if iscell(pupilFileName)
+    ellipses = [];
+    errorWeights = [];
+    for cc = 1:length(pupilFileName)
+        load(pupilFileName{cc})
+        ellipses = [ellipses;pupilData.(p.Results.whichFitFieldMean)];
+        errorWeights = [errorWeights; pupilData.(p.Results.whichFitFieldError)];
+    end
 else
-    ellipses = pupilData.(p.Results.whichFitFieldMean)(p.Results.startFrame:end,:);
+    load(pupilFileName)
+    ellipses = pupilData.(p.Results.whichFitFieldMean);
 end
 
 % find the most circular ellipse and use the X Y coordinate as the initial
@@ -131,77 +129,117 @@ end
 
 % construct a weight vector based upon the quality of the initial fit of
 % the ellipse to the pupil perimeter
-if p.Results.nFrames ~= Inf
-    if isfield(pupilData,p.Results.whichFitFieldError)
-        errorWeights = (1./pupilData.(p.Results.whichFitFieldError)(p.Results.startFrame:p.Results.nFrames));
-        errorWeights = errorWeights ./ nanmean(errorWeights);
-    else
-        errorWeights=ones(1,size(ellipses,1));
-    end
-else
-    if isfield(pupilData,p.Results.whichFitFieldError)
-        errorWeights = (1./pupilData.(p.Results.whichFitFieldError)(p.Results.startFrame:end));
-        errorWeights = errorWeights ./ nanmean(errorWeights);
-    else
-        errorWeights=ones(1,size(ellipses,1));
-    end
-end
+errorWeights = 1./errorWeights;
+errorWeights = errorWeights ./ nanmean(errorWeights);
 
-% define an anonymous function to measure mean error (the L1 norm)
-errorFunc = @(x) nanmean( errorWeights.*ellipseCenterPredictionErrors(ellipses, x(1:3), x(4), p.Results.projectionModel) );
+% We divide the ellipse centers amongst a 2D set of bins. We will
+% ultimately minimize the fitting error across bins
+[ellipseCenterCounts,Xedges,Yedges,binXidx,binYidx] = ...
+    histcounts2(ellipses(:,1),ellipses(:,2));
+
+% anonymous functions for row and column identity given array position
+rowIdx = @(b) fix( (b-1) ./ (size(ellipseCenterCounts,2)) ) +1;
+colIdx = @(b) 1+mod(b-1,size(ellipseCenterCounts,2));
+
+% Create a cell array of index positions corresponding to each of the 2D
+% bins
+logicalIdxByBinPosition = ...
+    arrayfun(@(b) find( (binXidx==rowIdx(b)) .* (binYidx==colIdx(b)) ),1:1:numel(ellipseCenterCounts),'UniformOutput',false);
+
+% anonymous function to return the weighted distance error for each ellipse
+distanceErrorVector = @(x, b) errorWeights(b).*ellipseCenterPredictionErrors(ellipses(b,:), x(1:3), x(4), p.Results.projectionModel );
+
+% anonymous function to return the median distance error in each bin
+medianDistanceErrorByBin = @(x) ...
+    cell2mat(cellfun(@(b) nanmedian(distanceErrorVector(x, b)), logicalIdxByBinPosition, 'UniformOutput', false));
+
+% anonymous function to calculate the RMSE across bins
+errorFunc = @(x) sqrt(nanmean(medianDistanceErrorByBin(x).^2));
+
 
 % define some search options
 options = optimset('fmincon');
 options = optimset(options,'Diagnostics','off','Display','off','LargeScale','off','Algorithm','interior-point');
 
-% perform an initial fit
+% perform the fit
 [bestFitSceneGeometry, fVal] = ...
     fmincon(errorFunc, x0, [], [], [], [], p.Results.sceneGeometryLowerBounds, p.Results.sceneGeometryUpperBounds, [], options);
 
-% Split the ellipses by quantiles of distance error and then repeat the
-% fit. This helps us estimate the range of acceptable scene parameters
-distanceError = ellipseCenterPredictionErrors(ellipses, bestFitSceneGeometry(1:3), bestFitSceneGeometry(4), p.Results.projectionModel);
-for nn = 1:p.Results.numberFitDivisions
-    quantileLowBound = quantile(distanceError,(nn-1)/p.Results.numberFitDivisions);
-    quantileUpperBound = quantile(distanceError,nn/p.Results.numberFitDivisions);
-    withinBoundIdx = find((distanceError > quantileLowBound) .* (distanceError <= quantileUpperBound));
-    errorFuncByQuantile = @(x) nanmean( errorWeights(withinBoundIdx).*ellipseCenterPredictionErrors(ellipses(withinBoundIdx,:), x(1:3), x(4), p.Results.projectionModel) );
-    fitSceneGeometryByQuantile(nn,:) = ...
-        fmincon(errorFuncByQuantile, bestFitSceneGeometry, [], [], [], [], p.Results.sceneGeometryLowerBounds, p.Results.sceneGeometryUpperBounds, [], options);    
-end
-
-% Derive the upper and lower bounds for the scene geometry, accounting for
-% the possibility that the bestFitSceneGeometry has values that are higher
-% or lower than any of the quantile split results.
-lbSceneGeometrty = min([fitSceneGeometryByQuantile; bestFitSceneGeometry]);
-ubSceneGeometrty = max([fitSceneGeometryByQuantile; bestFitSceneGeometry]);
-
 % plot the results of the CoP estimation if requested
 if ~isempty(p.Results.sceneDiagnosticPlotFileName)
-    [~, predictedEllipseCenterXY] = ellipseCenterPredictionErrors(ellipses, bestFitSceneGeometry(1:3), bestFitSceneGeometry(4), p.Results.projectionModel);
     figHandle = figure('visible','off');
+    
+    % First plot the ellipse centers on the scene
+    subplot(1,3,1)
+    % plot the ellipse centers
     plot(ellipses(:,1), ellipses(:,2), '.k')
     hold on
+    % plot the 2D histogram grid
+    for xx = 1: length(Xedges)
+        plot([Xedges(xx) Xedges(xx)], [Yedges(1) Yedges(end)], '-', 'Color', [0.8 0.8 0.8]);
+    end
+    for yy=1: length(Yedges)
+        plot([Xedges(1) Xedges(end)], [Yedges(yy) Yedges(yy)], '-', 'Color', [0.8 0.8 0.8]);
+    end
+    % get the predicted ellipse centers
+    [~, predictedEllipseCenterXY] = ellipseCenterPredictionErrors(ellipses, bestFitSceneGeometry(1:3), bestFitSceneGeometry(4), p.Results.projectionModel);
+    % plot the predicted ellipse centers
     plot(predictedEllipseCenterXY(:,1), predictedEllipseCenterXY(:,2), '.b')
+    % plot the position of the most circular ellipse
     plot(x0(1),x0(2), 'xr')
+    % plot the estimated center of rotation of the eye
     plot(bestFitSceneGeometry(1),bestFitSceneGeometry(2), 'og')
+    % label and clean up the plot
     xlim ([0 p.Results.sceneDiagnosticPlotSizeXY(1)])
     ylim ([0 p.Results.sceneDiagnosticPlotSizeXY(2)])
+    axis equal
     set(gca,'Ydir','reverse')
     title('Estimate center of eye rotation from pupil ellipses')
     legend('ellipse centers','predicted ellipse centers', 'Most circular ellipse','Best fit CoR')
+    
+    % Next, plot the ellipse counts and error values by bin
+    subplot(1,3,2)    
+    image = ellipseCenterCounts';
+    image(image==0)=nan;
+    [nr,nc] = size(image);
+    pcolor([flipud(image) nan(nr,1); nan(1,nc+1)]);
+    caxis([0 max(max(image))]);
+    shading flat;
+    axis equal
+    % Set the axis backgroud to dark gray
+    set(gcf,'Color',[1 1 1]); set(gca,'Color',[.75 .75 .75]); set(gcf,'InvertHardCopy','off');
+    c = colorbar;
+    c.Label.String = 'Ellipse counts per bin';
+    xticks(0.5:1:size(ellipseCenterCounts,1)+.5);
+    xticklabels(Xedges);
+    yticks(0.5:1:size(ellipseCenterCounts,2)+.5);
+    yticklabels(Yedges);
+
+    subplot(1,3,3)    
+    image = reshape(medianDistanceErrorByBin(bestFitSceneGeometry),size(ellipseCenterCounts,2),size(ellipseCenterCounts,1));
+    [nr,nc] = size(image);
+    pcolor([flipud(image) nan(nr,1); nan(1,nc+1)]);
+    caxis([0 max(max(image))]);
+    shading flat;
+    axis equal
+    % Set the axis backgroud to dark gray
+    set(gcf,'Color',[1 1 1]); set(gca,'Color',[.75 .75 .75]); set(gcf,'InvertHardCopy','off');
+    c = colorbar;
+    c.Label.String = 'Median distance error';
+    xticks(0.5:1:size(ellipseCenterCounts,1)+.5);
+    xticklabels(Xedges);
+    yticks(0.5:1:size(ellipseCenterCounts,2)+.5);
+    yticklabels(Yedges);
+    
     saveas(figHandle,p.Results.sceneDiagnosticPlotFileName);
+    close(figHandle)
 end
 
 % assemble and save the sceneGeometry
 sceneGeometry.eyeCenter.X = bestFitSceneGeometry(1);
-sceneGeometry.eyeCenter.X_bounds = [lbSceneGeometrty(1) ubSceneGeometrty(1)];
 sceneGeometry.eyeCenter.Y = bestFitSceneGeometry(2);
-sceneGeometry.eyeCenter.Y_bounds = [lbSceneGeometrty(2) ubSceneGeometrty(2)];
 sceneGeometry.eyeCenter.Z = bestFitSceneGeometry(3);
-sceneGeometry.eyeCenter.Z_bounds = [lbSceneGeometrty(3) ubSceneGeometrty(3)];
 sceneGeometry.eyeRadius = bestFitSceneGeometry(4);
-sceneGeometry.eyeRadius_bounds = [lbSceneGeometrty(4) ubSceneGeometrty(4)];
 sceneGeometry.meta = p.Results;
 sceneGeometry.meta.units = 'pixelsOnTheScenePlane';
 sceneGeometry.meta.meanDistanceError = fVal;
