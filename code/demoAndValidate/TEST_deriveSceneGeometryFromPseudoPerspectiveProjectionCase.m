@@ -217,4 +217,3 @@ ylabel('Reconstructed Pupil Elevation in degrees')
 ylim([-75 75]);
 xlim([-75 75]);
 axis square
-
