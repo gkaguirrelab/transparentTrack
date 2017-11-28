@@ -164,6 +164,19 @@ else
     nFrames = p.Results.nFrames;
 end
 
+% The parameters that begin 'whichLikelihood...' control which one of the
+% available pupil ellipse fits are to be smoothed. Check here that these
+% fields exist.
+if ~isfield(pupilData,whichLikelihoodSD)
+    error('The requested estimate of fit SD is not available in pupilData');
+end
+if ~isfield(pupilData,whichLikelihoodMean)
+    error('The requested fit values are not available in pupilData');
+end
+if ~isfield(pupilData,whichLikelihoodRMSE)
+    error('The requested RMSE of the ellipse fit are not available in pupilData');
+end
+
 % convert the ellipse parameters in pupil data to eye azimuth, elevation,
 % an pupil area
 for ii = 1:nFrames
@@ -227,20 +240,6 @@ ellipseTransparentUB = p.Results.ellipseTransparentUB;
 badFrameErrorThreshold = p.Results.badFrameErrorThreshold;
 
 %% Conduct empirical Bayes smoothing
-
-% There are different measures available for the SD of the
-% parameters of the initial fit. The parameter 'whichLikelihoodSD'
-% controls which one of these is used for the likelihood. check that
-% the requested SD measure is available
-if ~isfield(pupilData,whichLikelihoodSD)
-    error('The requested estimate of fit SD is not available in pupilData');
-end
-if ~isfield(pupilData,whichLikelihoodMean)
-    error('The requested fit values are not available in pupilData');
-end
-if ~isfield(pupilData,whichLikelihoodRMSE)
-    error('The requested RMSE of the ellipse fit are not available in pupilData');
-end
 
 % Set up the decaying exponential weighting function. The relatively large
 % window (10 times the time constant) is used to handle the case in which
