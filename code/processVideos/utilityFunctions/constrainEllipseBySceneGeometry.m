@@ -18,7 +18,7 @@ function [c, ceq, projectedEllipseOnImagePlane]=constrainEllipseBySceneGeometry(
 
 % We increase the weight of the constraint by this factor to force
 % compliance with the constraint in fitting
-constraintFactor = 1e6;
+constraintFactor = 1;
 
 % Extract some values from the sceneGeometry file
 eyeCenterOfRotation = [sceneGeometry.eyeCenter.X sceneGeometry.eyeCenter.Y sceneGeometry.eyeCenter.Z];
