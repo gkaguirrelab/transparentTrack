@@ -274,6 +274,7 @@ parfor (ii = 1:nFrames, nWorkers)
     % initialize some variables
     pPosteriorMeanTransparent = NaN(1,nEllipseParams);
     pPosteriorFitError = NaN;
+    pPosteriorConstraintError = NaN;
     posteriorPupilAreaMean = NaN;
     posteriorPupilAreaSD = NaN;
 
@@ -371,13 +372,14 @@ parfor (ii = 1:nFrames, nWorkers)
         if isnan(reconstructedTransparentEllipse(areaIdx))
             pPosteriorMeanTransparent = pupilData.(whichLikelihoodMean)(ii,:);
             pPosteriorFitError = nan;
+            pPosteriorConstraintError = nan;
         else
             % Pin the area parameter and re-fit the ellipse
             lb_pin = ellipseTransparentLB;
             ub_pin = ellipseTransparentUB;
             lb_pin(areaIdx)=reconstructedTransparentEllipse(areaIdx);
             ub_pin(areaIdx)=reconstructedTransparentEllipse(areaIdx);
-            [pPosteriorMeanTransparent, pPosteriorFitError] = constrainedEllipseFit(Xp,Yp, lb_pin, ub_pin, nonlinconst);
+            [pPosteriorMeanTransparent, pPosteriorFitError, pPosteriorConstraintError] = constrainedEllipseFit(Xp,Yp, lb_pin, ub_pin, nonlinconst);
         end
         
     end % check if there are any perimeter points to fit
@@ -385,6 +387,7 @@ parfor (ii = 1:nFrames, nWorkers)
     % store results
     loopVar_pPosteriorMeanTransparent(ii,:) = pPosteriorMeanTransparent';
     loopVar_pPosteriorFitError(ii) = pPosteriorFitError;
+    loopVar_pPosteriorConstraintError(ii) = pPosteriorConstraintError;
     loopVar_pupilAreaMean(ii) = posteriorPupilAreaMean;
     loopVar_pupilAreaSD(ii) = posteriorPupilAreaSD;
     
@@ -402,6 +405,7 @@ end
 % gather the loop vars into the ellipse structure
 pupilData.ellipseParamsAreaSmoothed_mean=loopVar_pPosteriorMeanTransparent;
 pupilData.ellipseParamsAreaSmoothed_rmse=loopVar_pPosteriorFitError';
+pupilData.ellipseParamsAreaSmoothed_constraintError=loopVar_pPosteriorConstraintError';
 
 % add a meta field with analysis details
 pupilData.meta.smoothPupilArea = p.Results;
