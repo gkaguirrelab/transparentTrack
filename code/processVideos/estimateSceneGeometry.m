@@ -179,7 +179,7 @@ end
 
 % plot the results of the CoP estimation if requested
 if ~isempty(p.Results.sceneDiagnosticPlotFileName)
-    figHandle = figure('visible','off');
+    figHandle = figure('visible','on');
 
     subplot(2,2,1)   
     % plot the 2D histogram grid
@@ -214,7 +214,7 @@ if ~isempty(p.Results.sceneDiagnosticPlotFileName)
     ylim ([Yedges(1)-2*binSpaceY Yedges(end)+2*binSpaceY]);
     axis equal
     set(gca,'Ydir','reverse')
-    title('Estimate center of eye rotation from pupil ellipses')
+    title('Ellipse centers')
     
     % Create a legend
     hSub = subplot(2,2,2);
@@ -226,7 +226,7 @@ if ~isempty(p.Results.sceneDiagnosticPlotFileName)
     plot(nan, nan, 'xr', 'MarkerSize', 2);
     plot(nan, nan, 'og', 'MarkerSize', 2);
     set(hSub, 'Visible', 'off');
-    legend({'ellipse centers','predicted ellipse centers', 'Most circular ellipse','Best fit CoR'});
+    legend({'ellipse centers','predicted ellipse centers', 'Most circular ellipse','Best fit CoR'},'Location','southwestoutside');
     
     % Next, plot the ellipse counts and error values by bin
     subplot(2,2,3)    
@@ -240,12 +240,13 @@ if ~isempty(p.Results.sceneDiagnosticPlotFileName)
     % Set the axis backgroud to dark gray
     set(gcf,'Color',[1 1 1]); set(gca,'Color',[.75 .75 .75]); set(gcf,'InvertHardCopy','off');
     set(gca,'Ydir','reverse')
-    c = colorbar;
-    c.Label.String = 'Ellipse counts per bin';
-    xticks(0.5:1:size(image,1)+.5);
-    xticklabels(Xedges);
-    yticks(0.5:1:size(image,2)+.5);
-    yticklabels(Yedges);
+    colorbar;
+    title('Ellipse counts')
+    xticks(1:1:size(image,1)+1);
+    xticklabels(round(Xedges));
+    xtickangle(90);
+    yticks(1:1:size(image,2)+1);
+    yticklabels(round(Yedges));
     xlim([1 size(image,1)+1]);
     ylim([1 size(image,2)+1]);
 
@@ -259,12 +260,13 @@ if ~isempty(p.Results.sceneDiagnosticPlotFileName)
     % Set the axis backgroud to dark gray
     set(gcf,'Color',[1 1 1]); set(gca,'Color',[.75 .75 .75]); set(gcf,'InvertHardCopy','off');
     set(gca,'Ydir','reverse')
-    c = colorbar;
-    c.Label.String = 'Median distance error';
-    xticks(0.5:1:size(image,1)+.5);
-    xticklabels(Xedges);
-    yticks(0.5:1:size(image,2)+.5);
-    yticklabels(Yedges);
+    colorbar;
+    title('Median distance error');
+    xticks(1:1:size(image,1)+1);
+    xticklabels(round(Xedges));
+    xtickangle(90);
+    yticks(1:1:size(image,2)+1);
+    yticklabels(round(Yedges));
     xlim([1 size(image,1)+1]);
     ylim([1 size(image,2)+1]);
     
