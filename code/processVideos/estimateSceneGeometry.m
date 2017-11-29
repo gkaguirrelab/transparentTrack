@@ -64,8 +64,8 @@ p.addRequired('sceneGeometryFileName',@ischar);
 p.addParameter('projectionModel','pseudoPerspective',@ischar);
 p.addParameter('eyeRadius',125,@isnumeric);
 p.addParameter('cameraDistanceInPixels',1200,@isnumeric);
-p.addParameter('sceneGeometryLowerBounds',[0, 0, 1325, 100],@isnumeric);
-p.addParameter('sceneGeometryUpperBounds',[640, 480, 1325, 150],@isnumeric);
+p.addParameter('sceneGeometryLowerBounds',[0, 0, 1325, 25],@isnumeric);
+p.addParameter('sceneGeometryUpperBounds',[640, 480, 1325, 250],@isnumeric);
 p.addParameter('whichFitFieldMean','ellipseParamsUnconstrained_mean',@ischar);
 p.addParameter('whichFitFieldError','ellipseParamsUnconstrained_rmse',@ischar);
 
@@ -103,15 +103,14 @@ if iscell(pupilFileName)
 else
     load(pupilFileName)
     ellipses = pupilData.(p.Results.whichFitFieldMean);
+    errorWeights = pupilData.(p.Results.whichFitFieldError);
 end
 
 % find the most circular ellipse and use the X Y coordinate as the initial
 % guess for the CoP XY coordinates
 [~, minEccentricityIdx] = min(pupilData.(p.Results.whichFitFieldMean)(:,4));
 
-% Identify the [X Y] coordinates of the most circular ellipse. These, along
-% with the eye radius and cameraDistance, are used for the initial guess at
-% the sceneGeometry.
+% Set up the initial guess at the sceneGeometry.
 switch p.Results.projectionModel
     case 'orthogonal'
         x0 = [pupilData.(p.Results.whichFitFieldMean)(minEccentricityIdx,1) ...
@@ -135,7 +134,7 @@ errorWeights = errorWeights ./ nanmean(errorWeights);
 % We divide the ellipse centers amongst a 2D set of bins. We will
 % ultimately minimize the fitting error across bins
 [ellipseCenterCounts,Xedges,Yedges,binXidx,binYidx] = ...
-    histcounts2(ellipses(:,1),ellipses(:,2));
+    histcounts2(ellipses(:,1),ellipses(:,2),10);
 
 % anonymous functions for row and column identity given array position
 rowIdx = @(b) fix( (b-1) ./ (size(ellipseCenterCounts,2)) ) +1;
@@ -143,7 +142,7 @@ colIdx = @(b) 1+mod(b-1,size(ellipseCenterCounts,2));
 
 % Create a cell array of index positions corresponding to each of the 2D
 % bins
-logicalIdxByBinPosition = ...
+idxByBinPosition = ...
     arrayfun(@(b) find( (binXidx==rowIdx(b)) .* (binYidx==colIdx(b)) ),1:1:numel(ellipseCenterCounts),'UniformOutput',false);
 
 % anonymous function to return the weighted distance error for each ellipse
@@ -151,10 +150,10 @@ distanceErrorVector = @(x, b) errorWeights(b).*ellipseCenterPredictionErrors(ell
 
 % anonymous function to return the median distance error in each bin
 medianDistanceErrorByBin = @(x) ...
-    cell2mat(cellfun(@(b) nanmedian(distanceErrorVector(x, b)), logicalIdxByBinPosition, 'UniformOutput', false));
+    cell2mat(cellfun(@(b) nanmedian(distanceErrorVector(x, b)), idxByBinPosition, 'UniformOutput', false));
 
-% anonymous function to calculate the RMSE across bins
-errorFunc = @(x) sqrt(nanmean(medianDistanceErrorByBin(x).^2));
+% anonymous function to calculate RMSE error across bins
+errorFunc = @(x) sqrt( nanmean(medianDistanceErrorByBin(x).^2) );
 
 
 % define some search options
@@ -165,41 +164,73 @@ options = optimset(options,'Diagnostics','off','Display','off','LargeScale','off
 [bestFitSceneGeometry, fVal] = ...
     fmincon(errorFunc, x0, [], [], [], [], p.Results.sceneGeometryLowerBounds, p.Results.sceneGeometryUpperBounds, [], options);
 
+% assemble and save the sceneGeometry
+sceneGeometry.eyeCenter.X = bestFitSceneGeometry(1);
+sceneGeometry.eyeCenter.Y = bestFitSceneGeometry(2);
+sceneGeometry.eyeCenter.Z = bestFitSceneGeometry(3);
+sceneGeometry.eyeRadius = bestFitSceneGeometry(4);
+sceneGeometry.meta = p.Results;
+sceneGeometry.meta.units = 'pixelsOnTheScenePlane';
+sceneGeometry.meta.distanceError = fVal;
+
+if ~isempty(sceneGeometryFileName)
+    save(sceneGeometryFileName,'sceneGeometry');
+end
+
 % plot the results of the CoP estimation if requested
 if ~isempty(p.Results.sceneDiagnosticPlotFileName)
     figHandle = figure('visible','off');
-    
-    % First plot the ellipse centers on the scene
-    subplot(1,3,1)
-    % plot the ellipse centers
-    plot(ellipses(:,1), ellipses(:,2), '.k')
-    hold on
+
+    subplot(2,2,1)   
     % plot the 2D histogram grid
     for xx = 1: length(Xedges)
-        plot([Xedges(xx) Xedges(xx)], [Yedges(1) Yedges(end)], '-', 'Color', [0.8 0.8 0.8]);
+        if xx==1
+            hold on
+        end
+        plot([Xedges(xx) Xedges(xx)], [Yedges(1) Yedges(end)], '-', 'Color', [0.9 0.9 0.9], 'LineWidth', 0.5 );
     end
     for yy=1: length(Yedges)
-        plot([Xedges(1) Xedges(end)], [Yedges(yy) Yedges(yy)], '-', 'Color', [0.8 0.8 0.8]);
+        plot([Xedges(1) Xedges(end)], [Yedges(yy) Yedges(yy)], '-', 'Color', [0.9 0.9 0.9], 'LineWidth', 0.5);
     end
+
+    binSpaceX = Xedges(2)-Xedges(1);
+    binSpaceY = Yedges(2)-Yedges(1);
+    
+    % plot the ellipse centers
+    scatter(ellipses(:,1),ellipses(:,2),2,'filled', ...
+       'MarkerFaceAlpha',1/8,'MarkerFaceColor',[0.5 0.5 0.5]);
+    hold on
     % get the predicted ellipse centers
     [~, predictedEllipseCenterXY] = ellipseCenterPredictionErrors(ellipses, bestFitSceneGeometry(1:3), bestFitSceneGeometry(4), p.Results.projectionModel);
     % plot the predicted ellipse centers
-    plot(predictedEllipseCenterXY(:,1), predictedEllipseCenterXY(:,2), '.b')
+    scatter(predictedEllipseCenterXY(:,1),predictedEllipseCenterXY(:,2),2,'filled', ...
+       'MarkerFaceAlpha',2/8,'MarkerFaceColor',[0 0 1]);
     % plot the position of the most circular ellipse
-    plot(x0(1),x0(2), 'xr')
+    plot(x0(1),x0(2), 'xr', 'MarkerSize', 3);
     % plot the estimated center of rotation of the eye
-    plot(bestFitSceneGeometry(1),bestFitSceneGeometry(2), 'og')
+    plot(bestFitSceneGeometry(1),bestFitSceneGeometry(2), 'og', 'MarkerSize', 3);
     % label and clean up the plot
-    xlim ([0 p.Results.sceneDiagnosticPlotSizeXY(1)])
-    ylim ([0 p.Results.sceneDiagnosticPlotSizeXY(2)])
+    xlim ([Xedges(1)-2*binSpaceX Xedges(end)+2*binSpaceX]);
+    ylim ([Yedges(1)-2*binSpaceY Yedges(end)+2*binSpaceY]);
     axis equal
     set(gca,'Ydir','reverse')
     title('Estimate center of eye rotation from pupil ellipses')
-    legend('ellipse centers','predicted ellipse centers', 'Most circular ellipse','Best fit CoR')
+    
+    % Create a legend
+    hSub = subplot(2,2,2);
+    scatter(nan, nan,1,'filled', ...
+        'MarkerFaceAlpha',1/8,'MarkerFaceColor',[0.5 0.5 0.5]);
+    hold on
+    scatter(nan, nan,1,'filled', ...
+        'MarkerFaceAlpha',1/8,'MarkerFaceColor',[0 0 1]);
+    plot(nan, nan, 'xr', 'MarkerSize', 2);
+    plot(nan, nan, 'og', 'MarkerSize', 2);
+    set(hSub, 'Visible', 'off');
+    legend({'ellipse centers','predicted ellipse centers', 'Most circular ellipse','Best fit CoR'});
     
     % Next, plot the ellipse counts and error values by bin
-    subplot(1,3,2)    
-    image = ellipseCenterCounts';
+    subplot(2,2,3)    
+    image = flipud(ellipseCenterCounts');
     image(image==0)=nan;
     [nr,nc] = size(image);
     pcolor([flipud(image) nan(nr,1); nan(1,nc+1)]);
@@ -208,15 +239,18 @@ if ~isempty(p.Results.sceneDiagnosticPlotFileName)
     axis equal
     % Set the axis backgroud to dark gray
     set(gcf,'Color',[1 1 1]); set(gca,'Color',[.75 .75 .75]); set(gcf,'InvertHardCopy','off');
+    set(gca,'Ydir','reverse')
     c = colorbar;
     c.Label.String = 'Ellipse counts per bin';
-    xticks(0.5:1:size(ellipseCenterCounts,1)+.5);
+    xticks(0.5:1:size(image,1)+.5);
     xticklabels(Xedges);
-    yticks(0.5:1:size(ellipseCenterCounts,2)+.5);
+    yticks(0.5:1:size(image,2)+.5);
     yticklabels(Yedges);
+    xlim([1 size(image,1)+1]);
+    ylim([1 size(image,2)+1]);
 
-    subplot(1,3,3)    
-    image = reshape(medianDistanceErrorByBin(bestFitSceneGeometry),size(ellipseCenterCounts,2),size(ellipseCenterCounts,1));
+    subplot(2,2,4)    
+    image = flipud(reshape(medianDistanceErrorByBin(bestFitSceneGeometry),size(ellipseCenterCounts,2),size(ellipseCenterCounts,1)));
     [nr,nc] = size(image);
     pcolor([flipud(image) nan(nr,1); nan(1,nc+1)]);
     caxis([0 max(max(image))]);
@@ -224,29 +258,20 @@ if ~isempty(p.Results.sceneDiagnosticPlotFileName)
     axis equal
     % Set the axis backgroud to dark gray
     set(gcf,'Color',[1 1 1]); set(gca,'Color',[.75 .75 .75]); set(gcf,'InvertHardCopy','off');
+    set(gca,'Ydir','reverse')
     c = colorbar;
     c.Label.String = 'Median distance error';
-    xticks(0.5:1:size(ellipseCenterCounts,1)+.5);
+    xticks(0.5:1:size(image,1)+.5);
     xticklabels(Xedges);
-    yticks(0.5:1:size(ellipseCenterCounts,2)+.5);
+    yticks(0.5:1:size(image,2)+.5);
     yticklabels(Yedges);
+    xlim([1 size(image,1)+1]);
+    ylim([1 size(image,2)+1]);
     
     saveas(figHandle,p.Results.sceneDiagnosticPlotFileName);
     close(figHandle)
 end
 
-% assemble and save the sceneGeometry
-sceneGeometry.eyeCenter.X = bestFitSceneGeometry(1);
-sceneGeometry.eyeCenter.Y = bestFitSceneGeometry(2);
-sceneGeometry.eyeCenter.Z = bestFitSceneGeometry(3);
-sceneGeometry.eyeRadius = bestFitSceneGeometry(4);
-sceneGeometry.meta = p.Results;
-sceneGeometry.meta.units = 'pixelsOnTheScenePlane';
-sceneGeometry.meta.meanDistanceError = fVal;
-
-if ~isempty(sceneGeometryFileName)
-    save(sceneGeometryFileName,'sceneGeometry');
-end
 
 % alert the user that we are done with the routine
 if strcmp(p.Results.verbosity,'full')
