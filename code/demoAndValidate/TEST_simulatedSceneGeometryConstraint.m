@@ -63,6 +63,9 @@ sceneDistance = 1200;
 projectionModel = 'pseudoPerspective';
 eyeCenter = [videoSizeX/2, videoSizeY/2, eyeRadius+sceneDistance];
 
+
+%% create the video
+
 emptyFrame = ones(videoSizeY, videoSizeX);
 h = figure('visible','off');
 
@@ -80,6 +83,10 @@ for ii = 1:nFrames
     fh=@(x,y) pFitExplicit(4)^2.*((x-pFitExplicit(1)).*cos(pFitExplicit(5))-(y-pFitExplicit(2)).*sin(pFitExplicit(5))).^2 + pFitExplicit(3)^2.*((x-pFitExplicit(1)).*sin(pFitExplicit(5))+(y-pFitExplicit(2)).*cos(pFitExplicit(5))).^2 - pFitExplicit(3)^2.*pFitExplicit(4)^2 < 0;
     [Y, X]=ind2sub(size(tempImage),1:1:numel(tempImage));
     tempImage(fh(X,Y))=0;
+    
+    % overlay a glint
+    tempImage = insertShape(tempImage,'filledCircle',[videoSizeX/2+2 , videoSizeY/2-2, 5],'Color','w');
+    
     imshow(tempImage,'Border','tight');
     axis equal
     axis off
