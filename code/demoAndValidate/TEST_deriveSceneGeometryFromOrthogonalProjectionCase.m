@@ -110,8 +110,8 @@ for ii = 1:length(allPupilAzi)
     % do orthogonal projeciton on the scene plane
     pupilPoints2d = projPointOnPlane(pupilPoints3d,scenePlane);
     
-    % add a little noise to the points
-    pupilPoints2d = awgn(pupilPoints2d,.5);
+%     % add a little noise to the points
+%     pupilPoints2d = awgn(pupilPoints2d,.5);
     
     % make the plot and save it as a frame
     imshow(emptyFrame);
@@ -165,6 +165,9 @@ finalFitVideoName = fullfile(sandboxDir, 'syntheticPerimeter_finalFit.avi');
 findPupilPerimeter(syntheticPerimVideoName,syntheticPerimFileName,'verbosity','full');
 pupilData = fitPupilPerimeter(syntheticPerimFileName, pupilFileName,'verbosity','full','ellipseTransparentLB',[0, 0, 300, 0, -pi],'ellipseTransparentUB',[videoX,videoY,20000,0.75, pi],'nSplits',0);
 sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileName,'sceneDiagnosticPlotFileName', sceneDiagnosticPlotFileName,'sceneDiagnosticPlotSizeXY', [videoX videoY]);
+fitPupilPerimeter(syntheticPerimFileName,pupilFileName,'sceneGeometryFileName',sceneGeometryFileName,'verbosity','full');
+makeFitVideo(syntheticPerimVideoName, finalFitVideoName, 'pupilFileName',pupilFileName,'sceneGeometryFileName',sceneGeometryFileName,'perimeterFileName',syntheticPerimFileName,'whichFieldToPlot','ellipseParamsSceneConstrained_mean')
+
 
 %% Verify that the scene geometry allows for the correct reconstruction of the eye movements
 
