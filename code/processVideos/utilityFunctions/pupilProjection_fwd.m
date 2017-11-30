@@ -44,9 +44,9 @@ if any(isnan([pupilAzi pupilEle]))
 end
 
 % calculate the pupilCenter3D
-pupilCenter3D(1) = eyeRadius*sind(pupilAzi);
+pupilCenter3D(1) = eyeRadius*sind(pupilAzi)*cosd(pupilEle);
 pupilCenter3D(2) = eyeRadius*sind(pupilEle);
-pupilCenter3D(3) = eyeRadius - eyeRadius*(cosd(pupilEle)*cosd(pupilAzi));
+pupilCenter3D(3) = eyeRadius*cosd(pupilAzi)*cosd(pupilEle);
 
 % define ellipse center
 switch projectionModel

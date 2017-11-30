@@ -12,10 +12,7 @@ close all
 % Reset the random number generator so that we have reproducible results
 rng default
 
-% 1. define synthetic data length
-nFrames = 200;
-
-% 2. define scene dimension in pixels
+% define scene dimension in pixels
 videoSizeX = 640;
 videoSizeY = 480;
 
@@ -34,8 +31,15 @@ writerObj = VideoWriter(syntheticVideoName, 'Uncompressed AVI');
 writerObj.FrameRate = 60;
 
 % define positions in degrees of azimuth and elevation
-allPupilAzi = randn(1,nFrames)*15; % in degrees
-allPupilEle = randn(1,nFrames)*15; % in degrees
+allPupilAzi=[];
+allPupilEle=[];
+for aa = -16:2:16
+    for ee = -16:2:16
+        allPupilAzi(numel(allPupilAzi)+1) = aa; % in degrees
+        allPupilEle(numel(allPupilEle)+1) = ee; % in degrees
+    end
+end
+nFrames = numel(allPupilAzi);
 
 %% construct scene geometry
 % we will construct a scene where the CoR sits right at the center, and the
@@ -43,7 +47,7 @@ allPupilEle = randn(1,nFrames)*15; % in degrees
 
 % define the eye sphere radius
 eyeRadius =  125;
-pupilRadius = 30;
+pupilRadius = 60;
 sceneDistance = 1200;
 
 % Set up the sceneGeometry
@@ -53,7 +57,7 @@ eyeCenter = [videoSizeX/2, videoSizeY/2, eyeRadius+sceneDistance];
 emptyFrame = ones(videoSizeY, videoSizeX);
 h = figure('visible','off');
 
-% for each frame, create the projected ellipse and test the consistency of
+% for each frame, create the projected ellipse and test the consistenpFitExplicit(2) of
 % the returned theta values
 for ii = 1:nFrames
     pupilAzi = allPupilAzi(ii); % in degrees
@@ -62,26 +66,17 @@ for ii = 1:nFrames
     forwardProjectEllipseParams = pupilProjection_fwd(pupilAzi, pupilEle, pi*pupilRadius.^2, eyeCenter, eyeRadius, projectionModel);
     
     % make the plot and save it as a frame
-    imshow(emptyFrame);
-    hold on
-    pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(forwardProjectEllipseParams));
-    fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
-    fimplicit(fh,[1, videoSizeX, 1, videoSizeY],'Color', 'b','LineWidth',1);
-    axis equal
-    axis off
-    ylim([0 videoSizeY]);
-    xlim([0 videoSizeX]);
-    truesize;
-    
-    % get the frame
-    tmpFrame = getframe(gca);
-    [Yp, Xp] = ind2sub(size(squeeze(tmpFrame.cdata(:,:,1))),find(squeeze(tmpFrame.cdata(:,:,1))==0));
+    tempImage=emptyFrame;
+    pFitExplicit = ellipse_transparent2ex(forwardProjectEllipseParams);
+    fh=@(x,y) pFitExplicit(4)^2.*((x-pFitExplicit(1)).*cos(pFitExplicit(5))-(y-pFitExplicit(2)).*sin(pFitExplicit(5))).^2 + pFitExplicit(3)^2.*((x-pFitExplicit(1)).*sin(pFitExplicit(5))+(y-pFitExplicit(2)).*cos(pFitExplicit(5))).^2 - pFitExplicit(3)^2.*pFitExplicit(4)^2 < 0;
+    [Y, X]=ind2sub(size(tempImage),1:1:numel(tempImage));
+    tempImage(fh(X,Y))=0;
+    imshow(tempImage);
     
     % Fill the points
-    fill(Xp,Yp,'k')
     thisFrame(ii) = getframe(gca);
     hold off
-
+    
 end % loop over frames
 
 % Create a color map for the indexed video
@@ -112,13 +107,13 @@ sceneGeometryFileName = fullfile(sandboxDir, 'syntheticPerimeter_sceneGeometry.m
 sceneDiagnosticPlotFileName = fullfile(sandboxDir, 'syntheticPerimeter_sceneDiagnosticPlot.pdf');
 finalFitVideoName = fullfile(sandboxDir, 'syntheticPerimeter_finalFit.avi');
 
-findPupilPerimeter(syntheticVideoName,perimeterFileName,'verbosity','full','pupilRange', [20 400]);
+findPupilPerimeter(syntheticVideoName,perimeterFileName,'verbosity','full','pupilRange', [20 100]);
 fitPupilPerimeter(perimeterFileName, pupilFileName,'verbosity','full','ellipseTransparentLB',[],'ellipseTransparentUB',[],'nSplits',0);
 sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileName,'sceneDiagnosticPlotFileName', sceneDiagnosticPlotFileName,'sceneDiagnosticPlotSizeXY', [videoSizeX videoSizeY], ...
     'projectionModel','pseudoPerspective','eyeRadius',eyeRadius, 'cameraDistanceInPixels',sceneDistance,'verbosity','full');
 fitPupilPerimeter(perimeterFileName,pupilFileName,'sceneGeometryFileName',sceneGeometryFileName,'ellipseTransparentLB',[0, 0, 300, 0, 0],'ellipseTransparentUB',[videoSizeX,videoSizeY,20000,1.0, pi],'verbosity','full');
 pupilData = smoothPupilArea(perimeterFileName, pupilFileName, sceneGeometryFileName,'verbosity','full');
-makeFitVideo(syntheticVideoName, finalFitVideoName, 'pupilFileName',pupilFileName,'sceneGeometryFileName',sceneGeometryFileName,'perimeterFileName',perimeterFileName,'whichFieldToPlot','ellipseParamsAreaSmoothed_mean')
+makeFitVideo(syntheticVideoName, finalFitVideoName, 'pupilFileName',pupilFileName,'sceneGeometryFileName',sceneGeometryFileName,'perimeterFileName',perimeterFileName,'perimeterColor','r','whichFieldToPlot','ellipseParamsAreaSmoothed_mean')
 
 
 %% Verify that the scene geometry allows for the correct reconstruction of the eye position
