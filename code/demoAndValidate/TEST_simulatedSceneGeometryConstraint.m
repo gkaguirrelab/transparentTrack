@@ -39,7 +39,7 @@ allPupilEle=[];
 %         allPupilEle(numel(allPupilEle)+1) = ee; % in degrees
 %     end
 % end
-eleSteps = 0:5:45
+eleSteps = -15:5:15
 aziSweeps = [-20:2:20 flip(-20:2:20)]
 for ii = 1: length(eleSteps)
 allPupilEle = [allPupilEle eleSteps(ii)*ones(1,length(aziSweeps))];
@@ -66,7 +66,7 @@ eyeCenter = [videoSizeX/2, videoSizeY/2, eyeRadius+sceneDistance];
 
 %% create the video
 
-emptyFrame = ones(videoSizeY, videoSizeX);
+emptyFrame = ones(videoSizeY, videoSizeX)*0.85;
 h = figure('visible','off');
 
 % for each frame, create the projected ellipse and test the consistenpFitExplicit(2) of
@@ -85,7 +85,7 @@ for ii = 1:nFrames
     tempImage(fh(X,Y))=0;
     
     % overlay a glint
-    tempImage = insertShape(tempImage,'filledCircle',[videoSizeX/2+2 , videoSizeY/2-2, 5],'Color','w');
+    tempImage = insertShape(tempImage,'filledCircle',[videoSizeX/2+2 , videoSizeY/2-2, 5],'Color','w','Opacity',1);
     
     imshow(tempImage,'Border','tight');
     axis equal
@@ -134,7 +134,7 @@ sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileName,'scen
     'projectionModel','pseudoPerspective','eyeRadius',eyeRadius, 'cameraDistanceInPixels',sceneDistance,'verbosity','full');
 fitPupilPerimeter(perimeterFileName,pupilFileName,'sceneGeometryFileName',sceneGeometryFileName,'ellipseTransparentLB',[0, 0, 300, 0, 0],'ellipseTransparentUB',[videoSizeX,videoSizeY,20000,1.0, pi],'verbosity','full');
 pupilData = smoothPupilArea(perimeterFileName, pupilFileName, sceneGeometryFileName,'verbosity','full');
-makeFitVideo(syntheticVideoName, finalFitVideoName, 'pupilFileName',pupilFileName,'sceneGeometryFileName',sceneGeometryFileName,'perimeterFileName',perimeterFileName,'perimeterColor','r','whichFieldToPlot','ellipseParamsAreaSmoothed_mean')
+makeFitVideo(syntheticVideoName, finalFitVideoName, 'pupilFileName',pupilFileName,'sceneGeometryFileName',sceneGeometryFileName,'perimeterFileName',perimeterFileName,'perimeterColor','r','whichFieldToPlot','ellipseParamsAreaSmoothed_mean','verbosity','full')
 
 
 %% Verify that the scene geometry allows for the correct reconstruction of the eye position
@@ -158,7 +158,7 @@ xlim([min([min(allPupilAzi) min(reconstructedPupilAzi)]) max([max(allPupilAzi) m
 axis square
 
 subplot(1,3,2)
-plot(allPupilEle,reconstructedPupilEle, '.r')
+plot(-allPupilEle,reconstructedPupilEle, '.r')
 rl = refline(1,0);
 rl.Color = 'k';
 xlabel('Ground Truth Pupil Elevation in degrees')
