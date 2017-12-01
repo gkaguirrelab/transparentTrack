@@ -30,9 +30,25 @@ syntheticVideoName = fullfile(sandboxDir, 'synthetic.avi');
 writerObj = VideoWriter(syntheticVideoName, 'Uncompressed AVI');
 writerObj.FrameRate = 60;
 
-% define positions in degrees of azimuth and elevation
+
+%% construct scene geometry
+% we will construct a scene where the CoR sits right at the center, and the
+% pupil rotates on a 125 pixel radius. The pupil has a fixed radius as
+% sweeps the scene back and forth at different elevations.
+
+% define the eye sphere radius
+eyeRadius =  125;
+pupilRadius = 80;
+sceneDistance = 1200;
+
+% Set up the sceneGeometry
+projectionModel = 'pseudoPerspective';
+eyeCenter = [videoSizeX/2, videoSizeY/2, eyeRadius+sceneDistance];
+
+% define pupil positions in degrees of azimuth and elevation
 allPupilAzi=[];
 allPupilEle=[];
+
 eleSteps = -20:5:20;
 aziSweeps = [-30:3:30];
 
@@ -47,21 +63,11 @@ end
 
 nFrames = numel(allPupilAzi);
 
-%% construct scene geometry
-% we will construct a scene where the CoR sits right at the center, and the
-% pupil rotates on a 150 pixel radius.
-
-% define the eye sphere radius
-eyeRadius =  125;
-pupilRadius = 80;
-sceneDistance = 1200;
-
-% Set up the sceneGeometry
-projectionModel = 'pseudoPerspective';
-eyeCenter = [videoSizeX/2, videoSizeY/2, eyeRadius+sceneDistance];
-
-
 %% create the video
+% the video will be created with a modified version of the
+% pupilProjection_fwd function, as the Y axis for matlab plots is oriented
+% upwards. Normally pupilProjection_fwd operates on video frames, for which
+% the convention is that the Y axis points downwards.
 
 emptyFrame = ones(videoSizeY, videoSizeX)*0.85;
 h = figure('visible','off');
@@ -122,6 +128,10 @@ end
 close (writerObj);
 
 %% use this video in the video pipeline
+% we run the standard pupil pipeline here. Note that since there's no
+% eyelid, we skip the steps relative to the correction of the pupil
+% perimeter.
+
 perimeterFileName = fullfile(sandboxDir, 'synthetic_perimeter.mat');
 pupilFileName = fullfile(sandboxDir, 'syntheticPerimeter_pupil.mat');
 sceneGeometryFileName = fullfile(sandboxDir, 'syntheticPerimeter_sceneGeometry.mat');
