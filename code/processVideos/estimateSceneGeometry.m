@@ -179,7 +179,7 @@ end
 
 % plot the results of the CoP estimation if requested
 if ~isempty(p.Results.sceneDiagnosticPlotFileName)
-    figHandle = figure('visible','on');
+    figHandle = figure('visible','off');
 
     subplot(2,2,1)   
     % plot the 2D histogram grid

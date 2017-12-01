@@ -87,7 +87,7 @@ p.addParameter('smallObjThresh', 400, @isnumeric);
 
 % findPupilCircle routine params. Defined here for transparency
 p.addParameter('pupilCircleThresh', 0.06, @isnumeric);
-p.addParameter('pupilRange', [40 800], @isnumeric);
+p.addParameter('pupilRange', [20 100], @isnumeric);
 p.addParameter('imfindcirclesSensitivity', 0.99, @isnumeric);
 p.addParameter('rangeAdjust', 0.05, @isnumeric);
 
