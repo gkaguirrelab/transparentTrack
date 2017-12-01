@@ -16,7 +16,7 @@ rng default
 videoSizeX = 640;
 videoSizeY = 480;
 
-% Setup the video save 
+% Setup the video save
 sandboxDir = '~/Desktop/sceneGeometryFromPseudoPerspectiveTEST';
 
 % check or make a directory for output
@@ -33,20 +33,17 @@ writerObj.FrameRate = 60;
 % define positions in degrees of azimuth and elevation
 allPupilAzi=[];
 allPupilEle=[];
-% for aa = -16:2:16
-%     for ee = -16:2:16
-%         allPupilAzi(numel(allPupilAzi)+1) = aa; % in degrees
-%         allPupilEle(numel(allPupilEle)+1) = ee; % in degrees
-%     end
-% end
-eleSteps = -15:5:15
-aziSweeps = [-20:2:20 flip(-20:2:20)]
+eleSteps = -20:5:20;
+aziSweeps = [-30:3:30];
+
 for ii = 1: length(eleSteps)
-allPupilEle = [allPupilEle eleSteps(ii)*ones(1,length(aziSweeps))];
-allPupilAzi = [allPupilAzi aziSweeps];
+    allPupilEle = [allPupilEle eleSteps(ii)*ones(1,length(aziSweeps))];
+    if mod(ii,2)
+        allPupilAzi = [allPupilAzi aziSweeps];
+    else
+        allPupilAzi = [allPupilAzi fliplr(aziSweeps)];
+    end
 end
-
-
 
 nFrames = numel(allPupilAzi);
 
@@ -78,14 +75,17 @@ for ii = 1:nFrames
     forwardProjectEllipseParams = pupilProjection_fwd_Yup(pupilAzi, pupilEle, pi*pupilRadius.^2, eyeCenter, eyeRadius, projectionModel);
     pFitExplicit = ellipse_transparent2ex(forwardProjectEllipseParams);
     
-   % make the plot and save it as a frame
+    % make the plot and save it as a frame
     tempImage=emptyFrame;
     fh=@(x,y) pFitExplicit(4)^2.*((x-pFitExplicit(1)).*cos(pFitExplicit(5))-(y-pFitExplicit(2)).*sin(pFitExplicit(5))).^2 + pFitExplicit(3)^2.*((x-pFitExplicit(1)).*sin(pFitExplicit(5))+(y-pFitExplicit(2)).*cos(pFitExplicit(5))).^2 - pFitExplicit(3)^2.*pFitExplicit(4)^2 < 0;
     [Y, X]=ind2sub(size(tempImage),1:1:numel(tempImage));
     tempImage(fh(X,Y))=0;
     
     % overlay a glint
-    tempImage = insertShape(tempImage,'filledCircle',[videoSizeX/2+2 , videoSizeY/2-2, 5],'Color','w','Opacity',1);
+    glintPositionX = forwardProjectEllipseParams(1) - (forwardProjectEllipseParams(1)-videoSizeX/2).*0.15;
+    glintPositionY = forwardProjectEllipseParams(2) - (forwardProjectEllipseParams(2)-videoSizeY/2).*0.15;
+    
+    tempImage = insertShape(tempImage,'filledCircle',[glintPositionX, glintPositionY, 5],'Color','w','Opacity',1);
     
     imshow(tempImage,'Border','tight');
     axis equal
@@ -93,7 +93,7 @@ for ii = 1:nFrames
     ylim([0 videoSizeY]);
     xlim([0 videoSizeX]);
     truesize;
-
+    
     % store the frame
     thisFrame(ii) = getframe(gca);
     hold off
@@ -121,7 +121,7 @@ end
 
 close (writerObj);
 
-%% use this video in the video pipeline 
+%% use this video in the video pipeline
 perimeterFileName = fullfile(sandboxDir, 'synthetic_perimeter.mat');
 pupilFileName = fullfile(sandboxDir, 'syntheticPerimeter_pupil.mat');
 sceneGeometryFileName = fullfile(sandboxDir, 'syntheticPerimeter_sceneGeometry.mat');
@@ -246,7 +246,7 @@ elseif abs(pupilEle) < 1e-12 && abs(pupilAzi) >= 1e-12
     theta = pi/2;
 else
     % Couldn't constrain the theta. This shouldn't happen
-    warning('For some reason the theta was unconstrained. Setting to nan'); 
+    warning('For some reason the theta was unconstrained. Setting to nan');
 end
 
 % Keep the theta values between 0 and pi
