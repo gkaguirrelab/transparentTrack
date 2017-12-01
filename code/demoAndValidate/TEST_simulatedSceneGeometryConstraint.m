@@ -17,7 +17,7 @@ videoSizeX = 640;
 videoSizeY = 480;
 
 % Setup the video save
-sandboxDir = '~/Desktop/sceneGeometryFromPseudoPerspectiveTEST2';
+sandboxDir = '~/Desktop/sceneGeometryFromPseudoPerspectiveTEST';
 
 % check or make a directory for output
 if exist(sandboxDir,'dir')==0
@@ -200,6 +200,10 @@ axis square
 fprintf('Veridical scene geometry - eye center: [%0.1f, %0.1f, %0.1f], eye radius: %0.1f \n',eyeCenter(1), eyeCenter(2), eyeCenter(3), eyeRadius);
 fprintf('Estimated scene geometry - eye center: [%0.1f, %0.1f, %0.1f], eye radius: %0.1f \n',sceneGeometry.eyeCenter.X, sceneGeometry.eyeCenter.Y, sceneGeometry.eyeCenter.Z, sceneGeometry.eyeRadius);
 
+
+
+
+%% LOCAL FUNCTION
 
 function reconstructedTransparentEllipse = pupilProjection_fwd_Yup(pupilAzi, pupilEle, pupilArea, eyeCenter, eyeRadius, projectionModel)
 % modified version of pupilProjection_fwd, to take into account that the Y
