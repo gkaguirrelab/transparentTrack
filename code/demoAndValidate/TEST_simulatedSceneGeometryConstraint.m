@@ -38,7 +38,7 @@ writerObj.FrameRate = 60;
 
 % define the eye sphere radius
 eyeRadius =  125;
-pupilRadius = 80;
+pupilRadius = 30;
 sceneDistance = 1200;
 
 % Set up the sceneGeometry
@@ -50,7 +50,7 @@ allPupilAzi=[];
 allPupilEle=[];
 
 eleSteps = -20:5:20;
-aziSweeps = [-30:3:30];
+aziSweeps = -30:3:30;
 
 for ii = 1: length(eleSteps)
     allPupilEle = [allPupilEle eleSteps(ii)*ones(1,length(aziSweeps))];
