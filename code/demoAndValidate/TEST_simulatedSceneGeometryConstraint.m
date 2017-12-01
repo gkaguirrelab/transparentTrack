@@ -17,7 +17,7 @@ videoSizeX = 640;
 videoSizeY = 480;
 
 % Setup the video save
-sandboxDir = '~/Desktop/sceneGeometryFromPseudoPerspectiveTEST';
+sandboxDir = '~/Desktop/sceneGeometryFromPseudoPerspectiveTEST2';
 
 % check or make a directory for output
 if exist(sandboxDir,'dir')==0
@@ -53,7 +53,7 @@ nFrames = numel(allPupilAzi);
 
 % define the eye sphere radius
 eyeRadius =  125;
-pupilRadius = 60;
+pupilRadius = 80;
 sceneDistance = 1200;
 
 % Set up the sceneGeometry
@@ -128,7 +128,7 @@ sceneGeometryFileName = fullfile(sandboxDir, 'syntheticPerimeter_sceneGeometry.m
 sceneDiagnosticPlotFileName = fullfile(sandboxDir, 'syntheticPerimeter_sceneDiagnosticPlot.pdf');
 finalFitVideoName = fullfile(sandboxDir, 'syntheticPerimeter_finalFit.avi');
 
-findPupilPerimeter(syntheticVideoName,perimeterFileName,'verbosity','full');
+findPupilPerimeter(syntheticVideoName,perimeterFileName,'verbosity','full','maskBox', [0.9 0.9]);
 fitPupilPerimeter(perimeterFileName, pupilFileName,'verbosity','full','ellipseTransparentLB',[],'ellipseTransparentUB',[],'nSplits',0);
 sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileName,'sceneDiagnosticPlotFileName', sceneDiagnosticPlotFileName,'sceneDiagnosticPlotSizeXY', [videoSizeX videoSizeY], ...
     'projectionModel','pseudoPerspective','eyeRadius',eyeRadius, 'cameraDistanceInPixels',sceneDistance,'verbosity','full');
@@ -136,10 +136,18 @@ fitPupilPerimeter(perimeterFileName,pupilFileName,'sceneGeometryFileName',sceneG
 pupilData = smoothPupilArea(perimeterFileName, pupilFileName, sceneGeometryFileName,'verbosity','full');
 makeFitVideo(syntheticVideoName, finalFitVideoName, 'pupilFileName',pupilFileName,'sceneGeometryFileName',sceneGeometryFileName,'perimeterFileName',perimeterFileName,'perimeterColor','r','whichFieldToPlot','ellipseParamsAreaSmoothed_mean','verbosity','full')
 
-
 %% Verify that the scene geometry allows for the correct reconstruction of the eye position
+% note on the pupil area reconstruction: matlab uses different pixel indexing
+% conventions when creating plots and analizing videos. For plotting, the
+% origin of the XY cartesian plane is conventionally put at (0,0). For
+% image processing (hence for the whole pupil tracking pipeline) the origin
+% of the pixel is put at (0.5,0.5). This causes the pupil radius to be
+% calculated half a pixel shorter during the analysis. We account for that
+% definining a pupilRadiusOnImage, which is half a pixel shorter than
+% pupilRadius we used to construct the TEST video.
 
 ellipses = pupilData.ellipseParamsAreaSmoothed_mean;
+pupilRadiusOnImage = pupilRadius - 0.5;
 
 for ii = 1:nFrames
     [reconstructedPupilAzi(ii), reconstructedPupilEle(ii), reconstructedPupilArea(ii)] = pupilProjection_inv(ellipses(ii,:),  [sceneGeometry.eyeCenter.X sceneGeometry.eyeCenter.Y, sceneGeometry.eyeCenter.Z], sceneGeometry.eyeRadius, sceneGeometry.meta.projectionModel);
@@ -171,16 +179,16 @@ subplot(1,3,3)
 plot(1:1:nFrames,ellipses(:,3), '.b')
 hold on
 plot(1:1:nFrames,reconstructedPupilArea, 'xr')
-rl = refline(0,pi*pupilRadius.^2);
-rl.Color = 'k';
+line(1:1:nFrames, (pi*(pupilRadiusOnImage)^2)*ones(1,nFrames),'Color', 'black');
+% rl.Color = 'k';
 xlabel('frame')
 ylabel('reconstructed pupil area')
 axis square
 
 
 %% Demonstrate how closely we have reconstructed the actual scene geometry
-fprintf('Veridical scene geometry - eye center: [%0.1f, %0.1f, %0.1f], pupil radius: %0.1f \n',eyeCenter(1), eyeCenter(2), eyeCenter(3), eyeRadius);
-fprintf('Estimated scene geometry - eye center: [%0.1f, %0.1f, %0.1f], pupil radius: %0.1f \n',sceneGeometry.eyeCenter.X, sceneGeometry.eyeCenter.Y, sceneGeometry.eyeCenter.Z, sceneGeometry.eyeRadius);
+fprintf('Veridical scene geometry - eye center: [%0.1f, %0.1f, %0.1f], eye radius: %0.1f \n',eyeCenter(1), eyeCenter(2), eyeCenter(3), eyeRadius);
+fprintf('Estimated scene geometry - eye center: [%0.1f, %0.1f, %0.1f], eye radius: %0.1f \n',sceneGeometry.eyeCenter.X, sceneGeometry.eyeCenter.Y, sceneGeometry.eyeCenter.Z, sceneGeometry.eyeRadius);
 
 
 function reconstructedTransparentEllipse = pupilProjection_fwd_Yup(pupilAzi, pupilEle, pupilArea, eyeCenter, eyeRadius, projectionModel)
