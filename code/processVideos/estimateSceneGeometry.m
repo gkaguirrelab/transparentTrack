@@ -64,8 +64,8 @@ p.addRequired('sceneGeometryFileName',@ischar);
 p.addParameter('projectionModel','pseudoPerspective',@ischar);
 p.addParameter('eyeRadius',125,@isnumeric);
 p.addParameter('cameraDistanceInPixels',1200,@isnumeric);
-p.addParameter('sceneGeometryLowerBounds',[0, 0, 1000, 25],@isnumeric);
-p.addParameter('sceneGeometryUpperBounds',[640, 480, 1500, 250],@isnumeric);
+p.addParameter('sceneGeometryLowerBounds',[0, 0, 1325, 25],@isnumeric);
+p.addParameter('sceneGeometryUpperBounds',[640, 480, 1325, 250],@isnumeric);
 p.addParameter('whichFitFieldMean','ellipseParamsUnconstrained_mean',@ischar);
 p.addParameter('whichFitFieldError','ellipseParamsUnconstrained_rmse',@ischar);
 
@@ -179,7 +179,7 @@ end
 
 % plot the results of the CoP estimation if requested
 if ~isempty(p.Results.sceneDiagnosticPlotFileName)
-    figHandle = figure('visible','on');
+    figHandle = figure('visible','off');
 
     subplot(2,2,1)   
     % plot the 2D histogram grid
