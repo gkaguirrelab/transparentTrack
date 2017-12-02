@@ -15,7 +15,7 @@ close all
 % Reset the random number generator so that we have reproducible results
 rng default
 
-thetaDifferenceTolerance = 0.025;     % How much variance in theta is allowed?
+thetaDifferenceTolerance = 0.1;     % How much variance in theta is allowed?
 eccentricityThresh = 0.1;           % Only test ellipses more eccentric than this
 
 % 1. define synthetic data length
@@ -81,7 +81,7 @@ for ii = 1:nFrames
     [Yp, Xp] = ind2sub(size(squeeze(tmpFrame.cdata(:,:,1))),find(squeeze(tmpFrame.cdata(:,:,1))==0));
     perimeter.data{ii}.Yp = Yp;
     perimeter.data{ii}.Xp = Xp;
-
+    
 end
 
 close(h);
@@ -89,21 +89,22 @@ close(h);
 fprintf('Checking theta consistency...\n');
 
 % now loop through the frames and check out theta consistency
+allPassed=true;
 for ii = 1:nFrames
-
+    
     Yp = perimeter.data{ii}.Yp;
     Xp = perimeter.data{ii}.Xp;
-
+    
     % Obtain the forward projection ellipse params
     forwardProjectEllipseParams = pupilProjection_fwd(allPupilAzi(ii), allPupilEle(ii), pi*pupilRadius.^2, eyeCenter, eyeRadius, projectionModel);
-
+    
     % Perform an unconstrained ellipse fit
     [unconstrainedEllipseParams, unconstrainedRMSE] = ...
         constrainedEllipseFit(Xp, Yp, ...
         [], ...
         [], ...
         []);
-   
+    
     % Perform a constrained ellipse fit
     [constrainedEllipseParams, constrainedRMSE] = ...
         constrainedEllipseFit(Xp, Yp, ...
@@ -132,7 +133,7 @@ for ii = 1:nFrames
                 forwardProjectEllipseParams, ...
                 forwardProjectEllipseParams, ...
                 []);
-
+            
             % Report the info for the three fit approaches
             fprintf('unconstrained theta: %0.3f, RMSE: %0.3f, constraint: %0.3f \n', ...
                 unconstrainedEllipseParams(5), ...
@@ -167,8 +168,13 @@ for ii = 1:nFrames
             fimplicit(fh,[1, videoSizeX, 1, videoSizeY],'Color', 'r','LineWidth',1);
             legend('points','unconstrained','forward','constrained');
             
-            pause
+            allPassed=false;
+            
         end
     end
-
+    
 end % loop over frames
+
+if allPassed
+    fprintf('All ellipses passed the test\n');
+end

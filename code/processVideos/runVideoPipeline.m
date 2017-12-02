@@ -120,13 +120,10 @@ end
 if ~exist(pathParams.dataOutputDirFull,'dir')
     mkdir(pathParams.dataOutputDirFull)
 end
-if ~exist(pathParams.controlFileDirFull,'dir')
-    mkdir(pathParams.controlFileDirFull)
-end
 
 
 %% Define input filenames
-if ~any(strcmp(p.Results.skipStageByName,'deinterlaceVideo'))
+if ~any(strcmp(p.Results.skipStageByName,'deinterlaceVideo')) && ~any(p.Results.skipStageByNumber == 1) 
     % Create a cell array of candidate raw video nmaes with the runName and
     % each of the rawVideoSuffix choices
     candidateRawVideoNames = ...
@@ -149,7 +146,7 @@ end
 grayVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_gray.avi']);
 glintFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_glint.mat']);
 perimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_perimeter.mat']);
-controlFileName = fullfile(pathParams.controlFileDirFull, [pathParams.runName '_controlFile.csv']);
+controlFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_controlFile.csv']);
 correctedPerimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_correctedPerimeter.mat']);
 pupilFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_pupil.mat']);
 sceneGeometryFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sceneGeometry.mat']);
@@ -295,7 +292,7 @@ fitVideoFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_
 grayVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_gray.avi']);
 glintFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_glint.mat']);
 initialPerimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_perimeter.mat']);
-controlFileName = fullfile(pathParams.controlFileDirFull, [pathParams.runName '_controlFile.csv']);
+controlFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_controlFile.csv']);
 correctedPerimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_correctedPerimeter.mat']);
 pupilFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_pupil.mat']);
 sceneGeometryFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sceneGeometry.mat']);

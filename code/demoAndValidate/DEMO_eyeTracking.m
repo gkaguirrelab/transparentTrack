@@ -32,7 +32,6 @@ TbTbToolboxName = 'transparentTrack';
 % define path parameters
 pathParams.dataSourceDirRoot = fullfile(sandboxDir,'TOME_data');
 pathParams.dataOutputDirRoot = fullfile(sandboxDir,'TOME_processing');
-pathParams.controlFileDirRoot = fullfile(sandboxDir,'TOME_processing');
 pathParams.projectSubfolder = 'session2_spatialStimuli';
 pathParams.eyeTrackingDir = 'EyeTracking';
 pathParams.subjectID = 'TOME_3020';
@@ -50,10 +49,6 @@ end
 tbSnapshot=tbDeploymentSnapshot(tbConfigResult,'verbose',false);
 clear tbConfigResult
 
-% identify the base for the project code directory
-%  This would normally be used as the location to save the controlFiles
-codeBaseDir = tbLocateProject(TbTbToolboxName,'verbose',false);
-
 
 %% Prepare paths and directories
 
@@ -61,8 +56,6 @@ codeBaseDir = tbLocateProject(TbTbToolboxName,'verbose',false);
 pathParams.dataSourceDirFull = fullfile(pathParams.dataSourceDirRoot, pathParams.projectSubfolder, ...
     pathParams.subjectID, pathParams.sessionDate, pathParams.eyeTrackingDir);
 pathParams.dataOutputDirFull = fullfile(pathParams.dataOutputDirRoot, pathParams.projectSubfolder, ...
-    pathParams.subjectID, pathParams.sessionDate, pathParams.eyeTrackingDir);
-pathParams.controlFileDirFull = fullfile(pathParams.controlFileDirRoot, pathParams.projectSubfolder, ...
     pathParams.subjectID, pathParams.sessionDate, pathParams.eyeTrackingDir);
 
 % Download the data if it is not already there
