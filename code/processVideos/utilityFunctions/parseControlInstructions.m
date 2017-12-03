@@ -32,19 +32,19 @@ switch instructionLine.type
         % this was a comment line; nothing to do
     case 'blink'
         % just make sure that the param field is empty
-        params = str2double(instructionLine.params);
+        params = str2num(instructionLine.params);
         if ~isempty(params)
             error ('Invalid number of params for instruction type "blink" (0 expected)')
         end
     case 'bad'
         % just make sure that the param field is empty
-        params = str2double(instructionLine.params);
+        params = str2num(instructionLine.params);
         if ~isempty(params)
             error ('Invalid number of params for instruction type "bad" (0 expected)')
         end
     case 'cut'
         % parse the cut params
-        params = str2double(instructionLine.params);
+        params = str2num(instructionLine.params);
         if length(params) ~= 2
             error ('Invalid number of params for instruction type "cut" (2 expected)')
         else
@@ -53,7 +53,7 @@ switch instructionLine.type
             clear params
         end
     case 'ellipse'
-        params = str2double(instructionLine.params);
+        params = str2num(instructionLine.params);
         if length(params) ~= 5
             error ('Invalid number of params for instruction type "ellipse" (5 expected)')
         else
@@ -66,7 +66,7 @@ switch instructionLine.type
         end
     case 'glintPatch'
         % parse the glintPatch params
-        params = str2double(instructionLine.params);
+        params = str2num(instructionLine.params);
         if length(params) ~= 3
             error ('Invalid number of params for instruction type "glintPatch" (3 expected)')
         else
@@ -77,7 +77,7 @@ switch instructionLine.type
         end
     case 'reset'
         % just make sure that the param field is empty
-        params = str2double(instructionLine.params);
+        params = str2num(instructionLine.params);
         if ~isempty(params)
             error ('Invalid number of params for instruction type "reset" (0 expected)')
         end
