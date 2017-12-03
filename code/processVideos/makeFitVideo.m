@@ -99,16 +99,6 @@ else
     pupilFitParams=[];
 end
 
-% Read in the irisData file if passed
-if ~isempty(p.Results.irisFileName)
-    dataLoad = load(p.Results.irisFileName);
-    irisData = dataLoad.irisData;
-    clear dataLoad
-    irisFitParams = irisData.pEllipseFitTransparent;
-else
-    irisFitParams=[];
-end
-
 % Read in and parse the control file if passed
 if ~isempty(p.Results.controlFileName)
     instructions = loadControlFile(p.Results.controlFileName);
