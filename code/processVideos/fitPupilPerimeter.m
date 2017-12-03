@@ -1,97 +1,87 @@
 function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varargin)
-% fitPupilPerimeter(perimeterVideoFileName, varargin)
+% Perform non-linear, constrained ellipse fitting to pupil perimeters
 %
-% This routine fits an ellipse to each frame of a video that contains the
-% perimeter of the pupil. An ellipse is fit to each frame of the video
-% using a non-linear search routine, with some constraints on size and
-% aspect ratio of the solution. An estimate of the standard deviation of
-% the parameters of the best fitting ellipse is stored as well.
+% Description:
+%   This routine fits an ellipse to each frame of a video that contains the
+%   perimeter of the pupil. A non-linear search routine is used, with
+%   optional, non-linear constraints on the eccentricity and theta of the
+%   ellipse that are informed by scene geometry. An estimate of the
+%   standard deviation of the parameters of the best fitting ellipse are
+%   calculated and stored as well.
 %
-% A note on ellipse parameterization: an ellipse can be specified in
-% multiple forms. Within the context of this routine, and in saved files,
-% ellipses are considered in "transparent" form (our coinage):
+% Notes:
+%   Image coordinates -  MATLAB uses an "intrinsic" coordinate system such
+%   that the center of each pixel in an image corresponds to its integer
+%   indexed position. Thus a 3x3 pixel image in intrisic coordinates is
+%   represented on a grid with xlim = [0.5 3.5] and ylim = [0.5 3.5], with
+%   the origin being the top left corner of the image. This is done to
+%   facilitate the handling of images in many of the built-in image
+%   processing functions. This routine outputs the results in intrinsic
+%   coordinates. Additinal information regarding the MATLAB image
+%   coordinate system may be found here:
+%       https://blogs.mathworks.com/steve/2013/08/28/introduction-to-spatial-referencing/
 %
-%   center (cx,cy), area (a), eccentricity (e), angle of tilt (theta)
+%   Parallel pool - Controlled by the key/value pair 'useParallel'. The
+%   routine should gracefully fall-back on serial processing if the
+%   parallel pool is unavailable. Each worker requires ~8 GB of memory to
+%   operate. It is important to keep total RAM usage below the physical
+%   memory limit to prevent swapping and a dramatic slow down in
+%   processing. To use the parallel pool with TbTb, provide the identity of
+%   the repo name in the 'tbtbRepoName', which is then used to configure
+%   the workers.
 %
-% We use this parameterization to allow us to constrain fits with regard to
-% these values (specifically area and eccentricity).
+% Inputs:
+%   perimeterFileName     - Full path to a .mat file that contains the
+%                           pupil perimeter data.
+%   pupilFileName         - Full path to the .mat file in which to save
+%                           the results of the ellipse fitting.
 %
-% NOTES REGARDING image coordinates
-%
-% Matlab uses an "intrinsic" coordinate system such that the center of each
-% pixel in an image corresponds to its integer indexed position. Thus a 3x3
-% pixel image in intrisic coordinates is represented on a grid with xlim =
-% [0.5 3.5] and ylim = [0.5 3.5], with the origin being the top left corner
-% of the image. This is done to facilitate the handling of images in many
-% of the built-in image processing functions. This routine outputs the
-% results in intrinsic coordinates. Additinal information regarding the
-% Matlab image coordinate system may be found here:
-%   https://blogs.mathworks.com/steve/2013/08/28/introduction-to-spatial-referencing/
-%
-% NOTES REGARDING USE OF PARALLEL POOL
-%
-% The initial ellipse fitting is conducted within a parfor loop. The
-% parallel pool will not be used unless the key/value pair 'useParallel' is
-% set to true. The routine should gracefully fall-back on serial processing
-% if the parallel pool is unavailable.
-%
-% Each worker requires ~8 GB of memory to operate. It is important to keep
-% total RAM usage below the physical memory limit to prevent swapping and a
-% dramatic slow down in processing.
-%
-% To use the parallel pool with TbTb, provide the identity of the repo name
-% in the 'tbtbRepoName', which is then used to configure the workers.
-%
-% INPUTS:
-%   perimeterFileName: full path to a .mat file that contains the perimeter
-%     data varaible. Points on the boundary of the pupil should have a
-%     value of unity, and the frame should be otherwise zero-filled. A
-%     frame that has no information regarding the pupil (e.g., during a
-%     blink) should be zero-filled.
-%   pupilFileName: full path to the .mat file in which to save
-%     pupil tracking information.
-%
-% Optional key/value pairs (verbosity)
-%  'verbosity' - level of verbosity. [none, full]
+% Optional key/value pairs (display and I/O):
+%  'verbosity'            - Level of verbosity. [none, full]
 %
 % Optional key/value pairs (flow control)
-%  'nFrames' - analyze fewer than the total number of frames.
-%  'useParallel' - If set to true, use the Matlab parallel pool for the
-%    initial ellipse fitting.
-%  'nWorkers' - Specify the number of workers in the parallel pool. If
-%    undefined the default number will be used.
-%  'tbtbProjectName' - The workers in the parallel pool are configured by
-%    issuing a tbUseProject command for the project specified here.
+%  'nFrames'              - Analyze fewer than the total number of frames.
+%  'useParallel'          - If set to true, use the Matlab parallel pool
+%  'nWorkers'             - Specify the number of workers in the parallel
+%                           pool. If undefined the default number will be
+%                           used.
+%  'tbtbProjectName'      - The workers in the parallel pool are configured
+%                           by issuing a tbUseProject command for the
+%                           project specified here.
 %
-% Optional key/value pairs (Environment parameters)
-%  'tbSnapshot' - This should contain the output of the tbDeploymentSnapshot
-%    performed upon the result of the tbUse command. This documents the
-%    state of the system at the time of analysis.
-%  'timestamp' - AUTOMATIC - The current time and date
-%  'username' - AUTOMATIC - The user
-%  'hostname' - AUTOMATIC - The host
+% Optional key/value pairs (environment)
+%  'tbSnapshot'           - This should contain the output of the
+%                           tbDeploymentSnapshot performed upon the result
+%                           of the tbUse command. This documents the state
+%                           of the system at the time of analysis.
+%  'timestamp'            - AUTOMATIC; The current time and date
+%  'username'             - AUTOMATIC; The user
+%  'hostname'             - AUTOMATIC; The host
 %
-% Optional key/value pairs (fitting parameters)
-%
+% Optional key/value pairs (fitting)
 %  'ellipseTransparentLB/UB' - Define the hard upper and lower boundaries
-%     for the ellipse fit, in units of pixels of the video. The center
-%     points should be constrained to the size of the video.
-%     Eccentricity is related to ratio of the semimajor and semiminor axes,
-%     and can be calculated using:
-%           eccentricity = axes2ecc(semimajor, semiminor)
-%     For example, if we wish to prevent ellipses with an aspect ratio
-%     greater than 3 : 2, this gives us an eccentricity UB of ~0.75.
-%   'nSplits' - The number of tests upon the spatial split-halves of the
-%     pupil boundary values to examine to estimate a likelihood SD.
-%   'nBoots' - The number of bootstrap resamples of the pupil boundary
-%     points to perform to estimate a likelihood SD. This was found in
-%     testing to not be useful, as the pupil boundary is oversampled, so
-%     this is left at a default of zero.
+%                           for the ellipse fit, in units of pixels of the
+%                           video. The default values selected here
+%                           represent the physical and mathematical limits,
+%                           as the constraint for the fit will be provided
+%                           by the scene geometry. A mild constraint (0.75)
+%                           is placed upon the eccentricity, corresponding
+%                           to an aspect ration of 3:2.
+%  'nSplits'              - The number of tests upon the spatial split-
+%                           halves of the pupil boundary values to examine
+%                           to estimate the SD of the ellipse parameters.
+%  'sceneGeometryFileName' - Full path to a sceneGeometry file that is to
+%                           be used to provide a non-linear constraint for
+%                           ellipse fitting. If set to empty, no non-linear
+%                           constraint will be applied.
 %
-% OUTPUTS:
-%   pupilData: A structure with multiple fields corresponding to the
-%     parameters, SDs, and errors of the initial and final ellipse fits.
-
+% Outputs:
+%	pupilData             - A structure with multiple fields corresponding
+%                           to the parameters, SDs, and errors of the
+%                           ellipse fit. Different field names are used
+%                           depending upon if a sceneGeometry constraint
+%                           was or was not used.
+%
 
 %% Parse vargin for options passed here
 p = inputParser; p.KeepUnmatched = true;
@@ -103,25 +93,23 @@ p.addRequired('pupilFileName',@ischar);
 % Optional display and I/O params
 p.addParameter('verbosity','none',@ischar);
 
-% Optional fitting params
-p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, 0],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('ellipseTransparentUB',[640,480,20000,0.75, pi],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('nSplits',8,@isnumeric);
-
-% Optional analysis params -- sceneGeometry fitting constraint
-p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
-
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
 p.addParameter('useParallel',false,@islogical);
 p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('tbtbRepoName','transparentTrack',@ischar);
 
-% Environment parameters
+% Optional environment params
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
 p.addParameter('timestamp',char(datetime('now')),@ischar);
 p.addParameter('hostname',char(java.lang.System.getProperty('user.name')),@ischar);
 p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
+
+% Optional analysis params
+p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, 0],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('ellipseTransparentUB',[640,480,20000,0.75, pi],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('nSplits',8,@isnumeric);
+p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
 
 %% Parse and check the parameters
 p.parse(perimeterFileName, pupilFileName, varargin{:});

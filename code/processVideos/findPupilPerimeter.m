@@ -1,73 +1,87 @@
 function perimeter = findPupilPerimeter(grayVideoName, perimeterFileName, varargin)
-% function findPupilPerimeter(grayVideoName, perimeterVideoName,varargin)
+% Threshold video frames to find the pupil perimeter
 %
-% This function thresholds the video to find the pupil perimeter.
+% Description:
+%	An initial search for the pupil border is performed with the local
+%   function 'findPupilCircle'. If a candidate circle is found, the region
+%   is dilated. We then binarize the resulting "patch" image with a user
+%   set threshold, and extract the perimeter of the bigger region surviving
+%   the thresholding process (believed to be the pupil).
 %
-% An initial search for the pupil border is performed with the local
-% function 'findPupilCircle'. If a candidate circle is found, the region is
-% dilated. We then binarize the resulting "patch" image with a user
-% set threshold, and extract the perimeter of the bigger region surviving 
-% the thresholding process (believed to be the pupil).
+% Inputs:
+%	grayVideoName -       - Full path to the gray video to track
+%	perimeterFileName     - Full path to the output .mat file
 %
-% Output
-%   perimeter - structure with a 'data' field containing a 3D matrix
-%       (video height x video width x nFrames) containing the pupil
-%       perimeter, and a meta field with analysis and environment params.
-%
-% Input (required)
-%	grayVideoName - full path to the gray video to track
-%	perimeterFileName - full path to the .mat file in which to save the
-%       output.
-%
-% Options (analysis)
-% 	pupilGammaCorrection - gamma correction to be applied to the video frames
-%       (default 1, typical range [0.5 1.8])
-%   pupilFrameMask : this option with add a mask on the original gray video,
-%       framing it by [nRows nColumns] on the borders symmetrically or by
-%       [nRowsTop nColumnsRight nRowsBottom nColumnsLeft]. This is
-%       particularly useful for size calibration videos in which appear
-%       partial black dots that may throw off the circle finding mechanism.
-%       fitting (default 0.06, typical range [0.04 0.09])
-%   maskBox - This is the proportion to dilate the pupil masked region in
-%       the vertical and horizontal directions respectively. A value of
-%       zero will result in no dilation in that direction. A value of unity
-%       will result in a masked region that is twice the size of the pupil
-%       radius.
-%   frameMaskValue - the image value that is assigned to the region that is
-%       masked by frameMask. This should be a gray that is neither pupil
-%       nor glint.
-%   smallObjThresh - maximum size of small objects to be removed to clean
-%       up the pupil perimeter.
-%
-% Options (used in the local function findPupilCircle)
-%   pupilCircleThresh - The threshold used to binarize the image. Ranges
-%      from 0 to 1, with 0 corresponding to black.
-%	pupilRange - initial radius range in pixels for circle fitting of the
-%       pupil (default [20 189]). This value gets dynamically updated.
-%   imfindcirclesSensitivity - a parameter (ranging from 0-1) that is used
-%       in the call to the matlab function imfindcircles as part of the
-%       key-value pair 'Sensitivity'. We set the default value to 0.99,
-%       meaning that the function will be very sensitive to circles, even
-%       those that are partially obscured.
-%   rangeAdjust - for each frame, a circle is fit to the pupil. The size of
-%       the found pupil is used to update the pupilRange values for the
-%       next frame. The rangeAdjust parameter defines the proportion above
-%       and below this target size that is used to search on the next frame
-%
-% Options (verbosity and display)
-%   verbosity - controls console status updates
-%   displayMode - when set to true, displays the results of the boundary
-%   	extraction and does not save a video.
+% Optional key/value pairs (display and I/O):
+%  'verbosity'            - Level of verbosity [none, full]
+%  'displayMode'          - When set to true, displays the results of the
+%                           boundary extraction and does not save a video
 %
 % Optional key/value pairs (flow control)
-%  'nFrames' - analyze fewer than the total number of frames.
-%  'startFrame' - which frame to start on
+%  'nFrames'              - Analyze fewer than the total number of frames
+%  'startFrame'           - Which frame to start on
 %
-% Options (environment)
-%   tbSnapshot - the passed tbSnapshot output that is to be saved along
-%      with the data
-%   timestamp / username / hostname - these are automatically derived and
-%      saved within the p.Results structure.
+% Optional key/value pairs (environment)
+%  'tbSnapshot'           - This should contain the output of the
+%                           tbDeploymentSnapshot performed upon the result
+%                           of the tbUse command. This documents the state
+%                           of the system at the time of analysis.
+%  'timestamp'            - AUTOMATIC; The current time and date
+%  'username'             - AUTOMATIC; The user
+%  'hostname'             - AUTOMATIC; The host
+%
+% Optional key/value pairs (analysis)
+%  'pupilGammaCorrection' - Gamma correction to be applied to the video
+%                           frames (default 1, typical values between 0.5
+%                           and 1.8)
+%  'pupilFrameMask'       - This option will add a mask on the original
+%                           gray video, framing it by [nRows nColumns] on
+%                           the borders symmetrically or by [nRowsTop
+%                           nColumnsRight nRowsBottom nColumnsLeft]. This
+%                           is particularly useful for size calibration
+%                           videos in which appear partial black dots that
+%                           may throw off the circle finding mechanism.
+%                           fitting (default 0.06, typical range [0.04
+%                           0.09])
+%  'maskBox'              - This is the proportion to dilate the pupil
+%                           masked region in the vertical and horizontal
+%                           directions respectively. A value of zero will
+%                           result in no dilation in that direction. A
+%                           value of unity will result in a masked region
+%                           that is twice the size of the pupil radius.
+%  'frameMaskValue'       - The image value that is assigned to the region
+%                           that is masked by frameMask. This should be a
+%                           gray that is neither pupil nor glint.
+%  'smallObjThresh'       - Maximum size of small objects to be removed to
+%                           clean up the pupil perimeter.
+%
+% Optional key/value pairs (used in the local function findPupilCircle)
+%  'pupilCircleThresh'    - The threshold used to binarize the image.
+%                           Ranges from 0 to 1, with 0 corresponding to
+%                           black.
+%  'pupilRange'           - Initial radius range in pixels for circle
+%                           fitting of the pupil (default [20 189]). This
+%                           value gets dynamically updated.
+%  'imfindcirclesSensitivity' - A parameter (ranging from 0-1) that is used
+%                           in the call to the matlab function
+%                           imfindcircles as part of the key-value pair
+%                           'Sensitivity'. We set the default value to
+%                           0.99, meaning that the function will be very
+%                           sensitive to circles, even those that are
+%                           partially obscured.
+%  'rangeAdjust'          - For each frame, a circle is fit to the pupil.
+%                           The size of the found pupil is used to update
+%                           the pupilRange values for the next frame. The
+%                           rangeAdjust parameter defines the proportion
+%                           above and below this target size that is used
+%                           to search on the next frame
+%
+% Outputs:
+%   perimeter             - Structure with a 'data' field that contains the
+%                           subfields Xp and Yp, which contain the sub
+%                           indices of the points the constitute the pupil
+%                           perimeter. There is a 'meta' field with
+%                           analysis and environment params
 %
 
 
@@ -78,20 +92,7 @@ p = inputParser; p.KeepUnmatched = true;
 p.addRequired('grayVideoName',@isstr);
 p.addRequired('perimeterFileName',@isstr);
 
-% Optional analysis params
-p.addParameter('pupilGammaCorrection', 0.75, @isnumeric);
-p.addParameter('pupilFrameMask', [], @isnumeric);
-p.addParameter('maskBox', [0.20 0.75], @isnumeric);
-p.addParameter('frameMaskValue', 220, @isnumeric);
-p.addParameter('smallObjThresh', 400, @isnumeric);
-
-% findPupilCircle routine params. Defined here for transparency
-p.addParameter('pupilCircleThresh', 0.06, @isnumeric);
-p.addParameter('pupilRange', [20 100], @isnumeric);
-p.addParameter('imfindcirclesSensitivity', 0.99, @isnumeric);
-p.addParameter('rangeAdjust', 0.05, @isnumeric);
-
-% Optional display params
+% Optional display and I/O params
 p.addParameter('verbosity','none',@ischar);
 p.addParameter('displayMode',false,@islogical);
 
@@ -99,11 +100,24 @@ p.addParameter('displayMode',false,@islogical);
 p.addParameter('nFrames',Inf,@isnumeric);
 p.addParameter('startFrame',1,@isnumeric);
 
-% Environment parameters
+% Optional environment parameters
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
 p.addParameter('timestamp',char(datetime('now')),@ischar);
 p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischar);
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
+
+% Optional analysis params
+p.addParameter('pupilGammaCorrection', 0.75, @isnumeric);
+p.addParameter('pupilFrameMask', [], @isnumeric);
+p.addParameter('maskBox', [0.20 0.75], @isnumeric);
+p.addParameter('frameMaskValue', 220, @isnumeric);
+p.addParameter('smallObjThresh', 400, @isnumeric);
+
+% Optional findPupilCircle routine params. Defined here for transparency
+p.addParameter('pupilCircleThresh', 0.06, @isnumeric);
+p.addParameter('pupilRange', [20 100], @isnumeric);
+p.addParameter('imfindcirclesSensitivity', 0.99, @isnumeric);
+p.addParameter('rangeAdjust', 0.05, @isnumeric);
 
 % parse
 p.parse(grayVideoName, perimeterFileName, varargin{:})
@@ -330,9 +344,7 @@ end %  main function
 %% LOCAL FUNCTIONS
 
 function [pCenters, pRadii,pMetric, pupilRange] = findPupilCircle(I,pupilCircleThresh,pupilRange,imfindcirclesSensitivity,rangeAdjust)
-% findGlintAndPupilCircles(I,pupilCircleThresh,glintCircleThresh,pupilRange,glintRange,pupilOnly,glintOut,dilateGlint,imfindcirclesSensitivity,rangeAdjust)
-%
-% this function is used for pupil circle fitting.
+% This function is used for pupil circle fitting.
 
 %% parse input and define variables
 p = inputParser;

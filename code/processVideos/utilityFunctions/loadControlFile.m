@@ -1,43 +1,37 @@
 function instructions = loadControlFile(controlFileName)
-% function loadControlFile(controlFileName)
-%
 % Imports a csv control file into a matlab variable.
-% 
-% The control file format must be as specified in makeControlFile.m, i.e.
-% FRAME NUMBER, INSTRUCTION TYPE, INSTRUCTION PARAMS (variable number and
-% type).
-% 
-% The instruction lines of the control files are converted in a struct as
-% follows:
-%       instructions(ll).frame = line ll, first column of csv file
-%       instructions(ll).type = line ll, second column of csv file
-%       instructions(ll).params = line ll, remaining columns of csv file
-%               (can be empty)
 %
-% The routine will return a warning if a preliminary control file is being
-% imported, but it will import it anyways.
+% Description:
+%   The control file format must be as specified in makeControlFile.m, i.e.
+%   FRAME NUMBER, INSTRUCTION TYPE, INSTRUCTION PARAMS (variable number and
+%   type).
 % 
+%   The instruction lines of the control files are converted in a struct as
+%   follows:
+%       instructions(ll).frame  = line ll, first column of csv file
+%       instructions(ll).type   = line ll, second column of csv file
+%       instructions(ll).params = line ll, remaining columns of csv file
+%                                 (can be empty)
+%
+% Input: 
+% 	controlFileName   - full path (with csv extension) to the control file
 % 
-% Output
-% ======
-%    instructions : struct with 3 fields
-% Input
-% =====
-%    controlFileName : path and name to the control file with csv extension 
+% Output:
+%   instructions      - struct with 3 fields
 % 
+% Example:
+%	controlFileName = fullfile(outputDir,'ControlFile');
+%   instructions = importControlFile(controlFileName);
 % 
-% Usage example
-% =============
-% 
-%  controlFileName = fullfile(outputDir,'ControlFile');
-%  instructions = importControlFile(controlFileName);
-% 
+
+
 %% parse input and define variables
 p = inputParser;
+
 % required input
 p.addRequired('controlFileName',@isstr);
 
-%parse
+% parse
 p.parse(controlFileName)
 
 % open the control file

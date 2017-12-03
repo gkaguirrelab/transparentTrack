@@ -1,41 +1,43 @@
 function [reconstructedPupilAzi, reconstructedPupilEle, reconstructedPupilArea] = pupilProjection_inv(transparentEllipse, eyeCenter, eyeRadius, projectionModel)
-% [reconstructedPupilAzi, reconstructedPupilEle, reconstructedPupilArea] =
-%   pupilProjection_inv(transparentEllipse,centerOfProjection)
+% Transform ellipse on the image plane to pupil azimuth, elevation, area
 %
-% Returns the horiziontal and vertical angles of tilt of the pupil plane
-% with reference to the scene plane using the params of the transparent
-% ellipse and scene geometry.
+% Description:
+%   Returns the horiziontal and vertical angles of tilt of the pupil plane
+%   with reference to the scene plane using the params of the transparent
+%   ellipse and scene geometry. An introduction to this transformation can
+%   be found here: http://web.ncf.ca/aa456/scale/ellipse.html
 %
-% Note that we use degrees to specify pupil azimuth and elevation, but
-% radians for the theta value in the transparent ellipse formulation. This
-% is in part to help us keep the two conceptually separate.
+%   Note that we use degrees to specify pupil azimuth and elevation, but
+%   radians for the theta value in the transparent ellipse formulation.
+%   This is in part to help us keep the two units separate conceptually.
 %
-% Note that the linear units must be uniform (e.g. all pixels or all mm)
-% for both the transparent ellipse (where applicable) and the scene
-% geometry coordinates.
+% Inputs:
+%   transparentEllipse  - Ellipse in transparent form
+%   eyeCenter           - 3D coordinates of the eye center in the scene
+%                         reference system. This could be a vector
+%                         assembled from the .X, .Y, and .Z vaues of the
+%                         sceneGeometry.eyeCenter
+%   eyeRadius           - The estimate radius for the eye (can be empty for
+%                         orthogonal projection)
+%   projectionModel     - String that identifies the projection model to
+%                         use. Options include "orthogonal" and
+%                         "pseudoPerspective"
 %
-% ref http://web.ncf.ca/aa456/scale/ellipse.html
+%   NOTE: The units of the ellipse and sceneGeometry must all be uniform
+%   (e.g. all pixels or all mm)
 %
 % Outputs:
-%   reconstructedPupilAzi - rotation of the pupil in the XY plane in
-%       degrees, with the center being the centerOfProjection on the scene
-%   reconstructedPupilEle - elevation of the pupil from the XY plane in
-%       degrees, with the center being the centerOfProjection on the scene
+%   reconstructedPupilAzi - Rotation of the pupil in the XY plane in
+%                           degrees, with the center being the
+%                           centerOfProjection on the scene
+%   reconstructedPupilEle - Elevation of the pupil from the XY plane in
+%                           degrees, with the center being the 
+%                           centerOfProjection on the scene
 %   reconstructedPupilArea - pupil area, in the same (squared) units as the
-%       transparent ellipse center
+%                           transparent ellipse center
 %
-% Required inputs:
-%   transparentEllipse - ellipse in transparent form
-%   eyeCenter - 3D coordinates of the eye center in the scene reference
-%       system. This could be a vector assembled from the .X, .Y, and .Z
-%       vaues of the sceneGeometry.eyeCenter
-%   eyeRadius - the estimate radius for the eye (can be empty for
-%       orthogonal projection)
-%   projectionModel - string that identifies the projection model to use.
-%       Options include "orthogonal" and "pseudoPerspective"
 
 
-%% variable definitions
 
 % if we have a non-defined ellipse, just return all nans
 if any(isnan(transparentEllipse(1:2)))
@@ -45,11 +47,11 @@ if any(isnan(transparentEllipse(1:2)))
     return
 end
 
-% projection variables
+% define the projection variables
 k = sqrt(1 - (transparentEllipse(4)^2));
 theta = (transparentEllipse(5));
 
-% pupil center
+% find the pupil center
 switch projectionModel
     case 'orthogonal'
         centerX = (transparentEllipse(1));
@@ -57,7 +59,7 @@ switch projectionModel
     case 'pseudoPerspective'
         % at this stage we just use the orthogonal projection of the
         % ellipse center to determine the location of the ellipse with
-        % respect to the center of projection. we will correct this below.
+        % respect to the center of projection. We correct this below.
         centerX = (transparentEllipse(1));
         centerY = (transparentEllipse(2));
     otherwise

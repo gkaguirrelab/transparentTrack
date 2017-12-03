@@ -1,94 +1,91 @@
 function [pupilData] = smoothPupilArea(perimeterFileName, pupilFileName, sceneGeometryFileName, varargin)
-% smoothPupilArea(perimeterFileName, pupilFileName, sceneGeometryFileName)
+% Empirical Bayes smoothing of pupil area in the scene
 %
-% This routine implements a smoothing operation upon pupil area. The pupil
-% area in the image plane is projected back to a model eye, using the
-% parameters of scene geometry. This accounts for variation in the apparent
-% area of the pupil at the image plane due to eye rotation. The
-% reconstructed area of the pupil is then treated as the likelihood in an
-% empirical Bayes approach that obtains the posterior estimate of the pupil
-% area. A non-causal, exponentially weighted window of surrounding area
-% values serves as a prior.
+% Description:
+%   This routine implements a smoothing operation upon pupil area. The
+%   pupil area in the image plane is projected back to a model eye, using
+%   the scene geometry parameters. This accounts for variation in the
+%   apparent area of the pupil at the image plane due to eye rotation. The
+%   reconstructed area of the pupil is then treated as the likelihood in an
+%   empirical Bayes approach that obtains the posterior estimate of the
+%   pupil area. A non-causal, exponentially weighted window of surrounding
+%   area values serves as a prior.
 %
-% NOTES REGARDING USE OF PARALLEL POOL
+% Notes:
+%   Parallel pool - Controlled by the key/value pair 'useParallel'. The
+%   routine should gracefully fall-back on serial processing if the
+%   parallel pool is unavailable. Each worker requires ~8 GB of memory to
+%   operate. It is important to keep total RAM usage below the physical
+%   memory limit to prevent swapping and a dramatic slow down in
+%   processing. To use the parallel pool with TbTb, provide the identity of
+%   the repo name in the 'tbtbRepoName', which is then used to configure
+%   the workers.
 %
-% The parallel pool will not be used unless the key/value pair
-% 'useParallel' is set to true. The routine should gracefully fall-back on
-% serial processing if the parallel pool is unavailable.
+% Inputs:
+%   perimeterFileName     - Full path to a .mat file that contains the
+%                           perimeter data.
+%   pupilFileName         - Full path to the .mat file that contains the 
+%                           pupil data to be smoothed. This file will be
+%                           over-written by the output.
+%   sceneGeometryFileName - Full path to the .mat file that contains the
+%                           sceneGeometry to be used.
 %
-% Each worker requires ~8 GB of memory to operate. It is important to keep
-% total RAM usage below the physical memory limit to prevent swapping and a
-% dramatic slow down in processing.
-%
-% To use the parallel pool with TbTb, provide the identity of the repo name
-% in the 'tbtbRepoName', which is then used to configure the workers.
-%
-% INPUTS:
-%   perimeterFileName: full path to a .mat file that contains the perimeter
-%     data varaible. Points on the boundary of the pupil should have a
-%     value of unity, and the frame should be otherwise zero-filled. A
-%     frame that has no information regarding the pupil (e.g., during a
-%     blink) should be zero-filled.
-%   pupilFileName: full path to the .mat file that contains the pupil data
-%    to be smoothed. This file will be over-written by the output.
-%   sceneGeometryFileName: full path to the .mat file that contains the
-%    sceneGeometry structure for this acquisition.
-%
-% Optional key/value pairs (verbosity)
-%  'verbosity' - level of verbosity. [none, full]
+% Optional key/value pairs (display and I/O):
+%  'verbosity'            - Level of verbosity. [none, full]
 %
 % Optional key/value pairs (flow control)
+%  'nFrames'              - Analyze fewer than the total number of frames.
+%  'useParallel'          - If set to true, use the Matlab parallel pool
+%  'nWorkers'             - Specify the number of workers in the parallel
+%                           pool. If undefined the default number will be
+%                           used.
+%  'tbtbProjectName'      - The workers in the parallel pool are configured
+%                           by issuing a tbUseProject command for the
+%                           project specified here.
 %
-%  'nFrames' - analyze fewer than the total number of frames.
-%  'useParallel' - If set to true, use the Matlab parallel pool for the
-%    initial ellipse fitting.
-%  'nWorkers' - Specify the number of workers in the parallel pool. If
-%    undefined the default number will be used.
-%  'tbtbProjectName' - The workers in the parallel pool are configured by
-%    issuing a tbUseProject command for the project specified here.
+% Optional key/value pairs (environment)
+%  'tbSnapshot'           - This should contain the output of the
+%                           tbDeploymentSnapshot performed upon the result
+%                           of the tbUse command. This documents the state
+%                           of the system at the time of analysis.
+%  'timestamp'            - AUTOMATIC; The current time and date
+%  'username'             - AUTOMATIC; The user
+%  'hostname'             - AUTOMATIC; The host
 %
-% Optional key/value pairs (Environment parameters)
-%  'tbSnapshot' - This should contain the output of the tbDeploymentSnapshot
-%    performed upon the result of the tbUse command. This documents the
-%    state of the system at the time of analysis.
-%  'timestamp' - AUTOMATIC - The current time and date
-%  'username' - AUTOMATIC - The user
-%  'hostname' - AUTOMATIC - The host
-%
-% Optional key/value pairs (fitting parameters)
-%
+% Optional key/value pairs (fitting)
 %  'ellipseTransparentLB/UB' - Define the hard upper and lower boundaries
-%     for the ellipse fit, in units of pixels of the video. The center
-%     points should be constrained to the size of the video.
-%     Eccentricity is related to ratio of the semimajor and semiminor axes,
-%     and can be calculated using:
-%           eccentricity = axes2ecc(semimajor, semiminor)
-%     For example, if we wish to prevent ellipses with an aspect ratio
-%     greater than 3 : 2, this gives us an eccentricity UB of ~0.75.
-%  'exponentialTauParam' - The time constant (in video frames) of the
-%     decaying exponential weighting function for pupil area.
-%   'likelihoodErrorExponent' - The SD of the parameters estimated for each
-%     frame are raised to this exponent, to either to weaken (>1) or
-%     strengthen (<1) the influence of the current measure on the
-%     posterior.
-%   'rmseExclusionThreshold' - Frames with RMSE fitting error above this
-%     threshold have their posterior values determined entirely by the
-%     prior. Additionally, these frames do not contribue to the prior.
-%   'whichLikelihoodMean' - The ellipse fit parameter values to be
-%     smoothed.
-%   'whichLikelihoodRMSE' - The field that contains the RMSE values for the
-%     ellipse parameters to be smoothed.
-%   'whichLikelihoodSD' - The variance of the measured parameters for a
-%     frame can be estimated using different methods. This setting controls
-%     which of these is used to set the SD of the likelihood in the
-%     calculation of the posterior. The usual value is:
-%       'ellipseParamsSceneConstrained_splitsSD'
-%   'areaIdx' - The index of the ellipse parameters that holds pupil area.
+%                           for the ellipse fit, in units of pixels of the
+%                           video. The default values selected here
+%                           represent the physical and mathematical limits,
+%                           as the constraint for the fit will be provided
+%                           by the scene geometry.
+%  'exponentialTauParam'  - The time constant (in video frames) of the
+%                           decaying exponential weighting function for
+%                           pupil area.
+%  'likelihoodErrorExponent' - The SD of the parameters estimated for each
+%                           frame are raised to this exponent, to either to
+%                           weaken (>1) or strengthen (<1) the influence of
+%                           the current measure on the posterior.
+%  'rmseExclusionThreshold' - Frames with RMSE fitting error above this
+%                           threshold have their posterior values
+%                           determined entirely by the prior. Additionally,
+%                           these frames do not contribue to the prior.
+%  'whichLikelihoodMean'  - The ellipse fit parameter values to be
+%                           smoothed.
+%  'whichLikelihoodRMSE'  - The field that contains the RMSE values for the
+%                           ellipse parameters to be smoothed.
+%  'whichLikelihoodSD'    - The field to be used to set the SD of the
+%                           likelihood in the calculation of the posterior.
+%                           The usual value is:
+%                           'ellipseParamsSceneConstrained_splitsSD'
+%  'areaIdx'              - The index of the ellipse parameters that holds
+%                           pupil area [3].
 %
-% OUTPUTS:
-%   pupilData: A structure with multiple fields corresponding to the
-%     parameters, SDs, and errors of the initial and final ellipse fits.
-
+% Outputs:
+%   pupilData             - A structure with multiple fields corresponding
+%                           to the parameters, SDs, and errors of the
+%                           initial and final ellipse fits.
+%
 
 %% Parse vargin for options passed here
 p = inputParser; p.KeepUnmatched = true;
@@ -107,7 +104,7 @@ p.addParameter('useParallel',false,@islogical);
 p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('tbtbRepoName','transparentTrack',@ischar);
 
-% Environment parameters
+% Optional environment parameters
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
 p.addParameter('timestamp',char(datetime('now')),@ischar);
 p.addParameter('hostname',char(java.lang.System.getProperty('user.name')),@ischar);
@@ -123,7 +120,6 @@ p.addParameter('whichLikelihoodMean','ellipseParamsSceneConstrained_mean',@ischa
 p.addParameter('whichLikelihoodRMSE','ellipseParamsSceneConstrained_rmse',@ischar);
 p.addParameter('whichLikelihoodSD','ellipseParamsSceneConstrained_splitsSD',@ischar);
 p.addParameter('areaIdx',3,@isnumeric);
-
 
 %% Parse and check the parameters
 p.parse(perimeterFileName, pupilFileName, sceneGeometryFileName, varargin{:});
@@ -346,7 +342,7 @@ parfor (ii = 1:nFrames, nWorkers)
         
         % Check if the RMSE for the likelihood fit was above the bad
         % threshold. If so, inflate the SD for the likelihood so that the
-        % prior holds
+        % prior dictates the value of the posterior
         if likelihoodPupilAreaRMSE > badFrameErrorThreshold
             likelihoodPupilAreaSD = likelihoodPupilAreaSD .* 1e20;
         end
@@ -367,8 +363,7 @@ parfor (ii = 1:nFrames, nWorkers)
         
         % Occasionally nan is returned for pupil area. If so, retain the
         % original ellipse fit. If not, re-fit the ellipse with the area
-        % constrained to the posterior value
-        
+        % constrained to the posterior value        
         if isnan(reconstructedTransparentEllipse(areaIdx))
             pPosteriorMeanTransparent = pupilData.(whichLikelihoodMean)(ii,:);
             pPosteriorFitError = nan;
@@ -390,7 +385,6 @@ parfor (ii = 1:nFrames, nWorkers)
     loopVar_pPosteriorConstraintError(ii) = pPosteriorConstraintError;
     loopVar_pupilAreaMean(ii) = posteriorPupilAreaMean;
     loopVar_pupilAreaSD(ii) = posteriorPupilAreaSD;
-    
     
 end % loop over frames to calculate the posterior
 

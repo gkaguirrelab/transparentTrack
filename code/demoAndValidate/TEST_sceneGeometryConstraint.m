@@ -1,7 +1,7 @@
-% TEST_simulatedSceneGeometryConstraint
+% TEST_sceneGeometryConstraint
 
 % This script generates a video composed of ellipses on the image plane
-% that are pseudoPerspective projections of a model pupil. This video is
+% that are pseudoPerspective projections of a model pupil. The video is
 % then run through the pupil analysis pipeline, including derivation of the
 % scene geometry and sceneConstrained ellipse fitting.
 
@@ -16,27 +16,24 @@ rng default
 videoSizeX = 640;
 videoSizeY = 480;
 
-% Setup the video save
-sandboxDir = '~/Desktop/sceneGeometryFromPseudoPerspectiveTEST';
+% Setup the video save location and path params
+sandboxDir = '~/Desktop/sceneGeometryConstraintTEST';
+pathParams.dataOutputDirFull = fullfile(sandboxDir);
+pathParams.dataSourceDirFull = fullfile(sandboxDir);
+pathParams.runName = 'synthetic';
+videoName = fullfile(sandboxDir, [pathParams.runName '_gray.avi']);
 
 % check or make a directory for output
 if exist(sandboxDir,'dir')==0
     mkdir(sandboxDir);
 end
 
-syntheticVideoName = fullfile(sandboxDir, 'synthetic.avi');
-
-% create the video writer object
-writerObj = VideoWriter(syntheticVideoName, 'Uncompressed AVI');
-writerObj.FrameRate = 60;
-
 
 %% construct scene geometry
-% we will construct a scene where the CoR sits right at the center, and the
-% pupil rotates on a 125 pixel radius. The pupil has a fixed radius as
-% sweeps the scene back and forth at different elevations.
-
-% define the eye sphere radius
+% The Center of Rotation is aligned with the center of the image plane
+% along the optical axis of the camera. The pupil rotates on a 125 pixel
+% radius. The pupil has a fixed radius as sweeps the scene back and forth
+% at different elevations.
 eyeRadius =  125;
 pupilRadius = 30;
 sceneDistance = 1200;
@@ -45,13 +42,13 @@ sceneDistance = 1200;
 projectionModel = 'pseudoPerspective';
 eyeCenter = [videoSizeX/2, videoSizeY/2, eyeRadius+sceneDistance];
 
-% define pupil positions in degrees of azimuth and elevation
-allPupilAzi=[];
-allPupilEle=[];
 
+% Define the range of azimuth and elevation steps
 eleSteps = -20:5:20;
 aziSweeps = -30:3:30;
 
+allPupilAzi=[];
+allPupilEle=[];
 for ii = 1: length(eleSteps)
     allPupilEle = [allPupilEle eleSteps(ii)*ones(1,length(aziSweeps))];
     if mod(ii,2)
@@ -61,14 +58,13 @@ for ii = 1: length(eleSteps)
     end
 end
 
-nFrames = numel(allPupilAzi);
-
 %% create the video
 % the video will be created with a modified version of the
 % pupilProjection_fwd function, as the Y axis for matlab plots is oriented
 % upwards. Normally pupilProjection_fwd operates on video frames, for which
 % the convention is that the Y axis points downwards.
 
+nFrames = numel(allPupilAzi);
 emptyFrame = ones(videoSizeY, videoSizeX)*0.85;
 h = figure('visible','off');
 
@@ -89,10 +85,10 @@ for ii = 1:nFrames
     
     % overlay a glint
     glintPositionX = forwardProjectEllipseParams(1) - (forwardProjectEllipseParams(1)-videoSizeX/2).*0.15;
-    glintPositionY = forwardProjectEllipseParams(2) - (forwardProjectEllipseParams(2)-videoSizeY/2).*0.15;
-    
+    glintPositionY = forwardProjectEllipseParams(2) - (forwardProjectEllipseParams(2)-videoSizeY/2).*0.15;    
     tempImage = insertShape(tempImage,'filledCircle',[glintPositionX, glintPositionY, 5],'Color','w','Opacity',1);
     
+    % display the frame
     imshow(tempImage,'Border','tight');
     axis equal
     axis off
@@ -116,52 +112,48 @@ cmap(5,:)=[0 1 1];
 cmap(6,:)=[1 0 1];
 
 % write the video
+writerObj = VideoWriter(videoName, 'Uncompressed AVI');
+writerObj.FrameRate = 60;
 open(writerObj);
-
 for ii=1:nFrames
     indexedFrame = rgb2ind(thisFrame(ii).cdata,cmap, 'nodither');
-    
-    % write video
     writeVideo(writerObj,indexedFrame);
 end
-
 close (writerObj);
 
-%% use this video in the video pipeline
-% we run the standard pupil pipeline here. Note that since there's no
-% eyelid, we skip the steps relative to the correction of the pupil
-% perimeter.
 
-perimeterFileName = fullfile(sandboxDir, 'synthetic_perimeter.mat');
-pupilFileName = fullfile(sandboxDir, 'syntheticPerimeter_pupil.mat');
-sceneGeometryFileName = fullfile(sandboxDir, 'syntheticPerimeter_sceneGeometry.mat');
-sceneDiagnosticPlotFileName = fullfile(sandboxDir, 'syntheticPerimeter_sceneDiagnosticPlot.pdf');
-finalFitVideoName = fullfile(sandboxDir, 'syntheticPerimeter_finalFit.avi');
+%% Perform the analysis with one call
+runVideoPipeline( pathParams, ...
+    'verbosity', 'full', 'useParallel',true, 'catchErrors', false,...
+    'maskBox', [0.9 0.9], ...
+    'ellipseTransparentUB',[videoSizeX,videoSizeY, 20000, 1.0, pi],...
+    'skipStageByNumber',1);
 
-findPupilPerimeter(syntheticVideoName,perimeterFileName,'verbosity','full','maskBox', [0.9 0.9]);
-fitPupilPerimeter(perimeterFileName, pupilFileName,'verbosity','full','ellipseTransparentLB',[],'ellipseTransparentUB',[],'nSplits',0);
-sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileName,'sceneDiagnosticPlotFileName', sceneDiagnosticPlotFileName,'sceneDiagnosticPlotSizeXY', [videoSizeX videoSizeY], ...
-    'projectionModel','pseudoPerspective','eyeRadius',eyeRadius, 'cameraDistanceInPixels',sceneDistance,'verbosity','full');
-fitPupilPerimeter(perimeterFileName,pupilFileName,'sceneGeometryFileName',sceneGeometryFileName,'ellipseTransparentLB',[0, 0, 300, 0, 0],'ellipseTransparentUB',[videoSizeX,videoSizeY,20000,1.0, pi],'verbosity','full');
-pupilData = smoothPupilArea(perimeterFileName, pupilFileName, sceneGeometryFileName,'verbosity','full');
-makeFitVideo(syntheticVideoName, finalFitVideoName, 'pupilFileName',pupilFileName,'sceneGeometryFileName',sceneGeometryFileName,'perimeterFileName',perimeterFileName,'perimeterColor','r','whichFieldToPlot','ellipseParamsAreaSmoothed_mean','verbosity','full')
 
 %% Verify that the scene geometry allows for the correct reconstruction of the eye position
-% note on the pupil area reconstruction: matlab uses different pixel indexing
-% conventions when creating plots and analizing videos. For plotting, the
-% origin of the XY cartesian plane is conventionally put at (0,0). For
-% image processing (hence for the whole pupil tracking pipeline) the origin
-% of the pixel is put at (0.5,0.5). This causes the pupil radius to be
-% calculated half a pixel shorter during the analysis. We account for that
-% definining a pupilRadiusOnImage, which is half a pixel shorter than
+% note on the pupil area reconstruction: matlab uses different pixel
+% indexing conventions when creating plots and analizing videos. For
+% plotting, the origin of the XY cartesian plane is conventionally put at
+% (0,0). For image processing (hence for the whole pupil tracking pipeline)
+% the origin of the pixel is put at (0.5,0.5). This causes the pupil radius
+% to be calculated half a pixel shorter during the analysis. We account for
+% that definining a pupilRadiusOnImage, which is half a pixel shorter than
 % pupilRadius we used to construct the TEST video.
+
+load(fullfile(pathParams.dataOutputDirFull,[pathParams.runName '_pupil.mat']));
+load(fullfile(pathParams.dataOutputDirFull,[pathParams.runName '_sceneGeometry.mat']));
 
 ellipses = pupilData.ellipseParamsAreaSmoothed_mean;
 pupilRadiusOnImage = pupilRadius - 0.5;
 
 for ii = 1:nFrames
-    [reconstructedPupilAzi(ii), reconstructedPupilEle(ii), reconstructedPupilArea(ii)] = pupilProjection_inv(ellipses(ii,:),  [sceneGeometry.eyeCenter.X sceneGeometry.eyeCenter.Y, sceneGeometry.eyeCenter.Z], sceneGeometry.eyeRadius, sceneGeometry.meta.projectionModel);
+    [reconstructedPupilAzi(ii), reconstructedPupilEle(ii), reconstructedPupilArea(ii)] = ...
+        pupilProjection_inv(ellipses(ii,:),  [sceneGeometry.eyeCenter.X sceneGeometry.eyeCenter.Y, sceneGeometry.eyeCenter.Z], sceneGeometry.eyeRadius, sceneGeometry.meta.projectionModel);
 end
+
+% Report how closely we have reconstructed the actual scene geometry
+fprintf('Veridical scene geometry - eye center: [%0.1f, %0.1f, %0.1f], eye radius: %0.1f \n',eyeCenter(1), eyeCenter(2), eyeCenter(3), eyeRadius);
+fprintf('Estimated scene geometry - eye center: [%0.1f, %0.1f, %0.1f], eye radius: %0.1f \n',sceneGeometry.eyeCenter.X, sceneGeometry.eyeCenter.Y, sceneGeometry.eyeCenter.Z, sceneGeometry.eyeRadius);
 
 % plot real Azi,  Ele, and pupil area vs reconstructed ones
 figure
@@ -195,10 +187,6 @@ xlabel('frame')
 ylabel('reconstructed pupil area')
 axis square
 
-
-%% Demonstrate how closely we have reconstructed the actual scene geometry
-fprintf('Veridical scene geometry - eye center: [%0.1f, %0.1f, %0.1f], eye radius: %0.1f \n',eyeCenter(1), eyeCenter(2), eyeCenter(3), eyeRadius);
-fprintf('Estimated scene geometry - eye center: [%0.1f, %0.1f, %0.1f], eye radius: %0.1f \n',sceneGeometry.eyeCenter.X, sceneGeometry.eyeCenter.Y, sceneGeometry.eyeCenter.Z, sceneGeometry.eyeRadius);
 
 
 

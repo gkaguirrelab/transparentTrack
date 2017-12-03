@@ -1,62 +1,63 @@
 function resizeAndCropVideo(inputVideoName, outputVideoName, varargin)
-% function resizeAndCropVideo(inputVideoName, outputVideoName, varargin)
+% Resize a crop a video
 %
-%  This fuction crops and resizes a video according to the specified
-%  parameters. Using the default options the routine will scale and crop a
-%  VGA video to match the LiveTrack standard size video. The
-%  video is also converted to gray, if requested.
-
-% Output
-%   an AVI video is saved out.
+% Description:
+%   This fuction crops and resizes a video according to the specified
+%   parameters. Using the default options the routine will scale and crop a
+%   VGA video to match the LiveTrack standard size video. The video is also
+%   converted to gray, if requested.
 %
-% Input (required)
-%	inputVideoName - full path to the video to deinterlace
-%	outputVideoName - full path to the deinterlaced output video
+% Outputs:
+%   none
 %
-% Options (analysis)
-%   resizeVideo - [Y X] desired output video resolution. (keep default to
-%       get livetrack format)
-%   cropVideo - [firstX firstY lastX lastY] position of first and last
-%           pixels to include in the crop. (keep default to get livetrack
-%           format)
-%   keepOriginalSize - option to skip video resizing.
+% Inputs:
+%	videoInFileName       - Full path to the video to crop/resize
+%   videoOutFileName      - Full path to the output .avi file
 %
-% Options (verbosity and display)
-%   verbosity - controls console status updates
+% Optional key/value pairs (display and I/O):
+%  'verbosity'            - Level of verbosity. [none, full]
 %
-% Options (flow control)
-%  nFrames' - analyze fewer than the total number of frames.
-%  startFrame - which frame to start on
+% Optional key/value pairs (flow control):
+%  'nFrames'              - Analyze fewer than the total number of frames
+%  'startFrame'           - Which frame to start on
 %
+% Optional key/value pairs (analysis):
+%  'resizeVideo'          - [Y X] desired output video resolution. The
+%                           default values reflect the LiveTrack output.
+%  'cropVideo'            - [firstX firstY lastX lastY] position of first
+%                           and last
+%                           pixels to include in the crop. (keep default to get livetrack
+%                           format)
+%  'keepOriginalSize'     - Option to skip video resizing.
+%  'convertToGray'        - if set to true (default), the video will also
+%                           be converted to grayscale.
 %
-% Usage examples
-%  resizeAndCropVideo(inputVideoName,outputVideoName);
-%  resizeAndCropVideo(inputVideoName,outputVideoName, 'nFrames', 1000) % this will
-%       process just the first 1000 frames of the video
+% Outputs:
+%   None
+%
 
 
 %% parse input and define variables
 p = inputParser; p.KeepUnmatched = true;
 
-% required input
+% Required
 p.addRequired('inputVideoName',@isstr);
 p.addRequired('outputVideoName',@isstr);
 
-% optional inputs
-p.addParameter('resizeVideo',[486 720]/2, @isnumeric);
-p.addParameter('cropVideo', [1 1 319 239], @isnumeric);
-p.addParameter('keepOriginalSize', false, @islogic);
-p.addParameter('convertToGray',true,@islogical)
-
-% verbosity
+% Optional display and I/O params
 p.addParameter('verbosity', 'none', @isstr);
 
-% flow control
+% Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
 p.addParameter('startFrame',1,@isnumeric);
 
+% Optional analysis params
+p.addParameter('resizeVideo',[486 720]/2, @isnumeric);
+p.addParameter('cropVideo', [1 1 319 239], @isnumeric);
+p.addParameter('keepOriginalSize', false, @islogical);
+p.addParameter('convertToGray',true,@islogical)
 
-%parse
+% parse
 p.parse(inputVideoName,outputVideoName,varargin{:})
 
 % define variables

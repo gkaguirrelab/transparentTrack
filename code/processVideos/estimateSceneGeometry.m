@@ -1,30 +1,69 @@
 function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileName, varargin)
-% sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileName)
+% Estimate eye radius and eye center given a set of image plane ellipses
 %
-% This function searches over the set of ellipses in the passed pupil file
-% to estimate the sceneGeometry features in units of pixels on the scene.
-% The routine identifies the [X, Y, Z] coordinates on the scene plane of a
-% the center of rotation of an eye that would minimize the center of
-% projection implied by each ellipse in the pupil file.
+% Description:
+%   This function searches over the set of ellipses in the passed pupil
+%   file to estimate the sceneGeometry features in units of pixels on the
+%   scene. The routine identifies the eye radius and the [X, Y, Z]
+%   coordinates on the scene plane of the center of rotation of an eye. The
+%   search attempts to minimize the error associated with the prediction of
+%   the eccentricity and theta of ellipses in each of 100 "bins" of x, y
+%   ellipse center position on the image plane.
 %
-% Different projection models can be used to guide this calculation: The
-% orthogonal model assumes that ellipses  on the scene plane are orthogonal
-% projections of a circular pupil the center of which rotates around the
-% eye center.
+%   Different projection models can be used to guide this calculation. The
+%   orthogonal model assumes that ellipses  on the scene plane are
+%   orthogonal projections of a circular pupil the center of which rotates
+%   around the eye center. The pseudoPerspective model adjusts the x, y
+%   position of the center of an ellipse on the image plane given the
+%   increased distance from the image plane when the eye is rotated.
 %
-% The x, y coordinates on the scene plane of the center of the most
-% circular (least eccentric) ellipse are taken as the initial guess for the
-% center of rotation of the eye.
+% 	Note: the search for both eye radius and eyeCenter.Z is not
+% 	sufficiently constrainted. Therefore, the boundaries for one of these
+% 	should be locked.
 %
+% Inputs:
+%	pupilFileName         - Full path to a pupilData file, or a cell array
+%                           of such paths.
+%   sceneGeometryFileName - Full path to the file in which the
+%                           sceneGeometry data should be saved
 %
-% Input
-%	pupilFileName - full path to a pupilData file, or a cell array of such
-%      paths
-%   sceneGeometryFileName -  Full path to the file in which the
-%      sceneGeometry data should be saved.
+% Optional key/value pairs (display and I/O):
+%  'verbosity'            - Level of verbosity. [none, full]
+%  'sceneDiagnosticPlotFileName' - Full path (including suffix) to the
+%                           location where a diagnostic plot of the
+%                           sceneGeometry calculation is to be saved. If
+%                           left empty, then no plot will be saved.
 %
-% Output
-%	sceneGeometry - A structure with the fields
+% Optional key/value pairs (environment)
+%  'tbSnapshot'           - This should contain the output of the
+%                           tbDeploymentSnapshot performed upon the result
+%                           of the tbUse command. This documents the state
+%                           of the system at the time of analysis.
+%  'timestamp'            - AUTOMATIC; The current time and date
+%  'username'             - AUTOMATIC; The user
+%  'hostname'             - AUTOMATIC; The host
+%
+% Optional key/value pairs (analysis)
+%  'projectionModel'      - Options are: 'orthogonal' and 'perspective'
+%  'sceneGeometryLB'      - Lower bounds for the sceneGeometry parameter
+%                           search. This is a 4x1 vector specifying
+%                           eyeCenter.X, eyeCenter.Y, eyeCenter.Z and
+%                           eyeRadius.
+%  'sceneGeometryUB'      - The corresponding upper bounds.
+%  'cameraDistanceInPixels' - This is used (along with eyeRadius) to
+%                           construct an initial guess for eyeCenter.Z
+%  'eyeRadius             - Under the orthogonal projection case, this
+%                           value is stored and used for all subsequent
+%                           calculations. Under the pseudoPerspective case,
+%                           this is the initial guess for eyeRadius.
+%  'whichFitFieldMean'    - Identifies the field in pupilData that contains
+%                           the ellipse fit params for which the search
+%                           will be conducted.
+%  'whichFitFieldError'   - Identifies the pupilData field that has error
+%                           values for the ellipse fit params.
+%
+% Outputs
+%	sceneGeometry         - A structure with the fields
 %       eyeCenter.X - X coordinate of the eye center (i.e. the assumed
 %           center of rotation of the pupil) on the scene plane.
 %       eyeCenter.Y - Y coordinate of the eye center (i.e. the assumed
@@ -34,56 +73,37 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %       eyeRadius - radius of the eye in pixels
 %       meta - information regarding the analysis, including units.
 %
-% Options (analysis)
-%   projectionModel - options include 'orthogonal' and 'perspective'
-%   eyeRadius - an assigned valye for eye radius. When operating
-%       with the orthogonal projection model, this value is stored and
-%       used for all subsequent calculations. When operating in the
-%       perspective model, the eyeRadius is estimated from the data.
-%
-% Options (verbosity and display)
-%   verbosity - controls console status updates
-%   displayMode - when set to true, displays the results of the fit
-%
-% Options (environment)
-%   tbSnapshot - the passed tbSnapshot output that is to be saved along
-%      with the data
-%   timestamp / username / hostname - these are automatically derived and
-%      saved within the p.Results structure.
-%
 
 
 %% input parser
 p = inputParser; p.KeepUnmatched = true;
 
-% required input
+% Required
 p.addRequired('pupilFileName',@(x)(iscell(x) | ischar(x)));
 p.addRequired('sceneGeometryFileName',@ischar);
 
-% Optional analysis params
-p.addParameter('projectionModel','pseudoPerspective',@ischar);
-p.addParameter('eyeRadius',125,@isnumeric);
-p.addParameter('cameraDistanceInPixels',1200,@isnumeric);
-p.addParameter('sceneGeometryLowerBounds',[0, 0, 1325, 25],@isnumeric);
-p.addParameter('sceneGeometryUpperBounds',[640, 480, 1325, 250],@isnumeric);
-p.addParameter('whichFitFieldMean','ellipseParamsUnconstrained_mean',@ischar);
-p.addParameter('whichFitFieldError','ellipseParamsUnconstrained_rmse',@ischar);
-
-% verbosity and plotting control
+% Optional display and I/O params
 p.addParameter('verbosity', 'none', @isstr);
 p.addParameter('sceneDiagnosticPlotFileName', [],@(x)(isempty(x) | ischar(x)));
-p.addParameter('sceneDiagnosticPlotSizeXY', [640 480],@isnumeric);
 
-% Environment parameters
+% Optional environment parameters
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
 p.addParameter('timestamp',char(datetime('now')),@ischar);
 p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischar);
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
+% Optional analysis params
+p.addParameter('projectionModel','pseudoPerspective',@ischar);
+p.addParameter('sceneGeometryLB',[0, 0, 1325, 25],@isnumeric);
+p.addParameter('sceneGeometryUB',[640, 480, 1325, 250],@isnumeric);
+p.addParameter('cameraDistanceInPixels',1200,@isnumeric);
+p.addParameter('eyeRadius',125,@isnumeric);
+p.addParameter('whichFitFieldMean','ellipseParamsUnconstrained_mean',@ischar);
+p.addParameter('whichFitFieldError','ellipseParamsUnconstrained_rmse',@ischar);
+
 % parse
 p.parse(pupilFileName, sceneGeometryFileName, varargin{:})
 
-%% main
 
 %% Announce we are starting
 if strcmp(p.Results.verbosity,'full')
@@ -162,7 +182,7 @@ options = optimset(options,'Diagnostics','off','Display','off','LargeScale','off
 
 % perform the fit
 [bestFitSceneGeometry, fVal] = ...
-    fmincon(errorFunc, x0, [], [], [], [], p.Results.sceneGeometryLowerBounds, p.Results.sceneGeometryUpperBounds, [], options);
+    fmincon(errorFunc, x0, [], [], [], [], p.Results.sceneGeometryLB, p.Results.sceneGeometryUB, [], options);
 
 % assemble and save the sceneGeometry
 sceneGeometry.eyeCenter.X = bestFitSceneGeometry(1);

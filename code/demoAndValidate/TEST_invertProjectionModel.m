@@ -9,6 +9,7 @@ projectionModels = {'pseudoPerspective' 'orthogonal' };
 
 % Test if we can recover the azimuth and elevation of the eye after
 % projecting the pupil to the image plane
+allPass = true;
 thetas=[];
 rotationMax = 89;
 for models = 1:length(projectionModels)
@@ -20,8 +21,13 @@ for models = 1:length(projectionModels)
             [reconstructedPupilAzi, reconstructedPupilEle, reconstructedPupilArea] = pupilProjection_inv(reconstructedTransparentEllipse, eyeCenter, eyeRadius, projectionModels{models});
             if abs(reconstructedPupilAzi-pupilAzimuth) > tolerance || abs(reconstructedPupilEle-pupilElevation) > tolerance || abs(reconstructedPupilArea-pupilArea) > tolerance
                 fprintf('Failed inversion check for azimuth %d, elevation %d \n',pupilAzimuth,pupilElevation);
-                fprintf('   reconstruced azimuth %0.3f, reconstructed elevation %0.3f, reconstructed pupil area %0.3f \n',reconstructedPupilAzi,reconstructedPupilEle,reconstructedPupilArea);                
+                fprintf('   reconstruced azimuth %0.3f, reconstructed elevation %0.3f, reconstructed pupil area %0.3f \n',reconstructedPupilAzi,reconstructedPupilEle,reconstructedPupilArea);
+                allPass=false;
             end
         end
     end
+end
+
+if allPass
+    fprintf(['All inversion tests passed\n']);
 end
