@@ -11,17 +11,15 @@ function [pupilData] = smoothPupilArea(perimeterFileName, pupilFileName, sceneGe
 %   pupil area. A non-causal, exponentially weighted window of surrounding
 %   area values serves as a prior.
 %
-%   NOTE REGARDING USE OF PARALLEL POOL: Controlled by the key/value pair
-%   'useParallel'. The routine should gracefully fall-back on serial
-%   processing if the parallel pool is unavailable.
-%
-%   Each worker requires ~8 GB of memory to operate. It is important to
-%   keep total RAM usage below the physical memory limit to prevent
-%   swapping and a dramatic slow down in processing.
-%
-%   To use the parallel pool with TbTb, provide the identity of the repo
-%   name in the 'tbtbRepoName', which is then used to configure the
-%   workers.
+% Notes:
+%   Parallel pool - Controlled by the key/value pair 'useParallel'. The
+%   routine should gracefully fall-back on serial processing if the
+%   parallel pool is unavailable. Each worker requires ~8 GB of memory to
+%   operate. It is important to keep total RAM usage below the physical
+%   memory limit to prevent swapping and a dramatic slow down in
+%   processing. To use the parallel pool with TbTb, provide the identity of
+%   the repo name in the 'tbtbRepoName', which is then used to configure
+%   the workers.
 %
 % Inputs:
 %   perimeterFileName     - Full path to a .mat file that contains the
@@ -64,23 +62,23 @@ function [pupilData] = smoothPupilArea(perimeterFileName, pupilFileName, sceneGe
 %  'exponentialTauParam'  - The time constant (in video frames) of the
 %                           decaying exponential weighting function for
 %                           pupil area.
-%   'likelihoodErrorExponent' - The SD of the parameters estimated for each
+%  'likelihoodErrorExponent' - The SD of the parameters estimated for each
 %                           frame are raised to this exponent, to either to
 %                           weaken (>1) or strengthen (<1) the influence of
 %                           the current measure on the posterior.
-%   'rmseExclusionThreshold' - Frames with RMSE fitting error above this
+%  'rmseExclusionThreshold' - Frames with RMSE fitting error above this
 %                           threshold have their posterior values
 %                           determined entirely by the prior. Additionally,
 %                           these frames do not contribue to the prior.
-%   'whichLikelihoodMean' - The ellipse fit parameter values to be
+%  'whichLikelihoodMean'  - The ellipse fit parameter values to be
 %                           smoothed.
-%   'whichLikelihoodRMSE' - The field that contains the RMSE values for the
+%  'whichLikelihoodRMSE'  - The field that contains the RMSE values for the
 %                           ellipse parameters to be smoothed.
-%   'whichLikelihoodSD'   - The field to be used to set the SD of the
+%  'whichLikelihoodSD'    - The field to be used to set the SD of the
 %                           likelihood in the calculation of the posterior.
 %                           The usual value is:
 %                           'ellipseParamsSceneConstrained_splitsSD'
-%   'areaIdx'             - The index of the ellipse parameters that holds
+%  'areaIdx'              - The index of the ellipse parameters that holds
 %                           pupil area [3].
 %
 % Outputs:
@@ -106,7 +104,7 @@ p.addParameter('useParallel',false,@islogical);
 p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('tbtbRepoName','transparentTrack',@ischar);
 
-% Environment parameters
+% Optional environment parameters
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
 p.addParameter('timestamp',char(datetime('now')),@ischar);
 p.addParameter('hostname',char(java.lang.System.getProperty('user.name')),@ischar);

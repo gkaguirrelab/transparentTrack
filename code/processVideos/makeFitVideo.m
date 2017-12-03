@@ -1,42 +1,35 @@
 function makeFitVideo(videoInFileName, videoOutFileName, varargin)
-% makeFitVideo(perimeterVideoFileName, varargin)
+% Create and store a video that displays the results of eye tracking
 %
-% This routine creates an integrated fit video that illustrates the
-% position of the pupil and glint and indicates any control instructions.
+% Description:
+%   This routine creates an integrated fit video that illustrates the
+%   position of the pupil and glint and indicates any control instructions.
 %
-% INPUTS:
-%   videoInFileName: full path to an .avi file. Typically the gray video
-%   videoOutFileName: full path to an .avi file. This will be the output
+% Inputs:
+%	videoInFileName       - Full path to an .avi file; typically the "gray"
+%                           video
+%   videoOutFileName      - Full path to the output .avi file
 %
-% Optional key/value pairs (display and I/O)
-%  'verbosity' - level of verbosity. [none, full]
-%  'videoOutFrameRate' - frame rate (in Hz) of saved video
-%  'saveUncompressedVideo' - set as true to save an uncompressed fit video.
-%       Be aware that the video will be 10x bigger than the default
-%       compressed version.
+% Optional key/value pairs (display and I/O):
+%  'verbosity'            - Level of verbosity. [none, full]
+%  'videoOutFrameRate'    - Frame rate (in Hz) of saved video [default 60]
+%  'saveCompressedVideo'  - Default value is true, resulting in a
+%                           a video with a 10x reduction in file size
 %
 % Optional key/value pairs (flow control)
-%  'nFrames' - analyze fewer than the total number of frames.
-%  'useParallel' - If set to true, use the Matlab parallel pool for the
-%    initial ellipse fitting.
-%  'nWorkers' - Specify the number of workers in the parallel pool. If
-%    undefined the default number will be used.
-%  'tbtbProjectName' - The workers in the parallel pool are configured by
-%    issuing a tbUseProject command for the project specified here.
+%  'nFrames'              - Analyze fewer than the total number of frames.
 %
-% Optional items to include in the video
-%	glintFileName
-%   glintColor - indicate color with a single character or string (e.g.,
-%       'r' for red or 'green')
-%   perimeterFileName
-%   perimeterColor
-%   pupilFileName
-%   pupilColor
-%   whichFieldToPlot - The name of the field within the ellipseFitData
-%   	struct that is to be plotted
-%   irisFileName
-%   irisColor
-%   controlFileName
+% Optional key/value pairs (video items)
+%  'glint/perimeter/pupil/sceneGeometry/FileName' - Full path to a file
+%                           to be included in the video. 
+%  'glint/perimeter/pupil/sceneGeometry/Color' - Text string that assigns
+%                           a color to the display of this item.
+%  'whichFieldToPlot'     - The field of the pupilData file that contains
+%                           ellipse fit params to be added to the video.
+%  'controlFileName'      - Full path to the control file to be included.
+%
+% Outputs:
+%   None
 %
 
 %% Parse vargin for options passed here
@@ -49,24 +42,22 @@ p.addRequired('videoOutFileName', @ischar);
 % Optional display and I/O params
 p.addParameter('verbosity','none', @ischar);
 p.addParameter('videoOutFrameRate', 60, @isnumeric);
-p.addParameter('saveUncompressedVideo', false, @islogical);
+p.addParameter('saveCompressedVideo', true, @islogical);
 
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
 
-% Optional items to include in the video
+% Optional video items
 p.addParameter('glintFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('glintColor','r',@ischar);
 p.addParameter('perimeterFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('perimeterColor','w',@ischar);
 p.addParameter('pupilFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('pupilColor','green',@ischar);
-p.addParameter('whichFieldToPlot', 'ellipseParamsAreaSmoothed_mean',@(x)(isempty(x) | ischar(x)));
-p.addParameter('irisFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('irisColor','red',@ischar);
-p.addParameter('controlFileName',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
+p.addParameter('glintColor','r',@ischar);
+p.addParameter('perimeterColor','w',@ischar);
+p.addParameter('pupilColor','green',@ischar);
 p.addParameter('sceneGeometryColor','magenta',@ischar);
+p.addParameter('whichFieldToPlot', 'ellipseParamsAreaSmoothed_mean',@(x)(isempty(x) | ischar(x)));
+p.addParameter('controlFileName',[],@(x)(isempty(x) | ischar(x)));
 
 % parse
 p.parse(videoInFileName, videoOutFileName, varargin{:})
@@ -151,7 +142,7 @@ videoSizeX = videoInObj.Width;
 videoSizeY = videoInObj.Height;
 
 % Open a video object for writing
-if ~p.Results.saveUncompressedVideo
+if p.Results.saveCompressedVideo
     videoOutObj = VideoWriter(videoOutFileName);
     videoOutObj.FrameRate = p.Results.videoOutFrameRate;
     open(videoOutObj);
@@ -256,7 +247,7 @@ for ii = 1:nFrames
     close(frameFig);
     
     % Write out this frame
-    if ~p.Results.saveUncompressedVideo
+    if p.Results.saveCompressedVideo
         thisFrame = squeeze(thisFrame);
         writeVideo(videoOutObj,thisFrame);
     else

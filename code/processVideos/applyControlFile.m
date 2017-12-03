@@ -1,67 +1,68 @@
 function perimeter = applyControlFile(perimeterFileName, controlFileName, correctedPerimeterFileName, varargin)
-% applyControlFile(perimeterFileName, controlFileName, correctedPerimeterFileName, varargin)
+% Modify a perimeter file by applying instructions from a control File
 %
-% This routine applies the instructions from the control file
-% to the pupil perimeter video. A new corrected perimeter video will be
-% saved out in the specified file.
+% Description:
+%   This routine applies the instructions from the control file
+%   to the pupil perimeter video. A new corrected perimeter video will be
+%   saved out in the specified file.
 % 
-% Each frame of the original perimeter video is loaded and elaborated
-% according to the control file instructions (if any) for the given frame.
+%   Each frame of the original perimeter video is loaded and elaborated
+%   according to the control file instructions (if any) for the given frame.
 % 
-% Currently available instructions include:
-% - blink >> save out a black frame
-% - bad >> save out a black frame
-% - ellipse >> draw an ellipse with the given params into the frame
-% - glintPatch >> cut the portion of the perimeter that intersects the glint
-% - cut >> cut the perimeter using radius and theta given
-% - error >> if any error occurred while compiling the automatic
+%   Currently available instructions include:
+%     - blink: save out a black frame
+%     - bad: save out a black frame
+%     - glintPatch: cut the portion of the perimeter that intersects the glint
+%     - cut: cut the perimeter using radius and theta given
+%     - ellipse: draw an ellipse with the given params into the frame
+%     - error: if any error occurred while compiling the automatic
 %       instructions the frame won't be corrected, but an error flag will be
 %       displayed for later inspection.
 % 
-% Note that each line of the control file is set of instructions for one
-% specifical video frame, identified by the FrameNumber. If there is no
-% instruction for a given frame, the frame will be saved as is. The control
-% file may contain multiple instruction lines referred to the same frame
-% (e.g. first do a vertical cut, then do an horizontal cut); in this case,
-% the routine will process the instruction on the frame one after the other
-% in the order they are presented.
+%   Note that each line of the control file is set of instructions for one
+%   specifical video frame, identified by the FrameNumber. If there is no
+%   instruction for a given frame, the frame will be saved as is. The control
+%   file may contain multiple instruction lines referred to the same frame
+%   (e.g. first do a vertical cut, then do an horizontal cut); in this case,
+%   the routine will process the instruction on the frame one after the other
+%   in the order they are presented.
 % 
-% Once the instructions have been applied the video will be saved out.
+%   Once the instructions have been applied the video will be saved out.
 % 
-% OUTPUT:
-%   perimeter - a structure that contains the field data, which is a
-%      three-dimensional matrix (x, y, frame) containing binary values that
-%      indicate pupil perimeter points (1) or not (0). A .meta field is
-%      stores information regarding the analysis parameters.
+% Inputs:
+%	controlFileName       - Full path (including csv extension) to the
+%                           control file 
+%   perimeterFileName     - Full path to the perimeter file
+%   correctedPerimeterFileName - Full path to the corrected perimeter file
 %
-% Input (required)
-%	perimeterFileName - path to the .mat file containing perimeter data.
-%   controlFileName - path to the control file (with/without extestion)
-%   correctedPerimeterFileName - path to the corrected perimeter data file
+% Optional key/value pairs (display and I/O):
+%  'verbosity'            - Level of verbosity. [none, full]
 %
-% Optional key/value pairs (verbosity and I/O)
-%  'verbosity' - level of verbosity. [none, full]
+% Optional key/value pairs (environment)
+%  'tbSnapshot'           - This should contain the output of the
+%                           tbDeploymentSnapshot performed upon the result
+%                           of the tbUse command. This documents the state
+%                           of the system at the time of analysis.
+%  'timestamp'            - AUTOMATIC; The current time and date
+%  'username'             - AUTOMATIC; The user
+%  'hostname'             - AUTOMATIC; The host
 %
-% Optional key/value pairs (Environment parameters)
-%  'tbSnapshot' - This should contain the output of the tbDeploymentSnapshot
-%    performed upon the result of the tbUse command. This documents the
-%    state of the system at the time of analysis.
-%  'timestamp' - AUTOMATIC - The current time and date
-%  'username' - AUTOMATIC - The user
-%  'hostname' - AUTOMATIC - The host
+% Outputs:
+%   None. Saves the correctedPerimeterFile
+%
 
 %% Parse input and define variables
 p = inputParser; p.KeepUnmatched = true;
 
-% required input
+% Required
 p.addRequired('perimeterFileName',@isstr);
 p.addRequired('controlFileName',@isstr);
 p.addRequired('correctedPerimeterFileName',@isstr);
 
-% Optional display params
+% Optional display and I/O params
 p.addParameter('verbosity','none',@ischar);
 
-% Environment parameters
+% Optional environment params
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
 p.addParameter('timestamp',char(datetime('now')),@ischar);
 p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischar);

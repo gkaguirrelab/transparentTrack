@@ -1,104 +1,161 @@
 function makeControlFile(controlFileName, perimeterFileName, glintFileName, varargin)
-% makeControlFile(controlFileName, perimeterFileName, glintFileName, varargin)
+% Create a control file of instructions for refinement of pupil perimeters
 %
-% The routine creates and saves a "control file", which is a text (csv)
-% file that instructs subsequent routines as to how a perimeterFile may be
-% cleaned up to remove blinks, eyelid intrusions, or force a particular
-% set of ellipse parameters.
+% Description:
+%   Creates and saves a "control file", which is a text (csv) file that
+%   instructs subsequent routines as to how a perimeter may be cleaned up
+%   to remove blinks, eyelid intrusions, or force a particular set of
+%   ellipse parameters.
 %
-% The control file created here is an initial guess at these instructions.
-% It includes two primary routnes:
+%   The following processing steps are undertaken:
+%     - Blink detection. Frames that lack a glint entirely, or in which the
+%       glint is at a non-plausible location when compared to the average
+%       glint location, are marked as blinks. Frames that are adjacent to
+%       blinks may also be excluded.
+%     - Glint patching. In case the glint is sitting right on the pupil
+%       boundary, the pupil perimeter might be distorted. This step will
+%       apply a black circular patch on the glint location to prevent that.
+%       This will have no effect if the glint location is well within (or
+%       outside) the pupil boudary. This routine operates in a parfor loop.
+% 	  - Pupil cutting. A more time-consuming step examines if removing a 
+%       portion of the perimeter of the pupil boundary produces an
+%       improvement in an initial ellipse fit. This routine operates in a
+%       parfor loop.
 %
-% 1) Blink detection. Frames that lack a glint entirely, or in which the
-% glint is at a non-plausible location when compared to the average glint
-% location, are marked as blinks. Frames that are adjacent to blinks may
-% also be excluded.
-% 2a) Glint patching. In case the glint is sitting right on the pupil
-% boundary, the pupil perimeter might be distorted. This step will apply a
-% black circular patch on the glint location to prevent that. This will
-% have no effect if the glint location is well within (or outside) the
-% pupil boudary. This routine operates in a parfor loop.
-% 2b) A more time-consuming step examines if removing a portion of the
-% perimeter of the pupil boundary produces an improvement in an initial
-% ellipse fit. This routine operates in a parfor loop.
+% Notes:
+%   Parallel pool - Controlled by the key/value pair 'useParallel'. The
+%   routine should gracefully fall-back on serial processing if the
+%   parallel pool is unavailable. Each worker requires ~8 GB of memory to
+%   operate. It is important to keep total RAM usage below the physical
+%   memory limit to prevent swapping and a dramatic slow down in
+%   processing. To use the parallel pool with TbTb, provide the identity of
+%   the repo name in the 'tbtbRepoName', which is then used to configure
+%   the workers.
 %
+% Inputs:
+%	controlFileName       - Full path (including csv extension) to the
+%                           control file 
+%   perimeterFileName     - Full path to the perimeter file
+%   glintFileName         - Full path to the glint file
 %
-% FORMAT OF CONTROL FILE:
-%	Each line of the control file contains "instruction" of the form:
+% Optional key/value pairs (display and I/O):
+%  'verbosity'            - Level of verbosity. [none, full]
+%
+% Optional key/value pairs (flow control)
+%  'nFrames'              - Analyze fewer than the total number of frames.
+%  'useParallel'          - If set to true, use the Matlab parallel pool
+%  'nWorkers'             - Specify the number of workers in the parallel
+%                           pool. If undefined the default number will be
+%                           used.
+%  'tbtbProjectName'      - The workers in the parallel pool are configured
+%                           by issuing a tbUseProject command for the
+%                           project specified here.
+%  'overwriteControlFile' - By default, the routine will not overwrite an
+%                           existing control file. This behavior is
+%                           motivated by the possibility that a human has
+%                           edited the control file to improve analysis,
+%                           and we do not want to overwrite this by
+%                           accident.
+%
+% Optional key/value pairs (environment)
+%  'tbSnapshot'           - This should contain the output of the
+%                           tbDeploymentSnapshot performed upon the result
+%                           of the tbUse command. This documents the state
+%                           of the system at the time of analysis.
+%  'timestamp'            - AUTOMATIC; The current time and date
+%  'username'             - AUTOMATIC; The user
+%  'hostname'             - AUTOMATIC; The host
+%
+% Optional key/value pairs (Blink detection)
+%  'extendBlinkWindow'    - A two element vector that defines the number of
+%                           additional frames flagged as a blink before and
+%                           after a continuous block of blink frames
+%
+% Optional key/value pairs (Glint patching)
+%  'glintZoneRadius'      - The radius (in pixel) of the circular zone in
+%                           which the glint is allowed to be on the frame.
+%                           Any candiate glint beyond this radius will be
+%                           disregarded.
+%  'glintZoneCenter'      - [X Y] location of the glint zone center. If not
+%                           specified, the glint zone Center will be the median value of the
+%                           candidate glint locations throughout the run.
+%  'glintPatchRadius'     - The radius of the glint patch
+%
+% Optional key/value pairs (Pupil cutting)
+%  'ellipseTransparentLB/UB' - Define the hard upper and lower boundaries
+%                           for the ellipse fit, in units of pixels of the
+%                           video. The default values selected here
+%                           represent the physical and mathematical limits,
+%                           as the constraint for the fit will be provided
+%                           by the scene geometry. A mild constraint (0.75)
+%                           is placed upon the eccentricity, corresponding
+%                           to an aspect ration of 3:2.
+%  'sceneGeometryFileName' - Full path to a sceneGeometry file that is to
+%                           be used to provide a non-linear constraint for
+%                           ellipse fitting. If set to empty, no non-linear
+%                           constraint will be applied.
+%  'cutErrorThreshold'    - If the ellipse fit RMSE is larger than this,
+%                           perform a search over pupil cuts
+%  'candidateThetas'      - A grid search of cuts are examined, with the
+%                           cut defined by a theta and a radius. This
+%                           parameter provides a vector of theta values
+%                           that are to be searched. Theta values range
+%                           from 0 (horizontal left), to pi/2 (vertical
+%                           up), to pi (horizontal right), to 3pi/2
+%                           (vertical down). The default value is
+%                           pi/2:pi/16:pi, corresponding to a search of 9
+%                           angles ranging from vertical up to horizontal
+%                           right. We restrict the search to these theta
+%                           angles as we typically observe intrusion on to
+%                           the pupil boundary either by the upper eyelid
+%                           or by a non-uniform "shadow" of IR illuination
+%                           arising from the horizontal right side of the
+%                           image.
+%  'radiusDivisions'      - Controls how many divisions between the
+%                           geometric center of the pupil perimeter and the
+%                           outer edge are to be examined with a pupil cut.
+%                           A larger number results in a longer
+%                           search of finer sizes of cuts.
+%  'minRadiusProportion'  - This defines the stopping point for the amount
+%                           of the pupil that can be cut. When set to zero
+%                           (the default) the largest cut that will be
+%                           considered is one that passes through the
+%                           center of the pupil perimeter. A positive value
+%                           (e.g., 0.5) limits the maximum cut to that
+%                           proportion of the radius. A negative proportion
+%                           would allow a cut to remove more than half of
+%                           the total pupil radius.
+%  'pixelBoundaryThreshold' - A search across theta values and radius 
+%                           divisionscontinues until a cut is found that is
+%                           below the 'cutErrorThreshold'. If no cut that
+%                           meets this criteria is found, we retain the cut
+%                           that resulted in the lowest RMSE. The frame
+%                           will be marked as 'bad' if, after cutting,
+%                           fewer pixels remain than is given by this
+%                           parameter.
+%  'badFrameErrorThreshold' - The other way that a frame will be marked as
+%                           bad at the conclusion of a cut search. If the
+%                           RMSE of the ellipse fit is above this
+%                           threshold, mark as bad.
+%
+% Outputs:
+%   The routine does not return any variables, but does output a file.
+%
+%   Format of controlFile - Each line of the control file contains an 
+%       "instruction" of the form:
 %       FRAME NUMBER, INSTRUCTION TYPE, INSTRUCTION PARAMS (variable #)
 %
 %	where:
-%       FRAME NUMBER: frame on which to apply the instruction.
-%       INSTRUCTION TYPE: what to do on the frame.
+%       FRAME NUMBER: frame on which to apply the instruction
+%       INSTRUCTION TYPE: what to do on the frame
 %       INSTRUCTION PARAMS: variable number of params necessary to execute
 %           the instruction.
 %
-%   This routine generates instructions of the type "blink" and "cut".
-%   Other available instructions are "ellipse", with the parameters of a
-%   forced ellipse, and "%" which marks a non-executed comment
+%   This routine generates instructions of the type "blink", "cut", "glint
+%   patch", and "bad". Additional legal instructions are "ellipse", with
+%   the parameters of a forced ellipse, and "%", which marks a non-executed
+%   comment
 %
-% Input (required)
-%	controlFileName - full path to the control file (including csv extension)
-%   perimeterFileName - the full path to the perimeter file
-%   glintFileName - the full path to the glint file
-%
-% Options (analysis)
-%   glintZoneRadius - the radius (in pixel) of the circular zone in which
-%       the glint is allowed to be on the frame. Any candiate glint beyond
-%       this radius will be disregarded.
-%   glintZoneCenter - [X Y] location of the glint zone center. If not
-%       specified, the glint zone Center will be the median value of the
-%       candidate glint locations throughout the run.
-%	extendBlinkWindow - a two element vector that defines the number of
-%       additional frames flagged as a blink before and after a continuous
-%       block blinks
-%   glintPatchRadius - the radius of the glint patch
-%   pixelBoundaryThreshold - the number of pixels required to be on the
-%       pupil boundary (either originally or after cutting) to not be
-%       marked as bad
-%   cutErrorThreshold - the distance error tolerated before attempting to
-%       cut
-%  'ellipseTransparentLB/UB' - Define the hard upper and lower boundaries
-%     for the ellipse fit, in units of pixels of the video. The center
-%     points should be constrained to the size of the video.
-%     Eccentricity is related to ratio of the semimajor and semiminor axes,
-%     and can be calculated using:
-%           eccentricity = axes2ecc(semimajor, semiminor)
-%     For example, if we wish to prevent ellipses with an aspect ratio
-%     greater than 3 : 2, this gives us an eccentricity UB of ~0.75.
-%   radiusDivisions - Controls how many divisions between the geometric
-%       center of the pupil perimeter and the outer edge are examined with
-%       a pupil cut.
-%   minRadiusProportion - This defines the stopping point for the amount of
-%       the pupil that can be cut. When set to zero (the default) the
-%       largest cut that will be considered is one that passes through the
-%       center of the pupil perimeter. A positive value (e.g., 0.5) limits
-%       the maximum cut to that proportion of the radius. A negative
-%       proportion would allow a cut to remove more than half of the total
-%       pupil radius.
-%
-% Optional key/value pairs (verbosity and I/O)
-%  'verbosity' - level of verbosity. [none, full]
-%
-% Optional key/value pairs (flow control)
-%   overwriteControlFile - by default, the routine will not overwrite an
-%       existing control file. This behavior is motivated by the possibility
-%       that a human has edited the control file to improve analysis, and
-%       we do not want to overwrite this by accident.
-%  'useParallel' - If set to true, use the Matlab parallel pool for the
-%    initial ellipse fitting.
-%  'nWorkers' - Specify the number of workers in the parallel pool. If
-%    undefined the default number will be used.
-%  'tbtbProjectName' - The workers in the parallel pool are configured by
-%    issuing a tbUseProject command for the project specified here.
-%
-% Optional key/value pairs (Environment parameters)
-%  'tbSnapshot' - This should contain the output of the tbDeploymentSnapshot
-%    performed upon the result of the tbUse command. This documents the
-%    state of the system at the time of analysis.
-%  'timestamp' - AUTOMATIC - The current time and date
-%  'username' - AUTOMATIC - The user
-%  'hostname' - AUTOMATIC - The host
 
 
 %% Parse input and define variables
@@ -109,41 +166,41 @@ p.addRequired('controlFileName',@isstr);
 p.addRequired('perimeterFileName',@isstr);
 p.addRequired('glintFileName',@isstr);
 
-% Optional analysis params -- glint patch
-p.addParameter('glintZoneRadius', 80, @isnumeric);
-p.addParameter('glintZoneCenter', [], @isnumeric);
-p.addParameter('extendBlinkWindow', [5,10], @isnumeric);
-p.addParameter('glintPatchRadius', 20, @isnumeric);
-
-% Optional analysis params -- search over pupil cuts
-p.addParameter('pixelBoundaryThreshold', 100, @isnumeric);
-p.addParameter('cutErrorThreshold', 1, @isnumeric);
-p.addParameter('badFrameErrorThreshold', 2, @isnumeric);
-p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, 0],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('ellipseTransparentUB',[640,480,20000,1, pi],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('candidateThetas',pi/2:pi/16:pi,@isnumeric);
-p.addParameter('radiusDivisions',5,@isnumeric);
-p.addParameter('minRadiusProportion',0,@isnumeric);
-
-% Optional analysis params -- sceneGeometry fitting constraint
-p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
-    
-% Optional display params
+% Optional display and I/O params
 p.addParameter('verbosity','none',@ischar);
 
 % Optional flow control params
-p.addParameter('overwriteControlFile',false,@islogical);
 p.addParameter('nFrames',Inf,@isnumeric);
 p.addParameter('useParallel',false,@islogical);
 p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('tbtbRepoName','transparentTrack',@ischar);
+p.addParameter('overwriteControlFile',false,@islogical);
 
-% Environment parameters
+% Optional environment parameters
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
 p.addParameter('timestamp',char(datetime('now')),@ischar);
 p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischar);
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
+% Optional analysis params -- Blink detection
+p.addParameter('extendBlinkWindow', [5,10], @isnumeric);
+
+% Optional analysis params -- Glint patching
+p.addParameter('glintZoneRadius', 80, @isnumeric);
+p.addParameter('glintZoneCenter', [], @isnumeric);
+p.addParameter('glintPatchRadius', 20, @isnumeric);
+
+% Optional analysis params -- Pupil Cutting
+p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, 0],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('ellipseTransparentUB',[640,480,20000,1, pi],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
+p.addParameter('cutErrorThreshold', 1, @isnumeric);
+p.addParameter('candidateThetas',pi/2:pi/16:pi,@isnumeric);
+p.addParameter('radiusDivisions',5,@isnumeric);
+p.addParameter('minRadiusProportion',0,@isnumeric);
+p.addParameter('pixelBoundaryThreshold', 100, @isnumeric);
+p.addParameter('badFrameErrorThreshold', 2, @isnumeric);
+    
 % parse
 p.parse(controlFileName, perimeterFileName, glintFileName, varargin{:})
 

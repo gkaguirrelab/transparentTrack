@@ -1,84 +1,74 @@
-function deinterlaceVideo (inputVideoName, outputVideoName, varargin)
-% deinterlaceVideo (inputVideoName, outputVideoName)
+function deinterlaceVideo (videoInFileName, videoOutFileName, varargin)
+% Deinterlace NTSC DV 30Hz video
+%
+% Description:
+%   This function deinterlaces NTSC DV 30Hz videos, saving out
+%   progressive 60 Hz videos, using a "bob deinterlacing" strategy.
+%
+%   The video is also converted to gray scale.
+%
+%   Four deinterlace strategies are available (bobMode):
+%       'Raw' - extract 2 fields for every frame. Save progressive video.
+%               Final spatial resolution is half the original resolution.
+%       'Zero' - extract 2 fields for every frame. Alternate every row with a
+%               row of zeros to preserve aspect ratio.
+%       'Double' - extract 2 fields for every frame. Duplicate each raw to
+%               preserve aspect ratio.
+%       'Mean' - extract 2 fields for every frame. Add a row with the mean of
+%               two consecutive rows to preserve aspect ratio.
+%
+%   References on bob techniques for deinterlacing and on deinterlacing in
+%   general:
+%       https://www.altera.com/content/dam/altera-www/global/en_US/pdfs/literature/wp/wp-01117-hd-video-deinterlacing.pdf
+%       http://www.100fps.com/
+%
+% Inputs:
+%	videoInFileName       - Full path to the video to deinterlace
+%   videoOutFileName      - Full path to the output .avi file
+%
+% Optional key/value pairs (display and I/O):
+%  'verbosity'            - Level of verbosity. [none, full]
+%
+% Optional key/value pairs (flow control):
+%  'nFrames'              - Analyze fewer than the total number of frames
+%  'startFrame'           - Which frame to start on
+%
+% Optional key/value pairs (analysis):
+%  'bobMode'              - deinterlace strategy
+%  'convertToGray'        - if set to true (default), the video will also
+%                           be converted to grayscale.
+% Outputs:
+%   None
+%
 
-% This function deinterlaces NTSC DV 30Hz videos, saving out
-% progressive 60 Hz videos, using a "bob deinterlacing" strategy.
-%
-% The video is also converted to gray scale.
-%
-% Four deinterlace strategies are available (bobMode):
-% 'Raw'    =  extract 2 fields for every frame. Save progressive video.
-%             Final spatial resolution is half the original resolution.
-% 'Zero'   =  extract 2 fields for every frame. Alternate every row with a
-%             row of zeros to preserve aspect ratio.
-% 'Double' =  extract 2 fields for every frame. Duplicate each raw to
-%             preserve aspect ratio.
-% 'Mean'   =  extract 2 fields for every frame. Add a row with the mean of
-%             two consecutive rows to preserve aspect ratio.
-
-% References on bob techniques for deinterlacing and on deinterlacing in
-% general:
-% https://www.altera.com/content/dam/altera-www/global/en_US/pdfs/literature/wp/wp-01117-hd-video-deinterlacing.pdf
-% http://www.100fps.com/
-%
-% Output
-%   an AVI video is saved out.
-%
-% Input (required)
-%	inputVideoName - full path to the video to deinterlace
-%	outputVideoName - full path to the deinterlaced output video
-%
-% Options (analysis)
-%   bobMode - deinterlace strategy convertToGray - if set to true
-%   (default), the video will also be converted to grayscale.
-%
-% Options (verbosity and display)
-%   verbosity - controls console status updates
-%
-% Options (flow control)
-%  nFrames' - analyze fewer than the total number of frames.
-%  startFrame - which frame to start on
-%
-% Options (environment)
-%   tbSnapshot - the passed tbSnapshot output that is to be saved along
-%      with the data
-%   timestamp / username / hostname - these are automatically derived and
-%      saved within the p.Results structure.
-%
 
 %% parse input and define variables
 p = inputParser; p.KeepUnmatched = true;
 
-% required input
-p.addRequired('inputVideoName',@isstr);
-p.addRequired('outputVideoName',@isstr);
+% Required
+p.addRequired('videoInFileName',@isstr);
+p.addRequired('videoOutFileName',@isstr);
 
-% optional inputs
-p.addParameter('bobMode', 'Mean', @isstr);
-p.addParameter('convertToGray',true,@islogical)
-
-% verbosity
+% Optional display and I/O params
 p.addParameter('verbosity', 'none', @isstr);
 
-% flow control
+% Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
 p.addParameter('startFrame',1,@isnumeric);
 
-% environment parameters
-p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
-p.addParameter('timestamp',char(datetime('now')),@ischar);
-p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischar);
-p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
+% Optional analysis params
+p.addParameter('bobMode', 'Mean', @isstr);
+p.addParameter('convertToGray',true,@islogical)
 
 % parse
-p.parse(inputVideoName,outputVideoName,varargin{:})
+p.parse(videoInFileName,videoOutFileName,varargin{:})
 
 % define variables
 bobMode = p.Results.bobMode;
 
 %% Load video to deinterlace and set parameters for output video file.
 
-inObj = VideoReader(inputVideoName);
+inObj = VideoReader(videoInFileName);
 
 if p.Results.nFrames == Inf
     nFrames = floor(inObj.Duration*inObj.FrameRate);
@@ -86,7 +76,7 @@ else
     nFrames=p.Results.nFrames;
 end
 
-Bob = VideoWriter(outputVideoName);
+Bob = VideoWriter(videoOutFileName);
 Bob.FrameRate = inObj.FrameRate * 2;
 Bob.Quality = 100;
 

@@ -1,105 +1,121 @@
 function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
-%  [glintData] = trackGlint(grayVideoName, glintFileName, varargin)
+% Identifies one or more glints in the frames of an IR video of the eye
 %
-% This function tracks one or more glints in an IR video using a simple
-% thresholding and region property identification approach.
+% Description:
+%   This function tracks one or more glints in an IR video using a simple
+%   thresholding and region property identification approach.
 %
-% Every frame is first corrected with a gamma > 1, so that
-% glints and other large bright spot are enhanced. The image is then
-% binarized with a relatively high threshold, so that only the bright spots
-% and their immediate surroundings remain as non-zero values. The
-% centroids of each surviving region in the binary image are extracted using
-% matlab's function "regionprops". The centroid location is weighted with
-% the actual brightness value of each pixel in the gray gamma-corrected
-% image.
+%   Every frame is first corrected with a gamma > 1, so that glints and
+%   other large bright spot are enhanced. The image is then binarized with
+%   a relatively high threshold, so that only the bright spots and their
+%   immediate surroundings remain as non-zero values. The centroids of each
+%   surviving region in the binary image are extracted using the MATLAB
+%   function "regionprops". The centroid location is weighted with the
+%   actual brightness value of each pixel in the gray gamma-corrected
+%   image.
 %
-% After all centroid locations are extracted, data is refined according to
-% the expected number of glints and average centroid location throughout
-% the video. Firstly, we calculate the median location of the glints from
-% those frames that return as many centroids as the desired glints. For
-% those frames in which more than the expected number of glints is found,
-% we use the median value of the "good centroids" location to assess which
-% of the regions identified are indeed the desired glints. In frames where
-% less than the desired number of glints is located, the missing centroids
-% locations will be set as NaNs.
+%   After all centroid locations are extracted, data is refined according
+%   to the expected number of glints and average centroid location
+%   throughout the video. Firstly, we calculate the median location of the
+%   glints from those frames that return as many centroids as the desired
+%   glints. For those frames in which more than the expected number of
+%   glints is found, we use the median value of the "good centroids"
+%   location to assess which of the regions identified are indeed the
+%   desired glints. In frames where less than the desired number of glints
+%   is located, the missing centroids locations will be set as NaNs.
+%
+% Notes:
+%   Coordinate system - the function "regionprops" will save the centroids
+%   in world coordinates (origin top left corner of the frame, xlim = [0
+%   horizontalRes], ylim = [0 verticalRes], therefore, the glint data will
+%   also be expressed in world coordinates.
 % 
-% Note on the coordinate system: the function "regionprops" will save the
-% centroids in world coordinates (origin top left corner of the frame, xlim
-% = [0 horizontalRes], ylim = [0 verticalRes], therefore, the glint data
-% will also be expressed in world coordinates.
-% 
-% DEVELOPMENT PLACEHOLDER: if the expected nuber of glints is greater than
-% 1, the centroids will be sorted in the N more likely glints subgroups,
-% where N = number of expected glints. This has not yet been implemented.
+%   Development placeholder - if the expected nuber of glints is greater
+%   than 1, the centroids will be sorted in the N more likely glints
+%   subgroups, where N = number of expected glints. This has not yet been
+%   implemented.
+%
+% Inputs:
+%	grayVideoName         - Full path to the video in which to track the
+%                           glint. A grayscale video is expected
+%   glintFileName         - Full path to the glint file
+%
+% Optional key/value pairs (display and I/O):
+%  'verbosity'            - Level of verbosity. [none, full]
+%  'displayMode'          - If set to true, a continuously updated video
+%                           displays the glint fitting. This is slow but
+%                           may be useful while setting analysis params.
+%
+% Optional key/value pairs (flow control)
+%  'nFrames'              - Analyze fewer than the total number of frames.
+%
+% Optional key/value pairs (environment)
+%  'tbSnapshot'           - This should contain the output of the
+%                           tbDeploymentSnapshot performed upon the result
+%                           of the tbUse command. This documents the state
+%                           of the system at the time of analysis.
+%  'timestamp'            - AUTOMATIC; The current time and date
+%  'username'             - AUTOMATIC; The user
+%  'hostname'             - AUTOMATIC; The host
+%
+% Optional key/value pairs (analysis)
+%  'numberOfGlints'       - Desired number of glints to find
+%  'glintGammaCorrection' - Gamma correction to be applied in current
+%                           frame. An extremely high value will make almost
+%                           all the frame black and only big bright spots
+%                           will be white. This reduces the possibility of
+%                           confusing the glint with some other smaller
+%                           bright spot (default 1.5, decrease if no glint
+%                           is found, increase if too many glints are
+%                           found)
+%  'glintThreshold' 	  - Threshold value to binarize the glint gray
+%                           image. Should be set to preserve both the
+%                           glints and any "halo" around them.(default
+%                           value 0.8)
+%  'glintFrameMask'       - Add a mask on the original gray video, framing
+%                           it by [nRows nColumns] on the borders
+%                           symmetrically or by [nRowsTop nColumnsRight
+%                           nRowsBottom nColumnsLeft].
+%  'frameMaskValue'       - The image value that is assigned to the region
+%                           that is masked by frameMask. This should be a
+%                           gray that is neither pupil nor glint.
+%  'centroidsAllocation'  - Max number of centroids to be saved in memory
 %
 % Output
-%	glintData : structure with fields that contain the X and Y location of
-%       the center of the glint (in units of pixels), and a meta field with
-%       additional analysis params and intermediate results.
-%
-% Input (required)
-%	grayVideoName : full path to the video in which to track the glint.
-%   	A grayscale video is expected.
-%   glintFileName : full path to the matFile in which to save the glint
-%       results.
-%
-% Options (analysis)
-%   numberOfGlints : desired number of glint to find % >1 TO BE DEVELOPED
-%	glintGammaCorrection : gamma correction to be applied in current
-%       frame. An extremely high value will make almost all the frame black
-%       and only big bright spots will be white. This reduces the
-%       possibility of confusing the glint with some other smaller bright
-%       spot (default 1.5, decrease if no glint is found, increase if too 
-%       many glints are found)
-%   glintThreshold : threshold value to binarize the glint gray image.
-%       Should be set to preserve both the glints and any "halo" around
-%       them.(default value 0.8)
-%   glintFrameMask : this option with add a mask on the original gray video, 
-%       framing it by [nRows nColumns] on the borders symmetrically or by
-%       [nRowsTop nColumnsRight nRowsBottom nColumnsLeft].
-%   frameMaskValue : the image value that is assigned to the region that is
-%       masked by frameMask. This should be a gray that is neither pupil
-%       nor glint.
-%   centroidsAllocation : max number of centroids to be saved in memory
-
-% Optional key/value pairs (flow control)
-%  'nFrames' - analyze fewer than the total number of frames.
-%
-% Options (environment)
-%   tbSnapshot - the passed tbSnapshot output that is to be saved along
-%      with the data
-%   timestamp / username / hostname - these are automatically derived and
-%      saved within the p.Results structure.
+%	glintData             - Structure with fields that contain the X and Y
+%                           location of the center of the glint (in units
+%                           of pixels), and a meta field with additional
+%                           analysis params and intermediate results.
 %
 
 %% parse input and define variables
 
 p = inputParser; p.KeepUnmatched = true;
 
-% Required input
+% Required
 p.addRequired('grayVideoName',@isstr);
 p.addRequired('glintFileName',@isstr);
 
-% optional analysis parameters
-p.addParameter('numberOfGlints', 1, @isnumeric); %% MORE THAN 1 TO BE DEVELOPED
-p.addParameter('glintGammaCorrection', 5, @isnumeric);
-p.addParameter('glintThreshold', 0.8, @isnumeric);
-p.addParameter('glintFrameMask',[] , @isnumeric);
-p.addParameter('frameMaskValue', 30, @isnumeric);
-p.addParameter('centroidsAllocation', 5, @isnumeric);
-
-% Optional display params
+% Optional display and I/O params
 p.addParameter('verbosity','none',@ischar);
 p.addParameter('displayMode',false,@islogical);
 
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
 
-% Environment parameters
+% Optional environment params
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
 p.addParameter('timestamp',char(datetime('now')),@ischar);
 p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischar);
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
+
+% Optional analysis params
+p.addParameter('numberOfGlints', 1, @isnumeric); %% MORE THAN 1 TO BE DEVELOPED
+p.addParameter('glintGammaCorrection', 5, @isnumeric);
+p.addParameter('glintThreshold', 0.8, @isnumeric);
+p.addParameter('glintFrameMask',[] , @isnumeric);
+p.addParameter('frameMaskValue', 30, @isnumeric);
+p.addParameter('centroidsAllocation', 5, @isnumeric);
 
 % parse
 p.parse(grayVideoName, glintFileName, varargin{:})
