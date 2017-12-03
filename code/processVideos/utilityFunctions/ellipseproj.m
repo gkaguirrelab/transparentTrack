@@ -1,14 +1,17 @@
 function Wp = ellipseproj(W, center, axes, angle)
+% An overloaded version of the ellipseproj routine from quadfit
+%
+% Description:
+%   Because this function is called repeatedly in our fitting routines, we
+%   have created this version that overloads the original function included
+%   as part of the quadfit package. Our version strips away every
+%   non-essential call, and is more lenient in solution tolerance and the
+%   number of iterations. It is more fragile, but suited for our fitting
+%   environment.
+%
+% The original header follows:
 
-%% OVERLOADED FUNCTION
-% Because this function is called repeatedly in our fitting routines, we
-% have created this version that overloads the original function included
-% as part of the quadfit package. Our version strips away every
-% non-essential call, and is more lenient in solution tolerance and the
-% number of iterations. It is more fragile, but suited for our fitting
-% environment.
 
-%% ORIGINAL HEADER
 % Projects a set of points onto an ellipse.
 % The algorithm is proven to converge and reaches an accuracy of 7-8
 % significant digits, and it takes 4-5 iterations per point, on average.

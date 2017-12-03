@@ -1,41 +1,36 @@
 function reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzi, pupilEle, pupilArea, eyeCenter, eyeRadius, projectionModel)
-% reconstructedTransparentEllipse = pupilProjection_fwd(pupilAzi, pupilEle, pupilArea, eyeCenter, eyeRadius, projectionModel)
+% Transform pupil azimuth, elevation, area to an ellipse on the image plane
 %
-% Returns the transparent ellipse params of the pupil projection on the
-% image plane, using the horiziontal and vertical angles of tilt (in
-% degrees) of the pupil center along with the scene geometry.
+% Description:
+%	Returns the transparent ellipse params of the pupil projection on the
+%   image plane, using the horiziontal and vertical angles of tilt (in
+%   degrees) of the pupil center along with the scene geometry.
 %
-% Note that we use degrees to specify pupil azimuth and elevation, but
-% radians for the theta value in the transparent ellipse formulation. This
-% is in part to help us keep the two conceptually separate.
+%   Note that we use degrees to specify pupil azimuth and elevation, but
+%   radians for the theta value in the transparent ellipse formulation.
+%   This is in part to help us keep the two units separate conceptually.
 %
-% Note that the linear units must be uniform (eg. all pixels or all mm) for
-% both the pupil center and the transparent ellipse parameters (where
-% applicable).
+% Inputs:
+%   pupilAzi    - Rotation of the pupil in the XY plane in degrees, with 
+%                 the center being the centerOfProjection on the scene
+%   pupilEle    - Elevation of the pupil from the XY plane in degrees, with
+%                 the center being the centerOfProjection on the scene              
+%   pupilArea   - Pupil area, in the same (squared) units as the 
+%                 transparent ellipse center
+%   eyeCenter   - 3D coordinates of the eye center in the scene reference
+%                 system. This could be a vector assembled from the .X, .Y,
+%                 and .Z vaues of the sceneGeometry.eyeCenter
+%   eyeRadius   - the radius of the eye (this variable may be empty for
+%                 the orthogonal projection case)
+%   projectionModel - string that identifies the projection model to use.
+%                 Options include "orthogonal" and "pseudoPerspective"
 %
 % Outputs:
-%   reconstructedTransparentEllipse - ellipse in transparent form
+%   reconstructedTransparentEllipse  - Ellipse in transparent form
 %
-% Required inputs:
-%   pupilAzi - rotation of the pupil in the XY plane in degrees, with
-%       the center being the center of projection of the eye on the image
-%       plane.
-%   pupilEle - elevation of the pupil from the XY plane in degrees, with
-%       the center being the center of projection of the eye on the image
-%       plane.
-%   pupilArea - if not set to nan, the routine will return the ellipse area
-%   eyeCenter - 3D coordinates of the eye center in the scene reference
-%       system. This could be a vector assembled from the .X, .Y, and .Z
-%       vaues of the sceneGeometry.eyeCenter
-%   eyeRadius - the estimate radius for the eye (can be empty for
-%       orthogonal projection)
-%   projectionModel - string that identifies the projection model to use.
-%       Options include "orthogonal" and "pseudoPerspective"
 
 
-%% main
-
-% initiate reconstructedTransparentEllipse
+% initiate the reconstructedTransparentEllipse
 reconstructedTransparentEllipse = nan(1,5);
 
 % if we have a non-defined case, just return all nans
@@ -91,7 +86,7 @@ elseif abs(pupilEle) < 1e-12 && abs(pupilAzi) >= 1e-12
     theta = pi/2;
 else
     % Couldn't constrain the theta. This shouldn't happen
-    warning('For some reason the theta was unconstrained. Setting to nan'); 
+    warning('For some reason the theta was unconstrained. Leaving as nan'); 
 end
 
 % Keep the theta values between 0 and pi

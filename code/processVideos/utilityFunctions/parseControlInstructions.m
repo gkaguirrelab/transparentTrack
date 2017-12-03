@@ -1,9 +1,19 @@
 function [varargout] = parseControlInstructions(instructionLine)
-% parseControlInstructions(instructionLine,varargin)
+% Returns the parameters for a line of the control file
 %
-% This routine accepts a single line of a control file and then returns a
+% Description:
+%   This routine accepts a single line of a control file and then returns a
 %   variable number of output parameters that contain the instructions for
 %   modifying a frame of a pupil perimeter file.
+%
+% Input:
+%   instructionLine   - A struct that contains a line of elements from a
+%                       control file
+%
+% Output:
+%   varargout         - A variable number of output variables that contain
+%                       the parameters specified in the instructionLine
+%
 
 
 %% parse input
@@ -12,34 +22,29 @@ p = inputParser;
 % required input
 p.addRequired('instructionLine',@isstruct);
 
-%parse
+% parse
 p.parse(instructionLine)
 
 
-%% switch according to type of instruction
-instructionType = instructionLine.type;
-
-switch instructionType
+%% switch according to instruction type
+switch instructionLine.type
     case '%'
-        if displayComments
-        fprintf('Comment for frame %d : \n',instructionLine.frame);
-        fprintf('%s \n', instructionLine.params)
-        end
+        % this was a comment line; nothing to do
     case 'blink'
         % just make sure that the param field is empty
-         params = str2num(instructionLine.params);
+        params = str2double(instructionLine.params);
         if ~isempty(params)
             error ('Invalid number of params for instruction type "blink" (0 expected)')
         end
     case 'bad'
         % just make sure that the param field is empty
-         params = str2num(instructionLine.params);
+        params = str2double(instructionLine.params);
         if ~isempty(params)
             error ('Invalid number of params for instruction type "bad" (0 expected)')
         end
     case 'cut'
         % parse the cut params
-        params = str2num(instructionLine.params);
+        params = str2double(instructionLine.params);
         if length(params) ~= 2
             error ('Invalid number of params for instruction type "cut" (2 expected)')
         else
@@ -48,7 +53,7 @@ switch instructionType
             clear params
         end
     case 'ellipse'
-        params = str2num(instructionLine.params);
+        params = str2double(instructionLine.params);
         if length(params) ~= 5
             error ('Invalid number of params for instruction type "ellipse" (5 expected)')
         else
@@ -57,12 +62,11 @@ switch instructionType
             varargout{3} = params(3); %A
             varargout{4} = params(4); %B
             varargout{5} = params(5); %phi
-            
             clear params
         end
     case 'glintPatch'
         % parse the glintPatch params
-        params = str2num(instructionLine.params);
+        params = str2double(instructionLine.params);
         if length(params) ~= 3
             error ('Invalid number of params for instruction type "glintPatch" (3 expected)')
         else
@@ -72,9 +76,12 @@ switch instructionType
             clear params
         end
     case 'reset'
-         % just make sure that the param field is empty
-         params = str2num(instructionLine.params);
+        % just make sure that the param field is empty
+        params = str2double(instructionLine.params);
         if ~isempty(params)
             error ('Invalid number of params for instruction type "reset" (0 expected)')
         end
-end
+end % switch
+
+end % function
+

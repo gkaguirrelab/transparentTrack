@@ -1,38 +1,36 @@
 function [transparentEllipseParams, RMSE, constraintError] = constrainedEllipseFit(Xp, Yp, lb, ub, nonlinconst)
-% constrainedEllipseFit(x, y, lb, ub, nonlinconst)
+% Non-linear fitting of an ellipse to a set of points
 %
-% This routine is a modification of a non-linear ellipse fitting routine
-% that is found within the "quadfit" matlab central toolbox. This routine
-% is dependent upon the quadfit toolbox.
+% Description:
+%   The routine fits an ellipse to data by minimizing point-to-curve
+%   distance, using an iterative procedure. The search is conducted over
+%   the "transparent" ellipse parameterization, which has explicit values
+%   for area eccentricity (aspect ratio), and theta. This allows us to set
+%   boundaries and non-linear constraints upon these aspects of the fit.
 %
-% The routine fits an ellipse to data by minimizing point-to-curve
-% distance, using an iterative procedure. The search is conducted over a
-% parameterization of the ellipse that we refer to as "transparent"
-% parameters. The transparent parameter set has explicit value for area and
-% eccentricity (aspect ratio). This allows us to set boudnaries and
-% non-linear constraints upon these aspects of the fit.
+%   This routine is a heavily modified version of a non-linear ellipse
+%   fitting routine found within the "quadfit" matlab central toolbox. This
+%   routine is dependent upon the quadfit toolbox.
 %
-% Output arguments:
-%   transparentEllipseParams - parameters of ellipse expressed in
-%       transparent form (row vec)
-%   RMSE - root mean squared error of the distance of each point in the
-%       data to the fitted ellipse
-%   constraintError - the value of the nonlinear constraint function
+% Input:
+%   Xp, Yp    - Vector of points to be fit
+%   lb, ub    - Upper and lower bounds for the fit search, in transparent
+%               ellipse form
+%   nonlinconst - Function handle to a non-linear constraint function. This
+%               function should take as input the set of ellipse parameters
+%               in transparent form and return [c, ceq], where the
+%               optimizer constrains the solution such that c<=0 and ceq=0.
+%               This is an optional input or can be sent as empty.
 %
-% Input arguments
-% x,y:
-%    vector of points that define the edge of the pupil to be fit
+% Output:
+%   transparentEllipseParams - Parameters of the best fitting ellipse
+%               expressed in transparent form [5x1 vector]
+%   RMSE      - Root mean squared error of the distance of each point in
+%               the data to the fitted ellipse
+%   constraintError - The value of the nonlinear constraint function for
+%               the best fitting ellipse
 %
-% lb, ub:
-%    upper and lower bounds for the fit search (in ellipse transparent
-%    form)
 %
-% nonlinconst:
-%    Function handle to a non-linear constraint function. This function
-%    should take as input the set of ellipse parameters in transparent form
-%    and return [c, ceq], where the optimizer constrains the solution such
-%    that c<=0 and ceq=0. This is an optional input or can be sent as
-%    empty.
 
 
 %% Parse input
@@ -49,7 +47,7 @@ p.addRequired('nonlinconst',@(x) (isempty(x) || isa(x, 'function_handle')) );
 p.parse(Xp, Yp, ub, lb, nonlinconst);
 
 
-%% Calculate an initial estimate of the ellipse parameters
+%% Make an initial guess at theellipse parameters
 % This attempt is placed in a try-catch block, as the attempt can fail and
 % return non-real numbers.
 try
@@ -76,8 +74,9 @@ catch
     return
 end
 
-% Define the objective function, which is the RMSE of the distance values
-% of the boundary points to the ellipse fit
+%% Define the objective function
+% This is the RMSE of the distance values of the boundary points to the
+% ellipse fit
 myFun = @(p) sqrt(nanmean(ellipsefit_distance(Xp,Yp,ellipse_transparent2ex(p)).^2));
 
 % If the bounds and the nonlinear constraint function are all empty, then
@@ -88,7 +87,6 @@ if isempty(ub) && isempty(lb) && isempty(nonlinconst)
     constraintError = nan;
     return
 end
-
 
 %% Perform non-linear search for transparent ellipse params
 
@@ -114,6 +112,7 @@ warning('off','MATLAB:nearlySingularMatrix');
 [transparentEllipseParams, RMSE, ~, output] = ...
     fmincon(myFun, pInitTransparent, [], [], [], [], lb, ub, nonlinconst, options);
 
+% Extract the constraint error from the output structure
 constraintError = output.constrviolation;
 
 % If we are close to zero for eccentricity, we may be in a local minimum
@@ -137,7 +136,7 @@ end
 % Restore the warning state
 warning(warningState);
 
-end % MAIN -- constrainedEllipseFit
+end % function -- constrainedEllipseFit
 
 
 
