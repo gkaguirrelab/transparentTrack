@@ -1,61 +1,84 @@
 function calcSizeCalFactors(sizeDataFilesNames, sizeCalFactorsFileName, varargin)
-% calcSizeCalFactors(sizeDataFilesNames,sizeCalFactorsFileName)
+% Calculates the factors needed for size calibration and scene
+% geometry reconstruction.
 %
-% This routine computes the following size conversion factors:
-%   horizontalPxPerMm
-%   verticalPxPerMm
-%   areaSqPxPerSqMm
+% Description:
+%   This routine computes the following calibration factors:
+%     pxPerMm - linear size conversion factor derived from the ground truth
+%       size of the circular calibration dots and the length of the major
+%       axis of the fitted ellipses.
+%     sceneDistanceMM - estimate of the scene distance in millimiters,
+%       derived from the ground truth size of the calibration dot, the size
+%       of the fitted ellipses and the camera properties. If the camera
+%       properties are unknown, this will be returned as empty.
+%  
+%   If more than a single size calibration dataset is used, the final
+%   factors will be the mean of the factors obtained by each of datasets.
+%   The routine automatically checks for the quality of the data
+%   and returns warnings if the standard deviation exceedes a set of
+%   arbitrary thresholds.
 % 
-% If more than a single size calibration dataset is used, the size
-% conversion factor will be the mean of the factors obtained by each of the
-% size videos. The routine automatically checks for the quality of the data
-% and returns warnings if the standard deviation exceedes a set of
-% arbitrary thresholds.
+% Inputs:
+%  sizeDataFilesNames      - cell array containing the names of the dot 
+%                            data files to be used.
+%  sizeFactorsFileName     - name of the mat file to save the size
+%                            conversion factor.
+% 
+% Optional key/value pairs:
+%  'sizeGroundTruthsInput' - array containing the ground truth for the dot 
+%                            size in mm. If left empty (default option),
+%                            the routine will try to retrieve the ground
+%                            truth from the sizeData files names following
+%                            the instructions in the cell array
+%                            groundTruthFinder.
+%  'groundTruthFinder'     - cell array with instruction to retrieve the 
+%                            ground truths from the file name. It is
+%                            composed as follows:
+%                             { numOfDigits position referenceString} 
+%                            where:
+%                            numOfDigits = digits that compose the ground 
+%                                          truth;
+%                            position = either 'before' or 'after' 
+%                                       the reference string.
+%                            referenceString = key piece of string to 
+%                                              locate the ground truth.
+%                                              Note that it is case
+%                                              insensitive.
+%  'stdThreshold'           - 1x2 array with arbitrary thresholds for the 
+%                             standard deviation of each calibration
+%                             factor. If any of those values is exceeded,
+%                             a warning is returned and saved with the
+%                             output.
+%  'cameraFocalLength'      - focal length of the camera in millimiters.
+%  'cameraSensorSizeMM'     - sensor size in mm in the format
+%                             [HorizontalSizeMM VerticalSizeMM].
+%  'cameraModel'            - model to use to estimate the sceneDistance
+%                             from the camera properties (default:
+%                             'pinhole').
 %
-% OUTPUTS: (saved to file)
-%   sizeCalFactors: struct containing the conversion factors for pupil
-%       size expressed for the horizontal direction, vertical direction and
-%       area. In case the calibration is not accurate, a "warnings" field
-%       is created and saved to store warning texts about the accuracy
-%       problems. An additional meta field containing all input params is
-%       also saved.
-% 
-% INPUTS:
-%   sizeDataFilesNames: cell array containing the names of the dot data
-%       files to be used.
-%   sizeFactorsFileName: name of the mat file to save the size
-%       conversion factor.
-% 
-% Optional params:
-%   sizeGroundTruthsInput: array containing the ground truth for the dot size in
-%       mm. If left empty (default option), the routine will try to
-%       retrieve the ground truth from the sizeData files names following
-%       the instructions in the cell array groundTruthFinder.
-%   groundTruthFinder: cell array with instruction to retrieve the ground
-%       truths from the file name. It is composed as follows:
-%           { numOfDigits position referenceString} 
-%           where:
-%           numOfDigits = digits that compose the ground truth
-%           position = either 'before' or 'after' the reference string
-%           referenceString = key piece of string to locate the ground
-%               truth. Note that it is case insensitive.
-%   stdThreshold: 1x3 array with arbitrary thresholds for the standard
-%       deviation of each calibration factor. If any of those values is
-%       exceeded, a warning is returned and saved with the output.
-%   pctAreaDeviationThreshold: arbitrary percentage deviation allowed
-%       between the area factor and  the area derived from the
-%       linear conversion factors. If this threshold is exceeded a warning
-%       is returned and saved with the output.
-% 
-% Optional key/value pairs (display and I/O)
-%  'verbosity' - level of verbosity. [none, full]
+% Optional key/value pairs (display and I/O):
+%  'verbosity'              - Level of verbosity. [none, full]
 %
-% Options (environment)
-%   tbSnapshot - the passed tbSnapshot output that is to be saved along
-%      with the data
-%   timestamp / username / hostname - these are automatically derived and
-%      saved within the p.Results structure.
-%
+% Optional key/value pairs (environment)
+%  'tbSnapshot'             - This should contain the output of the
+%                             tbDeploymentSnapshot performed upon the
+%                             result of the tbUse command. This documents
+%                             the state of the system at the time of
+%                             analysis.
+%  'timestamp'              - AUTOMATIC; The current time and date
+%  'username'               - AUTOMATIC; The user
+%  'hostname'               - AUTOMATIC; The host
+% 
+% Outputs:
+%   sizeCalFactors          - struct containing the conversion factors for pupil
+%                             size in pixel per millimeters and the
+%                             estimated scene distance in millimiters. In
+%                             case the calibration is not accurate, a
+%                             "warnings" field is created and saved to
+%                             store warning texts about the accuracy
+%                             problems. An additional meta field containing
+%                             all input params is also saved.
+
 %% Parse vargin for options passed here
 p = inputParser; p.KeepUnmatched = true;
 
