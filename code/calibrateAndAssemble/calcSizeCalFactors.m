@@ -49,9 +49,14 @@ function calcSizeCalFactors(sizeDataFilesNames, sizeCalFactorsFileName, varargin
 %                             factor. If any of those values is exceeded,
 %                             a warning is returned and saved with the
 %                             output.
-%  'cameraFocalLength'      - focal length of the camera in millimiters.
+%  'cameraFocalLengthMM'      - focal length of the camera in millimiters.
 %  'cameraSensorSizeMM'     - sensor size in mm in the format
 %                             [HorizontalSizeMM VerticalSizeMM].
+%  'sceneResolutionPX       - resolution of the scene in pixels. Note that
+%                             this might be different from the physical
+%                             sensor resolution, and might be related to
+%                             the compression/digitalization strategy
+%                             applied to the video acquisition.
 %  'cameraModel'            - model to use to estimate the sceneDistance
 %                             from the camera properties (default:
 %                             'pinhole').
@@ -89,8 +94,10 @@ p.addRequired('sizeCalFactorsFileName',@ischar);
 % Optional analysis parameters
 p.addParameter('sizeGroundTruthsInput',[], @isnumeric)
 p.addParameter('groundTruthFinder', {1 'before' 'mm'}, @iscell)
-p.addParameter('stdThreshold', [0.5 0.5 8], @isnumeric)
-p.addParameter('pctAreaDeviationThreshold', 1, @isnumeric)
+p.addParameter('stdThreshold', [0.5 0.5], @isnumeric)
+p.addParameter('cameraFocalLengthMM', 1.6, @isnumeric)
+p.addParameter('cameraSensorSizeMM', [4.69 3.54], @isnumeric)
+p.addParameter('sceneResolutionPX', [640 480], @isnumeric)
 
 % Optional display and I/O parameters
 p.addParameter('verbosity','none', @ischar);
