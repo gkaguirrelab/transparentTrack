@@ -1,4 +1,4 @@
-function calcSizeCalFactors(sizeDataFilesNames, sizeCalFactorsFileName, varargin)
+function sizeCalFactors = calcSizeCalFactors(sizeDataFilesNames, sizeCalFactorsFileName, varargin)
 % Calculates the factors needed for size calibration and scene
 % geometry reconstruction.
 %
@@ -94,10 +94,11 @@ p.addRequired('sizeCalFactorsFileName',@ischar);
 % Optional analysis parameters
 p.addParameter('sizeGroundTruthsInput',[], @isnumeric)
 p.addParameter('groundTruthFinder', {1 'before' 'mm'}, @iscell)
-p.addParameter('stdThreshold', [0.5 0.5], @isnumeric)
-p.addParameter('cameraFocalLengthMM', 1.6, @isnumeric)
+p.addParameter('stdThreshold', [0.5 8], @isnumeric)
+p.addParameter('cameraFocalLengthMM', 16, @isnumeric)
 p.addParameter('cameraSensorSizeMM', [4.69 3.54], @isnumeric)
 p.addParameter('sceneResolutionPX', [640 480], @isnumeric)
+p.addParameter('cameraModel', 'pinhole', @ischar)
 
 % Optional display and I/O parameters
 p.addParameter('verbosity','none', @ischar);
@@ -166,71 +167,98 @@ for rr = 1: length(sizeGroundTruths)
     clear tmpTransparent
 end
 
-
 %% Derive conversion factors
 
+% if camera properties are available, determine size of pixels in MM
+if ~any([isempty(p.Results.cameraFocalLengthMM) isempty(p.Results.cameraSensorSizeMM) isempty(p.Results.sceneResolutionPX)])
+    haveCameraFeatures = true;
+    pixelSizeMM = p.Results.cameraSensorSizeMM./p.Results.sceneResolutionPX;
+else
+    haveCameraFeatures = false;
+    pixelSizeMM = nan;
+end
+
 % loop through runs
-for rr = 1: length(sizeGroundTruths) 
-    % loop through frames
-   for ii = 1: size(explicitData{rr},1)
-    % get the X and Y axis length according to orientation of the ellipse
-    if round(cos(explicitData{rr}(ii,5))) == 1
-        horizontalAxis(ii) = explicitData{rr}(ii,3) * 2;
-        verticalAxis(ii) = explicitData{rr}(ii,4) * 2;
-    elseif round(cos(explicitData{rr}(ii,5))) == 0
-        horizontalAxis(ii) = explicitData{rr}(ii,4) * 2;
-        verticalAxis(ii) = explicitData{rr}(ii,3) * 2;
-    end
-    % get ellipse area
-    ellipseArea(ii) = transparentData{rr}(ii,3);
-   end  % loop through frames
-   % gather the all raw values
-   rawValues{rr} = [horizontalAxis' verticalAxis' ellipseArea'];
-   % get an array for median value, std and conversion factor
-   singleRunMedian(rr,:) = [nanmedian(horizontalAxis) nanmedian(verticalAxis) nanmedian(ellipseArea)];
-   singleRunStd(rr,:) = [nanstd(horizontalAxis) nanstd(verticalAxis) nanstd(ellipseArea)];
-   realSize = [sizeGroundTruths(rr) sizeGroundTruths(rr) pi*((sizeGroundTruths(rr)/2)^2)];
-   singleRunFactors(rr,:) = singleRunMedian(rr,:) ./ realSize ;
-   clear horizontalAxis
-   clear verticalAxis
-   clear ellipseArea
-end % loop through runs
+for rr = 1: length(sizeGroundTruths)
     
+    % loop through frames
+    for ii = 1: size(explicitData{rr},1)
+        
+        % get the diameter of the calibration dot
+        dotDiameterPX(ii) = explicitData{rr}(ii,3) * 2;
+        
+    end  % loop through frames
+    
+    % gather the all raw values
+    rawValues{rr} = dotDiameterPX';
+    
+    % get an array for median value, std and conversion factor
+    singleRunMedianPX(rr,:) = nanmedian(dotDiameterPX);
+    singleRunStd(rr,:) = nanstd(dotDiameterPX);
+    realSizeMM = sizeGroundTruths(rr);
+    singleRunPXperMM(rr,:) = singleRunMedianPX(rr,:) ./ realSizeMM ;
+    clear dotDiameterPX
+    
+    % if camera properties are available, use them to determine camera
+    % distance (both in PX and MM)
+    if haveCameraFeatures
+        switch p.Results.cameraModel
+            case 'pinhole'
+                % convert median size for the single runs in MM
+                singleRunMedianMM(rr,:) = singleRunMedianPX(rr,1)*pixelSizeMM(1);
+                
+                % apply the pinhole approximated formula to derive the
+                % scene distance from the camera in MM
+                singleRunSceneDistanceMM(rr,:) = realSizeMM * p.Results.cameraFocalLengthMM / singleRunMedianMM(rr,1);
+                
+                % also get the scene distance in pixels
+                singleRunSceneDistancePX = singleRunSceneDistanceMM ./ pixelSizeMM(1);
+                
+            case 'realCamera'
+                singleRunSceneDistanceMM(rr,:) = (p.Results.cameraFocalLengthMM * realSizeMM * p.Results.sceneResolutionPX(2))/(singleRunMedianPX(rr,1) *p.Results.cameraSensorSizeMM(2));
+                
+                % also get the scene distance in pixels
+                singleRunSceneDistancePX = singleRunSceneDistanceMM ./ pixelSizeMM(1);
+        end
+    else
+        singleRunSceneDistancePX = nan;
+        singleRunSceneDistanceMM = nan;
+    end
+    
+end % loop through runs
+
 
 %% get the conversion factors as the mean of the individual ones
-sizeFactorsMean = mean(singleRunFactors);
-sizeFactorsStd = std(singleRunFactors);
+meanPXperMM = nanmean(singleRunPXperMM);
+sdPXperMM = nanstd(singleRunPXperMM);
 
+meanSceneDistancePX = nanmean(singleRunSceneDistancePX);
+sdSceneDistancePX = nanstd(singleRunSceneDistancePX);
+
+meanSceneDistanceMM = nanmean(singleRunSceneDistanceMM);
+sdSceneDistanceMM = nanstd(singleRunSceneDistanceMM);
 
 %% check if the calibration values are accurate
 warningCounter = 0;
 % check for standard deviation of the calibration factors
-if any(sizeFactorsStd > p.Results.stdThreshold)
+if  sdPXperMM > p.Results.stdThreshold(1)
     warningCounter = warningCounter +1;
     warningMessages{warningCounter} = 'High standard deviation for the calibration factors. The calibration might not be accurate.';
     warning(warningMessages{warningCounter})
 end
 
-% check if linear factors and area factor are coherent
-areaFromLinearFactors = sizeFactorsMean(1) * sizeFactorsMean(2);
-areaFactor = sizeFactorsMean(3);
-pctAreaDeviationFromLinearFactors = abs(areaFactor - areaFromLinearFactors)/areaFactor;
-if pctAreaDeviationFromLinearFactors > p.Results.pctAreaDeviationThreshold
-    warningCounter = warningCounter +1;
-    warningMessages{warningCounter} = 'The area conversion factor is not coherent with the linear conversion factors';
-    warning(warningMessages{warningCounter})
-end
 %% compose sizeFactor struct
 
-sizeCalFactors.horizontalPxPerMm = sizeFactorsMean(1);
-sizeCalFactors.verticalPxPerMm = sizeFactorsMean(2);
-sizeCalFactors.areaSqPxPerSqMm = sizeFactorsMean(3);
+sizeCalFactors.PXperMM = meanPXperMM;
+sizeCalFactors.sceneDistancePX = meanSceneDistancePX;
+sizeCalFactors.sceneDistanceMM = meanSceneDistanceMM;
 
 % add meta fields
 sizeCalFactors.meta = p.Results;
 sizeCalFactors.meta.sizeGroundTruths = sizeGroundTruths;
-sizeCalFactors.meta.sizeFactorsStd = sizeFactorsStd;
-sizeCalFactors.meta.pctAreaDeviationFromLinearFactors = pctAreaDeviationFromLinearFactors;
+sizeCalFactors.meta.sdPXperMM = sdPXperMM;
+sizeCalFactors.meta.sdSceneDistancePX = sdSceneDistancePX;
+sizeCalFactors.meta.sdSceneDistanceMM = sdSceneDistanceMM;
 if warningCounter > 0
     sizeCalFactors.warnings = warningMessages;
     clear warningMessage
