@@ -182,7 +182,6 @@ plot(1:1:nFrames,ellipses(:,3), '.b')
 hold on
 plot(1:1:nFrames,reconstructedPupilArea, 'xr')
 line(1:1:nFrames, (pi*(pupilRadiusOnImage)^2)*ones(1,nFrames),'Color', 'black');
-% rl.Color = 'k';
 xlabel('frame')
 ylabel('reconstructed pupil area')
 axis square
