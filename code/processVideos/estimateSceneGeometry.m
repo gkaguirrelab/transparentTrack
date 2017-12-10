@@ -95,7 +95,7 @@ p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@i
 % Optional analysis params
 p.addParameter('projectionModel','pseudoPerspective',@ischar);
 p.addParameter('sceneGeometryLB',[0, 0, 1325, 25],@isnumeric);
-p.addParameter('sceneGeometryUB',[640, 480, 1325, 250],@isnumeric);
+p.addParameter('sceneGeometryUB',[640, 480, 1325, 500],@isnumeric);
 p.addParameter('cameraDistanceInPixels',1200,@isnumeric);
 p.addParameter('eyeRadius',125,@isnumeric);
 p.addParameter('whichFitFieldMean','ellipseParamsUnconstrained_mean',@ischar);
