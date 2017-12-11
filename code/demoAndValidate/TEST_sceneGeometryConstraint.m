@@ -34,9 +34,9 @@ end
 % along the optical axis of the camera. The pupil rotates on a 125 pixel
 % radius. The pupil has a fixed radius as sweeps the scene back and forth
 % at different elevations.
-eyeRadius =  125;
-pupilRadius = 30;
-sceneDistance = 1200;
+eyeRadius =  332.0173;
+pupilRadius = 59.1135;
+sceneDistance = 805.7827;
 
 % Set up the sceneGeometry
 projectionModel = 'pseudoPerspective';
@@ -74,6 +74,7 @@ for ii = 1:nFrames
     % derive ellipse points from Azimuth and Elevation values
     pupilAzi = allPupilAzi(ii); % in degrees
     pupilEle = allPupilEle(ii); % in degrees
+    
     forwardProjectEllipseParams = pupilProjection_fwd_Yup(pupilAzi, pupilEle, pi*pupilRadius.^2, eyeCenter, eyeRadius, projectionModel);
     pFitExplicit = ellipse_transparent2ex(forwardProjectEllipseParams);
     
@@ -127,6 +128,8 @@ runVideoPipeline( pathParams, ...
     'verbosity', 'full', 'useParallel',true, 'catchErrors', false,...
     'maskBox', [0.9 0.9], ...
     'ellipseTransparentUB',[videoSizeX,videoSizeY, 20000, 1.0, pi],...
+    'eyeRadius',eyeRadius, 'cameraDistanceInPixels',sceneDistance, ...
+    'sceneGeometryLB',[0, 0, sceneDistance+eyeRadius, 25],'sceneGeometryUB',[640, 480, sceneDistance+eyeRadius, 500],...
     'skipStageByNumber',1);
 
 
@@ -288,4 +291,28 @@ end
 
 end % function
 
+
+function XYZ = applyRoll(xyz, rotationDeg)
+    x = xyz(1); y = xyz(2); z=xyz(3);
+	X = x;
+    Y = y .* cosd(rotationDeg) - z .* sind(rotationDeg);
+    Z = y .* sind(rotationDeg) + z .* cosd(rotationDeg);
+    XYZ=[X Y Z];
+end
+
+function XYZ = applyPitch(xyz, rotationDeg)
+    x = xyz(1); y = xyz(2); z=xyz(3);
+	X = x .* cosd(rotationDeg) + z .* sind(rotationDeg);
+    Y = y;
+    Z = - x .* sind(rotationDeg) + z .* cosd(rotationDeg);
+    XYZ=[X Y Z];
+end
+
+function XYZ = applyYaw(xyz, rotationDeg)
+    x = xyz(1); y = xyz(2); z=xyz(3);
+    X = x .* cosd(rotationDeg) - y .* sind(rotationDeg);
+    Y = x .* sind(rotationDeg) + y .* cosd(rotationDeg);
+    Z = z;
+    XYZ=[X Y Z];
+end
 
