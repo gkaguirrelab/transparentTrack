@@ -87,6 +87,8 @@ for ii = 1:nFrames
     % overlay a glint
     glintPositionX = forwardProjectEllipseParams(1) - (forwardProjectEllipseParams(1)-videoSizeX/2).*0.15;
     glintPositionY = forwardProjectEllipseParams(2) - (forwardProjectEllipseParams(2)-videoSizeY/2).*0.15;    
+%      glintPositionX = videoSizeX/2 + 2 ;
+%     glintPositionY = videoSizeY/2 + 2;  
     tempImage = insertShape(tempImage,'filledCircle',[glintPositionX, glintPositionY, 5],'Color','w','Opacity',1);
     
     % display the frame
@@ -124,14 +126,33 @@ close (writerObj);
 
 
 %% Perform the analysis with one call
-runVideoPipeline( pathParams, ...
-    'verbosity', 'full', 'useParallel',true, 'catchErrors', false,...
-    'maskBox', [0.9 0.9], ...
-    'ellipseTransparentUB',[videoSizeX,videoSizeY, 20000, 1.0, pi],...
-    'eyeRadius',eyeRadius, 'cameraDistanceInPixels',sceneDistance, ...
-    'sceneGeometryLB',[0, 0, sceneDistance+eyeRadius, 25],'sceneGeometryUB',[640, 480, sceneDistance+eyeRadius, 500],...
-    'skipStageByNumber',1);
+% runVideoPipeline( pathParams, ...
+%     'verbosity', 'full', 'useParallel',false, 'catchErrors', false,...
+%     'maskBox', [0.9 0.9], ...
+%     'overwriteControlFile',true, ...
+%     'ellipseTransparentUB',[videoSizeX,videoSizeY, 20000, 1.0, pi],...
+%     'eyeRadius',eyeRadius, 'cameraDistanceInPixels',sceneDistance, ...
+%     'sceneGeometryLB',[0, 0, sceneDistance+eyeRadius, 25],'sceneGeometryUB',[640, 480, sceneDistance+eyeRadius, 500],...
+%     'skipStageByNumber',1);
 
+%% run short version of analysis
+perimeterFileName = fullfile(sandboxDir, 'synthetic_perimeter.mat');
+pupilFileName = fullfile(sandboxDir, 'syntheticPerimeter_pupil.mat');
+sceneGeometryFileName = fullfile(sandboxDir, 'syntheticPerimeter_sceneGeometry.mat');
+sceneDiagnosticPlotFileName = fullfile(sandboxDir, 'syntheticPerimeter_sceneDiagnosticPlot.pdf');
+finalFitVideoName = fullfile(sandboxDir, 'syntheticPerimeter_finalFit.avi');
+
+
+findPupilPerimeter(videoName,perimeterFileName,'verbosity','full','maskBox', [0.9 0.9]);
+fitPupilPerimeter(perimeterFileName, pupilFileName,'verbosity','full','ellipseTransparentLB',[],'ellipseTransparentUB',[],'nSplits',0);
+sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileName,'sceneDiagnosticPlotFileName', sceneDiagnosticPlotFileName,'sceneDiagnosticPlotSizeXY', [videoSizeX videoSizeY], ...
+    'projectionModel','pseudoPerspective', ...
+    'eyeRadius',eyeRadius, 'cameraDistanceInPixels',sceneDistance, ...
+    'sceneGeometryLB',[0, 0, sceneDistance, 25],'sceneGeometryUB',[640, 480, sceneDistance, 500], ...
+    'verbosity','full');
+fitPupilPerimeter(perimeterFileName,pupilFileName,'sceneGeometryFileName',sceneGeometryFileName,'ellipseTransparentLB',[0, 0, 300, 0, 0],'ellipseTransparentUB',[videoSizeX,videoSizeY,20000,1.0, pi],'verbosity','full');
+pupilData = smoothPupilArea(perimeterFileName, pupilFileName, sceneGeometryFileName,'verbosity','full');
+makeFitVideo(videoName, finalFitVideoName, 'pupilFileName',pupilFileName,'sceneGeometryFileName',sceneGeometryFileName,'perimeterFileName',perimeterFileName,'perimeterColor','r','whichFieldToPlot','ellipseParamsAreaSmoothed_mean','verbosity','full')
 
 %% Verify that the scene geometry allows for the correct reconstruction of the eye position
 % note on the pupil area reconstruction: matlab uses different pixel
@@ -143,8 +164,8 @@ runVideoPipeline( pathParams, ...
 % that definining a pupilRadiusOnImage, which is half a pixel shorter than
 % pupilRadius we used to construct the TEST video.
 
-load(fullfile(pathParams.dataOutputDirFull,[pathParams.runName '_pupil.mat']));
-load(fullfile(pathParams.dataOutputDirFull,[pathParams.runName '_sceneGeometry.mat']));
+% load(fullfile(pathParams.dataOutputDirFull,[pathParams.runName '_pupil.mat']));
+% load(fullfile(pathParams.dataOutputDirFull,[pathParams.runName '_sceneGeometry.mat']));
 
 ellipses = pupilData.ellipseParamsAreaSmoothed_mean;
 pupilRadiusOnImage = pupilRadius - 0.5;
@@ -211,9 +232,9 @@ if any(isnan([pupilAzi pupilEle]))
 end
 
 % calculate the pupilCenter3D
-pupilCenter3D(1) = eyeRadius*sind(pupilAzi)*cosd(pupilEle);
-pupilCenter3D(2) = - eyeRadius*sind(pupilEle);
-pupilCenter3D(3) = eyeRadius*cosd(pupilAzi)*cosd(pupilEle);
+pupilCenter3D(1) = ( eyeRadius) *sind(pupilAzi)*cosd(pupilEle);
+pupilCenter3D(2) = -(eyeRadius)*sind(pupilEle);
+pupilCenter3D(3) = (eyeCenter(3) - eyeRadius)-(eyeRadius)*cosd(pupilAzi)*cosd(pupilEle);
 
 % define ellipse center
 switch projectionModel
