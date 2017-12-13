@@ -7,10 +7,11 @@ function sizeCalFactors = calcSizeCalFactors(sizeDataFilesNames, sizeCalFactorsF
 %     pxPerMm - linear size conversion factor derived from the ground truth
 %       size of the circular calibration dots and the length of the major
 %       axis of the fitted ellipses.
-%     sceneDistanceMM - estimate of the scene distance in millimiters,
-%       derived from the ground truth size of the calibration dot, the size
-%       of the fitted ellipses and the camera properties. If the camera
-%       properties are unknown, this will be returned as empty.
+%     sceneDistanceMM{sceneDistancePX} - estimate of the scene distance in 
+%       millimiters {pixels}, derived from the ground truth size of the
+%       calibration dot, the size of the fitted ellipses and the camera
+%       properties. If the camera properties are unknown, this will be
+%       returned as empty.
 %  
 %   If more than a single size calibration dataset is used, the final
 %   factors will be the mean of the factors obtained by each of datasets.
