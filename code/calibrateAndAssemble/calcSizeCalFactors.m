@@ -1,61 +1,90 @@
-function calcSizeCalFactors(sizeDataFilesNames, sizeCalFactorsFileName, varargin)
-% calcSizeCalFactors(sizeDataFilesNames,sizeCalFactorsFileName)
+function sizeCalFactors = calcSizeCalFactors(sizeDataFilesNames, sizeCalFactorsFileName, varargin)
+% Calculates the factors needed for size calibration and scene
+% geometry reconstruction.
 %
-% This routine computes the following size conversion factors:
-%   horizontalPxPerMm
-%   verticalPxPerMm
-%   areaSqPxPerSqMm
+% Description:
+%   This routine computes the following calibration factors:
+%     pxPerMm - linear size conversion factor derived from the ground truth
+%       size of the circular calibration dots and the length of the major
+%       axis of the fitted ellipses.
+%     sceneDistanceMM{sceneDistancePX} - estimate of the scene distance in 
+%       millimiters {pixels}, derived from the ground truth size of the
+%       calibration dot, the size of the fitted ellipses and the camera
+%       properties. If the camera properties are unknown, this will be
+%       returned as empty.
+%  
+%   If more than a single size calibration dataset is used, the final
+%   factors will be the mean of the factors obtained by each of datasets.
+%   The routine automatically checks for the quality of the data
+%   and returns warnings if the standard deviation exceedes a set of
+%   arbitrary thresholds.
 % 
-% If more than a single size calibration dataset is used, the size
-% conversion factor will be the mean of the factors obtained by each of the
-% size videos. The routine automatically checks for the quality of the data
-% and returns warnings if the standard deviation exceedes a set of
-% arbitrary thresholds.
+% Inputs:
+%  sizeDataFilesNames      - cell array containing the names of the dot 
+%                            data files to be used.
+%  sizeFactorsFileName     - name of the mat file to save the size
+%                            conversion factor.
+% 
+% Optional key/value pairs:
+%  'sizeGroundTruthsInput' - array containing the ground truth for the dot 
+%                            size in mm. If left empty (default option),
+%                            the routine will try to retrieve the ground
+%                            truth from the sizeData files names following
+%                            the instructions in the cell array
+%                            groundTruthFinder.
+%  'groundTruthFinder'     - cell array with instruction to retrieve the 
+%                            ground truths from the file name. It is
+%                            composed as follows:
+%                             { numOfDigits position referenceString} 
+%                            where:
+%                            numOfDigits = digits that compose the ground 
+%                                          truth;
+%                            position = either 'before' or 'after' 
+%                                       the reference string.
+%                            referenceString = key piece of string to 
+%                                              locate the ground truth.
+%                                              Note that it is case
+%                                              insensitive.
+%  'stdThreshold'           - 1x2 array with arbitrary thresholds for the 
+%                             standard deviation of each calibration
+%                             factor. If any of those values is exceeded,
+%                             a warning is returned and saved with the
+%                             output.
+%  'cameraFocalLengthMM'      - focal length of the camera in millimiters.
+%  'cameraSensorSizeMM'     - sensor size in mm in the format
+%                             [HorizontalSizeMM VerticalSizeMM].
+%  'sceneResolutionPX       - resolution of the scene in pixels. Note that
+%                             this might be different from the physical
+%                             sensor resolution, and might be related to
+%                             the compression/digitalization strategy
+%                             applied to the video acquisition.
+%  'cameraModel'            - model to use to estimate the sceneDistance
+%                             from the camera properties (default:
+%                             'pinhole').
 %
-% OUTPUTS: (saved to file)
-%   sizeCalFactors: struct containing the conversion factors for pupil
-%       size expressed for the horizontal direction, vertical direction and
-%       area. In case the calibration is not accurate, a "warnings" field
-%       is created and saved to store warning texts about the accuracy
-%       problems. An additional meta field containing all input params is
-%       also saved.
-% 
-% INPUTS:
-%   sizeDataFilesNames: cell array containing the names of the dot data
-%       files to be used.
-%   sizeFactorsFileName: name of the mat file to save the size
-%       conversion factor.
-% 
-% Optional params:
-%   sizeGroundTruthsInput: array containing the ground truth for the dot size in
-%       mm. If left empty (default option), the routine will try to
-%       retrieve the ground truth from the sizeData files names following
-%       the instructions in the cell array groundTruthFinder.
-%   groundTruthFinder: cell array with instruction to retrieve the ground
-%       truths from the file name. It is composed as follows:
-%           { numOfDigits position referenceString} 
-%           where:
-%           numOfDigits = digits that compose the ground truth
-%           position = either 'before' or 'after' the reference string
-%           referenceString = key piece of string to locate the ground
-%               truth. Note that it is case insensitive.
-%   stdThreshold: 1x3 array with arbitrary thresholds for the standard
-%       deviation of each calibration factor. If any of those values is
-%       exceeded, a warning is returned and saved with the output.
-%   pctAreaDeviationThreshold: arbitrary percentage deviation allowed
-%       between the area factor and  the area derived from the
-%       linear conversion factors. If this threshold is exceeded a warning
-%       is returned and saved with the output.
-% 
-% Optional key/value pairs (display and I/O)
-%  'verbosity' - level of verbosity. [none, full]
+% Optional key/value pairs (display and I/O):
+%  'verbosity'              - Level of verbosity. [none, full]
 %
-% Options (environment)
-%   tbSnapshot - the passed tbSnapshot output that is to be saved along
-%      with the data
-%   timestamp / username / hostname - these are automatically derived and
-%      saved within the p.Results structure.
-%
+% Optional key/value pairs (environment)
+%  'tbSnapshot'             - This should contain the output of the
+%                             tbDeploymentSnapshot performed upon the
+%                             result of the tbUse command. This documents
+%                             the state of the system at the time of
+%                             analysis.
+%  'timestamp'              - AUTOMATIC; The current time and date
+%  'username'               - AUTOMATIC; The user
+%  'hostname'               - AUTOMATIC; The host
+% 
+% Outputs:
+%   sizeCalFactors          - struct containing the conversion factors for pupil
+%                             size in pixel per millimeters and the
+%                             estimated scene distance in millimiters. In
+%                             case the calibration is not accurate, a
+%                             "warnings" field is created and saved to
+%                             store warning texts about the accuracy
+%                             problems. An additional meta field containing
+%                             all input params is also saved.
+
 %% Parse vargin for options passed here
 p = inputParser; p.KeepUnmatched = true;
 
@@ -66,8 +95,11 @@ p.addRequired('sizeCalFactorsFileName',@ischar);
 % Optional analysis parameters
 p.addParameter('sizeGroundTruthsInput',[], @isnumeric)
 p.addParameter('groundTruthFinder', {1 'before' 'mm'}, @iscell)
-p.addParameter('stdThreshold', [0.5 0.5 8], @isnumeric)
-p.addParameter('pctAreaDeviationThreshold', 1, @isnumeric)
+p.addParameter('stdThreshold', [0.5 8], @isnumeric)
+p.addParameter('cameraFocalLengthMM', 16, @isnumeric)
+p.addParameter('cameraSensorSizeMM', [4.69 3.54], @isnumeric)
+p.addParameter('sceneResolutionPX', [640 480], @isnumeric)
+p.addParameter('cameraModel', 'pinhole', @ischar)
 
 % Optional display and I/O parameters
 p.addParameter('verbosity','none', @ischar);
@@ -136,71 +168,98 @@ for rr = 1: length(sizeGroundTruths)
     clear tmpTransparent
 end
 
-
 %% Derive conversion factors
 
+% if camera properties are available, determine size of pixels in MM
+if ~any([isempty(p.Results.cameraFocalLengthMM) isempty(p.Results.cameraSensorSizeMM) isempty(p.Results.sceneResolutionPX)])
+    haveCameraFeatures = true;
+    pixelSizeMM = p.Results.cameraSensorSizeMM./p.Results.sceneResolutionPX;
+else
+    haveCameraFeatures = false;
+    pixelSizeMM = nan;
+end
+
 % loop through runs
-for rr = 1: length(sizeGroundTruths) 
-    % loop through frames
-   for ii = 1: size(explicitData{rr},1)
-    % get the X and Y axis length according to orientation of the ellipse
-    if round(cos(explicitData{rr}(ii,5))) == 1
-        horizontalAxis(ii) = explicitData{rr}(ii,3) * 2;
-        verticalAxis(ii) = explicitData{rr}(ii,4) * 2;
-    elseif round(cos(explicitData{rr}(ii,5))) == 0
-        horizontalAxis(ii) = explicitData{rr}(ii,4) * 2;
-        verticalAxis(ii) = explicitData{rr}(ii,3) * 2;
-    end
-    % get ellipse area
-    ellipseArea(ii) = transparentData{rr}(ii,3);
-   end  % loop through frames
-   % gather the all raw values
-   rawValues{rr} = [horizontalAxis' verticalAxis' ellipseArea'];
-   % get an array for median value, std and conversion factor
-   singleRunMedian(rr,:) = [nanmedian(horizontalAxis) nanmedian(verticalAxis) nanmedian(ellipseArea)];
-   singleRunStd(rr,:) = [nanstd(horizontalAxis) nanstd(verticalAxis) nanstd(ellipseArea)];
-   realSize = [sizeGroundTruths(rr) sizeGroundTruths(rr) pi*((sizeGroundTruths(rr)/2)^2)];
-   singleRunFactors(rr,:) = singleRunMedian(rr,:) ./ realSize ;
-   clear horizontalAxis
-   clear verticalAxis
-   clear ellipseArea
-end % loop through runs
+for rr = 1: length(sizeGroundTruths)
     
+    % loop through frames
+    for ii = 1: size(explicitData{rr},1)
+        
+        % get the diameter of the calibration dot
+        dotDiameterPX(ii) = explicitData{rr}(ii,3) * 2;
+        
+    end  % loop through frames
+    
+    % gather the all raw values
+    rawValues{rr} = dotDiameterPX';
+    
+    % get an array for median value, std and conversion factor
+    singleRunMedianPX(rr,:) = nanmedian(dotDiameterPX);
+    singleRunStd(rr,:) = nanstd(dotDiameterPX);
+    realSizeMM = sizeGroundTruths(rr);
+    singleRunPXperMM(rr,:) = singleRunMedianPX(rr,:) ./ realSizeMM ;
+    clear dotDiameterPX
+    
+    % if camera properties are available, use them to determine camera
+    % distance (both in PX and MM)
+    if haveCameraFeatures
+        switch p.Results.cameraModel
+            case 'pinhole'
+                % convert median size for the single runs in MM
+                singleRunMedianMM(rr,:) = singleRunMedianPX(rr,1)*pixelSizeMM(1);
+                
+                % apply the pinhole approximated formula to derive the
+                % scene distance from the camera in MM
+                singleRunSceneDistanceMM(rr,:) = realSizeMM * p.Results.cameraFocalLengthMM / singleRunMedianMM(rr,1);
+                
+                % also get the scene distance in pixels
+                singleRunSceneDistancePX = singleRunSceneDistanceMM ./ pixelSizeMM(1);
+                
+            case 'realCamera'
+                singleRunSceneDistanceMM(rr,:) = (p.Results.cameraFocalLengthMM * realSizeMM * p.Results.sceneResolutionPX(2))/(singleRunMedianPX(rr,1) *p.Results.cameraSensorSizeMM(2));
+                
+                % also get the scene distance in pixels
+                singleRunSceneDistancePX = singleRunSceneDistanceMM ./ pixelSizeMM(1);
+        end
+    else
+        singleRunSceneDistancePX = nan;
+        singleRunSceneDistanceMM = nan;
+    end
+    
+end % loop through runs
+
 
 %% get the conversion factors as the mean of the individual ones
-sizeFactorsMean = mean(singleRunFactors);
-sizeFactorsStd = std(singleRunFactors);
+meanPXperMM = nanmean(singleRunPXperMM);
+sdPXperMM = nanstd(singleRunPXperMM);
 
+meanSceneDistancePX = nanmean(singleRunSceneDistancePX);
+sdSceneDistancePX = nanstd(singleRunSceneDistancePX);
+
+meanSceneDistanceMM = nanmean(singleRunSceneDistanceMM);
+sdSceneDistanceMM = nanstd(singleRunSceneDistanceMM);
 
 %% check if the calibration values are accurate
 warningCounter = 0;
 % check for standard deviation of the calibration factors
-if any(sizeFactorsStd > p.Results.stdThreshold)
+if  sdPXperMM > p.Results.stdThreshold(1)
     warningCounter = warningCounter +1;
     warningMessages{warningCounter} = 'High standard deviation for the calibration factors. The calibration might not be accurate.';
     warning(warningMessages{warningCounter})
 end
 
-% check if linear factors and area factor are coherent
-areaFromLinearFactors = sizeFactorsMean(1) * sizeFactorsMean(2);
-areaFactor = sizeFactorsMean(3);
-pctAreaDeviationFromLinearFactors = abs(areaFactor - areaFromLinearFactors)/areaFactor;
-if pctAreaDeviationFromLinearFactors > p.Results.pctAreaDeviationThreshold
-    warningCounter = warningCounter +1;
-    warningMessages{warningCounter} = 'The area conversion factor is not coherent with the linear conversion factors';
-    warning(warningMessages{warningCounter})
-end
 %% compose sizeFactor struct
 
-sizeCalFactors.horizontalPxPerMm = sizeFactorsMean(1);
-sizeCalFactors.verticalPxPerMm = sizeFactorsMean(2);
-sizeCalFactors.areaSqPxPerSqMm = sizeFactorsMean(3);
+sizeCalFactors.PXperMM = meanPXperMM;
+sizeCalFactors.sceneDistancePX = meanSceneDistancePX;
+sizeCalFactors.sceneDistanceMM = meanSceneDistanceMM;
 
 % add meta fields
 sizeCalFactors.meta = p.Results;
 sizeCalFactors.meta.sizeGroundTruths = sizeGroundTruths;
-sizeCalFactors.meta.sizeFactorsStd = sizeFactorsStd;
-sizeCalFactors.meta.pctAreaDeviationFromLinearFactors = pctAreaDeviationFromLinearFactors;
+sizeCalFactors.meta.sdPXperMM = sdPXperMM;
+sizeCalFactors.meta.sdSceneDistancePX = sdSceneDistancePX;
+sizeCalFactors.meta.sdSceneDistanceMM = sdSceneDistanceMM;
 if warningCounter > 0
     sizeCalFactors.warnings = warningMessages;
     clear warningMessage

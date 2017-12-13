@@ -60,7 +60,7 @@ function perimeter = findPupilPerimeter(grayVideoName, perimeterFileName, vararg
 %                           Ranges from 0 to 1, with 0 corresponding to
 %                           black.
 %  'pupilRange'           - Initial radius range in pixels for circle
-%                           fitting of the pupil (default [20 189]). This
+%                           fitting of the pupil (default [20 100]). This
 %                           value gets dynamically updated.
 %  'imfindcirclesSensitivity' - A parameter (ranging from 0-1) that is used
 %                           in the call to the matlab function

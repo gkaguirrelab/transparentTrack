@@ -5,12 +5,9 @@
 % then run through the pupil analysis pipeline, including derivation of the
 % scene geometry and sceneConstrained ellipse fitting.
 
-%% Clean up
+%% Clean up and set up
 clearvars
 close all
-
-% Reset the random number generator so that we have reproducible results
-rng default
 
 % define scene dimension in pixels
 videoSizeX = 640;
@@ -29,19 +26,15 @@ if exist(sandboxDir,'dir')==0
 end
 
 
-%% construct scene geometry
-% The Center of Rotation is aligned with the center of the image plane
-% along the optical axis of the camera. The pupil rotates on a 125 pixel
-% radius. The pupil has a fixed radius as sweeps the scene back and forth
-% at different elevations.
-eyeRadius =  125;
-pupilRadius = 30;
-sceneDistance = 1200;
-
-% Set up the sceneGeometry
-projectionModel = 'pseudoPerspective';
+%% Construct scene geometry
+% The center of rotation is aligned with the center of the image plane
+% along the optical axis of the camera. The pupil has a fixed radius as
+% sweeps the scene back and forth at different elevations.
+eyeRadius =  332.0173;
+pupilRadius = 59.1135;
+sceneDistance = 805.7827;
 eyeCenter = [videoSizeX/2, videoSizeY/2, eyeRadius+sceneDistance];
-
+projectionModel = 'pseudoPerspective';
 
 % Define the range of azimuth and elevation steps
 eleSteps = -20:5:20;
@@ -59,22 +52,27 @@ for ii = 1: length(eleSteps)
 end
 
 %% create the video
-% the video will be created with a modified version of the
-% pupilProjection_fwd function, as the Y axis for matlab plots is oriented
-% upwards. Normally pupilProjection_fwd operates on video frames, for which
-% the convention is that the Y axis points downwards.
-
 nFrames = numel(allPupilAzi);
 emptyFrame = ones(videoSizeY, videoSizeX)*0.85;
 h = figure('visible','off');
 
-% for each frame, create the projected ellipse and test the consistenpFitExplicit(2) of
-% the returned theta values
+% Loop through and create frames of the video
 for ii = 1:nFrames
-    % derive ellipse points from Azimuth and Elevation values
+
+    % derive ellipse params from Azimuth and Elevation values
     pupilAzi = allPupilAzi(ii); % in degrees
-    pupilEle = allPupilEle(ii); % in degrees
-    forwardProjectEllipseParams = pupilProjection_fwd_Yup(pupilAzi, pupilEle, pi*pupilRadius.^2, eyeCenter, eyeRadius, projectionModel);
+    pupilEle = allPupilEle(ii); % in degrees    
+    forwardProjectEllipseParams = ...
+        pupilProjection_fwd(pupilAzi, pupilEle, pi*pupilRadius.^2, eyeCenter, eyeRadius, projectionModel);
+
+    % Normally pupilProjection_fwd operates on video frames, for which
+    % the convention is that the Y axis points downwards. Therefore, we
+    % need to flip the center of the forward projection ellipse with
+    % respect to Y-axis eyeCenter
+    forwardProjectEllipseParams(2) = ...
+        eyeCenter(2) + (eyeCenter(2) - forwardProjectEllipseParams(2));
+    
+    % Obtain the ellipse in explicit form for plotting
     pFitExplicit = ellipse_transparent2ex(forwardProjectEllipseParams);
     
     % make the plot and save it as a frame
@@ -122,11 +120,14 @@ end
 close (writerObj);
 
 
-%% Perform the analysis with one call
+%% Run the analysis pipelines
 runVideoPipeline( pathParams, ...
-    'verbosity', 'full', 'useParallel',true, 'catchErrors', false,...
+    'verbosity', 'full', 'useParallel',false, 'catchErrors', false,...
     'maskBox', [0.9 0.9], ...
+    'glintZoneRadius',200,'overwriteControlFile',true, ...
     'ellipseTransparentUB',[videoSizeX,videoSizeY, 20000, 1.0, pi],...
+    'eyeRadius',eyeRadius, 'cameraDistanceInPixels',sceneDistance, ...
+    'sceneGeometryLB',[0, 0, sceneDistance+eyeRadius, 25],'sceneGeometryUB',[640, 480, sceneDistance+eyeRadius, 500],...
     'skipStageByNumber',1);
 
 
@@ -182,111 +183,9 @@ plot(1:1:nFrames,ellipses(:,3), '.b')
 hold on
 plot(1:1:nFrames,reconstructedPupilArea, 'xr')
 line(1:1:nFrames, (pi*(pupilRadiusOnImage)^2)*ones(1,nFrames),'Color', 'black');
-% rl.Color = 'k';
 xlabel('frame')
 ylabel('reconstructed pupil area')
 axis square
 
-
-
-
-
-%% LOCAL FUNCTION
-
-function reconstructedTransparentEllipse = pupilProjection_fwd_Yup(pupilAzi, pupilEle, pupilArea, eyeCenter, eyeRadius, projectionModel)
-% modified version of pupilProjection_fwd, to take into account that the Y
-% axis points UP when constructing the model (in the videos the Y axis
-% points conventionally down)
-
-%% main
-
-% initiate reconstructedTransparentEllipse
-reconstructedTransparentEllipse = nan(1,5);
-
-% if we have a non-defined case, just return all nans
-if any(isnan([pupilAzi pupilEle]))
-    return
-end
-
-% calculate the pupilCenter3D
-pupilCenter3D(1) = eyeRadius*sind(pupilAzi)*cosd(pupilEle);
-pupilCenter3D(2) = - eyeRadius*sind(pupilEle);
-pupilCenter3D(3) = eyeRadius*cosd(pupilAzi)*cosd(pupilEle);
-
-% define ellipse center
-switch projectionModel
-    case 'orthogonal'
-        % under orthogonal hypothesis the ellipse center in 2D is
-        % coincident with the ellipse center in the plane of projection.
-        reconstructedTransparentEllipse(1) = pupilCenter3D(1) + eyeCenter(1);
-        reconstructedTransparentEllipse(2) = pupilCenter3D(2) + eyeCenter(2);
-    case 'pseudoPerspective'
-        % for the pseudoPerspective correction, we uniformly scale the
-        % orthogonal projection according to the scene distance and the eye
-        % radius.
-        
-        % get the perspective projection correction factor
-        sceneDistance = eyeCenter(3) - eyeRadius;
-        perspectiveCorrectionFactor = sceneDistance/(sceneDistance + pupilCenter3D(3));
-        
-        % apply perspective correction factor to the pupil center
-        reconstructedTransparentEllipse(1) = (pupilCenter3D(1) * perspectiveCorrectionFactor) + eyeCenter(1);
-        reconstructedTransparentEllipse(2) = (pupilCenter3D(2) * perspectiveCorrectionFactor) + eyeCenter(2);
-end
-
-% derive ellipse eccentricity
-e = sqrt((sind(pupilEle))^2 - ((sind(pupilAzi))^2 * ((sind(pupilEle))^2 - 1)));
-reconstructedTransparentEllipse(4) = e;
-
-% derive ellipse theta
-theta = nan;
-if pupilAzi > 0  &&  pupilEle > 0
-    theta = - asin(sind(pupilAzi)/e);
-elseif pupilAzi > 0 && pupilEle < 0
-    theta =  asin(sind(pupilAzi)/e);
-elseif pupilAzi < 0  &&  pupilEle > 0
-    theta = - asin(sind(pupilAzi)/e);
-elseif pupilAzi < 0 && pupilEle < 0
-    theta =  asin(sind(pupilAzi)/e);
-elseif abs(pupilAzi) < 1e-12 && abs(pupilEle) < 1e-12
-    theta = 0;
-elseif abs(pupilAzi) < 1e-12 && abs(pupilEle) >= 1e-12
-    theta = 0;
-elseif abs(pupilEle) < 1e-12 && abs(pupilAzi) >= 1e-12
-    theta = pi/2;
-else
-    % Couldn't constrain the theta. This shouldn't happen
-    warning('For some reason the theta was unconstrained. Setting to nan');
-end
-
-% Keep the theta values between 0 and pi
-if theta < 0
-    theta = theta+pi;
-end
-if theta > pi
-    theta = theta - pi;
-end
-
-reconstructedTransparentEllipse(5) = theta;
-
-% area (if pupilArea available)
-if ~isnan(pupilArea)
-    switch projectionModel
-        case 'orthogonal'
-            % under orthogonal hypothesis, the semimajor axis of the
-            % ellipse equals the pupil circle radius. If that is known, it
-            % can be assigned and used later to determine the ellipse area.
-            pupilRadius = sqrt(pupilArea/pi);
-            semiMajorAxis = pupilRadius;
-        case 'pseudoPerspective'
-            % apply scaling factor to pupil area
-            pupilRadius = sqrt(pupilArea/pi);
-            semiMajorAxis = pupilRadius.*perspectiveCorrectionFactor;
-    end
-    semiMinorAxis = semiMajorAxis*sqrt(1-e^2);
-    reconstructedTransparentEllipse(3) = pi*semiMajorAxis*semiMinorAxis;
-end
-
-end % function
 
 

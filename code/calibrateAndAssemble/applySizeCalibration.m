@@ -1,8 +1,9 @@
 function [calibratedPupil] = applySizeCalibration(pupilFileName,sizeCalFactorsFileName,varargin)
-% applySizeCalibration(pupilFileName,sizeFactorsFileName)
+% Applies the size calibration factors to the pupil data.
 %
-% this function applies the size calibration factors to the pupil data.
-
+% Description:
+%   This routine applies the size calibration values to the pupil data.
+% 
 % OUTPUTS
 %   calibratedPupil: struct containing the calibrated pupil width, height
 %   and area. The calibrated units are dependent on the size calibration
