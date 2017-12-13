@@ -113,7 +113,7 @@ if ~isnan(transparentEllipse(3))
                 
                 % calculate the perspective correction factor
                 sceneDistance = eyeCenter(3) - eyeRadius;
-                pupilCenter3D_Depth = (eyeCenter(3) - eyeRadius)-eyeRadius*cosd(reconstructedPupilAzi)*cosd(reconstructedPupilEle);
+                pupilCenter3D_Depth = eyeRadius - eyeRadius*cosd(reconstructedPupilAzi)*cosd(reconstructedPupilEle);
                 perspectiveCorrectionFactor = sceneDistance/(sceneDistance + pupilCenter3D_Depth);
                 
                 % calculate pupil radius including the perspective
