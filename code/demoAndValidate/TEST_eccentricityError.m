@@ -36,7 +36,7 @@ aperture = 2.0;
 fieldOfViewDEG = 45;
 sceneResolution = [640 480];
 focalLengthPX = (sceneResolution(1)/2) / tand(45); % this is how it is defined in blender, but I am not sure it is right
-% focalLengthMM = 42.25;
+focalLengthMM = 18;
 % focalLengthPX = (focalLengthMM/sensorSize(1))*sceneResolution(1); % this is the formula I would use
 
 pixelSizeMM = sensorSize./sceneResolution;
@@ -105,44 +105,70 @@ runVideoPipeline( pathParams, ...
 
 %% compare ellipse centers to the position in which we would expect to see the pupil centers.
 
-% pupil center position on object in PX (to have everything in same units)
-pupil3DPX = [pupilXpos'./pixelSizeMM(1) pupilYpos'./pixelSizeMM(1) pupilZpos'./pixelSizeMM(1)];
-
 % get the ellipse data
 load(fullfile(pathParams.dataOutputDirFull,[pathParams.runName '_pupil.mat']));
 
-% this is where the ellipse center is
+% this is where the ellipse center is tracked
 ellipseXpos = pupilData.ellipseParamsUnconstrained_mean(:,1);
 ellipseYpos = pupilData.ellipseParamsUnconstrained_mean(:,2);
 
-% pupil center position on scene (using pinhole model)
-% this is where the pupil center would be with no distortion.
-pupilXScene = (sceneResolution(1)/2) + ((focalLengthPX/sceneDistancePX) .*(pupilXpos'./pixelSizeMM(1))) ;
-pupilYScene = (sceneResolution(2)/2) + ((focalLengthPX/sceneDistancePX) .*(pupilYpos'./pixelSizeMM(1))) ;
 
-% measured error
-measuredErrorX = ellipseXpos - pupilXScene;
-measuredErrorY = ellipseYpos - pupilYScene;
+planeTiltAngle = -30:5:30; % since we only do an Azi sweep.
 
-% plot the measured errors
+planeTiltAngle = linspace(-22, 22, 13); % looks like this apparent angle works. WHY?
+
+l = (sceneDistancePX+focalLengthPX) .*(cosd(abs(planeTiltAngle)));
+cameraDistancePX  = (sceneDistancePX+focalLengthPX);
+% ellipse center position forumlas
+for ii = 1:size(planeTiltAngle,2)
+
+centerOfEllipse(ii) = focalLengthPX *((sceneDistancePX^2 * sind(planeTiltAngle(ii)) * cosd(planeTiltAngle(ii))) + (pupilRadiusPX(1)^2 * sind(planeTiltAngle(ii)) * cosd(planeTiltAngle(ii)))) / ...
+    ((sceneDistancePX^2 * cosd(planeTiltAngle(ii))) - (pupilRadiusPX(1)^2 *(sind(planeTiltAngle(ii)))^2)) + 320;
+
+reconstructedErrorX(ii) = (focalLengthPX*((cameraDistancePX)/l(ii))*sind(planeTiltAngle(ii))*cosd(planeTiltAngle(ii)))/ ...
+    ((l(ii)/pupilRadiusPX(1))^2 - (sind(planeTiltAngle(ii)))^2)
+end
+
+% compare centers of ellipses (the tracked ones should more or less overlay
+% where we estimate the ellipses centers to be).
 figure
-subplot(2,1,1)
-plot (measuredErrorX)
-ylabel ('Error in PX')
-xlabel ('Frames')
-title('Ellipse centerX - projected circle centerX')
-subplot(2,1,2)
-plot (measuredErrorY)
-ylabel ('Error in PX')
-xlabel ('Frames')
-title('Ellipse centerY - projected circle centerY')
-% note that in the pupilData there is a big fitting error on the first ellipse in the Y
-% dimension
+plot(centerOfEllipse)
+hold on
+plot (ellipseXpos)
+legend ('center of ellipse according to Ahn formula', 'center of fitted ellipse that we measure')
+
+
+
+% 
+% % plot the measured errors
+% figure
+% subplot(2,1,1)
+% plot (measuredErrorX)
+% ylabel ('Error in PX')
+% xlabel ('Frames')
+% title('Ellipse centerX - projected circle centerX')
+% subplot(2,1,2)
+% plot (measuredErrorY)
+% ylabel ('Error in PX')
+% xlabel ('Frames')
+% title('Ellipse centerY - projected circle centerY')
+% % note that in the pupilData there is a big fitting error on the first ellipse in the Y
+% % dimension
 
 
 
 %% %% THIS PART NEEDS MORE THINKING :(
 % 
+
+
+% % pupil center position on scene (using pinhole model)
+% % this is where the pupil center would be with no distortion.
+% pupilXScene = (sceneResolution(1)/2) + ((focalLengthPX/sceneDistancePX) .*(pupilXpos'./pixelSizeMM(1))) ;
+% pupilYScene = (sceneResolution(2)/2) + ((focalLengthPX/sceneDistancePX) .*(pupilYpos'./pixelSizeMM(1))) ;
+
+
+
+
 % % Ahn's estimation of the error (OBJECT PLANE)
 % planeTiltAngle = allPupilAzi; % since we only do an Azi sweep.
 % 
