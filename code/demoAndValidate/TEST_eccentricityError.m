@@ -46,7 +46,7 @@ pixelSizeMM = sensorSize./sceneResolution;
 
 % eye radius and camera distance (hardcoded in the python function)
 eyeRadiusMM = 14;
-cameraDistanceMM = 60;
+cameraDistanceMM = 50;
 
 eyeRadiusPX = eyeRadiusMM/pixelSizeMM(1);
 sceneDistancePX = cameraDistanceMM/pixelSizeMM(1);
@@ -133,11 +133,15 @@ for ii = 1:length(planeTiltAngleX)
 centerOfEllipseX(ii) = (sceneResolution(1)/2) + (focalLengthPX *((sceneDistancePX^2 * sind(planeTiltAngleX(ii)) * cosd(planeTiltAngleX(ii))) + (pupilRadiusPX(1)^2 * sind(planeTiltAngleX(ii)) * cosd(planeTiltAngleX(ii)))) / ...
     ((sceneDistancePX^2 * cosd(planeTiltAngleX(ii))) - (pupilRadiusPX(1)^2 *(sind(planeTiltAngleX(ii)))^2)));
 
+centerOfCircleX(ii) = (sceneResolution(1)/2) + (focalLengthPX *tand(planeTiltAngleX(ii)));
+
 reconstructedErrorX(ii) = (focalLengthPX*((cameraDistancePX)/l(ii))*sind(planeTiltAngleX(ii))*cosd(planeTiltAngleX(ii)))/ ...
     ((l(ii)/pupilRadiusPX(1))^2 - (sind(planeTiltAngleX(ii)))^2);    
 
 centerOfEllipseY(ii) = (sceneResolution(2)/2) + (-focalLengthPX *((sceneDistancePX^2 * sind(planeTiltAngleY(ii)) * cosd(planeTiltAngleY(ii))) + (pupilRadiusPX(1)^2 * sind(planeTiltAngleY(ii)) * cosd(planeTiltAngleY(ii)))) / ...
     ((sceneDistancePX^2 * cosd(planeTiltAngleY(ii))) - (pupilRadiusPX(1)^2 *(sind(planeTiltAngleY(ii)))^2)));
+
+centerOfCircleY(ii) = (sceneResolution(2)/2) + (-focalLengthPX *tand(planeTiltAngleY(ii)));
 
 reconstructedErrorY(ii) = (focalLengthPX*((cameraDistancePX)/l(ii))*sind(planeTiltAngleY(ii))*cosd(planeTiltAngleY(ii)))/ ...
     ((l(ii)/pupilRadiusPX(1))^2 - (sind(planeTiltAngleY(ii)))^2);
@@ -147,6 +151,8 @@ end
 % where we estimate the ellipses centers to be).
 figure
 subplot(2,1,1)
+plot(centerOfCircleX)
+hold on
 plot(centerOfEllipseX)
 hold on
 plot (ellipseXpos)
@@ -154,10 +160,12 @@ hold on
 plot (ellipseXpos - reconstructedErrorX')
 xlabel('Frames')
 ylabel('Horizontal position in pixels')
-legend ('theoretical center of ellipse according to Ahn formula', 'center of fitted ellipse that we measure', 'theoretical ellipse center - eccentricity error (Ahn)')
+legend ('theoretical center of circle', 'theoretical center of ellipse according to Ahn formula', 'center of fitted ellipse that we measure', 'theoretical ellipse center - eccentricity error (Ahn)')
 title ('Teoretical and tracked X position of ellipse center')
 
 subplot(2,1,2)
+plot(centerOfCircleY)
+hold on
 plot(centerOfEllipseY)
 hold on
 plot (ellipseYpos + 1) % adding 1 for indexing discrepancy
@@ -165,10 +173,12 @@ hold on
 plot ((ellipseYpos + 1) - reconstructedErrorY')
 xlabel('Frames')
 ylabel('Vertical position in pixels')
-legend ('theoretical center of ellipse according to Ahn formula', 'center of fitted ellipse that we measure', 'theoretical ellipse center - eccentricity error (Ahn)')
+legend ('theoretical center of circle','theoretical center of ellipse according to Ahn formula', 'center of fitted ellipse that we measure', 'theoretical ellipse center - eccentricity error (Ahn)')
 title ('Teoretical and tracked Y position of ellipse center')
 
 figure
+plot(centerOfCircleX,centerOfCircleY)
+hold on
 plot(centerOfEllipseX,centerOfEllipseY)
 hold on
 plot (ellipseXpos,ellipseYpos+1)
@@ -177,7 +187,7 @@ plot (ellipseXpos - reconstructedErrorX',(ellipseYpos + 1) - reconstructedErrorY
 xlim ([0 sceneResolution(1)])
 ylim ([0 sceneResolution(2)])
 set(gca,'Ydir','reverse')
-legend ('theoretical center of ellipse according to Ahn formula', 'center of fitted ellipse that we measure', 'theoretical ellipse center - eccentricity error (Ahn)')
+legend ('theoretical center of circle','theoretical center of ellipse according to Ahn formula', 'center of fitted ellipse that we measure', 'theoretical ellipse center - eccentricity error (Ahn)')
 title('Distortion correction of pupil center pattern on screen')
 
 % 
