@@ -93,11 +93,15 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional analysis params
-p.addParameter('projectionModel','pseudoPerspective',@ischar);
-p.addParameter('sceneGeometryLB',[0, 0, 1325, 25],@isnumeric);
-p.addParameter('sceneGeometryUB',[640, 480, 1325, 500],@isnumeric);
-p.addParameter('cameraDistanceInPixels',1200,@isnumeric);
-p.addParameter('eyeRadius',125,@isnumeric);
+p.addParameter('intrinsicCameraMatrix',[240 0 320; 0 240 240; 0 0 1],@isnumeric);
+p.addParameter('extrinsicRotationMatrix',[1 0 0; 0 -1 0; 0 0 -1],@isnumeric);
+p.addParameter('extrinsicTranslationVector',[0; 0; 13],@isnumeric);
+p.addParameter('eyeRadius',14,@isnumeric);
+p.addParameter('extrinsicTranslationVectorUB',[5; 5; 10],@isnumeric);
+p.addParameter('extrinsicTranslationVectorUB',[5; 5; 20],@isnumeric);
+p.addParameter('eyeRadiusUB',16,@isnumeric);
+p.addParameter('eyeRadiusLB',12,@isnumeric);
+
 p.addParameter('whichFitFieldMean','ellipseParamsUnconstrained_mean',@ischar);
 p.addParameter('whichFitFieldError','ellipseParamsUnconstrained_rmse',@ischar);
 
@@ -357,3 +361,5 @@ for ii = 1:size(ellipses,1)
 end
 
 end % local function
+
+
