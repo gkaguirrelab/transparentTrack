@@ -37,7 +37,10 @@ function [eyeParams, bestMatchEllipseOnImagePlane, constraintViolation] = pupilP
 %                               arbitrary units (typically pixels)
 %
 % Optional key/value pairs:
-%  'x0'                   - Starting point of the search for the eyeParams
+%  'x0'                   - Starting point of the search for the eyeParams.
+%                           If not defined, the starting point will be
+%                           estimated from the coordinates of the ellipse
+%                           center.
 %  'absoluteEyeAzimuthUB' - The absolute value of the boundary on azimuth
 %  'absoluteEyeElevationUB' - The absolute value of the boundary on
 %                           elevation
@@ -78,7 +81,7 @@ p.addRequired('pupilEllipseOnImagePlane',@isnumeric);
 p.addRequired('sceneGeometry',@isstruct);
 
 % Optional params
-p.addParameter('x0',[0 0 2],@isnumeric);
+p.addParameter('x0',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('absoluteEyeAzimuthUB',35,@isnumeric);
 p.addParameter('absoluteEyeElevationUB',25,@isnumeric);
 p.addParameter('pupilRadiusBounds',[0.5,5],@isnumeric);
@@ -88,7 +91,7 @@ p.addParameter('constraintTolerance',0.01,@isnumeric);
 p.parse(pupilEllipseOnImagePlane, sceneGeometry, varargin{:});
 
 
-%% Assemble bounds
+%% Assemble bounds and x0
 % Because ellipses are symmetric about their axes, a given eccentricity and
 % theta of an ellipse is consistent with two possible eye rotation
 % solutions. We finesse this ambiguity by bounding the possible azimuth and
@@ -123,6 +126,28 @@ end
 eyeParamsLB(3)=p.Results.pupilRadiusBounds(1);
 eyeParamsUB(3)=p.Results.pupilRadiusBounds(2);
 
+% If x0 is undefined, we will make a guess
+if isempty(p.Results.x0)
+    % Probe the forward model to determine how many pixels of change in the
+    % location of the pupil ellipse correspond to one degree of rotation.
+    probeEllipse=pupilProjection_fwd([1 0 2],sceneGeometry);
+    pixelsPerDeg = probeEllipse(1)-CoP(1);
+    
+    % Estimate the eye azimuth and elevation by the X and Y displacement of
+    % the ellipse center from the center of projection. Set the initial
+    % guess for the pupil radius to 2 mm.
+    x0(1) = (pupilEllipseOnImagePlane(1) - CoP(1))/pixelsPerDeg;
+    x0(2) = (CoP(2) - pupilEllipseOnImagePlane(2))/pixelsPerDeg;
+    x0(3) = 2;
+
+    % Ensure that x0 lies within the bounds with a bit of headroom so that
+    % the solver does not get stuck up against a bound.
+    boundHeadroom = (eyeParamsUB - eyeParamsLB)*0.9;
+    x0=min([eyeParamsUB-boundHeadroom; x0]);
+    x0=max([eyeParamsLB+boundHeadroom; x0]);
+else
+    x0 = p.Results.x0;
+end
 
 %% Perform the search
 % We use nested functions for the objective and constraint so that the
@@ -145,16 +170,16 @@ objectiveFun = @objfun; % the objective function, nested below
 constraintFun = @constr; % the constraint function, nested below
 
 % Call fmincon
-[eyeParams, areaError, ~, output] = ...
-    fmincon(objectiveFun, p.Results.x0, [], [], [], [], eyeParamsLB, eyeParamsUB, constraintFun, options);
+[eyeParams, squaredAreaError, ~, output] = ...
+    fmincon(objectiveFun, x0, [], [], [], [], eyeParamsLB, eyeParamsUB, constraintFun, options);
 
     function fval = objfun(x)
         if ~isequal(x,xLast) % Check if computation is necessary
             nestedCandidateEllipse = pupilProjection_fwd(x, nestedSceneGeometry);
             xLast = x;
         end
-        % Now compute objective function
-        fval = abs(nestedTargetEllipse(3)-nestedCandidateEllipse(3));
+        % Now compute objective function in terms of radius error
+        fval = (nestedTargetEllipse(3) - nestedCandidateEllipse(3))^2;
     end
 
     function [c,ceq] = constr(x)
@@ -195,7 +220,7 @@ bestMatchEllipseOnImagePlane = nestedCandidateEllipse;
 % exceeded the tolerance value.
 constraintViolation = double(...
     output.constrviolation > p.Results.constraintTolerance || ...
-    (areaError/pupilEllipseOnImagePlane(3)) > p.Results.constraintTolerance ...
+    (squaredAreaError/(pupilEllipseOnImagePlane(3)^2)) > p.Results.constraintTolerance ...
     );
 
 end % function -- pupilProjection_inv
