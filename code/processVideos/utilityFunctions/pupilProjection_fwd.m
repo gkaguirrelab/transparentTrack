@@ -1,5 +1,5 @@
-function [imageEllipseParams, pupilCenterImageCoords] = pupilProjection_fwd(eyeAzimuth, eyeElevation, pupilRadius, sceneGeometry)
-% Project pupil azimuth, elevation, and area to ellipse on the image plane
+function [pupilEllipseOnImagePlane, pupilCenterOnImagePlane] = pupilProjection_fwd(eyeParams, sceneGeometry)
+% Project the pupil circle to an to ellipse on the image plane
 %
 % Description:
 %	Given the sceneGeometry, this routine simulates a circular pupil on a
@@ -22,9 +22,10 @@ function [imageEllipseParams, pupilCenterImageCoords] = pupilProjection_fwd(eyeA
 %   part to help us keep the two units separate conceptually.
 %
 % Inputs:
-%   eyeAzimuth            - Horizontal rotation of the eye
-%   eyeElevation          - Vertical rotation of the eye
-%   pupilRadius           - Pupil radius (on the eye) in millimeters.
+%   eyeParams             - A 1x3 vector provides values for [eyeAzimuth,
+%                           eyeElevation, pupilRadius]. Azimuth and
+%                           elevation are in units of head-centered
+%                           (extrinsic) degrees, and pupil radius is in mm.
 %   sceneGeometry         - A structure that contains the fields:
 %                             - eyeRadius: scalar in millimeters
 %                             - extrinsicTranslationVector: a 3x1 matrix
@@ -37,11 +38,19 @@ function [imageEllipseParams, pupilCenterImageCoords] = pupilProjection_fwd(eyeA
 %                               arbitrary units (typically pixels) 
 %
 % Outputs:
-%   imageEllipseParams    - Ellipse in transparent form
-%   pupilCenterImageCoords  - A 2x1 vector that specifies the x, y location
-%                           on the image plane that corresponds to the
-%                           center of the pupil
+%   pupilEllipseOnImagePlane - A 1x5 vector that contains the parameters of
+%                           pupil ellipse on the image plane cast in 
+%                           transparent form
+%   pupilCenterOnImagePlane - A 1x2 vector that specifies the x, y location
+%                           on the image plane corresponding to the center
+%                           of the pupil
 %
+
+%% Prepare variables
+% Separate the eyeParams into individual variables
+eyeAzimuth = eyeParams(1);
+eyeElevation = eyeParams(2);
+pupilRadius = eyeParams(3);
 
 %% Define a pupil circle in pupilWorld coordinates
 % This coordinate frame is in mm units and has the dimensions (p1,p2,p3).
@@ -220,7 +229,7 @@ imagePointsReconstructed(:,2) = ...
 %% Fit the ellipse in the image plane and store values
 % Obtain the transparent ellipse params of the projection of the pupil
 % circle on the image plane. 
-imageEllipseParams = ellipse_ex2transparent(...
+pupilEllipseOnImagePlane = ellipse_ex2transparent(...
     ellipse_im2ex(...
         ellipsefit_direct( imagePointsReconstructed(1:nPerimPoints,1), ...
                            imagePointsReconstructed(1:nPerimPoints,2)  ...
@@ -229,13 +238,13 @@ imageEllipseParams = ellipse_ex2transparent(...
     );
 
 % place theta within the range of 0 to pi
-if imageEllipseParams(5) < 0
-    imageEllipseParams(5) = imageEllipseParams(5)+pi;
+if pupilEllipseOnImagePlane(5) < 0
+    pupilEllipseOnImagePlane(5) = pupilEllipseOnImagePlane(5)+pi;
 end
 
 % Store the coordinates of the projection of the center of the pupil on the
 % image plane.
-pupilCenterImageCoords = ...
+pupilCenterOnImagePlane = ...
     [imagePointsReconstructed(nPerimPoints+1,1) imagePointsReconstructed(nPerimPoints+1,2)];
 
 end % function
