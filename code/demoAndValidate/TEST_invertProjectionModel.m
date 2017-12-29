@@ -7,6 +7,20 @@ eyeRadius = 150;
 pupilArea = 1000;
 projectionModels = {'pseudoPerspective' 'orthogonal' };
 
+% %% Conduct some test
+% 
+% % Can we invert the forward projection? We test if the forward projection
+% % ellipsed can be modeled with the sceneGeometry within a 0.1% error on
+% % matching ellipse theta, eccentrivity, and error.
+% for ii=1:length(pupilCenterAzimuths)
+%     [eyeParams, bestMatchEllipseOnImagePlane, constraintViolations(ii)] = ...
+%         pupilProjection_inv(projectedEllipsesOnImagePlane(ii,:), sceneGeometry, 'constraintTolerance', 0.001);
+%     eyeParamError(ii,:)=eyeParams-[pupilCenterAzimuths(ii), pupilCenterElevations(ii), pupilRadii(ii)];
+%     ellipseParamError(ii,:)=bestMatchEllipseOnImagePlane-projectedEllipsesOnImagePlane(ii,:);
+% end
+% fprintf('There were %d / %d constraint violations in the inversion of the forward model \n',sum(constraintViolations),length(pupilCenterAzimuths));
+
+
 % Test if we can recover the azimuth and elevation of the eye after
 % projecting the pupil to the image plane
 allPass = true;
