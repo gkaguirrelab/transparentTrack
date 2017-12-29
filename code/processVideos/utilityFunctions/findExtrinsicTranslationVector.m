@@ -3,14 +3,14 @@ function [sceneGeometry, rmseDistanceError] = findExtrinsicTranslationVector(tar
 sceneGeometry = initialSceneGeometry;
 
 % Setup the initial guess
-x0 = [sceneGeometry.extrinsicTranslationVector; sceneGeometry.eyeRadius; sceneGeometry.intrinsicCameraMatrix(1,1)];
-lb = [-20, -20, 25, 11, 500];
-ub = [20, 20, 50, 15, 900];
+x0 = [sceneGeometry.extrinsicTranslationVector; sceneGeometry.eyeRadius];
+lb = [-20, -20, 25, 11];
+ub = [20, 20, 50, 15];
 
 % Define search options
 options = optimoptions(@patternsearch, ...
     'Display','iter',...
-    'AccelerateMesh',true,...
+    'AccelerateMesh',false,...
     'FunctionTolerance',0.001);
 
 % Define anonymous functions for the objective and constraint
@@ -28,10 +28,8 @@ centerErrors = zeros(nEllipses,1);
             candidateSceneGeometry = sceneGeometry;
             candidateSceneGeometry.extrinsicTranslationVector = x(1:3);
             candidateSceneGeometry.eyeRadius = x(4);
-            candidateSceneGeometry.intrinsicCameraMatrix(1,1)=x(5);
-            candidateSceneGeometry.intrinsicCameraMatrix(2,2)=x(5);
             for ii=1:nEllipses
-                [~, ~, centerErrors(ii), shapeErrors(ii), ~] = ...
+                [~, ~, centerErrors(ii), ~, ~] = ...
                     pupilProjection_inv(targetEllipses(ii,:), candidateSceneGeometry, 'constraintTolerance', 0.01);
             end
             xLast = x;
@@ -39,12 +37,10 @@ centerErrors = zeros(nEllipses,1);
         
         % Now compute objective function as the RMSE of the distance
         % between the taget and modeled ellipses
-        fval = max(centerErrors);
+        fval = sqrt(mean(centerErrors.^2));
     end
 
 sceneGeometry.extrinsicTranslationVector = x(1:3);
 sceneGeometry.eyeRadius = x(4);
-sceneGeometry.intrinsicCameraMatrix(1,1)=x(5);
-sceneGeometry.intrinsicCameraMatrix(2,2)=x(5);
 
 end %
