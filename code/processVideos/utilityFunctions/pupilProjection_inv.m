@@ -1,4 +1,4 @@
-function [eyeParams, bestMatchEllipseOnImagePlane, shapeError, areaError] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, varargin)
+function [eyeParams, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, varargin)
 % Project the ellipse on the image plane to the pupil circle in the scene
 %
 % Description:
@@ -67,10 +67,14 @@ function [eyeParams, bestMatchEllipseOnImagePlane, shapeError, areaError] = pupi
 %                           transparent form. This is the output of the
 %                           pupilProjection_fwd model for the sceneGeometry
 %                           and the eyeParams
+%   centerError           - Scalar. The Euclidean distance (in pixels)
+%                           between the [x, y] center of the
+%                           pupilEllipseOnImagePlane and the center of the
+%                           bestMatchEllipseOnImagePlane.
 %   shapeError            - Scalar. The proportion of error in fitting
 %                           ellipse shape, range 0-1.
 %   areaError             - Scalar. The proportion of error in fitting
-%                           ellipse area, range 0-unbounded.
+%                           ellipse area; unbounded around zero.
 
 
 %% Parse input
@@ -85,7 +89,7 @@ p.addParameter('x0',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('absoluteEyeAzimuthUB',35,@isnumeric);
 p.addParameter('absoluteEyeElevationUB',25,@isnumeric);
 p.addParameter('pupilRadiusBounds',[0.5,5],@isnumeric);
-p.addParameter('constraintTolerance',0.001,@isnumeric);
+p.addParameter('constraintTolerance',0.01,@isnumeric);
 
 % Parse and check the parameters
 p.parse(pupilEllipseOnImagePlane, sceneGeometry, varargin{:});
@@ -169,6 +173,7 @@ end
 % Define search options
 options = optimoptions(@fmincon,...
     'Display','off', ...
+    'Algorithm','sqp',...
     'OutputFcn',@outfun, ...
     'ConstraintTolerance',p.Results.constraintTolerance);
 
@@ -180,13 +185,14 @@ nestedSceneGeometry = sceneGeometry; % a copy of sceneGeometry
 history.x = []; % used by outfun
 history.fval = []; % used by outfun
 history.constraint = []; % used by outfun
+constraintTolerance = p.Results.constraintTolerance;
 
 % Define anonymous functions for the objective and constraint
 objectiveFun = @objfun; % the objective function, nested below
 constraintFun = @constr; % the constraint function, nested below
 
 % Call fmincon
-[eyeParams, squaredAreaError, ~, output] = ...
+[eyeParams, centerError, ~, output] = ...
     fmincon(objectiveFun, x0, [], [], [], [], eyeParamsLB, eyeParamsUB, constraintFun, options);
 
     function fval = objfun(x)
@@ -195,7 +201,8 @@ constraintFun = @constr; % the constraint function, nested below
             xLast = x;
         end
         % Now compute objective function in terms of area error squared
-        fval = (nestedTargetEllipse(3) - nestedCandidateEllipse(3))^2;
+        fval = sqrt((nestedTargetEllipse(1) - nestedCandidateEllipse(1))^2 + ...
+            (nestedTargetEllipse(2) - nestedCandidateEllipse(2))^2);
     end
 
     function [c,ceq] = constr(x)
@@ -203,8 +210,8 @@ constraintFun = @constr; % the constraint function, nested below
             nestedCandidateEllipse = pupilProjection_fwd(x, nestedSceneGeometry);
             xLast = x;
         end
-        % We implement here a constraint upon the eccentricity and theta of
-        % the ellipse. The theta and eccentricity of an ellipse can be
+        % c:
+        % The theta and eccentricity of an ellipse can be
         % described as a point in polar coordinates. We express the
         % constraint as the vector distance between these points. Direct
         % minimization of differences in theta is a poor constraint, as
@@ -222,10 +229,11 @@ constraintFun = @constr; % the constraint function, nested below
         rhoT = 1-sqrt(1-nestedTargetEllipse(4)^2);
         rhoC = 1-sqrt(1-nestedCandidateEllipse(4)^2);
         
-        ceq = sqrt(rhoT^2 + rhoC^2 - 2*rhoT*rhoC*cos(thetaT-thetaC))/2;
-        
-        % c is unused
-        c = [];
+        c = sqrt(rhoT^2 + rhoC^2 - 2*rhoT*rhoC*cos(thetaT-thetaC))/2;
+
+        % ceq:
+        % proportional difference in ellipse areas
+        ceq = (nestedTargetEllipse(3) - nestedCandidateEllipse(3))/nestedTargetEllipse(3);
     end
 
     function stop = outfun(x,optimValues,state)
@@ -240,26 +248,25 @@ constraintFun = @constr; % the constraint function, nested below
                 history.fval = [history.fval; optimValues.fval];
                 history.constraint = [history.constraint; optimValues.constrviolation];
                 history.x = [history.x; x];
-                % Test if we are don
-                if (optimValues.fval / (pupilEllipseOnImagePlane(3)^2)) < p.Results.constraintTolerance && ...
-                    optimValues.constrviolation < p.Results.constraintTolerance
+                % Test if we are done
+                if (optimValues.fval / (nestedTargetEllipse(3)^2)) < constraintTolerance && ...
+                    optimValues.constrviolation < constraintTolerance
                     stop = true;
                 end
             case 'done'
-                % We could do something with a figure if we wished
             otherwise
         end
     end
 
-% Place the final forward model output of the search into a variable to
-% return
+%% Now optimize for pupil radius
+
+
+% Store the params of the best fitting ellipse 
 bestMatchEllipseOnImagePlane = nestedCandidateEllipse;
 
-% We set the constraintViolation flag to true if either the non-linear
-% constraint or the areaError (as a proportion of target ellipse area)
-% exceeded the tolerance value.
+% Store the errors
 shapeError = output.constrviolation;
-areaError = squaredAreaError / (pupilEllipseOnImagePlane(3)^2);
+areaError = (pupilEllipseOnImagePlane(3) - bestMatchEllipseOnImagePlane(3))/pupilEllipseOnImagePlane(3);
 
 end % function -- pupilProjection_inv
 
