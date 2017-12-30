@@ -172,13 +172,6 @@ end
 % forward pupil projection is only computed once for each iteration of the
 % fmincon solver
 
-% Define search options
-options = optimoptions(@fmincon,...
-    'Display','off', ...
-    'Algorithm','sqp',...
-    'OutputFcn',@outfun, ...
-    'ConstraintTolerance',p.Results.constraintTolerance);
-
 % Define variables used in the nested functions
 xLast = []; % Last place pupilProjection_fwd was called
 nestedTargetEllipse = pupilEllipseOnImagePlane; % the target ellipse params
@@ -194,6 +187,13 @@ if isempty(p.Results.constraintTolerance)
 else
     constraintTolerance = p.Results.constraintTolerance;
 end
+
+% Define search options
+options = optimoptions(@fmincon,...
+    'Display','off', ...
+    'Algorithm','sqp',...
+    'OutputFcn',@outfun, ...
+    'ConstraintTolerance',constraintTolerance);
 
 % Define anonymous functions for the objective and constraint
 objectiveFun = @objfun; % the objective function, nested below
