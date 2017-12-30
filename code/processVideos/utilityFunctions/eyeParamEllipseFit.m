@@ -1,35 +1,26 @@
-function [eyeParams, RMSE] = ellipseFitByEyePosition(Xp, Yp, sceneGeometry, varargin)
+function [eyeParams, RMSE] = eyeParamEllipseFit(Xp, Yp, sceneGeometry, varargin)
 % Non-linear fitting of an ellipse to a set of points
 %
 % Description:
-%   The routine fits an ellipse to data by minimizing point-to-curve
-%   distance, using an iterative procedure. The search is conducted over
-%   the "transparent" ellipse parameterization, which has explicit values
-%   for area eccentricity (aspect ratio), and theta. This allows us to set
-%   boundaries and non-linear constraints upon these aspects of the fit.
+%   The routine fits points on the image plane based upon the eye
+%   parameters (azimuth, elevation, pupil radius) that would produce the
+%   best fitting ellipse projected according to sceneGeometry.
 %
-%   This routine is a heavily modified version of a non-linear ellipse
-%   fitting routine found within the "quadfit" matlab central toolbox. This
-%   routine is dependent upon the quadfit toolbox.
+% Inputs:
+%   Xp, Yp                - Vector of points to be fit
+%   lb, ub                - Upper and lower bounds for the fit search, in 
+%                           transparent ellipse form
 %
-% Input:
-%   Xp, Yp    - Vector of points to be fit
-%   lb, ub    - Upper and lower bounds for the fit search, in transparent
-%               ellipse form
-%   nonlinconst - Function handle to a non-linear constraint function. This
-%               function should take as input the set of ellipse parameters
-%               in transparent form and return [c, ceq], where the
-%               optimizer constrains the solution such that c<=0 and ceq=0.
-%               This is an optional input or can be sent as empty.
+% Optional key/value pairs:
+%  'x0'                   - Initial guess for the eyeParams
+%  'lb'                   - Lower bound on the eyeParams
+%  'ub'                   - Upper bound on the eyeParams
 %
-% Output:
-%   transparentEllipseParams - Parameters of the best fitting ellipse
-%               expressed in transparent form [5x1 vector]
-%   RMSE      - Root mean squared error of the distance of each point in
-%               the data to the fitted ellipse
-%   constraintError - The value of the nonlinear constraint function for
-%               the best fitting ellipse
-%
+% Outputs:
+%   eyeParams             - A 1x3 matrix containing the best fitting eye
+%                           parameters (azimuth, elevation, pupil radius)
+%   RMSE                  - Root mean squared error of the distance of each 
+%                           point in the data to the fitted ellipse
 %
 
 
@@ -44,7 +35,6 @@ p.addRequired('sceneGeometry',@isstruct);
 p.addParameter('x0',[0 0 2],@isnumeric);
 p.addParameter('lb',[-35,-25,0.5],@isnumeric);
 p.addParameter('ub',[35,25,4],@isnumeric);
-%p.addParameter('nonlinconst',@(x) (isempty(x) || isa(x, 'function_handle')) );
 
 % Parse and check the parameters
 p.parse(Xp, Yp, sceneGeometry, varargin{:});
@@ -60,9 +50,7 @@ myFun = @(p) ...
                 Xp,...
                 Yp,...
                 ellipse_transparent2ex(...
-                    pupilProjection_fwd(...
-                        p(1), p(2), p(3), sceneGeometry...
-                    )...
+                    pupilProjection_fwd(p, sceneGeometry)...
             	)...
         	).^2 ...
     	)...
@@ -72,23 +60,12 @@ myFun = @(p) ...
 % define some search options
 options = optimoptions(@fmincon,...
     'Display','off');
-%     'Algorithm','interior-point',...
-%     'Diagnostics','off',...
-%     'DiffMinChange', 0.001);
-
-% save the current warning status and silence anticipated warnings
-warningState = warning;
-% warning('off','MATLAB:nearlySingularMatrix');
 
 % Perform the non-linear search
 [eyeParams, RMSE] = ...
     fmincon(myFun, p.Results.x0, [], [], [], [], p.Results.lb, p.Results.ub, [], options);
 
-% Restore the warning state
-warning(warningState);
-
-end % function -- constrainedEllipseFit
-
+end % eyeParamEllipseFit
 
 
 %% LOCAL FUNCTIONS
