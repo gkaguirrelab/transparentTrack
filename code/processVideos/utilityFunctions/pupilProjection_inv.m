@@ -35,6 +35,10 @@ function [eyeParams, bestMatchEllipseOnImagePlane, centerError, shapeError, area
 %                               units of millimeters
 %                             - intrinsicCameraMatrix: a 3x3 matrix in
 %                               arbitrary units (typically pixels)
+%                             - constraintTolearance: A scalar value, 
+%                               expressed as a proportion, that defines the
+%                               tolerance for violation of the nonlinear
+%                               constraints on ellipse shape and area.
 %
 % Optional key/value pairs:
 %  'x0'                   - Starting point of the search for the eyeParams.
@@ -46,15 +50,8 @@ function [eyeParams, bestMatchEllipseOnImagePlane, centerError, shapeError, area
 %                           elevation
 %  'pupilRadiusBounds'    - A 1x2 vector that contains the lower and upper
 %                           bound on pupil radius, in mm.
-%  'constraintTolerance'  - A scalar value, expressed as a proportion, that
-%                           defines the tolerance for violation of the
-%                           nonlinear constraint on ellipse eccentricity
-%                           and theta and upon ellipse area. The default
-%                           value of 0.01 indicates a 1% threshold for
-%                           error in matching of (linearized) eccentricty,
-%                           theta, or area. Errors larger than this will
-%                           result in the constraintViolation flag being
-%                           set to 'true'.
+%  'constraintTolerance'  - If passed, this value will over-ride the
+%                           value in the sceneGeometry structure. 
 %
 % Outputs:
 %   eyeParams             - A 1x3 vector provides values for [eyeAzimuth,
@@ -89,7 +86,7 @@ p.addParameter('x0',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('absoluteEyeAzimuthUB',35,@isnumeric);
 p.addParameter('absoluteEyeElevationUB',25,@isnumeric);
 p.addParameter('pupilRadiusBounds',[0.5,5],@isnumeric);
-p.addParameter('constraintTolerance',0.01,@isnumeric);
+p.addParameter('constraintTolerance',[],@(x)(isempty(x) | isnumeric(x)));
 
 % Parse and check the parameters
 p.parse(pupilEllipseOnImagePlane, sceneGeometry, varargin{:});
@@ -190,7 +187,13 @@ nestedSceneGeometry = sceneGeometry; % a copy of sceneGeometry
 history.x = []; % used by outfun
 history.fval = []; % used by outfun
 history.constraint = []; % used by outfun
-constraintTolerance = p.Results.constraintTolerance;
+
+% Obtain the constraintTolerance
+if isempty(p.Results.constraintTolerance)
+    constraintTolerance = sceneGeometry.constraintTolerance;
+else
+    constraintTolerance = p.Results.constraintTolerance;
+end
 
 % Define anonymous functions for the objective and constraint
 objectiveFun = @objfun; % the objective function, nested below
