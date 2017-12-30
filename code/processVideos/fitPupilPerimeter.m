@@ -205,8 +205,7 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 % Loop through the frames
-%parfor (ii = 1:nFrames, nWorkers)
-for ii = 1:nFrames
+parfor (ii = 1:nFrames, nWorkers)
     
     % Update progress
     if strcmp(verbosity,'full')
@@ -219,9 +218,11 @@ for ii = 1:nFrames
     ellipseParamsTransparent=NaN(1,nEllipseParams);
     ellipseParamsSplitsSD=NaN(1,nEllipseParams);
     ellipseParamsObjectiveError=NaN(1);
-        eyeParams=NaN(1,nEyeParams);
-        eyeParamsSplitsSD=NaN(1,nEyeParams);
-        eyeParamsObjectiveError=NaN(1);
+    eyeParams=NaN(1,nEyeParams);
+    eyeParamsSplitsSD=NaN(1,nEyeParams);
+    eyeParamsObjectiveError=NaN(1);
+    pFitTransparentSplit=NaN(1,nSplits,nEllipseParams);
+    pFitEyeParamSplit=NaN(1,nSplits,nEyeParams);
     
     % get the boundary points
     Xp = frameCellArray{ii}.Xp;
@@ -229,7 +230,7 @@ for ii = 1:nFrames
     
     % fit an ellipse to the boundary (if any points exist)
     if ~isempty(Xp) && ~isempty(Yp)
-%        try % this is to have information on which frame caused an error
+        try % this is to have information on which frame caused an error
             
             % Obtain the fit to the veridical data
             if isempty(sceneGeometry)
@@ -276,12 +277,12 @@ for ii = 1:nFrames
                             constrainedEllipseFit(Xp(splitIdx1), Yp(splitIdx1), ...
                             ellipseTransparentLB, ...
                             ellipseTransparentUB, ...
-                    []);
+                            []);
                         pFitTransparentSplit(2,ss,:) = ...
                             constrainedEllipseFit(Xp(splitIdx2), Yp(splitIdx2), ...
                             ellipseTransparentLB, ...
                             ellipseTransparentUB, ...
-                    []);
+                            []);
                     else
                         pFitEyeParamSplit(1,ss,:) = eyeParamEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry);
                         pFitEyeParamSplit(2,ss,:) = eyeParamEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry);
@@ -296,9 +297,9 @@ for ii = 1:nFrames
                 end
             end % check if we want to do splits
             
-%         catch ME
-%             warning ('Error while processing frame: %d', ii)
-%         end % try catch
+        catch ME
+            warning ('Error while processing frame: %d', ii)
+        end % try catch
     end % check if there are pupil boundary data to be fit
     
     % store results

@@ -243,7 +243,6 @@ end
 if iscell(pupilFileName)
     ellipses = [];
     ellipseFitSEM = [];
-    ellipseFitsplitsSD = [];
     for cc = 1:length(pupilFileName)
         load(pupilFileName{cc})
         ellipses = [ellipses;pupilData.(p.Results.whichEllipseFitField).ellipse.values];

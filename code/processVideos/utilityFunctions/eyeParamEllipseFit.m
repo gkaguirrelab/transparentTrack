@@ -13,8 +13,8 @@ function [eyeParams, RMSE] = eyeParamEllipseFit(Xp, Yp, sceneGeometry, varargin)
 %
 % Optional key/value pairs:
 %  'x0'                   - Initial guess for the eyeParams
-%  'lb'                   - Lower bound on the eyeParams
-%  'ub'                   - Upper bound on the eyeParams
+%  'eyeParamsLB'          - Lower bound on the eyeParams
+%  'eyeParamsUB'          - Upper bound on the eyeParams
 %
 % Outputs:
 %   eyeParams             - A 1x3 matrix containing the best fitting eye
@@ -33,8 +33,8 @@ p.addRequired('Yp',@isnumeric);
 p.addRequired('sceneGeometry',@isstruct);
 
 p.addParameter('x0',[0 0 2],@isnumeric);
-p.addParameter('lb',[-35,-25,0.5],@isnumeric);
-p.addParameter('ub',[35,25,4],@isnumeric);
+p.addParameter('eyeParamsLB',[-35,-25,0.5],@isnumeric);
+p.addParameter('eyeParamsUB',[35,25,4],@isnumeric);
 
 % Parse and check the parameters
 p.parse(Xp, Yp, sceneGeometry, varargin{:});
@@ -63,7 +63,7 @@ options = optimoptions(@fmincon,...
 
 % Perform the non-linear search
 [eyeParams, RMSE] = ...
-    fmincon(myFun, p.Results.x0, [], [], [], [], p.Results.lb, p.Results.ub, [], options);
+    fmincon(myFun, p.Results.x0, [], [], [], [], p.Results.eyeParamsLB, p.Results.eyeParamsUB, [], options);
 
 end % eyeParamEllipseFit
 

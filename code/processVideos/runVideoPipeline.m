@@ -11,7 +11,7 @@ function runVideoPipeline( pathParams, varargin )
 %       fitPupilPerimeter -- with minimal constraints
 %       estimateSceneGeometry
 %       fitPupilPerimeter -- fit again with scene geometry constraints
-%       smoothPupilArea
+%       smoothPupilRadius
 %       makeFitVideo
 %
 %   The user can stop the execution after any of the stages with the
@@ -198,7 +198,7 @@ switch p.Results.videoTypeChoice
             '''sceneDiagnosticPlotFileName'', sceneDiagnosticPlotFileName, varargin{:});']...
             ['fitPupilPerimeter(correctedPerimeterFileName, pupilFileName,' ...
             '''sceneGeometryFileName'', sceneGeometryFileName, varargin{:});']...
-            'smoothPupilArea(correctedPerimeterFileName, pupilFileName, sceneGeometryFileName, varargin{:});'...
+            'smoothPupilRadius(correctedPerimeterFileName, pupilFileName, sceneGeometryFileName, varargin{:});'...
             ['makeFitVideo(grayVideoName, finalFitVideoName,' ...
             '''glintFileName'', glintFileName, ''perimeterFileName'', correctedPerimeterFileName,'...
             '''pupilFileName'', pupilFileName, ''sceneGeometryFileName'', sceneGeometryFileName,' ...
@@ -360,7 +360,7 @@ switch funNames{ff}
         perimeterFileName=correctedPerimeterFileName;
         irisFileName=[];
         varargin={varargin{:}, 'ellipseFitLabel', 'initial'};
-    case 'smoothPupilArea'
+    case 'smoothPupilRadius'
         if ~exist(glintFileName,'file')
             glintFileName = [];
         end
