@@ -21,7 +21,7 @@ function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, scene
 % Inputs:
 %   perimeterFileName     - Full path to a .mat file that contains the
 %                           perimeter data.
-%   pupilFileName         - Full path to the .mat file that contains the 
+%   pupilFileName         - Full path to the .mat file that contains the
 %                           pupil data to be smoothed. This file will be
 %                           over-written by the output.
 %   sceneGeometryFileName - Full path to the .mat file that contains the
@@ -230,7 +230,7 @@ parfor (ii = 1:nFrames, nWorkers)
     posteriorEyeParamsObjectiveError = NaN;
     posteriorEyeParams = NaN(1,nEyeParams);
     posteriorPupilRadiusSD = NaN;
-
+    
     % get the boundary points
     Xp = frameCellArray{ii}.Xp;
     Yp = frameCellArray{ii}.Yp;
@@ -287,7 +287,7 @@ parfor (ii = 1:nFrames, nWorkers)
         priorPupilRadiusSD = nanstd(dataVector,temporalWeightVector);
         
         % Retrieve the initialFit for this frame
-        likelihoodPupilRadiusMean = dataVector(ii);
+        likelihoodPupilRadiusMean = pupilData.(ellipseFitLabel).eyeParams.values(ii,3);
         likelihoodPupilRadiusSD = pupilData.(ellipseFitLabel).eyeParams.splitsSD(ii,3);
         
         % Raise the estimate of the SD from the initial fit to an
@@ -298,7 +298,7 @@ parfor (ii = 1:nFrames, nWorkers)
         % Check if the RMSE for the likelihood fit was above the bad
         % threshold. If so, inflate the SD for the likelihood so that the
         % prior dictates the value of the posterior
-        if rmseVector(ii) > badFrameErrorThreshold
+        if pupilData.(ellipseFitLabel).ellipse.RMSE(ii) > badFrameErrorThreshold
             likelihoodPupilRadiusSD = likelihoodPupilRadiusSD .* 1e20;
         end
         
@@ -312,14 +312,17 @@ parfor (ii = 1:nFrames, nWorkers)
             (priorPupilRadiusSD.^2+likelihoodPupilRadiusSD.^2));
         
         % Re-fit the ellipse with the radius constrained to the posterior
-        % value
-            lb_pin = eyeParamsLB;
-            ub_pin = eyeParamsUB;
-            lb_pin(3)=posteriorPupilRadius;
-            ub_pin(3)=posteriorPupilRadius;
-            [posteriorEyeParams, posteriorEyeParamsObjectiveError] = eyeParamEllipseFit(Xp, Yp, sceneGeometry, 'eyeParamsLB', lb_pin, 'eyeParamsUB', ub_pin );
-            posteriorEllipseParams = pupilProjection_fwd(posteriorEyeParams, sceneGeometry);
-
+        % value. Pass the prior azimuth and elevation as x0.
+        lb_pin = eyeParamsLB;
+        ub_pin = eyeParamsUB;
+        lb_pin(3)=posteriorPupilRadius;
+        ub_pin(3)=posteriorPupilRadius;
+        x0 = pupilData.(ellipseFitLabel).eyeParams.values(ii,:);
+        x0(3)=posteriorPupilRadius;
+        [posteriorEyeParams, posteriorEyeParamsObjectiveError] = ...
+            eyeParamEllipseFit(Xp, Yp, sceneGeometry, 'eyeParamsLB', lb_pin, 'eyeParamsUB', ub_pin, 'x0', x0 );
+        posteriorEllipseParams = pupilProjection_fwd(posteriorEyeParams, sceneGeometry);
+        
     end % check if there are any perimeter points to fit
     
     % store results
