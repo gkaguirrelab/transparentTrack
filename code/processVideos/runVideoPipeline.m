@@ -182,7 +182,7 @@ switch p.Results.videoTypeChoice
             '''nSplits'', 0, varargin{:});']...
             ['makeFitVideo(grayVideoName, finalFitVideoName,' ...
             ' ''perimeterFileName'', perimeterFileName,''perimeterColor'',''r'','...
-            ' ''pupilFileName'', pupilFileName, ''whichFieldToPlot'', ''ellipseParamsUnconstrained_mean'',' ...
+            ' ''pupilFileName'', pupilFileName, ''ellipseFitLabel'', ''initial'',' ...
             ' varargin{:});']...
             };
     case 'LiveTrackWithVTOP_eye'
@@ -346,11 +346,11 @@ switch funNames{ff}
         % If the sceneGeometry has been determined by this point, we can
         % plot the sceneConstrained ellipse fit, otherwise plot the
         % unconstrained
-        varargin={varargin{:}, 'whichFieldToPlot', 'ellipseParamsUnconstrained_mean'};
+        varargin={varargin{:}, 'ellipseFitLabel', 'initial'};
         sceneFunCallIdx=find(strcmp(funNames,'estimateSceneGeometry'));
         if ~isempty(sceneFunCallIdx)
             if sceneFunCallIdx < ff
-                varargin={varargin{:}, 'whichFieldToPlot', 'ellipseParamsSceneConstrained_mean'};
+                varargin={varargin{:}, 'ellipseFitLabel', 'sceneConstrained'};
             end
         end
     case 'estimateSceneGeometry'
@@ -359,7 +359,7 @@ switch funNames{ff}
         end
         perimeterFileName=correctedPerimeterFileName;
         irisFileName=[];
-        varargin={varargin{:}, 'whichFieldToPlot', 'ellipseParamsUnconstrained_mean'};
+        varargin={varargin{:}, 'ellipseFitLabel', 'initial'};
     case 'smoothPupilArea'
         if ~exist(glintFileName,'file')
             glintFileName = [];

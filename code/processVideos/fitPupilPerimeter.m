@@ -110,6 +110,8 @@ p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, 0],@(x)(isempty(x) | isnume
 p.addParameter('ellipseTransparentUB',[640,480,20000,0.75, pi],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nSplits',8,@isnumeric);
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
+p.addParameter('ellipseFitLabel',[],@(x)(isempty(x) | ischar(x)));
+
 
 %% Parse and check the parameters
 p.parse(perimeterFileName, pupilFileName, varargin{:});
@@ -279,7 +281,6 @@ parfor (ii = 1:nFrames, nWorkers)
     loopVar_ellipseParamsTransparent(ii,:) = ellipseParamsTransparent';
     loopVar_ellipseParamsSplitsSD(ii,:) = ellipseParamsSplitsSD';
     loopVar_ellipseParamsObjectiveError(ii) = ellipseParamsObjectiveError;
-    loopVar_ellipseParamsConstraintError(ii) = ellipseParamsConstraintError;
     
 end % loop over frames
 
@@ -300,25 +301,26 @@ if exist(p.Results.pupilFileName, 'file') == 2
     clear dataLoad
 end
 
-% Store the ellipse fit data in informative fields and add meta data
-if isempty(p.Results.sceneGeometryFileName)
-    pupilData.meta.fitPupilPerimeterUnconstrained = p.Results;
-    pupilData.meta.fitPupilPerimeterUnconstrained.coordinateSystem = 'intrinsicCoordinates(pixels)';
-    pupilData.ellipseParamsUnconstrained_mean = loopVar_ellipseParamsTransparent;
-    pupilData.ellipseParamsUnconstrained_rmse = loopVar_ellipseParamsObjectiveError';
-    pupilData.ellipseParamsUnconstrained_constraintError = loopVar_ellipseParamsConstraintError';
-    if nSplits~=0
-        pupilData.ellipseParamsUnconstrained_splitsSD = loopVar_ellipseParamsSplitsSD;
+% Establish a label to save the fields of the ellipse fit data
+if isempty(p.Results.ellipseFitLabel)
+    if isempty(p.Results.sceneGeometryFileName)
+        ellipseFitLabel = 'initial';
+    else
+        ellipseFitLabel = 'sceneConstrained';
     end
 else
-    pupilData.meta.fitPupilPerimeterSceneConstrained = p.Results;
-    pupilData.meta.fitPupilPerimeterSceneConstrained.coordinateSystem = 'intrinsicCoordinates(pixels)';
-    pupilData.ellipseParamsSceneConstrained_mean = loopVar_ellipseParamsTransparent;
-    pupilData.ellipseParamsSceneConstrained_rmse = loopVar_ellipseParamsObjectiveError';
-    pupilData.ellipseParamsSceneConstrained_constraintError = loopVar_ellipseParamsConstraintError';
-    if nSplits~=0
-        pupilData.ellipseParamsSceneConstrained_splitsSD = loopVar_ellipseParamsSplitsSD;
-    end
+    ellipseFitLabel = p.Results.ellipseFitLabel;
+end
+
+% Store the ellipse fit data in informative fields and add meta data
+pupilData.(ellipseFitLabel).meta = p.Results;
+pupilData.(ellipseFitLabel).ellipse.values = loopVar_ellipseParamsTransparent;
+pupilData.(ellipseFitLabel).ellipse.RMSE = loopVar_ellipseParamsObjectiveError';
+pupilData.(ellipseFitLabel).ellipse.meta.ellipseForm = 'transparent';
+pupilData.(ellipseFitLabel).ellipse.meta.units = 'pixels';
+pupilData.(ellipseFitLabel).ellipse.meta.coordinateSystem = 'intrinsic image';
+if nSplits~=0
+    pupilData.(ellipseFitLabel).ellipse.splitsSD = loopVar_ellipseParamsSplitsSD;
 end
 
 % save the ellipse fit results

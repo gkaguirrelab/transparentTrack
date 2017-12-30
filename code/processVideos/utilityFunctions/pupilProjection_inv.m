@@ -94,6 +94,11 @@ p.addParameter('constraintTolerance',0.01,@isnumeric);
 % Parse and check the parameters
 p.parse(pupilEllipseOnImagePlane, sceneGeometry, varargin{:});
 
+%% Check inputs and handle immediate exits
+if isempty(pupilEllipseOnImagePlane)
+    centerError=NaN;
+    return
+end
 
 %% Assemble bounds and x0
 % Because ellipses are symmetric about their axes, a given eccentricity and
