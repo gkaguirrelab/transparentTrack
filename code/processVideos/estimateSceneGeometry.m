@@ -3,26 +3,70 @@ function initialSceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeomet
 %
 % Description:
 %   This function searches over the set of ellipses in the passed pupil
-%   file to estimate the sceneGeometry features in units of pixels on the
-%   scene. The routine identifies the eye radius and the [X, Y, Z]
-%   coordinates on the scene plane of the center of rotation of an eye. The
-%   search attempts to minimize the error associated with the prediction of
-%   the eccentricity and theta of ellipses in each of 100 "bins" of x, y
-%   ellipse center position on the image plane.
+%   file(s) to estimate the sceneGeometry features that define a
+%   perspective projection. The search attempts to minimize the error
+%   associated with the prediction of the center of ellipses in the image
+%   plane while constraining the shape of these ellipses to match that
+%   predicted by the projection.
 %
-%   Different projection models can be used to guide this calculation. The
-%   orthogonal model assumes that ellipses  on the scene plane are
-%   orthogonal projections of a circular pupil the center of which rotates
-%   around the eye center. The pseudoPerspective model adjusts the x, y
-%   position of the center of an ellipse on the image plane given the
-%   increased distance from the image plane when the eye is rotated.
+%   We are aware that the center of an ellipse on the image plane is not at
+%   the same location as the projection of the center of the pupil on the
+%   image plane (see, for example,  Ahn, Sung Joon, H. J. Warnecke, and
+%   Rüdiger Kotowski. "Systematic geometric image measurement errors of
+%   circular object targets: Mathematical formulation and correction." The
+%   Photogrammetric Record 16.93 (1999): 485-502.). The modeling solution
+%   implemented here accounts for this property, as we implement a full,
+%   numeric forward projection of the pupil circle to the image plane.
+%   Similarly, we are aware that there are analytic approximations for the
+%   parameters of an ellipse in the image plane given a particular
+%   projective circumstance. These analytic approaches may provide an
+%   improvement in computation time in comparison to the numeric, forward
+%   simulation approach we adopt here, although at some cost in precision.
 %
-% 	Note: the search for both eye radius and eyeCenter.Z is not
-% 	sufficiently constrainted. Therefore, the boundaries for one of these
-% 	should be locked.
+% Components of the projection model:
+%   intrinsicCameraMatrix - This matrix has the form:
 %
-% Notes:
-%   Eye radius - Initial value and bounds on the eye radius are taken from:
+%       [fx  s x0]
+%       [0  fy y0]
+%       [0   0  1]
+%
+%   where fx, fy are the focal lengths of the camera in the x and y image
+%   dimensions, s is the axis skew, and x0, y0 define the principle offset
+%   point. For a camera sensor with square pixels, fx = fy. Ideally, skew
+%   should be zero. The principle offset point should be in the center of
+%   the sensor. Units are traditionally in pixels. These values can be
+%   empirically measured for a camera using a calibration approach
+%   (https://www.mathworks.com/help/vision/ref/cameramatrix.html).
+%   Therefore, the intrinsicCameraMatrix is locked and not modified in the
+%   sceneGeometry search.
+%
+%   extrinsicTranslationVector - a vector of the form:
+%
+%       [x] 
+%       [y] 
+%       [z]
+%
+%   with the values specifying the location (horizontal, vertical, and
+%   depth, respectively) of the principle offset point of the camera in mm
+%   relative to the scene coordinate system. We define the origin of the
+%   scene coordinate system to be x=0, y=0 at the center of rotation of the
+%   eye, and z=0 to be the front surface of the spherical eye ball. The
+%   default values and params can be guided by knowledge of the physical
+%   arrangement of the subject and recording apparatus.
+%
+%   extrinsicRotationMatrix - A 3x3 matrix with the fixed values of:
+%
+%       [1  0  0]
+%       [0 -1  0]
+%       [0  0 -1]
+%
+%   These values invert the axes of the scene coordinate system to produce
+%   the direction conventions of the image coordinate system. As the
+%   projection of pupil circles from scene to image is invariant to
+%   rotations of the camera matrix, these values are locked.
+%
+%   eyeRadius -  Scalar which specifies the radius of the eye in mm.
+%   Initial value and bounds on the eye radius are taken from:
 %
 %       Atchison, David A., et al. "Shape of the retinal surface in
 %       emmetropia and myopia." Investigative ophthalmology & visual
@@ -32,10 +76,29 @@ function initialSceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeomet
 %           emmetrope:  11.29 (11.07 - 11.51)
 %           myope:      11.66 (11.54 - 11.80)
 %
+%   The default values in the routine are for an emmetrope.
+%
+%   constraintTolerance - A scalar. The inverse projection from ellipse on
+%   the image plane to eye params (azimuth, elevation) imposes a constraint
+%   on how well the solution must match the shape of the ellipse (defined
+%   by ellipse eccentricity and theta) and the area of the ellipse. This
+%   constraint is expressed as a proportion of error, relative to either
+%   the largest possible area in ellipse shape or an error in area equal to
+%   the area of the ellipse itself (i.e., unity). If the constraint is made
+%   too stringent, then in an effort to perfectly match the shape of the
+%   ellipse, error will increase in matching the position of the ellipse
+%   center. It should be noted that even in a noise-free simulation, it is
+%   not possible to perfectly match ellipse shape and area while matching
+%   ellipse center position, as the shape of the projection of the pupil
+%   upon the image plane deviates from perfectly elliptical due to
+%   perspective effects. We find that a value in the range 0.01 - 0.03
+%   provides an acceptable compromise in empirical data.
 %
 % Inputs:
 %	pupilFileName         - Full path to a pupilData file, or a cell array
-%                           of such paths.
+%                           of such paths. If a cell array is provided, the
+%                           ellipse data from each pupilData file will be
+%                           loaded and concatenated.
 %   sceneGeometryFileName - Full path to the file in which the
 %                           sceneGeometry data should be saved
 %
@@ -66,23 +129,20 @@ function initialSceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeomet
 %  'hostname'             - AUTOMATIC; The host
 %
 % Optional key/value pairs (analysis)
-%  'projectionModel'      - Options are: 'orthogonal' and 'perspective'
-%  'sceneGeometryLB'      - Lower bounds for the sceneGeometry parameter
-%                           search. This is a 4x1 vector specifying
-%                           eyeCenter.X, eyeCenter.Y, eyeCenter.Z and
-%                           eyeRadius.
-%  'sceneGeometryUB'      - The corresponding upper bounds.
-%  'cameraDistanceInPixels' - This is used (along with eyeRadius) to
-%                           construct an initial guess for eyeCenter.Z
-%  'eyeRadius             - Under the orthogonal projection case, this
-%                           value is stored and used for all subsequent
-%                           calculations. Under the pseudoPerspective case,
-%                           this is the initial guess for eyeRadius.
-%  'whichFitFieldMean'    - Identifies the field in pupilData that contains
+%  'intrinsicCameraMatrix' - 3x3 matrix
+%  'extrinsicRotationMatrix' - 3x3 matrix
+%  'eyeRadius'            - Scalar
+%  'eyeRadiusLB'          - Scalar
+%  'eyeRadiusUB'          - Scalar
+%  'extrinsicTranslationVector' - 3x1 matrix
+%  'extrinsicTranslationVectorLB' - 3x1 matrix
+%  'extrinsicTranslationVectorUB' - 3x1 matrix
+%  'constraintTolerance'  - Scalar. Range 0-1.
+%  'nBinsPerDimension'    - Scalar. Defines the number of divisions with
+%                           which the ellipse centers are binned.
+%  'whichEllipseFitField' - Identifies the field in pupilData that contains
 %                           the ellipse fit params for which the search
 %                           will be conducted.
-%  'whichFitFieldError'   - Identifies the pupilData field that has error
-%                           values for the ellipse fit params.
 %
 % Outputs
 %	sceneGeometry         - A structure with the fields
@@ -121,14 +181,14 @@ p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@i
 
 % Optional analysis params
 p.addParameter('intrinsicCameraMatrix',[772.5483 0 320; 0 772.5483 240; 0 0 1],@isnumeric);
-p.addParameter('extrinsicTranslationVector',[0; 0; 50],@isnumeric);
 p.addParameter('extrinsicRotationMatrix',[1 0 0; 0 -1 0; 0 0 -1],@isnumeric);
 p.addParameter('eyeRadius',11.29,@isnumeric);
-p.addParameter('extrinsicTranslationVectorLB',[-10; -10; 45],@isnumeric);
-p.addParameter('extrinsicTranslationVectorUB',[10; 10; 65],@isnumeric);
 p.addParameter('eyeRadiusLB',11.07,@isnumeric);
 p.addParameter('eyeRadiusUB',11.51,@isnumeric);
-p.addParameter('ellipseConstraintTolerance',0.02,@isnumeric);
+p.addParameter('extrinsicTranslationVector',[0; 0; 50],@isnumeric);
+p.addParameter('extrinsicTranslationVectorLB',[-10; -10; 45],@isnumeric);
+p.addParameter('extrinsicTranslationVectorUB',[10; 10; 65],@isnumeric);
+p.addParameter('constraintTolerance',0.02,@isnumeric);
 p.addParameter('nBinsPerDimension',7,@isnumeric);
 p.addParameter('whichEllipseFitField','initial',@ischar);
 
@@ -227,7 +287,7 @@ initialSceneGeometry.eyeRadius = p.Results.eyeRadius;
 initialSceneGeometry.intrinsicCameraMatrix = p.Results.intrinsicCameraMatrix;
 initialSceneGeometry.extrinsicTranslationVector = p.Results.extrinsicTranslationVector;
 initialSceneGeometry.extrinsicRotationMatrix = p.Results.extrinsicRotationMatrix;
-initialSceneGeometry.ellipseConstraintTolerance = p.Results.ellipseConstraintTolerance;
+initialSceneGeometry.constraintTolerance = p.Results.constraintTolerance;
 
 % Bounds
 lb = [p.Results.extrinsicTranslationVectorLB; p.Results.eyeRadiusLB];
@@ -355,7 +415,7 @@ centerDistanceErrorByEllipse=[];
             (...
             ellipses(x,:),...
             candidateSceneGeometry,...
-            'constraintTolerance', candidateSceneGeometry.ellipseConstraintTolerance...
+            'constraintTolerance', candidateSceneGeometry.constraintTolerance...
             ),...
             1:1:size(ellipses,1),'UniformOutput',false);
         
@@ -370,7 +430,7 @@ sceneGeometry.extrinsicTranslationVector = x(1:3);
 sceneGeometry.eyeRadius = x(4);
 sceneGeometry.intrinsicCameraMatrix = initialSceneGeometry.intrinsicCameraMatrix;
 sceneGeometry.extrinsicRotationMatrix = initialSceneGeometry.extrinsicRotationMatrix;
-sceneGeometry.constraintTolerance = initialSceneGeometry.ellipseConstraintTolerance;
+sceneGeometry.constraintTolerance = initialSceneGeometry.constraintTolerance;
 sceneGeometry.search.options = options;
 sceneGeometry.search.norm = norm;
 sceneGeometry.search.initialSceneGeometry = initialSceneGeometry;
