@@ -205,7 +205,8 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 % Loop through the frames
-parfor (ii = 1:nFrames, nWorkers)
+%parfor (ii = 1:nFrames, nWorkers)
+for ii = 1:nFrames
     
     % Update progress
     if strcmp(verbosity,'full')
@@ -218,11 +219,9 @@ parfor (ii = 1:nFrames, nWorkers)
     ellipseParamsTransparent=NaN(1,nEllipseParams);
     ellipseParamsSplitsSD=NaN(1,nEllipseParams);
     ellipseParamsObjectiveError=NaN(1);
-    if ~isempty(sceneGeometry)
         eyeParams=NaN(1,nEyeParams);
         eyeParamsSplitsSD=NaN(1,nEyeParams);
         eyeParamsObjectiveError=NaN(1);
-    end
     
     % get the boundary points
     Xp = frameCellArray{ii}.Xp;
@@ -230,17 +229,18 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % fit an ellipse to the boundary (if any points exist)
     if ~isempty(Xp) && ~isempty(Yp)
-        try % this is to have information on which frame caused an error
+%        try % this is to have information on which frame caused an error
             
             % Obtain the fit to the veridical data
             if isempty(sceneGeometry)
                 [ellipseParamsTransparent, ellipseParamsObjectiveError] = ...
                     constrainedEllipseFit(Xp, Yp, ...
                     ellipseTransparentLB, ...
-                    ellipseTransparentUB);
+                    ellipseTransparentUB, ...
+                    []);
             else
                 [eyeParams, eyeParamsObjectiveError] = eyeParamEllipseFit(Xp, Yp, sceneGeometry);
-                ellipseParamsTransparent = pupilProjection_fwd(eyeParams, sceneGeometry)
+                ellipseParamsTransparent = pupilProjection_fwd(eyeParams, sceneGeometry);
             end
             
             % Re-calculate fit for splits of data points, if requested
@@ -275,11 +275,13 @@ parfor (ii = 1:nFrames, nWorkers)
                         pFitTransparentSplit(1,ss,:) = ...
                             constrainedEllipseFit(Xp(splitIdx1), Yp(splitIdx1), ...
                             ellipseTransparentLB, ...
-                            ellipseTransparentUB);
+                            ellipseTransparentUB, ...
+                    []);
                         pFitTransparentSplit(2,ss,:) = ...
                             constrainedEllipseFit(Xp(splitIdx2), Yp(splitIdx2), ...
                             ellipseTransparentLB, ...
-                            ellipseTransparentUB);
+                            ellipseTransparentUB, ...
+                    []);
                     else
                         pFitEyeParamSplit(1,ss,:) = eyeParamEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry);
                         pFitEyeParamSplit(2,ss,:) = eyeParamEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry);
@@ -294,9 +296,9 @@ parfor (ii = 1:nFrames, nWorkers)
                 end
             end % check if we want to do splits
             
-        catch ME
-            warning ('Error while processing frame: %d', ii)
-        end % try catch
+%         catch ME
+%             warning ('Error while processing frame: %d', ii)
+%         end % try catch
     end % check if there are pupil boundary data to be fit
     
     % store results
@@ -304,9 +306,9 @@ parfor (ii = 1:nFrames, nWorkers)
     loopVar_ellipseParamsSplitsSD(ii,:) = ellipseParamsSplitsSD';
     loopVar_ellipseParamsObjectiveError(ii) = ellipseParamsObjectiveError;
     if ~isempty(sceneGeometry)
-        loopVar_eyeParams = eyeParams';
-        loopVar_eyeParamsSplitsSD = eyeParamsSplitsSD';
-        loopVar_eyeParamsObjectiveError = eyeParamsObjectiveError;
+        loopVar_eyeParams(ii,:) = eyeParams';
+        loopVar_eyeParamsSplitsSD(ii,:) = eyeParamsSplitsSD';
+        loopVar_eyeParamsObjectiveError(ii) = eyeParamsObjectiveError;
     end
 end % loop over frames
 
@@ -339,24 +341,29 @@ else
 end
 
 % Store the ellipse fit data in informative fields and add meta data
-pupilData.(ellipseFitLabel).meta = p.Results;
 pupilData.(ellipseFitLabel).ellipse.values = loopVar_ellipseParamsTransparent;
-pupilData.(ellipseFitLabel).ellipse.RMSE = loopVar_ellipseParamsObjectiveError';
-pupilData.(ellipseFitLabel).ellipse.meta.ellipseForm = 'transparent';
-pupilData.(ellipseFitLabel).eyeParams.meta.labels = {'x','y','area','eccentricity','theta'};
-pupilData.(ellipseFitLabel).ellipse.meta.units = {'pixels','pixels','squared pixels','non-linear eccentricity','rads'};
-pupilData.(ellipseFitLabel).ellipse.meta.coordinateSystem = 'intrinsic image';
+if isempty(sceneGeometry)
+    pupilData.(ellipseFitLabel).ellipse.RMSE = loopVar_ellipseParamsObjectiveError';
+else
+    pupilData.(ellipseFitLabel).ellipse.RMSE = loopVar_eyeParamsObjectiveError';
+end
 if nSplits~=0 && isempty(sceneGeometry)
     pupilData.(ellipseFitLabel).ellipse.splitsSD = loopVar_ellipseParamsSplitsSD;
 end
+pupilData.(ellipseFitLabel).ellipse.meta.ellipseForm = 'transparent';
+pupilData.(ellipseFitLabel).ellipse.meta.labels = {'x','y','area','eccentricity','theta'};
+pupilData.(ellipseFitLabel).ellipse.meta.units = {'pixels','pixels','squared pixels','non-linear eccentricity','rads'};
+pupilData.(ellipseFitLabel).ellipse.meta.coordinateSystem = 'intrinsic image';
 if ~isempty(sceneGeometry)
     pupilData.(ellipseFitLabel).eyeParams.values = loopVar_eyeParams;
-    pupilData.(ellipseFitLabel).eyeParams.meta.labels = {'azimuth','elevation','pupil radius'};
-    pupilData.(ellipseFitLabel).eyeParams.meta.units = {'deg','deg','mm'};
     if nSplits~=0
         pupilData.(ellipseFitLabel).eyeParams.splitsSD = loopVar_eyeParamsSplitsSD;
     end
+    pupilData.(ellipseFitLabel).eyeParams.meta.labels = {'azimuth','elevation','pupil radius'};
+    pupilData.(ellipseFitLabel).eyeParams.meta.units = {'deg','deg','mm'};
+    pupilData.(ellipseFitLabel).eyeParams.meta.coordinateSystem = 'head fixed (extrinsic)';
 end
+pupilData.(ellipseFitLabel).meta = p.Results;
 % save the ellipse fit results
 save(p.Results.pupilFileName,'pupilData')
 

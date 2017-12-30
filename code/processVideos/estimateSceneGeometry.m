@@ -309,16 +309,8 @@ end
 
 
 %% Create a sceneGeometry plot
-if ~isempty(p.Results.sceneDiagnosticPlotFileName)    
-    tmpArray=nan(1,(length(Xedges)-1)*(length(Xedges)-1));
-    tmpArray(filledBinIdx)=sceneGeometry.search.errorWeights;
-    errorWeightImage = flipud(reshape(tmpArray,length(Xedges)-1,length(Xedges)-1));
-    
-    tmpArray=nan(1,(length(Xedges)-1)*(length(Xedges)-1));
-    tmpArray(filledBinIdx)=sceneGeometry.search.centerDistanceErrorByEllipse;
-    centerDistanceErrorByEllipseImage = flipud(reshape(tmpArray,length(Xedges)-1,length(Xedges)-1));
-    
-    saveSceneDiagnosticPlot(ellipses(ellipseArrayList,:), sceneGeometry.search.errorWeights, Xedges, Yedges, errorWeightImage, centerDistanceErrorByEllipseImage, sceneGeometry, p.Results.sceneDiagnosticPlotFileName)
+if ~isempty(p.Results.sceneDiagnosticPlotFileName)
+    saveSceneDiagnosticPlot(ellipses(ellipseArrayList,:), Xedges, Yedges, sceneGeometry, p.Results.sceneDiagnosticPlotFileName)
 end
 
 % alert the user that we are done with the routine
@@ -444,23 +436,16 @@ sceneGeometry.search.centerDistanceErrorByEllipse = centerDistanceErrorByEllipse
 end % local search function
 
 
-function [] = saveSceneDiagnosticPlot(ellipses, errorWeightVec, Xedges, Yedges, errorWeightImage, centerDistanceErrorByEllipseImage, sceneGeometry, sceneDiagnosticPlotFileName)
+function [] = saveSceneDiagnosticPlot(ellipses, Xedges, Yedges, sceneGeometry, sceneDiagnosticPlotFileName)
 % Creates and saves a plot that illustrates the sceneGeometry results
 %
 % Inputs:
 %   ellipses              - An n x p array containing the p parameters of
 %                           the n ellipses used to derive sceneGeometry
-%   errorWeightVec        -
 %   Xedges                - The X-dimension edges of the bins used to
 %                           divide and select ellipses across the image.
 %   Yedges                - The Y-dimension edges of the bins used to
 %                           divide and select ellipses across the image.
-%   errorWeightImage      - The weight applied to the ellipse at each bin
-%                           location in the sceneGeometry search
-%   centerDistanceErrorByEllipseImage - The error in the ellipse center
-%                           location between the target ellipse and the
-%                           best fit of the forward projection model at
-%                           each bin location
 %   sceneGeometry         - The sceneGeometry structure
 %   sceneDiagnosticPlotFileName - The full path (including .pdf suffix)
 %                           to the location to save the diagnostic plot
@@ -470,7 +455,7 @@ function [] = saveSceneDiagnosticPlot(ellipses, errorWeightVec, Xedges, Yedges, 
 %
 
 figHandle = figure('visible','off');
-subplot(2,2,1)
+subplot(2,1,1)
 
 % plot the 2D histogram grid
 for xx = 1: length(Xedges)
@@ -506,6 +491,7 @@ scatter(projectedEllipses(:,1),projectedEllipses(:,2),'o','filled', ...
     'MarkerFaceAlpha',2/8,'MarkerFaceColor',[0 0 1]);
 
 % connect the centers with lines
+errorWeightVec=sceneGeometry.search.errorWeights;
 for ii=1:size(ellipses,1)
     lineAlpha = errorWeightVec(ii)/max(errorWeightVec);
     lineWeight = 0.5 + (errorWeightVec(ii)/max(errorWeightVec));
@@ -527,7 +513,7 @@ set(gca,'Ydir','reverse')
 title('Ellipse centers')
 
 % Create a legend
-hSub = subplot(2,2,2);
+hSub = subplot(2,1,2);
 scatter(nan, nan,2,'filled', ...
     'MarkerFaceAlpha',2/8,'MarkerFaceColor',[0 0 0]);
 hold on
@@ -535,15 +521,7 @@ scatter(nan, nan,2,'filled', ...
     'MarkerFaceAlpha',2/8,'MarkerFaceColor',[0 0 1]);
 plot(nan, nan, '+g', 'MarkerSize', 5);
 set(hSub, 'Visible', 'off');
-legend({'observed ellipse centers','modeled ellipse centers', 'azimuth 0, elevation 0'},'Location','southwestoutside');
-
-% Plot the ellipse counts and error values by bin
-subplot(2,2,3)
-nanAwareImagePlot(errorWeightImage, Xedges, Yedges, 'Error weights')
-
-% Plot the centerDistanceErrorByEllipse in each bin
-subplot(2,2,4)
-nanAwareImagePlot(centerDistanceErrorByEllipseImage, Xedges, Yedges, 'Ellipse center distance error')
+legend({'observed ellipse centers','modeled ellipse centers', 'azimuth 0, elevation 0'},'Location','northoutside');
 
 % Save the plot
 saveas(figHandle,sceneDiagnosticPlotFileName);
@@ -551,26 +529,3 @@ close(figHandle)
 
 end % saveSceneDiagnosticPlot
 
-
-function nanAwareImagePlot(image, Xedges, Yedges, titleString)
-% A replacement for imagesc that gracefully handles nans
-%
-[nr,nc] = size(image);
-pcolor([flipud(image) nan(nr,1); nan(1,nc+1)]);
-caxis([0 max(max(image))]);
-shading flat;
-axis equal
-
-% Set the axis backgroud to dark gray
-set(gcf,'Color',[1 1 1]); set(gca,'Color',[.75 .75 .75]); set(gcf,'InvertHardCopy','off');
-set(gca,'Ydir','reverse')
-colorbar;
-title(titleString);
-xticks(1:1:size(image,1)+1);
-xticklabels(round(Xedges));
-xtickangle(90);
-yticks(1:1:size(image,2)+1);
-yticklabels(round(Yedges));
-xlim([1 size(image,1)+1]);
-ylim([1 size(image,2)+1]);
-end
