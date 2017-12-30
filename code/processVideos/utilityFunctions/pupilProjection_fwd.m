@@ -46,11 +46,13 @@ function [pupilEllipseOnImagePlane, pupilCenterOnImagePlane] = pupilProjection_f
 %                           of the pupil
 %
 
+
 %% Prepare variables
 % Separate the eyeParams into individual variables
 eyeAzimuth = eyeParams(1);
 eyeElevation = eyeParams(2);
 pupilRadius = eyeParams(3);
+
 
 %% Define a pupil circle in pupilWorld coordinates
 % This coordinate frame is in mm units and has the dimensions (p1,p2,p3).
@@ -74,11 +76,10 @@ pupilRadius = eyeParams(3);
 %           - <--p3--> +
 %
 
-% We define five points around the pupil circle as five points are needed
-% to uniquely define the ellipse in the image plane. A 6th (center) point
-% is included so that the discrepancy between the projected center of the
-% pupil and measured center of the ellipse may be examined if one is
-% curious.
+% Five points are defined around the pupil circle, which uniquely
+% constrains the ellipse in the image plane. A 6th (center) point is
+% included so that the discrepancy between the projected center of the
+% pupil and measured center of the ellipse may be examined.
 nPerimPoints = 5;
 pupilWorldPointsAngles = 0:2*pi/nPerimPoints:2*pi-(2*pi/nPerimPoints);
 pupilWorldPoints(:,3) = sin(pupilWorldPointsAngles)*pupilRadius(1);
@@ -123,8 +124,8 @@ pupilWorldPoints(nPerimPoints+1,:) = [0 0 0];
 % We will convert from this coordinate frame to that of the camera scene
 % later.
 
-%% Define the eye rotation matrix
 
+%% Define the eye rotation matrix
 % Set pupil torsion to zero, as this will not impact the imaged ellipse
 eyeTorsion = 0;
 
@@ -158,6 +159,7 @@ headWorldPoints(:,1)=headWorldPoints(:,1)*(-1);
 % the right in the image plane).
 headWorldPoints(:,2)=headWorldPoints(:,2)*(-1);
 headWorldPoints(:,3)=headWorldPoints(:,3)*(-1);
+
 
 %% Project the pupil circle points to sceneWorld coordinates.
 % This coordinate frame is in mm units and has the dimensions (X,Y,Z).
@@ -206,7 +208,6 @@ sceneWorldPoints(:,2) = sceneWorldPoints(:,2)*(-1);
 % With x being left/right and y being down/up
 %
 
-
 % Add a column of ones to support the upcoming matrix multiplication with a
 % combined rotation and translation matrix
 sceneWorldPoints=[sceneWorldPoints, ones(nPerimPoints+1,1)];
@@ -247,5 +248,5 @@ end
 pupilCenterOnImagePlane = ...
     [imagePointsReconstructed(nPerimPoints+1,1) imagePointsReconstructed(nPerimPoints+1,2)];
 
-end % function
+end % pupilProjection_fwd
 
