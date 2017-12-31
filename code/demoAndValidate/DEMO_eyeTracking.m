@@ -70,12 +70,13 @@ if ~exist (demoPackage,'file')
 end
 
 
-%% Perform the entire analysis with one call
+%% Run the analysis pipeline
 runVideoPipeline( pathParams, ...
     'nFrames',nFrames,'verbosity', verbosity, 'tbSnapshot',tbSnapshot, 'useParallel',true, ...
     'pupilRange', [40 200], 'pupilCircleThresh', 0.04, 'pupilGammaCorrection', 1.5, ...
     'overwriteControlFile', true, 'catchErrors', false,...
-    'skipStageByNumber',1:1:5);
+    'skipStageByNumber',1:1:6);
+
 
 %% Plot some fits
 pupilFileName = fullfile(pathParams.dataOutputDirFull,[pathParams.runName '_pupil.mat']);
@@ -83,7 +84,7 @@ dataLoad = load(pupilFileName);
 pupilData = dataLoad.pupilData;
 clear dataLoad
 
-temporalSupport = 0:1/60.:(size(pupilData.ellipseParamsSceneConstrained_mean,1)-1)/60; % seconds
+temporalSupport = 0:1/60.:(size(pupilData.initial.ellipse.values,1)-1)/60; % seconds
 temporalSupport = temporalSupport / 60; % minutes
 
 % Make a plot of pupil area, both on the image plane and on the eye
@@ -106,7 +107,7 @@ hold on
 plot(temporalSupport,pupilData.sceneConstrained.eyeParams.values(:,3),'-b');
 plot(temporalSupport,pupilData.sceneConstrained.eyeParams.values(:,3)-pupilData.sceneConstrained.eyeParams.splitsSD(:,3),'-','Color',[0 0 0.7])
 plot(temporalSupport,pupilData.sceneConstrained.eyeParams.values(:,3)+pupilData.sceneConstrained.eyeParams.splitsSD(:,3),'-','Color',[0 0 0.7])
-plot(temporalSupport,pupilData.radiusSmoothed.eyeParams.values,'-r','LineWidth',2)
+plot(temporalSupport,pupilData.radiusSmoothed.eyeParams.values(:,3),'-r','LineWidth',2)
 xlim([0 max(temporalSupport)]);
 xlabel('time [mins]');
 ylabel('pupil radius [mm on eye]');
