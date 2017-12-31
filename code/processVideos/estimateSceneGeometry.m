@@ -454,7 +454,7 @@ function [] = saveSceneDiagnosticPlot(ellipses, Xedges, Yedges, sceneGeometry, s
 %
 
 figHandle = figure('visible','off');
-subplot(2,1,1)
+subplot(4,4,1:1:12)
 
 % plot the 2D histogram grid
 for xx = 1: length(Xedges)
@@ -512,7 +512,7 @@ set(gca,'Ydir','reverse')
 title('Ellipse centers')
 
 % Create a legend
-hSub = subplot(2,1,2);
+hSub = subplot(4,4,13:1:16);
 scatter(nan, nan,2,'filled', ...
     'MarkerFaceAlpha',2/8,'MarkerFaceColor',[0 0 0]);
 hold on
@@ -520,7 +520,7 @@ scatter(nan, nan,2,'filled', ...
     'MarkerFaceAlpha',2/8,'MarkerFaceColor',[0 0 1]);
 plot(nan, nan, '+g', 'MarkerSize', 5);
 set(hSub, 'Visible', 'off');
-legend({'observed ellipse centers','modeled ellipse centers', 'azimuth 0, elevation 0'},'Location','northoutside');
+legend({'observed ellipse centers','modeled ellipse centers', 'azimuth 0, elevation 0'},'Location','north');
 
 % Save the plot
 saveas(figHandle,sceneDiagnosticPlotFileName);
