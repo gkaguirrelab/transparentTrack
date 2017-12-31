@@ -138,6 +138,16 @@ function initialSceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeomet
 %  'extrinsicTranslationVectorLB' - 3x1 matrix
 %  'extrinsicTranslationVectorUB' - 3x1 matrix
 %  'constraintTolerance'  - Scalar. Range 0-1.
+%  'eyeParamsLB/UB'       - Upper and lower bounds on the eyeParams
+%                           [azimuth, elevation, pupil radius]. Biological
+%                           limits in eye rotation and pupil size would
+%                           suggest boundaries of [±35, ±25, 0.5-5]. Note,
+%                           however, that these angles are relative to the
+%                           center of projection, not the primary position
+%                           of the eye. Therefore, in circumstances in
+%                           which the camera is viewing the eye from an
+%                           off-center angle, the bounds will need to be
+%                           shifted accordingly.
 %  'nBinsPerDimension'    - Scalar. Defines the number of divisions with
 %                           which the ellipse centers are binned.
 %  'whichEllipseFitField' - Identifies the field in pupilData that contains
@@ -189,6 +199,8 @@ p.addParameter('extrinsicTranslationVector',[0; 0; 50],@isnumeric);
 p.addParameter('extrinsicTranslationVectorLB',[-10; -10; 45],@isnumeric);
 p.addParameter('extrinsicTranslationVectorUB',[10; 10; 65],@isnumeric);
 p.addParameter('constraintTolerance',0.02,@isnumeric);
+p.addParameter('eyeParamsLB',[-35,-25,0.5],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('eyeParamsUB',[35,25,5],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nBinsPerDimension',7,@isnumeric);
 p.addParameter('whichEllipseFitField','initial',@ischar);
 
@@ -289,14 +301,20 @@ initialSceneGeometry.extrinsicRotationMatrix = p.Results.extrinsicRotationMatrix
 initialSceneGeometry.constraintTolerance = p.Results.constraintTolerance;
 
 % Bounds
-lb = [p.Results.extrinsicTranslationVectorLB; p.Results.eyeRadiusLB];
-ub = [p.Results.extrinsicTranslationVectorUB; p.Results.eyeRadiusUB];
+sceneParamsLB = [p.Results.extrinsicTranslationVectorLB; p.Results.eyeRadiusLB];
+sceneParamsUB = [p.Results.extrinsicTranslationVectorUB; p.Results.eyeRadiusUB];
 
 
 %% Perform the search
 % Call out to the local function that performs the serach
 sceneGeometry = ...
-    performSceneSearch(initialSceneGeometry, ellipses(ellipseArrayList,:), errorWeights, lb, ub);
+    performSceneSearch(initialSceneGeometry, ...
+    ellipses(ellipseArrayList,:), ...
+    errorWeights, ...
+    sceneParamsLB, ...
+    sceneParamsUB, ...
+    p.Results.eyeParamsLB, ...
+    p.Results.eyeParamsUB);
 
 
 %% Save the sceneGeometry file
@@ -342,7 +360,7 @@ end % main function
 
 %% LOCAL FUNCTIONS
 
-function sceneGeometry = performSceneSearch(initialSceneGeometry, ellipses, errorWeights, lb, ub)
+function sceneGeometry = performSceneSearch(initialSceneGeometry, ellipses, errorWeights, sceneParamsLB, sceneParamsUB, eyeParamsLB, eyeParamsUB)
 % Pattern search for best fitting sceneGeometry parameters
 %
 % Description:
@@ -396,7 +414,7 @@ objectiveFun = @objfun; % the objective function, nested below
 % Define nested variables for within the search
 centerDistanceErrorByEllipse=[];
 
-[x, fVal] = patternsearch(objectiveFun, x0,[],[],[],[],lb,ub,[],options);
+[x, fVal] = patternsearch(objectiveFun, x0,[],[],[],[],sceneParamsLB,sceneParamsUB,[],options);
     function fval = objfun(x)
         candidateSceneGeometry = initialSceneGeometry;
         candidateSceneGeometry.extrinsicTranslationVector = x(1:3);
@@ -404,9 +422,11 @@ centerDistanceErrorByEllipse=[];
         [~, ~, centerDistanceErrorByEllipse] = ...
             arrayfun(@(x) pupilProjection_inv...
             (...
-            ellipses(x,:),...
-            candidateSceneGeometry,...
-            'constraintTolerance', candidateSceneGeometry.constraintTolerance...
+                ellipses(x,:),...
+                candidateSceneGeometry,...
+                'constraintTolerance', candidateSceneGeometry.constraintTolerance,...
+                'eyeParamsLB',eyeParamsLB,...
+                'eyeParamsUB',eyeParamsUB...
             ),...
             1:1:size(ellipses,1),'UniformOutput',false);
         
@@ -427,8 +447,10 @@ sceneGeometry.search.norm = norm;
 sceneGeometry.search.initialSceneGeometry = initialSceneGeometry;
 sceneGeometry.search.ellipses = ellipses;
 sceneGeometry.search.errorWeights = errorWeights;
-sceneGeometry.search.lb = lb;
-sceneGeometry.search.ub = ub;
+sceneGeometry.search.sceneParamsLB = sceneParamsLB;
+sceneGeometry.search.sceneParamsUB = sceneParamsUB;
+sceneGeometry.search.eyeParamsLB = eyeParamsLB;
+sceneGeometry.search.eyeParamsUB = eyeParamsUB;
 sceneGeometry.search.fVal = fVal;
 sceneGeometry.search.centerDistanceErrorByEllipse = centerDistanceErrorByEllipse;
 
@@ -454,7 +476,7 @@ function [] = saveSceneDiagnosticPlot(ellipses, Xedges, Yedges, sceneGeometry, s
 %
 
 figHandle = figure('visible','off');
-subplot(4,4,1:1:12)
+subplot(6,8,1:1:40)
 
 % plot the 2D histogram grid
 for xx = 1: length(Xedges)
@@ -512,7 +534,7 @@ set(gca,'Ydir','reverse')
 title('Ellipse centers')
 
 % Create a legend
-hSub = subplot(4,4,13:1:16);
+hSub = subplot(6,8,41:1:48);
 scatter(nan, nan,2,'filled', ...
     'MarkerFaceAlpha',2/8,'MarkerFaceColor',[0 0 0]);
 hold on

@@ -67,6 +67,16 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %                           by the scene geometry. A mild constraint (0.75)
 %                           is placed upon the eccentricity, corresponding
 %                           to an aspect ration of 3:2.
+%  'eyeParamsLB/UB'       - Upper and lower bounds on the eyeParams
+%                           [azimuth, elevation, pupil radius]. Biological
+%                           limits in eye rotation and pupil size would
+%                           suggest boundaries of [±35, ±25, 0.5-5]. Note,
+%                           however, that these angles are relative to the
+%                           center of projection, not the primary position
+%                           of the eye. Therefore, in circumstances in
+%                           which the camera is viewing the eye from an
+%                           off-center angle, the bounds will need to be
+%                           shifted accordingly.
 %  'nSplits'              - The number of tests upon the spatial split-
 %                           halves of the pupil boundary values to examine
 %                           to estimate the SD of the fitting parameters.
@@ -108,6 +118,8 @@ p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@i
 % Optional analysis params
 p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, 0],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('ellipseTransparentUB',[640,480,20000,0.75, pi],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('eyeParamsLB',[-35,-25,0.5],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('eyeParamsUB',[35,25,5],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nSplits',8,@isnumeric);
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('ellipseFitLabel',[],@(x)(isempty(x) | ischar(x)));
@@ -194,6 +206,8 @@ clear perimeter
 verbosity = p.Results.verbosity;
 ellipseTransparentLB = p.Results.ellipseTransparentLB;
 ellipseTransparentUB = p.Results.ellipseTransparentUB;
+eyeParamsLB = p.Results.eyeParamsLB;
+eyeParamsUB = p.Results.eyeParamsUB;
 nSplits = p.Results.nSplits;
 
 % Alert the user
@@ -205,7 +219,8 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 % Loop through the frames
-parfor (ii = 1:nFrames, nWorkers)
+%parfor (ii = 1:nFrames, nWorkers)
+for ii = 1:nFrames
     
     % Update progress
     if strcmp(verbosity,'full')
@@ -240,8 +255,10 @@ parfor (ii = 1:nFrames, nWorkers)
                     ellipseTransparentUB, ...
                     []);
             else
-                [eyeParams, eyeParamsObjectiveError] = eyeParamEllipseFit(Xp, Yp, sceneGeometry);
-                ellipseParamsTransparent = pupilProjection_fwd(eyeParams, sceneGeometry);
+                [eyeParams, eyeParamsObjectiveError] = ...
+                    eyeParamEllipseFit(Xp, Yp, sceneGeometry, 'eyeParamsLB', eyeParamsLB, 'eyeParamsUB', eyeParamsUB);
+                ellipseParamsTransparent = ...
+                    pupilProjection_fwd(eyeParams, sceneGeometry);
             end
             
             % Re-calculate fit for splits of data points, if requested
@@ -284,10 +301,14 @@ parfor (ii = 1:nFrames, nWorkers)
                             ellipseTransparentUB, ...
                             []);
                     else
-                        pFitEyeParamSplit(1,ss,:) = eyeParamEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry);
-                        pFitTransparentSplit(1,ss,:) = pupilProjection_fwd(pFitEyeParamSplit(1,ss,:), sceneGeometry);
-                        pFitEyeParamSplit(2,ss,:) = eyeParamEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry);
-                        pFitTransparentSplit(2,ss,:) = pupilProjection_fwd(pFitEyeParamSplit(2,ss,:), sceneGeometry);
+                        pFitEyeParamSplit(1,ss,:) = ...
+                            eyeParamEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry, 'eyeParamsLB', eyeParamsLB, 'eyeParamsUB', eyeParamsUB);
+                        pFitTransparentSplit(1,ss,:) = ...
+                            pupilProjection_fwd(pFitEyeParamSplit(1,ss,:), sceneGeometry);
+                        pFitEyeParamSplit(2,ss,:) = ...
+                            eyeParamEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry, 'eyeParamsLB', eyeParamsLB, 'eyeParamsUB', eyeParamsUB);
+                        pFitTransparentSplit(2,ss,:) = ...
+                            pupilProjection_fwd(pFitEyeParamSplit(2,ss,:), sceneGeometry);
                     end
                 end % loop through splits
                 

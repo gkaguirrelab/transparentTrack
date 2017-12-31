@@ -1,15 +1,18 @@
 function [eyeParams, RMSE] = eyeParamEllipseFit(Xp, Yp, sceneGeometry, varargin)
-% Non-linear fitting of an ellipse to a set of points
+% Fit an image plane ellipse by perspective projection of a pupil circle
 %
 % Description:
 %   The routine fits points on the image plane based upon the eye
 %   parameters (azimuth, elevation, pupil radius) that would produce the
 %   best fitting ellipse projected according to sceneGeometry.
 %
+%   The search is constrained by the upper and lower bounds of the
+%   eyeParams. The default values specified here represent the physical
+%   boundaries of the rotation model. Tighter, biologically informed 
+%   constraints may be passed by the calling function.
+%
 % Inputs:
 %   Xp, Yp                - Vector of points to be fit
-%   lb, ub                - Upper and lower bounds for the fit search, in 
-%                           transparent ellipse form
 %
 % Optional key/value pairs:
 %  'x0'                   - Initial guess for the eyeParams
@@ -19,8 +22,9 @@ function [eyeParams, RMSE] = eyeParamEllipseFit(Xp, Yp, sceneGeometry, varargin)
 % Outputs:
 %   eyeParams             - A 1x3 matrix containing the best fitting eye
 %                           parameters (azimuth, elevation, pupil radius)
-%   RMSE                  - Root mean squared error of the distance of each 
-%                           point in the data to the fitted ellipse
+%   RMSE                  - Root mean squared error of the distance of
+%                           boundary point in the image to the fitted
+%                           ellipse
 %
 
 
@@ -33,8 +37,8 @@ p.addRequired('Yp',@isnumeric);
 p.addRequired('sceneGeometry',@isstruct);
 
 p.addParameter('x0',[0 0 2],@isnumeric);
-p.addParameter('eyeParamsLB',[-35,-25,0.5],@isnumeric);
-p.addParameter('eyeParamsUB',[35,25,4],@isnumeric);
+p.addParameter('eyeParamsLB',[-89,-89,0.5],@isnumeric);
+p.addParameter('eyeParamsUB',[89,89,5],@isnumeric);
 
 % Parse and check the parameters
 p.parse(Xp, Yp, sceneGeometry, varargin{:});
@@ -69,6 +73,8 @@ end % eyeParamEllipseFit
 
 
 %% LOCAL FUNCTIONS
+% Taken from the non-linear ellipse fitting routine found within the
+% "quadfit" matlab central toolbox
 
 function [d,ddp] = ellipsefit_distance(x,y,p)
 % Distance of points to ellipse defined with explicit parameters (center,
