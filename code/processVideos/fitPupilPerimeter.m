@@ -285,14 +285,15 @@ parfor (ii = 1:nFrames, nWorkers)
                             []);
                     else
                         pFitEyeParamSplit(1,ss,:) = eyeParamEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry);
+                        pFitTransparentSplit(1,ss,:) = pupilProjection_fwd(pFitEyeParamSplit(1,ss,:), sceneGeometry);
                         pFitEyeParamSplit(2,ss,:) = eyeParamEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry);
+                        pFitTransparentSplit(2,ss,:) = pupilProjection_fwd(pFitEyeParamSplit(2,ss,:), sceneGeometry);
                     end
                 end % loop through splits
                 
                 % Calculate the SD of the parameters across splits
-                if isempty(sceneGeometry)
                     ellipseParamsSplitsSD=nanstd(reshape(pFitTransparentSplit,ss*2,nEllipseParams));
-                else
+                if ~isempty(sceneGeometry)
                     eyeParamsSplitsSD=nanstd(reshape(pFitEyeParamSplit,ss*2,nEyeParams));
                 end
             end % check if we want to do splits
@@ -341,14 +342,14 @@ else
     ellipseFitLabel = p.Results.ellipseFitLabel;
 end
 
-% Store the ellipse fit data in informative fields and add meta data
+% Store the ellipse fit data in informative fields
 pupilData.(ellipseFitLabel).ellipse.values = loopVar_ellipseParamsTransparent;
 if isempty(sceneGeometry)
     pupilData.(ellipseFitLabel).ellipse.RMSE = loopVar_ellipseParamsObjectiveError';
 else
     pupilData.(ellipseFitLabel).ellipse.RMSE = loopVar_eyeParamsObjectiveError';
 end
-if nSplits~=0 && isempty(sceneGeometry)
+if nSplits~=0
     pupilData.(ellipseFitLabel).ellipse.splitsSD = loopVar_ellipseParamsSplitsSD;
 end
 pupilData.(ellipseFitLabel).ellipse.meta.ellipseForm = 'transparent';
@@ -364,7 +365,10 @@ if ~isempty(sceneGeometry)
     pupilData.(ellipseFitLabel).eyeParams.meta.units = {'deg','deg','mm'};
     pupilData.(ellipseFitLabel).eyeParams.meta.coordinateSystem = 'head fixed (extrinsic)';
 end
+
+% add meta data
 pupilData.(ellipseFitLabel).meta = p.Results;
+
 % save the ellipse fit results
 save(p.Results.pupilFileName,'pupilData')
 
