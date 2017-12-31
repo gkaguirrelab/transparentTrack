@@ -16,7 +16,7 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %   represented on a grid with xlim = [0.5 3.5] and ylim = [0.5 3.5], with
 %   the origin being the top left corner of the image. This is done to
 %   facilitate the handling of images in many of the built-in image
-%   processing functions. This routine outputs the results in intrinsic
+%   processing functions. This routine outputs results in intrinsic
 %   coordinates. Additinal information regarding the MATLAB image
 %   coordinate system may be found here:
 %       https://blogs.mathworks.com/steve/2013/08/28/introduction-to-spatial-referencing/
