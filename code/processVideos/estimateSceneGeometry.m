@@ -1,4 +1,4 @@
-function initialSceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileName, varargin)
+function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileName, varargin)
 % Estimate eye radius and eye center given a set of image plane ellipses
 %
 % Description:
@@ -40,6 +40,14 @@ function initialSceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeomet
 %   Therefore, the intrinsicCameraMatrix is locked and not modified in the
 %   sceneGeometry search.
 %
+%   For the LiveTrack system, we have defined an intrinsic camera matrix 
+%   based upon known physical propertes of the camera. The sensor is
+%   the ARTCAM-036MI2-NIR-WOM (http://www.artray.us/usb2_cmos_nir_so.html)
+%   and thus has a 640 x 480 pixel resolution and a 4.8 × 3.66 mm physical
+%   size. This give us a resolution of 133.333 pixels / mm. The device has
+%   an 16 mm focal length lens. The focal length in pixels is therefore:
+%   16 * 133.333 = 1067.
+%
 %   extrinsicTranslationVector - a vector of the form:
 %
 %       [x] 
@@ -77,6 +85,16 @@ function initialSceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeomet
 %           myope:      11.66 (11.54 - 11.80)
 %
 %   The default values in the routine are for an emmetrope.
+%
+% This calculation can also be made by first noting that the eye center of
+% rotation is on average 13.3 mm behind the corneal apex. (Gunter K.
+% vonNoorden, MD; Emilio C. Campos "Binocular Vision and Ocular Motility
+% Theory and Management of Strabismus" American Orthoptic Journal 51.1
+% (2001): 161-162.) We futher note that the depth of the anterior chamber
+% of the eye is 2.44 ± 0.34 mm in a healthy population (Guo, Li, et al.
+% "Characterization of ocular biometrics and aqueous humor dynamics in
+% primary angle closure suspects." Medicine 96.7 (2017).). Therefore, the
+% distance of the center of rotation of the eye to the pupil is 10.86 mm.
 %
 %   constraintTolerance - A scalar. The inverse projection from ellipse on
 %   the image plane to eye params (azimuth, elevation) imposes a constraint
@@ -155,15 +173,8 @@ function initialSceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeomet
 %                           will be conducted.
 %
 % Outputs
-%	sceneGeometry         - A structure with the fields
-%       eyeCenter.X - X coordinate of the eye center (i.e. the assumed
-%           center of rotation of the pupil) on the scene plane.
-%       eyeCenter.Y - Y coordinate of the eye center (i.e. the assumed
-%           center of rotation of the pupil) on the scene plane.
-%       eyeCenter.Z - the orthogonal distance for the eye center from the
-%           scene plane.
-%       eyeRadius - radius of the eye in pixels
-%       meta - information regarding the analysis, including units.
+%	sceneGeometry         - A structure that contains the components of the
+%                           projection model.
 %
 
 
@@ -190,18 +201,19 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional analysis params
-p.addParameter('intrinsicCameraMatrix',[772.5483 0 320; 0 772.5483 240; 0 0 1],@isnumeric);
+p.addParameter('intrinsicCameraMatrix',[2133 0 320; 0 2133 240; 0 0 1],@isnumeric);
+
 p.addParameter('extrinsicRotationMatrix',[1 0 0; 0 -1 0; 0 0 -1],@isnumeric);
-p.addParameter('eyeRadius',11.29,@isnumeric);
-p.addParameter('eyeRadiusLB',11.07,@isnumeric);
-p.addParameter('eyeRadiusUB',11.51,@isnumeric);
-p.addParameter('extrinsicTranslationVector',[0; 0; 50],@isnumeric);
-p.addParameter('extrinsicTranslationVectorLB',[-10; -10; 45],@isnumeric);
-p.addParameter('extrinsicTranslationVectorUB',[10; 10; 65],@isnumeric);
+p.addParameter('eyeRadius',10.25,@isnumeric);
+p.addParameter('eyeRadiusLB',9.25,@isnumeric);
+p.addParameter('eyeRadiusUB',11.25,@isnumeric);
+p.addParameter('extrinsicTranslationVector',[0; 0; 120],@isnumeric);
+p.addParameter('extrinsicTranslationVectorLB',[-10; -10; 100],@isnumeric);
+p.addParameter('extrinsicTranslationVectorUB',[10; 10; 150],@isnumeric);
 p.addParameter('constraintTolerance',0.02,@isnumeric);
 p.addParameter('eyeParamsLB',[-35,-25,0.5],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('eyeParamsUB',[35,25,5],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('nBinsPerDimension',7,@isnumeric);
+p.addParameter('eyeParamsUB',[35,25,10],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('nBinsPerDimension',10,@isnumeric);
 p.addParameter('whichEllipseFitField','initial',@ischar);
 
 % parse
@@ -395,8 +407,8 @@ function sceneGeometry = performSceneSearch(initialSceneGeometry, ellipses, erro
 %   the shortest period.
 %
 
-% Set the error norm
-norm = 2;
+% Set the error form
+errorForm = 'SSE';
 
 % Extract the initial search point from initialSceneGeometry
 x0 = [initialSceneGeometry.extrinsicTranslationVector; initialSceneGeometry.eyeRadius];
@@ -406,20 +418,22 @@ options = optimoptions(@patternsearch, ...
     'Display','off',...
     'AccelerateMesh',false,...
     'UseParallel', true, ...
-    'FunctionTolerance',0.01);
+    'FunctionTolerance',1e-6);
 
 % Define anonymous functions for the objective and constraint
 objectiveFun = @objfun; % the objective function, nested below
 
 % Define nested variables for within the search
 centerDistanceErrorByEllipse=[];
+shapeErrorByEllipse=[];
+areaErrorByEllipse=[];
 
 [x, fVal] = patternsearch(objectiveFun, x0,[],[],[],[],sceneParamsLB,sceneParamsUB,[],options);
     function fval = objfun(x)
         candidateSceneGeometry = initialSceneGeometry;
         candidateSceneGeometry.extrinsicTranslationVector = x(1:3);
         candidateSceneGeometry.eyeRadius = x(4);
-        [~, ~, centerDistanceErrorByEllipse] = ...
+        [~, ~, centerDistanceErrorByEllipse, shapeErrorByEllipse, areaErrorByEllipse] = ...
             arrayfun(@(x) pupilProjection_inv...
             (...
                 ellipses(x,:),...
@@ -433,7 +447,17 @@ centerDistanceErrorByEllipse=[];
         % Now compute objective function as the RMSE of the distance
         % between the taget and modeled ellipses
         centerDistanceErrorByEllipse = cell2mat(centerDistanceErrorByEllipse);
-        fval = mean((centerDistanceErrorByEllipse.*errorWeights).^norm)^(1/norm);
+        shapeErrorByEllipse = cell2mat(shapeErrorByEllipse);
+        areaErrorByEllipse = cell2mat(areaErrorByEllipse);
+        switch errorForm
+            case 'SSE'
+                fval=sum((centerDistanceErrorByEllipse.*errorWeights).^2);
+            case 'RMSE'
+                fval = mean((centerDistanceErrorByEllipse.*(shapeErrorByEllipse+1).*(areaErrorByEllipse+1).*errorWeights).^2)^(1/2);
+            otherwise
+                error('I do not recognize that error form');
+        end
+        
     end
 
 % Assemble the sceneGeometry file to return
@@ -443,7 +467,7 @@ sceneGeometry.intrinsicCameraMatrix = initialSceneGeometry.intrinsicCameraMatrix
 sceneGeometry.extrinsicRotationMatrix = initialSceneGeometry.extrinsicRotationMatrix;
 sceneGeometry.constraintTolerance = initialSceneGeometry.constraintTolerance;
 sceneGeometry.search.options = options;
-sceneGeometry.search.norm = norm;
+sceneGeometry.search.errorForm = errorForm;
 sceneGeometry.search.initialSceneGeometry = initialSceneGeometry;
 sceneGeometry.search.ellipses = ellipses;
 sceneGeometry.search.errorWeights = errorWeights;
@@ -453,6 +477,8 @@ sceneGeometry.search.eyeParamsLB = eyeParamsLB;
 sceneGeometry.search.eyeParamsUB = eyeParamsUB;
 sceneGeometry.search.fVal = fVal;
 sceneGeometry.search.centerDistanceErrorByEllipse = centerDistanceErrorByEllipse;
+sceneGeometry.search.shapeErrorByEllipse = shapeErrorByEllipse;
+sceneGeometry.search.areaErrorByEllipse = areaErrorByEllipse;
 
 end % local search function
 
@@ -475,8 +501,11 @@ function [] = saveSceneDiagnosticPlot(ellipses, Xedges, Yedges, sceneGeometry, s
 %   none
 %
 
-figHandle = figure('visible','off');
-subplot(6,8,1:1:40)
+
+figHandle = figure('visible','off','Units','normalized','Position',[0.1 0.3 0.9 0.6]);
+
+%% Left panel -- distance error
+subplot('Position',[0.05 0.25 0.25 0.25]);
 
 % plot the 2D histogram grid
 for xx = 1: length(Xedges)
@@ -534,7 +563,8 @@ set(gca,'Ydir','reverse')
 title('Ellipse centers')
 
 % Create a legend
-hSub = subplot(6,8,41:1:48);
+hSub = subplot('Position',[0.05 0.05 0.3 0.15]);
+
 scatter(nan, nan,2,'filled', ...
     'MarkerFaceAlpha',2/8,'MarkerFaceColor',[0 0 0]);
 hold on
@@ -542,9 +572,103 @@ scatter(nan, nan,2,'filled', ...
     'MarkerFaceAlpha',2/8,'MarkerFaceColor',[0 0 1]);
 plot(nan, nan, '+g', 'MarkerSize', 5);
 set(hSub, 'Visible', 'off');
-legend({'observed ellipse centers','modeled ellipse centers', 'azimuth 0, elevation 0'},'Location','north');
+legend({'observed ellipse centers','modeled ellipse centers', 'azimuth 0, elevation 0'},'Location','northwest', 'Orientation','vertical');
 
-% Save the plot
+
+%% Center panel -- shape error
+subplot('Position',[0.35 0.25 0.25 0.25]);
+
+% plot the 2D histogram grid
+for xx = 1: length(Xedges)
+    if xx==1
+        hold on
+    end
+    plot([Xedges(xx) Xedges(xx)], [Yedges(1) Yedges(end)], '-', 'Color', [0.9 0.9 0.9], 'LineWidth', 0.5 );
+end
+for yy=1: length(Yedges)
+    plot([Xedges(1) Xedges(end)], [Yedges(yy) Yedges(yy)], '-', 'Color', [0.9 0.9 0.9], 'LineWidth', 0.5);
+end
+binSpaceX = Xedges(2)-Xedges(1);
+binSpaceY = Yedges(2)-Yedges(1);
+
+% Calculate a color for each plot point corresponding to the degree of
+% shape error
+shapeErrorVec = sceneGeometry.search.shapeErrorByEllipse;
+shapeErrorVec = shapeErrorVec./sceneGeometry.constraintTolerance;
+colorMatrix = zeros(3,size(ellipses,1));
+colorMatrix(1,:)=1;
+colorMatrix(2,:)= shapeErrorVec;
+scatter(ellipses(:,1),ellipses(:,2),[],colorMatrix','o','filled');
+
+% label and clean up the plot
+xlim ([Xedges(1)-binSpaceX Xedges(end)+binSpaceX]);
+ylim ([Yedges(1)-binSpaceY Yedges(end)+binSpaceY]);
+axis equal
+set(gca,'Ydir','reverse')
+title('Shape error')
+
+% Create a legend
+hSub = subplot('Position',[0.35 0.05 0.3 0.15]);
+
+scatter(nan, nan,2,'filled', ...
+    'MarkerFaceAlpha',6/8,'MarkerFaceColor',[1 0 0]);
+hold on
+scatter(nan, nan,2,'filled', ...
+    'MarkerFaceAlpha',6/8,'MarkerFaceColor',[1 0.5 0]);
+scatter(nan, nan,2,'filled', ...
+    'MarkerFaceAlpha',6/8,'MarkerFaceColor',[1 1 0]);
+set(hSub, 'Visible', 'off');
+legend({'0',num2str(sceneGeometry.constraintTolerance/2), ['=> ' num2str(sceneGeometry.constraintTolerance)]},'Location','northwest', 'Orientation','vertical');
+
+
+%% Right panel -- area error
+subplot('Position',[0.65 0.25 0.25 0.25]);
+
+% plot the 2D histogram grid
+for xx = 1: length(Xedges)
+    if xx==1
+        hold on
+    end
+    plot([Xedges(xx) Xedges(xx)], [Yedges(1) Yedges(end)], '-', 'Color', [0.9 0.9 0.9], 'LineWidth', 0.5 );
+end
+for yy=1: length(Yedges)
+    plot([Xedges(1) Xedges(end)], [Yedges(yy) Yedges(yy)], '-', 'Color', [0.9 0.9 0.9], 'LineWidth', 0.5);
+end
+binSpaceX = Xedges(2)-Xedges(1);
+binSpaceY = Yedges(2)-Yedges(1);
+
+% Calculate a color for each plot point corresponding to the degree of
+% shape error
+areaErrorVec = sceneGeometry.search.areaErrorByEllipse;
+areaErrorVec = abs(areaErrorVec)./sceneGeometry.constraintTolerance;
+areaErrorVec = min([areaErrorVec' ones(size(ellipses,1),1)],[],2)';
+colorMatrix = zeros(3,size(ellipses,1));
+colorMatrix(1,:)=1;
+colorMatrix(2,:)= areaErrorVec;
+scatter(ellipses(:,1),ellipses(:,2),[],colorMatrix','o','filled');
+
+% label and clean up the plot
+xlim ([Xedges(1)-binSpaceX Xedges(end)+binSpaceX]);
+ylim ([Yedges(1)-binSpaceY Yedges(end)+binSpaceY]);
+axis equal
+set(gca,'Ydir','reverse')
+title('Area error')
+
+% Create a legend
+hSub = subplot('Position',[0.65 0.05 0.3 0.15]);
+
+scatter(nan, nan,2,'filled', ...
+    'MarkerFaceAlpha',6/8,'MarkerFaceColor',[1 0 0]);
+hold on
+scatter(nan, nan,2,'filled', ...
+    'MarkerFaceAlpha',6/8,'MarkerFaceColor',[1 0.5 0]);
+scatter(nan, nan,2,'filled', ...
+    'MarkerFaceAlpha',6/8,'MarkerFaceColor',[1 1 0]);
+set(hSub, 'Visible', 'off');
+legend({'0',num2str(sceneGeometry.constraintTolerance/2), ['=> ' num2str(sceneGeometry.constraintTolerance)]},'Location','northwest', 'Orientation','vertical');
+
+%% Save the plot
+orient(figHandle,'landscape');
 saveas(figHandle,sceneDiagnosticPlotFileName);
 close(figHandle)
 
