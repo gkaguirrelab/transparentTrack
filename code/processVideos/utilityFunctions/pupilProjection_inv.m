@@ -252,7 +252,7 @@ constraintFun = @constr; % the constraint function, nested below
         
         % ceq:
         % Proportional difference in ellipse areas
-        ceq = (nestedTargetEllipse(3) - nestedCandidateEllipse(3))/nestedTargetEllipse(3);
+        ceq = abs(nestedTargetEllipse(3) - nestedCandidateEllipse(3))/nestedTargetEllipse(3);
         nestedAreaError = ceq;
     end
 
