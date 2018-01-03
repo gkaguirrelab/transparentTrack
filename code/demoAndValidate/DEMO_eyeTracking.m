@@ -69,13 +69,17 @@ if ~exist (demoPackage,'file')
     cd (currentDir)
 end
 
+% Make a list of frames from which we will derive sceneGeometry
+ellipseArrayList = [1561 1555 1981 1860 1862  658  694  755 1602 1556 1946 1768 1886  604  608  564  562 1767  481  270 1763  599  173   88   23  797  790 1275 1219  316  208  817  864  928 1212  502  220 1341  466  933 1474  452 1621 1616 1350 1434 1050 1059 1718];
+
 
 %% Run the analysis pipeline
 runVideoPipeline( pathParams, ...
     'nFrames',nFrames,'verbosity', verbosity, 'tbSnapshot',tbSnapshot, 'useParallel',true, ...
     'pupilRange', [40 200], 'pupilCircleThresh', 0.04, 'pupilGammaCorrection', 1.5, ...
+    'ellipseArrayList',ellipseArrayList,...
     'overwriteControlFile', true, 'catchErrors', false,...
-    'skipStageByNumber',1:1:6);
+    'skipStageByNumber',1:1:6,'makeFitVideoByNumber',[6 8]);
 
 
 %% Plot some fits
