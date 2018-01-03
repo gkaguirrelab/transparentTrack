@@ -40,13 +40,16 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %   Therefore, the intrinsicCameraMatrix is locked and not modified in the
 %   sceneGeometry search.
 %
-%   For the LiveTrack system, we have defined an intrinsic camera matrix 
-%   based upon known physical propertes of the camera. The sensor is
-%   the ARTCAM-036MI2-NIR-WOM (http://www.artray.us/usb2_cmos_nir_so.html)
-%   and thus has a 640 x 480 pixel resolution and a 4.8 × 3.66 mm physical
-%   size. This give us a resolution of 133.333 pixels / mm. The device has
-%   an 16 mm focal length lens. The focal length in pixels is therefore:
-%   16 * 133.333 = 1067.
+%   radialDistortionVector - A two element vector of the form:
+%
+%       [k1 k2]
+%
+%   that models the radial distortion introduced by the rather small lens
+%   that is typically used for eye tracking. This is an empirically
+%   measured property of the camera system and so these parameters are
+%   locked here. A discussion of the modeling of radial distortion can be
+%   found here:
+%       https://www.mathworks.com/help/vision/ref/cameraintrinsics-class.html
 %
 %   extrinsicTranslationVector - a vector of the form:
 %
@@ -147,14 +150,15 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %  'hostname'             - AUTOMATIC; The host
 %
 % Optional key/value pairs (analysis)
+%  'radialDistortionVector' - 1x2 vector of radial distortion parameters
 %  'intrinsicCameraMatrix' - 3x3 matrix
 %  'extrinsicRotationMatrix' - 3x3 matrix
+%  'extrinsicTranslationVector' - 3x1 vector
+%  'extrinsicTranslationVectorLB' - 3x1 vector
+%  'extrinsicTranslationVectorUB' - 3x1 vector
 %  'eyeRadius'            - Scalar
 %  'eyeRadiusLB'          - Scalar
 %  'eyeRadiusUB'          - Scalar
-%  'extrinsicTranslationVector' - 3x1 matrix
-%  'extrinsicTranslationVectorLB' - 3x1 matrix
-%  'extrinsicTranslationVectorUB' - 3x1 matrix
 %  'constraintTolerance'  - Scalar. Range 0-1.
 %  'eyeParamsLB/UB'       - Upper and lower bounds on the eyeParams
 %                           [azimuth, elevation, pupil radius]. Biological
@@ -166,11 +170,15 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %                           which the camera is viewing the eye from an
 %                           off-center angle, the bounds will need to be
 %                           shifted accordingly.
-%  'nBinsPerDimension'    - Scalar. Defines the number of divisions with
-%                           which the ellipse centers are binned.
 %  'whichEllipseFitField' - Identifies the field in pupilData that contains
 %                           the ellipse fit params for which the search
 %                           will be conducted.
+%  'ellipseArrayList'     - A vector of frame numbers (indexed from 1)
+%                           which identify the llipses to be used for the
+%                           estimation of scene geometry. If left empty,
+%                           a list of ellipses will be generated.
+%  'nBinsPerDimension'    - Scalar. Defines the number of divisions with
+%                           which the ellipse centers are binned.
 %
 % Outputs
 %	sceneGeometry         - A structure that contains the components of the
@@ -201,20 +209,21 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional analysis params
-p.addParameter('intrinsicCameraMatrix',[2133 0 320; 0 2133 240; 0 0 1],@isnumeric);
-
+p.addParameter('radialDistortionVector',[-0.3517 3.5353],@isnumeric);
+p.addParameter('intrinsicCameraMatrix',[2627.0 0 338.1; 0 2628.1 246.2; 0 0 1],@isnumeric);
 p.addParameter('extrinsicRotationMatrix',[1 0 0; 0 -1 0; 0 0 -1],@isnumeric);
-p.addParameter('eyeRadius',10.25,@isnumeric);
-p.addParameter('eyeRadiusLB',9.25,@isnumeric);
-p.addParameter('eyeRadiusUB',11.25,@isnumeric);
 p.addParameter('extrinsicTranslationVector',[0; 0; 120],@isnumeric);
 p.addParameter('extrinsicTranslationVectorLB',[-10; -10; 100],@isnumeric);
-p.addParameter('extrinsicTranslationVectorUB',[10; 10; 150],@isnumeric);
+p.addParameter('extrinsicTranslationVectorUB',[10; 10; 180],@isnumeric);
+p.addParameter('eyeRadius',10.25,@isnumeric);
+p.addParameter('eyeRadiusLB',10.00,@isnumeric);
+p.addParameter('eyeRadiusUB',12.00,@isnumeric);
 p.addParameter('constraintTolerance',0.02,@isnumeric);
 p.addParameter('eyeParamsLB',[-35,-25,0.5],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('eyeParamsUB',[35,25,10],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('nBinsPerDimension',10,@isnumeric);
+p.addParameter('eyeParamsUB',[35,25,5],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('whichEllipseFitField','initial',@ischar);
+p.addParameter('ellipseArrayList',[],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('nBinsPerDimension',10,@isnumeric);
 
 % parse
 p.parse(pupilFileName, sceneGeometryFileName, varargin{:})
@@ -262,8 +271,7 @@ else
 end
 
 
-%% Identify the ellipses that will guide the sceneGeometry estimation
-% load pupil data
+%% Load pupil data
 if iscell(pupilFileName)
     ellipses = [];
     ellipseFitSEM = [];
@@ -278,39 +286,53 @@ else
     ellipseFitSEM = pupilData.(p.Results.whichEllipseFitField).ellipse.RMSE;
 end
 
-% We divide the ellipse centers amongst a set of 2D bins across image
-% space. We will ultimately minimize the fitting error across bins
-[ellipseCenterCounts,Xedges,Yedges,binXidx,binYidx] = ...
-    histcounts2(ellipses(:,1),ellipses(:,2),p.Results.nBinsPerDimension);
 
-% Anonymous functions for row and column identity given array position
-rowIdx = @(b) fix( (b-1) ./ (size(ellipseCenterCounts,2)) ) +1;
-colIdx = @(b) 1+mod(b-1,size(ellipseCenterCounts,2));
+%% Identify the ellipses that will guide the sceneGeometry estimation
+% If not supplied, we will generate a list of ellipses to use for the
+% estimation.
+if ~isempty(p.Results.ellipseArrayList)
+    ellipseArrayList = p.Results.ellipseArrayList;
+    Xedges = [];
+    Yedges = [];
+else
+    % First we divide the ellipse centers amongst a set of 2D bins across image
+    % space. We will ultimately minimize the fitting error across bins
+    [ellipseCenterCounts,Xedges,Yedges,binXidx,binYidx] = ...
+        histcounts2(ellipses(:,1),ellipses(:,2),p.Results.nBinsPerDimension);
+    
+    % Anonymous functions for row and column identity given array position
+    rowIdx = @(b) fix( (b-1) ./ (size(ellipseCenterCounts,2)) ) +1;
+    colIdx = @(b) 1+mod(b-1,size(ellipseCenterCounts,2));
+    
+    % Create a cell array of index positions corresponding to each of the 2D
+    % bins
+    idxByBinPosition = ...
+        arrayfun(@(b) find( (binXidx==rowIdx(b)) .* (binYidx==colIdx(b)) ),1:1:numel(ellipseCenterCounts),'UniformOutput',false);
+    
+    % Identify which bins are not empty
+    filledBinIdx = find(~cellfun(@isempty, idxByBinPosition));
+    
+    % Identify the ellipses in each filled bin with the lowest fit SEM
+    [~, idxMinErrorEllipseWithinBin] = arrayfun(@(x) nanmin(ellipseFitSEM(idxByBinPosition{x})), filledBinIdx, 'UniformOutput', false);
+    returnTheMin = @(binContents, x)  binContents(idxMinErrorEllipseWithinBin{x});
+    ellipseArrayList = cellfun(@(x) returnTheMin(idxByBinPosition{filledBinIdx(x)},x),num2cell(1:1:length(filledBinIdx)));
+end
 
-% Create a cell array of index positions corresponding to each of the 2D
-% bins
-idxByBinPosition = ...
-    arrayfun(@(b) find( (binXidx==rowIdx(b)) .* (binYidx==colIdx(b)) ),1:1:numel(ellipseCenterCounts),'UniformOutput',false);
 
-% Identify which bins are not empty
-filledBinIdx = find(~cellfun(@isempty, idxByBinPosition));
-
-% Identify the ellipses in each filled bin with the lowest fit SEM
-[lowestEllipseSEMByBin, idxMinErrorEllipseWithinBin] = arrayfun(@(x) nanmin(ellipseFitSEM(idxByBinPosition{x})), filledBinIdx, 'UniformOutput', false);
-errorWeights=cell2mat(lowestEllipseSEMByBin);
+%% Generate the errorWeights
+errorWeights= ellipseFitSEM(ellipseArrayList);
 errorWeights = 1./errorWeights;
 errorWeights=errorWeights./mean(errorWeights);
-returnTheMin = @(binContents, x)  binContents(idxMinErrorEllipseWithinBin{x});
-ellipseArrayList = cellfun(@(x) returnTheMin(idxByBinPosition{filledBinIdx(x)},x),num2cell(1:1:length(filledBinIdx)));
 
 
 %% Create the initial sceneGeometry structure and bounds
 % sceneGeometry
-initialSceneGeometry.eyeRadius = p.Results.eyeRadius;
+initialSceneGeometry.radialDistortionVector = p.Results.radialDistortionVector;
 initialSceneGeometry.intrinsicCameraMatrix = p.Results.intrinsicCameraMatrix;
 initialSceneGeometry.extrinsicTranslationVector = p.Results.extrinsicTranslationVector;
 initialSceneGeometry.extrinsicRotationMatrix = p.Results.extrinsicRotationMatrix;
 initialSceneGeometry.constraintTolerance = p.Results.constraintTolerance;
+initialSceneGeometry.eyeRadius = p.Results.eyeRadius;
 
 % Bounds
 sceneParamsLB = [p.Results.extrinsicTranslationVectorLB; p.Results.eyeRadiusLB];
@@ -328,9 +350,9 @@ sceneGeometry = ...
     p.Results.eyeParamsLB, ...
     p.Results.eyeParamsUB);
 
-
 %% Save the sceneGeometry file
 % add a meta field
+sceneGeometry.search.ellipseArrayList = ellipseArrayList;
 sceneGeometry.meta = p.Results;
 if ~isempty(sceneGeometryFileName)
     save(sceneGeometryFileName,'sceneGeometry');
@@ -342,7 +364,8 @@ if ~isempty(p.Results.sceneDiagnosticPlotFileName)
     saveSceneDiagnosticPlot(ellipses(ellipseArrayList,:), Xedges, Yedges, sceneGeometry, p.Results.sceneDiagnosticPlotFileName)
 end
 
-% alert the user that we are done with the routine
+
+%% alert the user that we are done with the routine
 if strcmp(p.Results.verbosity,'full')
     toc
     fprintf('\n');
@@ -415,7 +438,7 @@ x0 = [initialSceneGeometry.extrinsicTranslationVector; initialSceneGeometry.eyeR
 
 % Define search options
 options = optimoptions(@patternsearch, ...
-    'Display','off',...
+    'Display','iter',...
     'AccelerateMesh',false,...
     'UseParallel', true, ...
     'FunctionTolerance',1e-6);
@@ -446,14 +469,14 @@ areaErrorByEllipse=[];
         
         % Now compute objective function as the RMSE of the distance
         % between the taget and modeled ellipses
-        centerDistanceErrorByEllipse = cell2mat(centerDistanceErrorByEllipse);
-        shapeErrorByEllipse = cell2mat(shapeErrorByEllipse);
-        areaErrorByEllipse = cell2mat(areaErrorByEllipse);
+        centerDistanceErrorByEllipse = cell2mat(centerDistanceErrorByEllipse)';
+        shapeErrorByEllipse = cell2mat(shapeErrorByEllipse)';
+        areaErrorByEllipse = cell2mat(areaErrorByEllipse)';
         switch errorForm
             case 'SSE'
-                fval=sum((centerDistanceErrorByEllipse.*errorWeights).^2);
+                fval=sum((centerDistanceErrorByEllipse.*(shapeErrorByEllipse.*100+1).*(areaErrorByEllipse.*100+1).*errorWeights).^2);
             case 'RMSE'
-                fval = mean((centerDistanceErrorByEllipse.*(shapeErrorByEllipse+1).*(areaErrorByEllipse+1).*errorWeights).^2)^(1/2);
+                fval = mean((centerDistanceErrorByEllipse.*(shapeErrorByEllipse.*100+1).*(areaErrorByEllipse.*100+1).*errorWeights).^2)^(1/2);
             otherwise
                 error('I do not recognize that error form');
         end
@@ -461,11 +484,12 @@ areaErrorByEllipse=[];
     end
 
 % Assemble the sceneGeometry file to return
-sceneGeometry.extrinsicTranslationVector = x(1:3);
-sceneGeometry.eyeRadius = x(4);
+sceneGeometry.radialDistortionVector = initialSceneGeometry.radialDistortionVector;
 sceneGeometry.intrinsicCameraMatrix = initialSceneGeometry.intrinsicCameraMatrix;
+sceneGeometry.extrinsicTranslationVector = x(1:3);
 sceneGeometry.extrinsicRotationMatrix = initialSceneGeometry.extrinsicRotationMatrix;
 sceneGeometry.constraintTolerance = initialSceneGeometry.constraintTolerance;
+sceneGeometry.eyeRadius = x(4);
 sceneGeometry.search.options = options;
 sceneGeometry.search.errorForm = errorForm;
 sceneGeometry.search.initialSceneGeometry = initialSceneGeometry;
@@ -501,24 +525,40 @@ function [] = saveSceneDiagnosticPlot(ellipses, Xedges, Yedges, sceneGeometry, s
 %   none
 %
 
+figHandle=figure('visible','off');
+set(gcf,'PaperOrientation','landscape');
 
-figHandle = figure('visible','off','Units','normalized','Position',[0.1 0.3 0.9 0.6]);
+set(figHandle, 'Units','inches')
+height = 6;
+width = 11;
+
+% the last two parameters of 'Position' define the figure size
+set(figHandle, 'Position',[25 5 width height],...
+       'PaperSize',[width height],...
+       'PaperPositionMode','auto',...
+       'Color','w',...
+       'Renderer','painters'...     %recommended if there are no alphamaps
+   );
 
 %% Left panel -- distance error
-subplot('Position',[0.05 0.25 0.25 0.25]);
+subplot(3,3,[1 4]);
 
-% plot the 2D histogram grid
-for xx = 1: length(Xedges)
-    if xx==1
-        hold on
+if ~isempty(Xedges)
+    % plot the 2D histogram grid
+    for xx = 1: length(Xedges)
+        if xx==1
+            hold on
+        end
+        plot([Xedges(xx) Xedges(xx)], [Yedges(1) Yedges(end)], '-', 'Color', [0.9 0.9 0.9], 'LineWidth', 0.5 );
     end
-    plot([Xedges(xx) Xedges(xx)], [Yedges(1) Yedges(end)], '-', 'Color', [0.9 0.9 0.9], 'LineWidth', 0.5 );
+    for yy=1: length(Yedges)
+        plot([Xedges(1) Xedges(end)], [Yedges(yy) Yedges(yy)], '-', 'Color', [0.9 0.9 0.9], 'LineWidth', 0.5);
+    end
+    binSpaceX = Xedges(2)-Xedges(1);
+    binSpaceY = Yedges(2)-Yedges(1);
+    xlim ([Xedges(1)-binSpaceX Xedges(end)+binSpaceX]);
+    ylim ([Yedges(1)-binSpaceY Yedges(end)+binSpaceY]);
 end
-for yy=1: length(Yedges)
-    plot([Xedges(1) Xedges(end)], [Yedges(yy) Yedges(yy)], '-', 'Color', [0.9 0.9 0.9], 'LineWidth', 0.5);
-end
-binSpaceX = Xedges(2)-Xedges(1);
-binSpaceY = Yedges(2)-Yedges(1);
 
 % plot the ellipse centers
 scatter(ellipses(:,1),ellipses(:,2),'o','filled', ...
@@ -556,14 +596,12 @@ centerOfRotationEllipse = pupilProjection_fwd([0 0 2], sceneGeometry);
 plot(centerOfRotationEllipse(1),centerOfRotationEllipse(2), '+g', 'MarkerSize', 5);
 
 % label and clean up the plot
-xlim ([Xedges(1)-binSpaceX Xedges(end)+binSpaceX]);
-ylim ([Yedges(1)-binSpaceY Yedges(end)+binSpaceY]);
 axis equal
 set(gca,'Ydir','reverse')
-title('Ellipse centers')
+title('Distance error')
 
 % Create a legend
-hSub = subplot('Position',[0.05 0.05 0.3 0.15]);
+hSub = subplot(3,3,7);
 
 scatter(nan, nan,2,'filled', ...
     'MarkerFaceAlpha',2/8,'MarkerFaceColor',[0 0 0]);
@@ -572,24 +610,28 @@ scatter(nan, nan,2,'filled', ...
     'MarkerFaceAlpha',2/8,'MarkerFaceColor',[0 0 1]);
 plot(nan, nan, '+g', 'MarkerSize', 5);
 set(hSub, 'Visible', 'off');
-legend({'observed ellipse centers','modeled ellipse centers', 'azimuth 0, elevation 0'},'Location','northwest', 'Orientation','vertical');
+legend({'observed ellipse centers','modeled ellipse centers', 'azimuth 0, elevation 0'},'Location','north', 'Orientation','vertical');
 
 
 %% Center panel -- shape error
-subplot('Position',[0.35 0.25 0.25 0.25]);
+subplot(3,3,[2 5]);
 
-% plot the 2D histogram grid
-for xx = 1: length(Xedges)
-    if xx==1
-        hold on
+if ~isempty(Xedges)
+    % plot the 2D histogram grid
+    for xx = 1: length(Xedges)
+        if xx==1
+            hold on
+        end
+        plot([Xedges(xx) Xedges(xx)], [Yedges(1) Yedges(end)], '-', 'Color', [0.9 0.9 0.9], 'LineWidth', 0.5 );
     end
-    plot([Xedges(xx) Xedges(xx)], [Yedges(1) Yedges(end)], '-', 'Color', [0.9 0.9 0.9], 'LineWidth', 0.5 );
+    for yy=1: length(Yedges)
+        plot([Xedges(1) Xedges(end)], [Yedges(yy) Yedges(yy)], '-', 'Color', [0.9 0.9 0.9], 'LineWidth', 0.5);
+    end
+    binSpaceX = Xedges(2)-Xedges(1);
+    binSpaceY = Yedges(2)-Yedges(1);
+    xlim ([Xedges(1)-binSpaceX Xedges(end)+binSpaceX]);
+    ylim ([Yedges(1)-binSpaceY Yedges(end)+binSpaceY]);
 end
-for yy=1: length(Yedges)
-    plot([Xedges(1) Xedges(end)], [Yedges(yy) Yedges(yy)], '-', 'Color', [0.9 0.9 0.9], 'LineWidth', 0.5);
-end
-binSpaceX = Xedges(2)-Xedges(1);
-binSpaceY = Yedges(2)-Yedges(1);
 
 % Calculate a color for each plot point corresponding to the degree of
 % shape error
@@ -601,14 +643,12 @@ colorMatrix(2,:)= shapeErrorVec;
 scatter(ellipses(:,1),ellipses(:,2),[],colorMatrix','o','filled');
 
 % label and clean up the plot
-xlim ([Xedges(1)-binSpaceX Xedges(end)+binSpaceX]);
-ylim ([Yedges(1)-binSpaceY Yedges(end)+binSpaceY]);
 axis equal
 set(gca,'Ydir','reverse')
 title('Shape error')
 
 % Create a legend
-hSub = subplot('Position',[0.35 0.05 0.3 0.15]);
+hSub = subplot(3,3,8);
 
 scatter(nan, nan,2,'filled', ...
     'MarkerFaceAlpha',6/8,'MarkerFaceColor',[1 0 0]);
@@ -618,24 +658,28 @@ scatter(nan, nan,2,'filled', ...
 scatter(nan, nan,2,'filled', ...
     'MarkerFaceAlpha',6/8,'MarkerFaceColor',[1 1 0]);
 set(hSub, 'Visible', 'off');
-legend({'0',num2str(sceneGeometry.constraintTolerance/2), ['=> ' num2str(sceneGeometry.constraintTolerance)]},'Location','northwest', 'Orientation','vertical');
+legend({'0',num2str(sceneGeometry.constraintTolerance/2), ['=> ' num2str(sceneGeometry.constraintTolerance)]},'Location','north', 'Orientation','vertical');
 
 
 %% Right panel -- area error
-subplot('Position',[0.65 0.25 0.25 0.25]);
+subplot(3,3,[3 6]);
 
-% plot the 2D histogram grid
-for xx = 1: length(Xedges)
-    if xx==1
-        hold on
+if ~isempty(Xedges)
+    % plot the 2D histogram grid
+    for xx = 1: length(Xedges)
+        if xx==1
+            hold on
+        end
+        plot([Xedges(xx) Xedges(xx)], [Yedges(1) Yedges(end)], '-', 'Color', [0.9 0.9 0.9], 'LineWidth', 0.5 );
     end
-    plot([Xedges(xx) Xedges(xx)], [Yedges(1) Yedges(end)], '-', 'Color', [0.9 0.9 0.9], 'LineWidth', 0.5 );
+    for yy=1: length(Yedges)
+        plot([Xedges(1) Xedges(end)], [Yedges(yy) Yedges(yy)], '-', 'Color', [0.9 0.9 0.9], 'LineWidth', 0.5);
+    end
+    binSpaceX = Xedges(2)-Xedges(1);
+    binSpaceY = Yedges(2)-Yedges(1);
+    xlim ([Xedges(1)-binSpaceX Xedges(end)+binSpaceX]);
+    ylim ([Yedges(1)-binSpaceY Yedges(end)+binSpaceY]);
 end
-for yy=1: length(Yedges)
-    plot([Xedges(1) Xedges(end)], [Yedges(yy) Yedges(yy)], '-', 'Color', [0.9 0.9 0.9], 'LineWidth', 0.5);
-end
-binSpaceX = Xedges(2)-Xedges(1);
-binSpaceY = Yedges(2)-Yedges(1);
 
 % Calculate a color for each plot point corresponding to the degree of
 % shape error
@@ -648,14 +692,12 @@ colorMatrix(2,:)= areaErrorVec;
 scatter(ellipses(:,1),ellipses(:,2),[],colorMatrix','o','filled');
 
 % label and clean up the plot
-xlim ([Xedges(1)-binSpaceX Xedges(end)+binSpaceX]);
-ylim ([Yedges(1)-binSpaceY Yedges(end)+binSpaceY]);
 axis equal
 set(gca,'Ydir','reverse')
 title('Area error')
 
 % Create a legend
-hSub = subplot('Position',[0.65 0.05 0.3 0.15]);
+hSub = subplot(3,3,9);
 
 scatter(nan, nan,2,'filled', ...
     'MarkerFaceAlpha',6/8,'MarkerFaceColor',[1 0 0]);
@@ -665,11 +707,10 @@ scatter(nan, nan,2,'filled', ...
 scatter(nan, nan,2,'filled', ...
     'MarkerFaceAlpha',6/8,'MarkerFaceColor',[1 1 0]);
 set(hSub, 'Visible', 'off');
-legend({'0',num2str(sceneGeometry.constraintTolerance/2), ['=> ' num2str(sceneGeometry.constraintTolerance)]},'Location','northwest', 'Orientation','vertical');
+legend({'0',num2str(sceneGeometry.constraintTolerance/2), ['=> ' num2str(sceneGeometry.constraintTolerance)]},'Location','north', 'Orientation','vertical');
 
 %% Save the plot
-orient(figHandle,'landscape');
-saveas(figHandle,sceneDiagnosticPlotFileName);
+saveas(figHandle,sceneDiagnosticPlotFileName)
 close(figHandle)
 
 end % saveSceneDiagnosticPlot
