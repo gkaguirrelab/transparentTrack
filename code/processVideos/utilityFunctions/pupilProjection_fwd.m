@@ -27,15 +27,16 @@ function [pupilEllipseOnImagePlane, pupilCenterOnImagePlane] = pupilProjection_f
 %                           elevation are in units of head-centered
 %                           (extrinsic) degrees, and pupil radius is in mm.
 %   sceneGeometry         - A structure that contains the fields:
-%                             - eyeRadius: scalar in millimeters
-%                             - extrinsicTranslationVector: a 3x1 matrix
+%                             - A 1x2 vector of radial distortion params
+%                             - intrinsicCameraMatrix: a 3x3 matrix in
+%                               arbitrary units (typically pixels) 
+%                             - extrinsicTranslationVector: a 3x1 vector
 %                               in units of millimeters that relates center
 %                               of rotation of the eye to the optical axis
 %                               of the camera
 %                             - extrinsicRotationMatrix: a 3x3 matrix in 
 %                               units of millimeters
-%                             - intrinsicCameraMatrix: a 3x3 matrix in
-%                               arbitrary units (typically pixels) 
+%                             - eyeRadius: scalar in millimeters
 %
 % Outputs:
 %   pupilEllipseOnImagePlane - A 1x5 vector that contains the parameters of
@@ -219,21 +220,45 @@ projectionMatrix = ...
     sceneGeometry.extrinsicTranslationVector];
 
 % Project the world points to the image plane
-imagePointsReconstructedUnscaled=(projectionMatrix*sceneWorldPoints')';
-imagePointsReconstructed=zeros(nPerimPoints+1,2);
-imagePointsReconstructed(:,1) = ...
-    imagePointsReconstructedUnscaled(:,1)./imagePointsReconstructedUnscaled(:,3);
-imagePointsReconstructed(:,2) = ...
-    imagePointsReconstructedUnscaled(:,2)./imagePointsReconstructedUnscaled(:,3);
+imagePointsUnscaled=(projectionMatrix*sceneWorldPoints')';
+imagePoints=zeros(nPerimPoints+1,2);
+imagePoints(:,1) = ...
+    imagePointsUnscaled(:,1)./imagePointsUnscaled(:,3);
+imagePoints(:,2) = ...
+    imagePointsUnscaled(:,2)./imagePointsUnscaled(:,3);
 
+%% Apply radial lens distortion
+% This step introduces "pincushion" (or "barrel") distortion produced by
+% the lens. The x and y distortion equations are in the normalized image
+% coordinates. Thus, the origin is at the optical center (aka principal
+% point), and the coordinates are in world units. To apply this distortion
+% to our image coordinate points, we subtract the optical center, and then
+% divide by fx and fy from the intrinsic matrix.
+
+imagePointsNormalized = (imagePoints - [sceneGeometry.intrinsicCameraMatrix(1,3) sceneGeometry.intrinsicCameraMatrix(2,3)]) ./ ...
+    [sceneGeometry.intrinsicCameraMatrix(1,1) sceneGeometry.intrinsicCameraMatrix(2,2)];
+
+% Distortion is proportional to distance from the center of the center of
+% projection on the camera sensor
+radialPosition = sqrt(imagePointsNormalized(:,1).^2 + imagePointsNormalized(:,2).^2); 
+
+distortionVector =   1 + ...
+    sceneGeometry.radialDistortionVector(1).*radialPosition.^2 + ...
+    sceneGeometry.radialDistortionVector(2).*radialPosition.^4;
+
+imagePointsNormalizedDistorted(:,1) = imagePointsNormalized(:,1).*distortionVector;
+imagePointsNormalizedDistorted(:,2) = imagePointsNormalized(:,2).*distortionVector;
+
+imagePointsDistorted = (imagePointsNormalizedDistorted .* [sceneGeometry.intrinsicCameraMatrix(1,1) sceneGeometry.intrinsicCameraMatrix(2,2)]) +...
+    [sceneGeometry.intrinsicCameraMatrix(1,3) sceneGeometry.intrinsicCameraMatrix(2,3)];
 
 %% Fit the ellipse in the image plane and store values
 % Obtain the transparent ellipse params of the projection of the pupil
 % circle on the image plane. 
 pupilEllipseOnImagePlane = ellipse_ex2transparent(...
     ellipse_im2ex(...
-        ellipsefit_direct( imagePointsReconstructed(1:nPerimPoints,1), ...
-                           imagePointsReconstructed(1:nPerimPoints,2)  ...
+        ellipsefit_direct( imagePointsDistorted(1:nPerimPoints,1), ...
+                           imagePointsDistorted(1:nPerimPoints,2)  ...
                            ) ...
         )...
     );
@@ -246,7 +271,7 @@ end
 % Store the coordinates of the projection of the center of the pupil on the
 % image plane.
 pupilCenterOnImagePlane = ...
-    [imagePointsReconstructed(nPerimPoints+1,1) imagePointsReconstructed(nPerimPoints+1,2)];
+    [imagePointsDistorted(nPerimPoints+1,1) imagePointsDistorted(nPerimPoints+1,2)];
 
 end % pupilProjection_fwd
 
