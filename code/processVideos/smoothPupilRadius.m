@@ -1,15 +1,12 @@
-function [pupilData] = smoothPupilArea(perimeterFileName, pupilFileName, sceneGeometryFileName, varargin)
-% Empirical Bayes smoothing of pupil area in the scene
+function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, sceneGeometryFileName, varargin)
+% Empirical Bayes smoothing of pupil radius in the scene
 %
 % Description:
-%   This routine implements a smoothing operation upon pupil area. The
-%   pupil area in the image plane is projected back to a model eye, using
-%   the scene geometry parameters. This accounts for variation in the
-%   apparent area of the pupil at the image plane due to eye rotation. The
-%   reconstructed area of the pupil is then treated as the likelihood in an
-%   empirical Bayes approach that obtains the posterior estimate of the
-%   pupil area. A non-causal, exponentially weighted window of surrounding
-%   area values serves as a prior.
+%   This routine implements a smoothing operation upon pupil radius using
+%   an empirical Bayes approach. A non-causal, exponentially weighted
+%   window of surrounding radius values serves as a prior. The posterior
+%   value of the radius is then used as a constraint and the ellipse in the
+%   image plane is re-fit.
 %
 % Notes:
 %   Parallel pool - Controlled by the key/value pair 'useParallel'. The
@@ -24,7 +21,7 @@ function [pupilData] = smoothPupilArea(perimeterFileName, pupilFileName, sceneGe
 % Inputs:
 %   perimeterFileName     - Full path to a .mat file that contains the
 %                           perimeter data.
-%   pupilFileName         - Full path to the .mat file that contains the 
+%   pupilFileName         - Full path to the .mat file that contains the
 %                           pupil data to be smoothed. This file will be
 %                           over-written by the output.
 %   sceneGeometryFileName - Full path to the .mat file that contains the
@@ -53,33 +50,22 @@ function [pupilData] = smoothPupilArea(perimeterFileName, pupilFileName, sceneGe
 %  'hostname'             - AUTOMATIC; The host
 %
 % Optional key/value pairs (fitting)
-%  'ellipseTransparentLB/UB' - Define the hard upper and lower boundaries
-%                           for the ellipse fit, in units of pixels of the
-%                           video. The default values selected here
-%                           represent the physical and mathematical limits,
-%                           as the constraint for the fit will be provided
-%                           by the scene geometry.
+%  'eyeParamsLB'          - Lower bound on the eyeParams
+%  'eyeParamsUB'          - Upper bound on the eyeParams
 %  'exponentialTauParam'  - The time constant (in video frames) of the
 %                           decaying exponential weighting function for
-%                           pupil area.
+%                           pupil radius.
 %  'likelihoodErrorExponent' - The SD of the parameters estimated for each
 %                           frame are raised to this exponent, to either to
 %                           weaken (>1) or strengthen (<1) the influence of
 %                           the current measure on the posterior.
-%  'rmseExclusionThreshold' - Frames with RMSE fitting error above this
+%  'badFrameErrorThreshold' - Frames with RMSE fitting error above this
 %                           threshold have their posterior values
 %                           determined entirely by the prior. Additionally,
 %                           these frames do not contribue to the prior.
-%  'whichLikelihoodMean'  - The ellipse fit parameter values to be
-%                           smoothed.
-%  'whichLikelihoodRMSE'  - The field that contains the RMSE values for the
-%                           ellipse parameters to be smoothed.
-%  'whichLikelihoodSD'    - The field to be used to set the SD of the
-%                           likelihood in the calculation of the posterior.
-%                           The usual value is:
-%                           'ellipseParamsSceneConstrained_splitsSD'
-%  'areaIdx'              - The index of the ellipse parameters that holds
-%                           pupil area [3].
+%  'ellipseFitLabel'      - Identifies the field in pupilData that contains
+%                           the ellipse fit params for which the search
+%                           will be conducted.
 %
 % Outputs:
 %   pupilData             - A structure with multiple fields corresponding
@@ -111,20 +97,18 @@ p.addParameter('hostname',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional fitting params
-p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, 0],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('ellipseTransparentUB',[640,480,20000,1, pi],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('eyeParamsLB',[-35,-25,0.5],@isnumeric);
+p.addParameter('eyeParamsUB',[35,25,4],@isnumeric);
 p.addParameter('exponentialTauParam',3,@isnumeric);
 p.addParameter('likelihoodErrorExponent',1.0,@isnumeric);
-p.addParameter('badFrameErrorThreshold', 2, @isnumeric);
-p.addParameter('whichLikelihoodMean','ellipseParamsSceneConstrained_mean',@ischar);
-p.addParameter('whichLikelihoodRMSE','ellipseParamsSceneConstrained_rmse',@ischar);
-p.addParameter('whichLikelihoodSD','ellipseParamsSceneConstrained_splitsSD',@ischar);
-p.addParameter('areaIdx',3,@isnumeric);
+p.addParameter('badFrameErrorThreshold',2, @isnumeric);
+p.addParameter('ellipseFitLabel','sceneConstrained',@ischar);
 
 %% Parse and check the parameters
 p.parse(perimeterFileName, pupilFileName, sceneGeometryFileName, varargin{:});
 
 nEllipseParams=5; % 5 params in the transparent ellipse form
+nEyeParams=3; % 3 values (azimuth, elevation, pupil radius) for eyeParams
 
 % Load the pupil perimeter data. It will be a structure variable
 % "perimeter", with the fields .data and .meta
@@ -142,17 +126,6 @@ dataLoad=load(p.Results.sceneGeometryFileName);
 sceneGeometry=dataLoad.sceneGeometry;
 clear dataLoad
 
-% Assemble a vector that contains the eye center of rotation and create a
-% variable to hold the projectionModel string
-eyeCenterOfRotation = [sceneGeometry.eyeCenter.X sceneGeometry.eyeCenter.Y sceneGeometry.eyeCenter.Z];
-eyeRadius = sceneGeometry.eyeRadius;
-projectionModel = sceneGeometry.meta.projectionModel;
-
-% Create a non-linear constraint for the ellipse fit
-nonlinconst = @(transparentEllipseParams) constrainEllipseBySceneGeometry(...
-    transparentEllipseParams, ...
-    sceneGeometry);
-
 % determine how many frames we will process
 if p.Results.nFrames == Inf
     nFrames=size(perimeter.data,1);
@@ -160,28 +133,15 @@ else
     nFrames = p.Results.nFrames;
 end
 
-% The parameters that begin 'whichLikelihood...' control which one of the
-% available pupil ellipse fits are to be smoothed. Check here that these
-% fields exist.
-if ~isfield(pupilData,p.Results.whichLikelihoodSD)
-    error('The requested estimate of fit SD is not available in pupilData');
+% Check that the needed fields in the pupilData structure are present
+if ~isfield(pupilData,(p.Results.ellipseFitLabel))
+    error('The requested fit field is not available in pupilData');
 end
-if ~isfield(pupilData,p.Results.whichLikelihoodMean)
-    error('The requested fit values are not available in pupilData');
+if ~isfield(pupilData.(p.Results.ellipseFitLabel).ellipse,'RMSE')
+    error('This fit field does not have the required subfield: ellipse.RMSE');
 end
-if ~isfield(pupilData,p.Results.whichLikelihoodRMSE)
-    error('The requested RMSE of the ellipse fit are not available in pupilData');
-end
-
-% convert the ellipse parameters in pupil data to eye azimuth, elevation,
-% an pupil area
-for ii = 1:nFrames
-    [pupilAzi(ii), pupilEle(ii), pupilArea(ii)] = ...
-        pupilProjection_inv( ...
-        pupilData.(p.Results.whichLikelihoodMean)(ii,:), ...
-        eyeCenterOfRotation, ...
-        eyeRadius, ...
-        projectionModel);
+if ~isfield(pupilData.(p.Results.ellipseFitLabel).eyeParams,'splitsSD')
+    error('This fit field does not have the required subfield: eyeParams.splitsSD');
 end
 
 
@@ -226,14 +186,11 @@ clear perimeter
 
 % Set-up other variables to be non-broadcast
 verbosity = p.Results.verbosity;
-areaIdx = p.Results.areaIdx;
-whichLikelihoodMean = p.Results.whichLikelihoodMean;
-whichLikelihoodRMSE = p.Results.whichLikelihoodRMSE;
-whichLikelihoodSD = p.Results.whichLikelihoodSD;
 likelihoodErrorExponent = p.Results.likelihoodErrorExponent;
-ellipseTransparentLB = p.Results.ellipseTransparentLB;
-ellipseTransparentUB = p.Results.ellipseTransparentUB;
+eyeParamsLB = p.Results.eyeParamsLB;
+eyeParamsUB = p.Results.eyeParamsUB;
 badFrameErrorThreshold = p.Results.badFrameErrorThreshold;
+ellipseFitLabel = p.Results.ellipseFitLabel;
 
 %% Conduct empirical Bayes smoothing
 
@@ -267,22 +224,22 @@ parfor (ii = 1:nFrames, nWorkers)
         end
     end
     
-    % initialize some variables
-    pPosteriorMeanTransparent = NaN(1,nEllipseParams);
-    pPosteriorFitError = NaN;
-    pPosteriorConstraintError = NaN;
-    posteriorPupilAreaMean = NaN;
-    posteriorPupilAreaSD = NaN;
-
+    % initialize some variables so that their use is transparent to the
+    % parfor loop
+    posteriorEllipseParams = NaN(1,nEllipseParams);
+    posteriorEyeParamsObjectiveError = NaN;
+    posteriorEyeParams = NaN(1,nEyeParams);
+    posteriorPupilRadiusSD = NaN;
+    
     % get the boundary points
     Xp = frameCellArray{ii}.Xp;
     Yp = frameCellArray{ii}.Yp;
     
-    % if this frame has data, and the initial ellipse fit is not nan,
-    % then proceed to calculate the posterior
-    if ~isempty(Xp) &&  ~isempty(Yp) && sum(isnan(pupilData.(whichLikelihoodMean)(ii,:)))==0
-        % Calculate the pupil area prior. The prior mean is given by the
-        % surrounding area values, weighted by a decaying exponential in
+    % if this frame has data, and eyeParam radius is not nan, then proceed
+    % to calculate the posterior
+    if ~isempty(Xp) &&  ~isempty(Yp) && ~isnan(pupilData.(ellipseFitLabel).eyeParams.values(ii,3))
+        % Calculate the pupil radius prior. The prior mean is given by the
+        % surrounding radius values, weighted by a decaying exponential in
         % time and the inverse of the standard deviation of each measure.
         % The prior standard deviation is weighted only by time.
         
@@ -294,13 +251,12 @@ parfor (ii = 1:nFrames, nWorkers)
         restrictHiWindow = max([(nFrames-ii-window)*-1,0]);
         
         % Get the dataVector, restricted to the window range
-        dataVector=pupilArea(rangeLowSignal:rangeHiSignal);
+        dataVector=squeeze(pupilData.(ellipseFitLabel).eyeParams.values(rangeLowSignal:rangeHiSignal,3))';
         
-        % Build the precisionVector as the inverse of the measurement
-        % SD on each frame, scaled to range within the window from zero
-        % to unity. Thus, the noisiest measurement will not influence
-        % the prior.
-        precisionVector=squeeze(pupilData.(whichLikelihoodSD)(:,areaIdx))';
+        % Build the precisionVector as the inverse of the measurement SD on
+        % each frame, scaled to range within the window from zero to unity.
+        % Thus, the noisiest measurement will not influence the prior.
+        precisionVector = squeeze(pupilData.(ellipseFitLabel).eyeParams.splitsSD(:,3))';
         precisionVector=precisionVector.^(-1);
         precisionVector=precisionVector(rangeLowSignal:rangeHiSignal);
         precisionVector=precisionVector-nanmin(precisionVector);
@@ -310,7 +266,7 @@ parfor (ii = 1:nFrames, nWorkers)
         % was greater than threshold, and therefore should not contribute
         % to the prior. We detect the edge case in which every frame in the
         % window is "bad", in which case we retain them all.
-        rmseVector = pupilData.(whichLikelihoodRMSE)(rangeLowSignal:rangeHiSignal)';
+        rmseVector = pupilData.(ellipseFitLabel).ellipse.RMSE(rangeLowSignal:rangeHiSignal)';
         badFrameIdx = rmseVector > badFrameErrorThreshold;
         if sum(badFrameIdx) > 0 && sum(badFrameIdx) < length(badFrameIdx)
             precisionVector(badFrameIdx)=0;
@@ -324,67 +280,56 @@ parfor (ii = 1:nFrames, nWorkers)
         % Combine the precision and time weights, and calculate the
         % prior mean
         combinedWeightVector=precisionVector.*temporalWeightVector;
-        priorPupilAreaMean = nansum(dataVector.*combinedWeightVector,2)./ ...
+        priorPupilRadius = nansum(dataVector.*combinedWeightVector,2)./ ...
             nansum(combinedWeightVector(~isnan(dataVector)),2);
         
         % Obtain the standard deviation of the prior
-        priorPupilAreaSD = nanstd(dataVector,temporalWeightVector);
+        priorPupilRadiusSD = nanstd(dataVector,temporalWeightVector);
         
         % Retrieve the initialFit for this frame
-        likelihoodPupilAreaMean = pupilArea(ii);
-        likelihoodPupilAreaRMSE = pupilData.(whichLikelihoodSD)(ii);
-        likelihoodPupilAreaSD = pupilData.(whichLikelihoodSD)(ii,areaIdx);
+        likelihoodPupilRadiusMean = pupilData.(ellipseFitLabel).eyeParams.values(ii,3);
+        likelihoodPupilRadiusSD = pupilData.(ellipseFitLabel).eyeParams.splitsSD(ii,3);
         
         % Raise the estimate of the SD from the initial fit to an
         % exponent. This is used to adjust the relative weighting of
         % the current frame realtive to the prior
-        likelihoodPupilAreaSD = likelihoodPupilAreaSD .^ likelihoodErrorExponent;
+        likelihoodPupilRadiusSD = likelihoodPupilRadiusSD .^ likelihoodErrorExponent;
         
         % Check if the RMSE for the likelihood fit was above the bad
         % threshold. If so, inflate the SD for the likelihood so that the
         % prior dictates the value of the posterior
-        if likelihoodPupilAreaRMSE > badFrameErrorThreshold
-            likelihoodPupilAreaSD = likelihoodPupilAreaSD .* 1e20;
+        if pupilData.(ellipseFitLabel).ellipse.RMSE(ii) > badFrameErrorThreshold
+            likelihoodPupilRadiusSD = likelihoodPupilRadiusSD .* 1e20;
         end
         
         % Calculate the posterior values for the pupil fits, given the
         % likelihood and the prior
-        posteriorPupilAreaMean = priorPupilAreaSD.^2.*likelihoodPupilAreaMean./(priorPupilAreaSD.^2+likelihoodPupilAreaSD.^2) + ...
-            likelihoodPupilAreaSD.^2.*priorPupilAreaMean./(priorPupilAreaSD.^2+likelihoodPupilAreaSD.^2);
+        posteriorPupilRadius = priorPupilRadiusSD.^2.*likelihoodPupilRadiusMean./(priorPupilRadiusSD.^2+likelihoodPupilRadiusSD.^2) + ...
+            likelihoodPupilRadiusSD.^2.*priorPupilRadius./(priorPupilRadiusSD.^2+likelihoodPupilRadiusSD.^2);
         
-        % Calculate the SD of the posterior of the pupil area
-        posteriorPupilAreaSD = sqrt((priorPupilAreaSD.^2.*likelihoodPupilAreaSD.^2) ./ ...
-            (priorPupilAreaSD.^2+likelihoodPupilAreaSD.^2));
+        % Calculate the SD of the posterior of the pupil radius
+        posteriorPupilRadiusSD = sqrt((priorPupilRadiusSD.^2.*likelihoodPupilRadiusSD.^2) ./ ...
+            (priorPupilRadiusSD.^2+likelihoodPupilRadiusSD.^2));
         
-        % Convert the posterior pupil area in the eye back to area in the
-        % image plane
-        reconstructedTransparentEllipse = ...
-            pupilProjection_fwd(pupilAzi(ii), pupilEle(ii), posteriorPupilAreaMean, eyeCenterOfRotation, eyeRadius, projectionModel);
-        
-        % Occasionally nan is returned for pupil area. If so, retain the
-        % original ellipse fit. If not, re-fit the ellipse with the area
-        % constrained to the posterior value        
-        if isnan(reconstructedTransparentEllipse(areaIdx))
-            pPosteriorMeanTransparent = pupilData.(whichLikelihoodMean)(ii,:);
-            pPosteriorFitError = nan;
-            pPosteriorConstraintError = nan;
-        else
-            % Pin the area parameter and re-fit the ellipse
-            lb_pin = ellipseTransparentLB;
-            ub_pin = ellipseTransparentUB;
-            lb_pin(areaIdx)=reconstructedTransparentEllipse(areaIdx);
-            ub_pin(areaIdx)=reconstructedTransparentEllipse(areaIdx);
-            [pPosteriorMeanTransparent, pPosteriorFitError, pPosteriorConstraintError] = constrainedEllipseFit(Xp,Yp, lb_pin, ub_pin, nonlinconst);
-        end
+        % Re-fit the ellipse with the radius constrained to the posterior
+        % value. Pass the prior azimuth and elevation as x0.
+        lb_pin = eyeParamsLB;
+        ub_pin = eyeParamsUB;
+        lb_pin(3)=posteriorPupilRadius;
+        ub_pin(3)=posteriorPupilRadius;
+        x0 = pupilData.(ellipseFitLabel).eyeParams.values(ii,:);
+        x0(3)=posteriorPupilRadius;
+        [posteriorEyeParams, posteriorEyeParamsObjectiveError] = ...
+            eyeParamEllipseFit(Xp, Yp, sceneGeometry, 'eyeParamsLB', lb_pin, 'eyeParamsUB', ub_pin, 'x0', x0 );
+        posteriorEllipseParams = pupilProjection_fwd(posteriorEyeParams, sceneGeometry);
         
     end % check if there are any perimeter points to fit
     
     % store results
-    loopVar_pPosteriorMeanTransparent(ii,:) = pPosteriorMeanTransparent';
-    loopVar_pPosteriorFitError(ii) = pPosteriorFitError;
-    loopVar_pPosteriorConstraintError(ii) = pPosteriorConstraintError;
-    loopVar_pupilAreaMean(ii) = posteriorPupilAreaMean;
-    loopVar_pupilAreaSD(ii) = posteriorPupilAreaSD;
+    loopVar_posteriorEllipseParams(ii,:) = posteriorEllipseParams';
+    loopVar_posteriorEyeParamsObjectiveError(ii) = posteriorEyeParamsObjectiveError;
+    loopVar_posteriorEyeParams(ii,:) = posteriorEyeParams;
+    loopVar_posteriorPupilRadiusSD(ii) = posteriorPupilRadiusSD;
     
 end % loop over frames to calculate the posterior
 
@@ -397,15 +342,21 @@ end
 %% Clean up and save the fit results
 
 % gather the loop vars into the ellipse structure
-pupilData.ellipseParamsAreaSmoothed_mean=loopVar_pPosteriorMeanTransparent;
-pupilData.ellipseParamsAreaSmoothed_rmse=loopVar_pPosteriorFitError';
-pupilData.ellipseParamsAreaSmoothed_constraintError=loopVar_pPosteriorConstraintError';
+pupilData.radiusSmoothed.ellipse.values=loopVar_posteriorEllipseParams;
+pupilData.radiusSmoothed.ellipse.RMSE=loopVar_posteriorEyeParamsObjectiveError';
+pupilData.radiusSmoothed.ellipse.meta.ellipseForm = 'transparent';
+pupilData.radiusSmoothed.ellipse.meta.labels = {'x','y','area','eccentricity','theta'};
+pupilData.radiusSmoothed.ellipse.meta.units = {'pixels','pixels','squared pixels','non-linear eccentricity','rads'};
+pupilData.radiusSmoothed.ellipse.meta.coordinateSystem = 'intrinsic image';
+
+pupilData.radiusSmoothed.eyeParams.values=loopVar_posteriorEyeParams;
+pupilData.radiusSmoothed.eyeParams.radiusSD=loopVar_posteriorPupilRadiusSD';
+pupilData.radiusSmoothed.eyeParams.meta.labels = {'azimuth','elevation','pupil radius'};
+pupilData.radiusSmoothed.eyeParams.meta.units = {'deg','deg','mm'};
+pupilData.radiusSmoothed.eyeParams.meta.coordinateSystem = 'head fixed (extrinsic)';
 
 % add a meta field with analysis details
-pupilData.meta.smoothPupilArea = p.Results;
-pupilData.meta.smoothPupilArea.coordinateSystem = 'intrinsicCoordinates(pixels)';
-pupilData.meta.smoothPupilArea.pupilAreaMean = loopVar_pupilAreaMean';
-pupilData.meta.smoothPupilArea.pupilAreaSD = loopVar_pupilAreaSD';
+pupilData.radiusSmoothed.meta.smoothPupilArea = p.Results;
 
 % save the pupilData
 save(p.Results.pupilFileName,'pupilData')

@@ -3,27 +3,118 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %
 % Description:
 %   This function searches over the set of ellipses in the passed pupil
-%   file to estimate the sceneGeometry features in units of pixels on the
-%   scene. The routine identifies the eye radius and the [X, Y, Z]
-%   coordinates on the scene plane of the center of rotation of an eye. The
-%   search attempts to minimize the error associated with the prediction of
-%   the eccentricity and theta of ellipses in each of 100 "bins" of x, y
-%   ellipse center position on the image plane.
+%   file(s) to estimate the sceneGeometry features that define a
+%   perspective projection. The search attempts to minimize the error
+%   associated with the prediction of the center of ellipses in the image
+%   plane while constraining the shape of these ellipses to match that
+%   predicted by the projection.
 %
-%   Different projection models can be used to guide this calculation. The
-%   orthogonal model assumes that ellipses  on the scene plane are
-%   orthogonal projections of a circular pupil the center of which rotates
-%   around the eye center. The pseudoPerspective model adjusts the x, y
-%   position of the center of an ellipse on the image plane given the
-%   increased distance from the image plane when the eye is rotated.
+%   We are aware that the center of an ellipse on the image plane is not at
+%   the same location as the projection of the center of the pupil on the
+%   image plane (see, for example,  Ahn, Sung Joon, H. J. Warnecke, and
+%   Rüdiger Kotowski. "Systematic geometric image measurement errors of
+%   circular object targets: Mathematical formulation and correction." The
+%   Photogrammetric Record 16.93 (1999): 485-502.). The modeling solution
+%   implemented here accounts for this property, as we implement a full,
+%   numeric forward projection of the pupil circle to the image plane.
+%   Similarly, we are aware that there are analytic approximations for the
+%   parameters of an ellipse in the image plane given a particular
+%   projective circumstance. These analytic approaches may provide an
+%   improvement in computation time in comparison to the numeric, forward
+%   simulation approach we adopt here, although at some cost in precision.
 %
-% 	Note: the search for both eye radius and eyeCenter.Z is not
-% 	sufficiently constrainted. Therefore, the boundaries for one of these
-% 	should be locked.
+% Components of the projection model:
+%   intrinsicCameraMatrix - This matrix has the form:
+%
+%       [fx  s x0]
+%       [0  fy y0]
+%       [0   0  1]
+%
+%   where fx, fy are the focal lengths of the camera in the x and y image
+%   dimensions, s is the axis skew, and x0, y0 define the principle offset
+%   point. For a camera sensor with square pixels, fx = fy. Ideally, skew
+%   should be zero. The principle offset point should be in the center of
+%   the sensor. Units are traditionally in pixels. These values can be
+%   empirically measured for a camera using a calibration approach
+%   (https://www.mathworks.com/help/vision/ref/cameramatrix.html).
+%   Therefore, the intrinsicCameraMatrix is locked and not modified in the
+%   sceneGeometry search. The default values are those that we measured by
+%   calibration of the LiveTrack AV, 12M-i camera.
+%
+%   radialDistortionVector - A two element vector of the form:
+%
+%       [k1 k2]
+%
+%   that models the radial distortion introduced the lens. This is an
+%   empirically measured property of the camera system and so these
+%   parameters are locked here. The default values are those that we
+%   measured by calibration of the LiveTrack AV, 12M-i camera.
+%
+%   extrinsicTranslationVector - a vector of the form:
+%
+%       [x] 
+%       [y] 
+%       [z]
+%
+%   with the values specifying the location (horizontal, vertical, and
+%   depth, respectively) of the principle offset point of the camera in mm
+%   relative to the scene coordinate system. We define the origin of the
+%   scene coordinate system to be x=0, y=0 at the center of rotation of the
+%   eye, and z=0 to be the front surface of the spherical eye ball. The
+%   default values and params can be guided by knowledge of the physical
+%   arrangement of the subject and recording apparatus.
+%
+%   extrinsicRotationMatrix - A 3x3 matrix with the fixed values of:
+%
+%       [1  0  0]
+%       [0 -1  0]
+%       [0  0 -1]
+%
+%   These values invert the axes of the scene coordinate system to produce
+%   the direction conventions of the image coordinate system. As the
+%   projection of pupil circles from scene to image is invariant to
+%   rotations of the camera matrix, these values are locked.
+%
+%   eyeRadius -  Scalar which specifies the radius of the eye in mm. The
+%   relevant measure is the distance between the center of rotation of the
+%   eye (which is not equivalent to the center of the eye) and the pupil
+%   plane (which is several millimeters behind the front surface of the
+%   cornea). We compute our default value using the approach described in
+%   the Optometrika Matlab toolbox craeted by Yury Petrov and Neil Tandon.
+%   The eye center of rotation is on average 13.3 mm behind the corneal
+%   apex. (Gunter K. vonNoorden, MD; Emilio C. Campos "Binocular Vision and
+%   Ocular Motility Theory and Management of Strabismus" American Orthoptic
+%   Journal 51.1 (2001): 161-162.) We futher note that the pupil plane lies
+%   3 mm behind the corneal apex of the anterior chamber (Gullstrand, Av.
+%   "The optical system of the eye." Physiological Optics 1 (1909):
+%   350-358.) This gives us the default value of 10.3 mm for the eyeRadius
+%   in the emmetropic eye. In myopia, the axial length of the eye is
+%   increased. Consequently, we make greater range available for this
+%   parameter on the upper as compared to the lower bound.
+%
+%   constraintTolerance - A scalar. The inverse projection from ellipse on
+%   the image plane to eye params (azimuth, elevation) imposes a constraint
+%   on how well the solution must match the shape of the ellipse (defined
+%   by ellipse eccentricity and theta) and the area of the ellipse. This
+%   constraint is expressed as a proportion of error, relative to either
+%   the largest possible area in ellipse shape or an error in area equal to
+%   the area of the ellipse itself (i.e., unity). If the constraint is made
+%   too stringent, then in an effort to perfectly match the shape of the
+%   ellipse, error will increase in matching the position of the ellipse
+%   center. It should be noted that even in a noise-free simulation, it is
+%   not possible to perfectly match ellipse shape and area while matching
+%   ellipse center position, as the shape of the projection of the pupil
+%   upon the image plane deviates from perfectly elliptical due to
+%   perspective effects. We find that a value in the range 0.01 - 0.03
+%   provides an acceptable compromise in empirical data.
 %
 % Inputs:
 %	pupilFileName         - Full path to a pupilData file, or a cell array
-%                           of such paths.
+%                           of such paths. If a cell array is provided, the
+%                           ellipse data from each pupilData file will be
+%                           loaded and concatenated. If set to empty, a
+%                           sceneGeometry structure with default values
+%                           will be returned.
 %   sceneGeometryFileName - Full path to the file in which the
 %                           sceneGeometry data should be saved
 %
@@ -33,6 +124,16 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %                           location where a diagnostic plot of the
 %                           sceneGeometry calculation is to be saved. If
 %                           left empty, then no plot will be saved.
+%
+% Optional key/value pairs (flow control)
+%  'useParallel'          - If set to true, use the Matlab parallel pool
+%  'nWorkers'             - Specify the number of workers in the parallel
+%                           pool. If undefined the default number will be
+%                           used.
+%  'tbtbProjectName'      - The workers in the parallel pool are configured
+%                           by issuing a tbUseProject command for the
+%                           project specified here.
+%
 %
 % Optional key/value pairs (environment)
 %  'tbSnapshot'           - This should contain the output of the
@@ -44,34 +145,39 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %  'hostname'             - AUTOMATIC; The host
 %
 % Optional key/value pairs (analysis)
-%  'projectionModel'      - Options are: 'orthogonal' and 'perspective'
-%  'sceneGeometryLB'      - Lower bounds for the sceneGeometry parameter
-%                           search. This is a 4x1 vector specifying
-%                           eyeCenter.X, eyeCenter.Y, eyeCenter.Z and
-%                           eyeRadius.
-%  'sceneGeometryUB'      - The corresponding upper bounds.
-%  'cameraDistanceInPixels' - This is used (along with eyeRadius) to
-%                           construct an initial guess for eyeCenter.Z
-%  'eyeRadius             - Under the orthogonal projection case, this
-%                           value is stored and used for all subsequent
-%                           calculations. Under the pseudoPerspective case,
-%                           this is the initial guess for eyeRadius.
-%  'whichFitFieldMean'    - Identifies the field in pupilData that contains
+%  'radialDistortionVector' - 1x2 vector of radial distortion parameters
+%  'intrinsicCameraMatrix' - 3x3 matrix
+%  'extrinsicRotationMatrix' - 3x3 matrix
+%  'extrinsicTranslationVector' - 3x1 vector
+%  'extrinsicTranslationVectorLB' - 3x1 vector
+%  'extrinsicTranslationVectorUB' - 3x1 vector
+%  'eyeRadius'            - Scalar
+%  'eyeRadiusLB'          - Scalar
+%  'eyeRadiusUB'          - Scalar
+%  'constraintTolerance'  - Scalar. Range 0-1.
+%  'eyeParamsLB/UB'       - Upper and lower bounds on the eyeParams
+%                           [azimuth, elevation, pupil radius]. Biological
+%                           limits in eye rotation and pupil size would
+%                           suggest boundaries of [±35, ±25, 0.5-5]. Note,
+%                           however, that these angles are relative to the
+%                           center of projection, not the primary position
+%                           of the eye. Therefore, in circumstances in
+%                           which the camera is viewing the eye from an
+%                           off-center angle, the bounds will need to be
+%                           shifted accordingly.
+%  'whichEllipseFitField' - Identifies the field in pupilData that contains
 %                           the ellipse fit params for which the search
 %                           will be conducted.
-%  'whichFitFieldError'   - Identifies the pupilData field that has error
-%                           values for the ellipse fit params.
+%  'ellipseArrayList'     - A vector of frame numbers (indexed from 1)
+%                           which identify the llipses to be used for the
+%                           estimation of scene geometry. If left empty,
+%                           a list of ellipses will be generated.
+%  'nBinsPerDimension'    - Scalar. Defines the number of divisions with
+%                           which the ellipse centers are binned.
 %
 % Outputs
-%	sceneGeometry         - A structure with the fields
-%       eyeCenter.X - X coordinate of the eye center (i.e. the assumed
-%           center of rotation of the pupil) on the scene plane.
-%       eyeCenter.Y - Y coordinate of the eye center (i.e. the assumed
-%           center of rotation of the pupil) on the scene plane.
-%       eyeCenter.Z - the orthogonal distance for the eye center from the
-%           scene plane.
-%       eyeRadius - radius of the eye in pixels
-%       meta - information regarding the analysis, including units.
+%	sceneGeometry         - A structure that contains the components of the
+%                           projection model.
 %
 
 
@@ -79,12 +185,17 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 p = inputParser; p.KeepUnmatched = true;
 
 % Required
-p.addRequired('pupilFileName',@(x)(iscell(x) | ischar(x)));
-p.addRequired('sceneGeometryFileName',@ischar);
+p.addRequired('pupilFileName',@(x)(isempty(x) | iscell(x) | ischar(x)));
+p.addRequired('sceneGeometryFileName',@(x)(isempty(x) | ischar(x)));
 
 % Optional display and I/O params
 p.addParameter('verbosity', 'none', @isstr);
-p.addParameter('sceneDiagnosticPlotFileName', [],@(x)(isempty(x) | ischar(x)));
+p.addParameter('sceneDiagnosticPlotFileName', 'ss',@(x)(isempty(x) | ischar(x)));
+
+% Optional flow control params
+p.addParameter('useParallel',false,@islogical);
+p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('tbtbRepoName','transparentTrack',@ischar);
 
 % Optional environment parameters
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
@@ -93,16 +204,44 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional analysis params
-p.addParameter('projectionModel','pseudoPerspective',@ischar);
-p.addParameter('sceneGeometryLB',[0, 0, 1325, 25],@isnumeric);
-p.addParameter('sceneGeometryUB',[640, 480, 1325, 500],@isnumeric);
-p.addParameter('cameraDistanceInPixels',1200,@isnumeric);
-p.addParameter('eyeRadius',125,@isnumeric);
-p.addParameter('whichFitFieldMean','ellipseParamsUnconstrained_mean',@ischar);
-p.addParameter('whichFitFieldError','ellipseParamsUnconstrained_rmse',@ischar);
+p.addParameter('radialDistortionVector',[-0.3517 3.5353],@isnumeric);
+p.addParameter('intrinsicCameraMatrix',[2627.0 0 338.1; 0 2628.1 246.2; 0 0 1],@isnumeric);
+p.addParameter('extrinsicRotationMatrix',[1 0 0; 0 -1 0; 0 0 -1],@isnumeric);
+p.addParameter('extrinsicTranslationVector',[0; 0; 120],@isnumeric);
+p.addParameter('extrinsicTranslationVectorLB',[-10; -10; 100],@isnumeric);
+p.addParameter('extrinsicTranslationVectorUB',[10; 10; 180],@isnumeric);
+p.addParameter('eyeRadius',10.3,@isnumeric);
+p.addParameter('eyeRadiusLB',10.00,@isnumeric);
+p.addParameter('eyeRadiusUB',12.00,@isnumeric);
+p.addParameter('constraintTolerance',0.02,@isnumeric);
+p.addParameter('eyeParamsLB',[-35,-25,0.5],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('eyeParamsUB',[35,25,5],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('whichEllipseFitField','initial',@ischar);
+p.addParameter('ellipseArrayList',[],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('nBinsPerDimension',10,@isnumeric);
 
 % parse
 p.parse(pupilFileName, sceneGeometryFileName, varargin{:})
+
+
+%% Create the initial sceneGeometry structure and bounds
+% sceneGeometry
+initialSceneGeometry.radialDistortionVector = p.Results.radialDistortionVector;
+initialSceneGeometry.intrinsicCameraMatrix = p.Results.intrinsicCameraMatrix;
+initialSceneGeometry.extrinsicTranslationVector = p.Results.extrinsicTranslationVector;
+initialSceneGeometry.extrinsicRotationMatrix = p.Results.extrinsicRotationMatrix;
+initialSceneGeometry.constraintTolerance = p.Results.constraintTolerance;
+initialSceneGeometry.eyeRadius = p.Results.eyeRadius;
+
+% Bounds
+sceneParamsLB = [p.Results.extrinsicTranslationVectorLB; p.Results.eyeRadiusLB];
+sceneParamsUB = [p.Results.extrinsicTranslationVectorUB; p.Results.eyeRadiusUB];
+
+% Return the initialSceneGeometry if pupilFileName is empty
+if isempty(pupilFileName)
+    sceneGeometry = initialSceneGeometry;
+    return
+end
 
 
 %% Announce we are starting
@@ -111,97 +250,303 @@ if strcmp(p.Results.verbosity,'full')
     fprintf(['Estimating scene geometry from pupil ellipses. Started ' char(datetime('now')) '\n']);
 end
 
-% load pupil data
+
+%% Set up the parallel pool
+if p.Results.useParallel
+    if strcmp(p.Results.verbosity,'full')
+        tic
+        fprintf(['Opening parallel pool. Started ' char(datetime('now')) '\n']);
+    end
+    if isempty(p.Results.nWorkers)
+        parpool;
+    else
+        parpool(p.Results.nWorkers);
+    end
+    poolObj = gcp;
+    if isempty(poolObj)
+        nWorkers=0;
+    else
+        nWorkers = poolObj.NumWorkers;
+        % Use TbTb to configure the workers.
+        if ~isempty(p.Results.tbtbRepoName)
+            spmd
+                tbUse(p.Results.tbtbRepoName,'reset','full','verbose',false,'online',false);
+            end
+            if strcmp(p.Results.verbosity,'full')
+                fprintf('CAUTION: Any TbTb messages from the workers will not be shown.\n');
+            end
+        end
+    end
+    if strcmp(p.Results.verbosity,'full')
+        toc
+        fprintf('\n');
+    end
+else
+    nWorkers=0;
+end
+
+
+%% Load pupil data
 if iscell(pupilFileName)
     ellipses = [];
-    errorWeights = [];
+    ellipseFitSEM = [];
     for cc = 1:length(pupilFileName)
         load(pupilFileName{cc})
-        ellipses = [ellipses;pupilData.(p.Results.whichFitFieldMean)];
-        errorWeights = [errorWeights; pupilData.(p.Results.whichFitFieldError)];
+        ellipses = [ellipses;pupilData.(p.Results.whichEllipseFitField).ellipse.values];
+        ellipseFitSEM = [ellipseFitSEM; pupilData.(p.Results.whichEllipseFitField).ellipse.RMSE];
     end
 else
     load(pupilFileName)
-    ellipses = pupilData.(p.Results.whichFitFieldMean);
-    errorWeights = pupilData.(p.Results.whichFitFieldError);
+    ellipses = pupilData.(p.Results.whichEllipseFitField).ellipse.values;
+    ellipseFitSEM = pupilData.(p.Results.whichEllipseFitField).ellipse.RMSE;
 end
 
-% find the most circular ellipse and use the X Y coordinate as the initial
-% guess for the CoP XY coordinates
-[~, minEccentricityIdx] = min(pupilData.(p.Results.whichFitFieldMean)(:,4));
 
-% Set up the initial guess at the sceneGeometry.
-switch p.Results.projectionModel
-    case 'orthogonal'
-        x0 = [pupilData.(p.Results.whichFitFieldMean)(minEccentricityIdx,1) ...
-            pupilData.(p.Results.whichFitFieldMean)(minEccentricityIdx,2) ...
-            0 ...
-            p.Results.eyeRadius];
-    case 'pseudoPerspective'
-        x0 = [pupilData.(p.Results.whichFitFieldMean)(minEccentricityIdx,1) ...
-            pupilData.(p.Results.whichFitFieldMean)(minEccentricityIdx,2) ...
-            p.Results.cameraDistanceInPixels + p.Results.eyeRadius ...
-            p.Results.eyeRadius];
-    otherwise
-        error('I do not recognize that perspective model');
+%% Identify the ellipses that will guide the sceneGeometry estimation
+% If not supplied, we will generate a list of ellipses to use for the
+% estimation.
+if ~isempty(p.Results.ellipseArrayList)
+    ellipseArrayList = p.Results.ellipseArrayList;
+    Xedges = [];
+    Yedges = [];
+else
+    % First we divide the ellipse centers amongst a set of 2D bins across image
+    % space. We will ultimately minimize the fitting error across bins
+    [ellipseCenterCounts,Xedges,Yedges,binXidx,binYidx] = ...
+        histcounts2(ellipses(:,1),ellipses(:,2),p.Results.nBinsPerDimension);
+    
+    % Anonymous functions for row and column identity given array position
+    rowIdx = @(b) fix( (b-1) ./ (size(ellipseCenterCounts,2)) ) +1;
+    colIdx = @(b) 1+mod(b-1,size(ellipseCenterCounts,2));
+    
+    % Create a cell array of index positions corresponding to each of the 2D
+    % bins
+    idxByBinPosition = ...
+        arrayfun(@(b) find( (binXidx==rowIdx(b)) .* (binYidx==colIdx(b)) ),1:1:numel(ellipseCenterCounts),'UniformOutput',false);
+    
+    % Identify which bins are not empty
+    filledBinIdx = find(~cellfun(@isempty, idxByBinPosition));
+    
+    % Identify the ellipses in each filled bin with the lowest fit SEM
+    [~, idxMinErrorEllipseWithinBin] = arrayfun(@(x) nanmin(ellipseFitSEM(idxByBinPosition{x})), filledBinIdx, 'UniformOutput', false);
+    returnTheMin = @(binContents, x)  binContents(idxMinErrorEllipseWithinBin{x});
+    ellipseArrayList = cellfun(@(x) returnTheMin(idxByBinPosition{filledBinIdx(x)},x),num2cell(1:1:length(filledBinIdx)));
 end
 
-% construct a weight vector based upon the quality of the initial fit of
-% the ellipse to the pupil perimeter
+
+%% Generate the errorWeights
+errorWeights= ellipseFitSEM(ellipseArrayList);
 errorWeights = 1./errorWeights;
-errorWeights = errorWeights ./ nanmean(errorWeights);
-
-% We divide the ellipse centers amongst a 2D set of bins. We will
-% ultimately minimize the fitting error across bins
-[ellipseCenterCounts,Xedges,Yedges,binXidx,binYidx] = ...
-    histcounts2(ellipses(:,1),ellipses(:,2),10);
-
-% anonymous functions for row and column identity given array position
-rowIdx = @(b) fix( (b-1) ./ (size(ellipseCenterCounts,2)) ) +1;
-colIdx = @(b) 1+mod(b-1,size(ellipseCenterCounts,2));
-
-% Create a cell array of index positions corresponding to each of the 2D
-% bins
-idxByBinPosition = ...
-    arrayfun(@(b) find( (binXidx==rowIdx(b)) .* (binYidx==colIdx(b)) ),1:1:numel(ellipseCenterCounts),'UniformOutput',false);
-
-% anonymous function to return the weighted distance error for each ellipse
-distanceErrorVector = @(x, b) errorWeights(b).*ellipseCenterPredictionErrors(ellipses(b,:), x(1:3), x(4), p.Results.projectionModel );
-
-% anonymous function to return the median distance error in each bin
-medianDistanceErrorByBin = @(x) ...
-    cell2mat(cellfun(@(b) nanmedian(distanceErrorVector(x, b)), idxByBinPosition, 'UniformOutput', false));
-
-% anonymous function to calculate RMSE error across bins
-errorFunc = @(x) sqrt( nanmean(medianDistanceErrorByBin(x).^2) );
+errorWeights=errorWeights./mean(errorWeights);
 
 
-% define some search options
-options = optimset('fmincon');
-options = optimset(options,'Diagnostics','off','Display','off','LargeScale','off','Algorithm','interior-point');
+%% Perform the search
+% Call out to the local function that performs the serach
+sceneGeometry = ...
+    performSceneSearch(initialSceneGeometry, ...
+    ellipses(ellipseArrayList,:), ...
+    errorWeights, ...
+    sceneParamsLB, ...
+    sceneParamsUB, ...
+    p.Results.eyeParamsLB, ...
+    p.Results.eyeParamsUB);
 
-% perform the fit
-[bestFitSceneGeometry, fVal] = ...
-    fmincon(errorFunc, x0, [], [], [], [], p.Results.sceneGeometryLB, p.Results.sceneGeometryUB, [], options);
-
-% assemble and save the sceneGeometry
-sceneGeometry.eyeCenter.X = bestFitSceneGeometry(1);
-sceneGeometry.eyeCenter.Y = bestFitSceneGeometry(2);
-sceneGeometry.eyeCenter.Z = bestFitSceneGeometry(3);
-sceneGeometry.eyeRadius = bestFitSceneGeometry(4);
+% add additional search and meta field info to sceneGeometry
+sceneGeometry.search.ellipseArrayList = ellipseArrayList;
 sceneGeometry.meta = p.Results;
-sceneGeometry.meta.units = 'pixelsOnTheScenePlane';
-sceneGeometry.meta.distanceError = fVal;
 
+
+%% Save the sceneGeometry file
 if ~isempty(sceneGeometryFileName)
     save(sceneGeometryFileName,'sceneGeometry');
 end
 
-% plot the results of the CoP estimation if requested
-if ~isempty(p.Results.sceneDiagnosticPlotFileName)
-    figHandle = figure('visible','off');
 
-    subplot(2,2,1)   
+%% Create a sceneGeometry plot
+if ~isempty(p.Results.sceneDiagnosticPlotFileName)
+    saveSceneDiagnosticPlot(ellipses(ellipseArrayList,:), Xedges, Yedges, sceneGeometry, p.Results.sceneDiagnosticPlotFileName)
+end
+
+
+%% alert the user that we are done with the routine
+if strcmp(p.Results.verbosity,'full')
+    toc
+    fprintf('\n');
+end
+
+
+%% Delete the parallel pool
+if p.Results.useParallel
+    if strcmp(p.Results.verbosity,'full')
+        tic
+        fprintf(['Closing parallel pool. Started ' char(datetime('now')) '\n']);
+    end
+    poolObj = gcp;
+    if ~isempty(poolObj)
+        delete(poolObj);
+    end
+    if strcmp(p.Results.verbosity,'full')
+        toc
+        fprintf('\n');
+    end
+end
+
+
+end % main function
+
+
+
+%% LOCAL FUNCTIONS
+
+function sceneGeometry = performSceneSearch(initialSceneGeometry, ellipses, errorWeights, sceneParamsLB, sceneParamsUB, eyeParamsLB, eyeParamsUB)
+% Pattern search for best fitting sceneGeometry parameters
+%
+% Description:
+%   The routine searches for parameters of a forward projection that
+%   best model the locations of the centers of ellipses found on the image
+%   plane, given the constraint that the ellipse shape (and area) must also
+%   match the prediction of the forward model. The passed sceneGeometry
+%   structure is used as the starting point for the search. The
+%   extrinsicTranslationVector and the eyeRadius parameters are optimized,
+%   limited by the passed bounds. Across each iteration of the search, a
+%   candidate sceneGeometry is assembled from the current values of the
+%   parameters. This sceneGeometry is then used in the inverse pupil
+%   projection model. The inverse projection searches for an eye azimuth,
+%   elevation, and pupil radius that, given the sceneGeometry, best
+%   accounts for the parameters of the target ellipse on the image plane.
+%   This inverse search attempts to minimize the distance bewteen the
+%   centers of the predicted and targeted ellipse on the image plane, while
+%   satisfying non-linear constraints upon matching the shape (eccentricity
+%   and theta) and area of the ellipses. Only when the sceneGeometry
+%   parameters are correctly specified will the inverse pupil projection
+%   model be able to simultaneouslty match the center and shape of the
+%   ellipse on the image plane.
+%
+%   The iterative search across sceneGeometry parameters attempts to
+%   minimize the L(norm) of the distances between the targeted and modeled
+%   centers of the ellipses. In the calculation of this objective functon,
+%   each distance error is weighted. The error weight is derived from the
+%   accuracy with which the boundary points of the pupil in the image plane
+%   are fit by an unconstrained ellipse.
+%
+%   We find that the patternsearch optimization gives the best results in
+%   the shortest period.
+%
+
+% Set the error form
+errorForm = 'SSE';
+
+% Extract the initial search point from initialSceneGeometry
+x0 = [initialSceneGeometry.extrinsicTranslationVector; initialSceneGeometry.eyeRadius];
+
+% Define search options
+options = optimoptions(@patternsearch, ...
+    'Display','off',...
+    'AccelerateMesh',false,...
+    'UseParallel', true, ...
+    'FunctionTolerance',1e-6);
+
+% Define anonymous functions for the objective and constraint
+objectiveFun = @objfun; % the objective function, nested below
+
+% Define nested variables for within the search
+centerDistanceErrorByEllipse=[];
+shapeErrorByEllipse=[];
+areaErrorByEllipse=[];
+
+[x, fVal] = patternsearch(objectiveFun, x0,[],[],[],[],sceneParamsLB,sceneParamsUB,[],options);
+    function fval = objfun(x)
+        candidateSceneGeometry = initialSceneGeometry;
+        candidateSceneGeometry.extrinsicTranslationVector = x(1:3);
+        candidateSceneGeometry.eyeRadius = x(4);
+        [~, ~, centerDistanceErrorByEllipse, shapeErrorByEllipse, areaErrorByEllipse] = ...
+            arrayfun(@(x) pupilProjection_inv...
+            (...
+                ellipses(x,:),...
+                candidateSceneGeometry,...
+                'constraintTolerance', candidateSceneGeometry.constraintTolerance,...
+                'eyeParamsLB',eyeParamsLB,...
+                'eyeParamsUB',eyeParamsUB...
+            ),...
+            1:1:size(ellipses,1),'UniformOutput',false);
+        
+        % Now compute objective function as the RMSE of the distance
+        % between the taget and modeled ellipses
+        centerDistanceErrorByEllipse = cell2mat(centerDistanceErrorByEllipse)';
+        shapeErrorByEllipse = cell2mat(shapeErrorByEllipse)';
+        areaErrorByEllipse = cell2mat(areaErrorByEllipse)';
+        switch errorForm
+            case 'SSE'
+                fval=sum((centerDistanceErrorByEllipse.*(shapeErrorByEllipse.*100+1).*(areaErrorByEllipse.*100+1).*errorWeights).^2);
+            case 'RMSE'
+                fval = mean((centerDistanceErrorByEllipse.*(shapeErrorByEllipse.*100+1).*(areaErrorByEllipse.*100+1).*errorWeights).^2)^(1/2);
+            otherwise
+                error('I do not recognize that error form');
+        end
+        
+    end
+
+% Assemble the sceneGeometry file to return
+sceneGeometry.radialDistortionVector = initialSceneGeometry.radialDistortionVector;
+sceneGeometry.intrinsicCameraMatrix = initialSceneGeometry.intrinsicCameraMatrix;
+sceneGeometry.extrinsicTranslationVector = x(1:3);
+sceneGeometry.extrinsicRotationMatrix = initialSceneGeometry.extrinsicRotationMatrix;
+sceneGeometry.constraintTolerance = initialSceneGeometry.constraintTolerance;
+sceneGeometry.eyeRadius = x(4);
+sceneGeometry.search.options = options;
+sceneGeometry.search.errorForm = errorForm;
+sceneGeometry.search.initialSceneGeometry = initialSceneGeometry;
+sceneGeometry.search.ellipses = ellipses;
+sceneGeometry.search.errorWeights = errorWeights;
+sceneGeometry.search.sceneParamsLB = sceneParamsLB;
+sceneGeometry.search.sceneParamsUB = sceneParamsUB;
+sceneGeometry.search.eyeParamsLB = eyeParamsLB;
+sceneGeometry.search.eyeParamsUB = eyeParamsUB;
+sceneGeometry.search.fVal = fVal;
+sceneGeometry.search.centerDistanceErrorByEllipse = centerDistanceErrorByEllipse;
+sceneGeometry.search.shapeErrorByEllipse = shapeErrorByEllipse;
+sceneGeometry.search.areaErrorByEllipse = areaErrorByEllipse;
+
+end % local search function
+
+
+function [] = saveSceneDiagnosticPlot(ellipses, Xedges, Yedges, sceneGeometry, sceneDiagnosticPlotFileName)
+% Creates and saves a plot that illustrates the sceneGeometry results
+%
+% Inputs:
+%   ellipses              - An n x p array containing the p parameters of
+%                           the n ellipses used to derive sceneGeometry
+%   Xedges                - The X-dimension edges of the bins used to
+%                           divide and select ellipses across the image.
+%   Yedges                - The Y-dimension edges of the bins used to
+%                           divide and select ellipses across the image.
+%   sceneGeometry         - The sceneGeometry structure
+%   sceneDiagnosticPlotFileName - The full path (including .pdf suffix)
+%                           to the location to save the diagnostic plot
+%
+% Outputs:
+%   none
+%
+
+figHandle=figure('visible','off');
+set(gcf,'PaperOrientation','landscape');
+
+set(figHandle, 'Units','inches')
+height = 6;
+width = 11;
+
+% the last two parameters of 'Position' define the figure size
+set(figHandle, 'Position',[25 5 width height],...
+       'PaperSize',[width height],...
+       'PaperPositionMode','auto',...
+       'Color','w',...
+       'Renderer','painters'...     %recommended if there are no alphamaps
+   );
+
+%% Left panel -- distance error
+subplot(3,3,[1 4]);
+
+if ~isempty(Xedges)
     % plot the 2D histogram grid
     for xx = 1: length(Xedges)
         if xx==1
@@ -212,148 +557,174 @@ if ~isempty(p.Results.sceneDiagnosticPlotFileName)
     for yy=1: length(Yedges)
         plot([Xedges(1) Xedges(end)], [Yedges(yy) Yedges(yy)], '-', 'Color', [0.9 0.9 0.9], 'LineWidth', 0.5);
     end
-
     binSpaceX = Xedges(2)-Xedges(1);
     binSpaceY = Yedges(2)-Yedges(1);
-    
-    % plot the ellipse centers
-    scatter(ellipses(:,1),ellipses(:,2),2,'filled', ...
-       'MarkerFaceAlpha',1/8,'MarkerFaceColor',[0.5 0.5 0.5]);
-    hold on
-    % get the predicted ellipse centers
-    [~, predictedEllipseCenterXY] = ellipseCenterPredictionErrors(ellipses, bestFitSceneGeometry(1:3), bestFitSceneGeometry(4), p.Results.projectionModel);
-    % plot the predicted ellipse centers
-    scatter(predictedEllipseCenterXY(:,1),predictedEllipseCenterXY(:,2),2,'filled', ...
-       'MarkerFaceAlpha',2/8,'MarkerFaceColor',[0 0 1]);
-    % plot the position of the most circular ellipse
-    plot(x0(1),x0(2), 'xr', 'MarkerSize', 3);
-    % plot the estimated center of rotation of the eye
-    plot(bestFitSceneGeometry(1),bestFitSceneGeometry(2), 'og', 'MarkerSize', 3);
-    % label and clean up the plot
-    xlim ([Xedges(1)-2*binSpaceX Xedges(end)+2*binSpaceX]);
-    ylim ([Yedges(1)-2*binSpaceY Yedges(end)+2*binSpaceY]);
-    axis equal
-    set(gca,'Ydir','reverse')
-    title('Ellipse centers')
-    
-    % Create a legend
-    hSub = subplot(2,2,2);
-    scatter(nan, nan,1,'filled', ...
-        'MarkerFaceAlpha',1/8,'MarkerFaceColor',[0.5 0.5 0.5]);
-    hold on
-    scatter(nan, nan,1,'filled', ...
-        'MarkerFaceAlpha',1/8,'MarkerFaceColor',[0 0 1]);
-    plot(nan, nan, 'xr', 'MarkerSize', 2);
-    plot(nan, nan, 'og', 'MarkerSize', 2);
-    set(hSub, 'Visible', 'off');
-    legend({'ellipse centers','predicted ellipse centers', 'Most circular ellipse','Best fit CoR'},'Location','southwestoutside');
-    
-    % Next, plot the ellipse counts and error values by bin
-    subplot(2,2,3)    
-    image = flipud(ellipseCenterCounts');
-    image(image==0)=nan;
-    [nr,nc] = size(image);
-    pcolor([flipud(image) nan(nr,1); nan(1,nc+1)]);
-    caxis([0 max(max(image))]);
-    shading flat;
-    axis equal
-    % Set the axis backgroud to dark gray
-    set(gcf,'Color',[1 1 1]); set(gca,'Color',[.75 .75 .75]); set(gcf,'InvertHardCopy','off');
-    set(gca,'Ydir','reverse')
-    colorbar;
-    title('Ellipse counts')
-    xticks(1:1:size(image,1)+1);
-    xticklabels(round(Xedges));
-    xtickangle(90);
-    yticks(1:1:size(image,2)+1);
-    yticklabels(round(Yedges));
-    xlim([1 size(image,1)+1]);
-    ylim([1 size(image,2)+1]);
-
-    subplot(2,2,4)    
-    image = flipud(reshape(medianDistanceErrorByBin(bestFitSceneGeometry),size(ellipseCenterCounts,2),size(ellipseCenterCounts,1)));
-    [nr,nc] = size(image);
-    pcolor([flipud(image) nan(nr,1); nan(1,nc+1)]);
-    caxis([0 max(max(image))]);
-    shading flat;
-    axis equal
-    % Set the axis backgroud to dark gray
-    set(gcf,'Color',[1 1 1]); set(gca,'Color',[.75 .75 .75]); set(gcf,'InvertHardCopy','off');
-    set(gca,'Ydir','reverse')
-    colorbar;
-    title('Median distance error');
-    xticks(1:1:size(image,1)+1);
-    xticklabels(round(Xedges));
-    xtickangle(90);
-    yticks(1:1:size(image,2)+1);
-    yticklabels(round(Yedges));
-    xlim([1 size(image,1)+1]);
-    ylim([1 size(image,2)+1]);
-    
-    saveas(figHandle,p.Results.sceneDiagnosticPlotFileName);
-    close(figHandle)
 end
 
+% plot the ellipse centers
+scatter(ellipses(:,1),ellipses(:,2),'o','filled', ...
+    'MarkerFaceAlpha',2/8,'MarkerFaceColor',[0 0 0]);
+hold on
 
-% alert the user that we are done with the routine
-if strcmp(p.Results.verbosity,'full')
-    toc
-    fprintf('\n');
+% get the predicted ellipse centers
+[~, projectedEllipses] = ...
+    arrayfun(@(x) pupilProjection_inv...
+    (...
+    ellipses(x,:),...
+    sceneGeometry,...
+    'constraintTolerance', sceneGeometry.constraintTolerance...
+    ),...
+    1:1:size(ellipses,1),'UniformOutput',false);
+projectedEllipses=vertcat(projectedEllipses{:});
+
+% plot the projected ellipse centers
+scatter(projectedEllipses(:,1),projectedEllipses(:,2),'o','filled', ...
+    'MarkerFaceAlpha',2/8,'MarkerFaceColor',[0 0 1]);
+
+% connect the centers with lines
+errorWeightVec=sceneGeometry.search.errorWeights;
+for ii=1:size(ellipses,1)
+    lineAlpha = errorWeightVec(ii)/max(errorWeightVec);
+    lineWeight = 0.5 + (errorWeightVec(ii)/max(errorWeightVec));
+    ph=plot([projectedEllipses(ii,1) ellipses(ii,1)], ...
+        [projectedEllipses(ii,2) ellipses(ii,2)], ...
+        '-','Color',[1 0 0],'LineWidth', lineWeight);
+    ph.Color(4) = lineAlpha;
 end
 
-end % main function
+% plot the estimated center of rotation of the eye
+centerOfRotationEllipse = pupilProjection_fwd([0 0 2], sceneGeometry);
+plot(centerOfRotationEllipse(1),centerOfRotationEllipse(2), '+g', 'MarkerSize', 5);
+
+% Calculate the plot limits
+if ~isempty(Xedges)
+    xPlotBounds = [Xedges(1)-binSpaceX Xedges(end)+binSpaceX];
+    yPlotBounds = [Yedges(1)-binSpaceY Yedges(end)+binSpaceY];
+else
+    minX = min([projectedEllipses(:,1);ellipses(:,1)]);
+    maxX = max([projectedEllipses(:,1);ellipses(:,1)]);
+    minY = min([projectedEllipses(:,2);ellipses(:,2)]);
+    maxY = max([projectedEllipses(:,2);ellipses(:,2)]);
+    xPlotBounds = [(minX - (maxX-minX)/10) (maxX + (maxX-minX)/10) ];
+    yPlotBounds = [(minY - (maxY-minY)/10) (maxY + (maxY-minY)/10) ];
+end
+    
+% label and clean up the plot
+axis equal
+set(gca,'Ydir','reverse')
+title('Distance error')
+xlim (xPlotBounds);
+ylim (yPlotBounds);
+
+% Create a legend
+hSub = subplot(3,3,7);
+
+scatter(nan, nan,2,'filled', ...
+    'MarkerFaceAlpha',2/8,'MarkerFaceColor',[0 0 0]);
+hold on
+scatter(nan, nan,2,'filled', ...
+    'MarkerFaceAlpha',2/8,'MarkerFaceColor',[0 0 1]);
+plot(nan, nan, '+g', 'MarkerSize', 5);
+set(hSub, 'Visible', 'off');
+legend({'observed ellipse centers','modeled ellipse centers', 'azimuth 0, elevation 0'},'Location','north', 'Orientation','vertical');
 
 
+%% Center panel -- shape error
+subplot(3,3,[2 5]);
 
-
-%% LOCAL FUCTIONS
-
-function [distanceError, predictedEllipseCenterXY] = ellipseCenterPredictionErrors(ellipses, candidateEyeCenterOfRotation, eyeRadius, projectionModel)
-% distanceError = ellipseCenterPredictionErrors(ellipses, candidateEyeCenterOfRotation, eyeRadius, projectionModel)
-%
-% Calculate the error in predicting the center of ellipses on the image
-% plane based upon the eccentricity and theta of the ellipse and the
-% candidate scene geometry
-%
-% input
-%  ellipses - set of ellipses in transparent form.
-%  candidateEyeCenterOfRotation -[X Y Z] coordinates of the center of the
-%       eye
-%  eyeRadius - radius of the eye in pixels
-%
-
-% initialize variables
-distanceError = nan(size(ellipses,1),1);
-predictedEllipseCenterXY = nan(size(ellipses,1),2);
-
-% loop through ellipses
-for ii = 1:size(ellipses,1)
-    if ~any(isnan(ellipses(ii,:)))
-        % Obtain the azimuth and elevation of the eye implied by the
-        % eccentricity and theta of the ellipse, without any knowledge of
-        % scene geometry. Two possible solutions will be returned. We nan
-        % out the ellipse area, as this cannot inform the calculation
-        pupilEllipseOnImagePlane = ellipses(ii,:);
-        pupilEllipseOnImagePlane(3) = nan;
-        [reconstructedPupilAzi, reconstructedPupilEle, ~] = pupilProjection_inv(pupilEllipseOnImagePlane, [nan nan nan], nan, projectionModel);
-        
-        % Obtain the x and y position of the projection of a pupil at this
-        % azimuth and elevation onto the pupil plane, using the passed
-        % candidate eye center. A nan value is passed for pupil area.
-        projectedEllipse(1,:) = pupilProjection_fwd(reconstructedPupilAzi(1), reconstructedPupilEle(1), nan, candidateEyeCenterOfRotation, eyeRadius, projectionModel);
-        projectedEllipse(2,:) = pupilProjection_fwd(reconstructedPupilAzi(2), reconstructedPupilEle(2), nan, candidateEyeCenterOfRotation, eyeRadius, projectionModel);
-                
-        % Calculate the distance between the projected ellipse center and
-        % the observed ellipse center and save the smaller of the two
-        % candidate calues
-        euclideanDistances(1) = sqrt( (projectedEllipse(1,1) - pupilEllipseOnImagePlane(1))^2 + (projectedEllipse(1,2) - pupilEllipseOnImagePlane(2))^2 );
-        euclideanDistances(2) = sqrt( (projectedEllipse(2,1) - pupilEllipseOnImagePlane(1))^2 + (projectedEllipse(2,2) - pupilEllipseOnImagePlane(2))^2 );
-        [distanceError(ii), minIdx] = min(euclideanDistances);
-        predictedEllipseCenterXY(ii,1:2) = projectedEllipse(minIdx,1:2);
-    else
-        distanceError(ii) = nan;
-        predictedEllipseCenterXY(ii,1:2) = nan;
+if ~isempty(Xedges)
+    % plot the 2D histogram grid
+    for xx = 1: length(Xedges)
+        if xx==1
+            hold on
+        end
+        plot([Xedges(xx) Xedges(xx)], [Yedges(1) Yedges(end)], '-', 'Color', [0.9 0.9 0.9], 'LineWidth', 0.5 );
+    end
+    for yy=1: length(Yedges)
+        plot([Xedges(1) Xedges(end)], [Yedges(yy) Yedges(yy)], '-', 'Color', [0.9 0.9 0.9], 'LineWidth', 0.5);
     end
 end
 
-end % local function
+% Calculate a color for each plot point corresponding to the degree of
+% shape error
+shapeErrorVec = sceneGeometry.search.shapeErrorByEllipse;
+shapeErrorVec = shapeErrorVec./sceneGeometry.constraintTolerance;
+colorMatrix = zeros(3,size(ellipses,1));
+colorMatrix(1,:)=1;
+colorMatrix(2,:)= shapeErrorVec;
+scatter(ellipses(:,1),ellipses(:,2),[],colorMatrix','o','filled');
+
+% label and clean up the plot
+axis equal
+set(gca,'Ydir','reverse')
+title('Shape error')
+xlim (xPlotBounds);
+ylim (yPlotBounds);
+
+% Create a legend
+hSub = subplot(3,3,8);
+
+scatter(nan, nan,2,'filled', ...
+    'MarkerFaceAlpha',6/8,'MarkerFaceColor',[1 0 0]);
+hold on
+scatter(nan, nan,2,'filled', ...
+    'MarkerFaceAlpha',6/8,'MarkerFaceColor',[1 0.5 0]);
+scatter(nan, nan,2,'filled', ...
+    'MarkerFaceAlpha',6/8,'MarkerFaceColor',[1 1 0]);
+set(hSub, 'Visible', 'off');
+legend({'0',num2str(sceneGeometry.constraintTolerance/2), ['=> ' num2str(sceneGeometry.constraintTolerance)]},'Location','north', 'Orientation','vertical');
+
+
+%% Right panel -- area error
+subplot(3,3,[3 6]);
+
+if ~isempty(Xedges)
+    % plot the 2D histogram grid
+    for xx = 1: length(Xedges)
+        if xx==1
+            hold on
+        end
+        plot([Xedges(xx) Xedges(xx)], [Yedges(1) Yedges(end)], '-', 'Color', [0.9 0.9 0.9], 'LineWidth', 0.5 );
+    end
+    for yy=1: length(Yedges)
+        plot([Xedges(1) Xedges(end)], [Yedges(yy) Yedges(yy)], '-', 'Color', [0.9 0.9 0.9], 'LineWidth', 0.5);
+    end
+end
+
+% Calculate a color for each plot point corresponding to the degree of
+% shape error
+areaErrorVec = sceneGeometry.search.areaErrorByEllipse;
+areaErrorVec = abs(areaErrorVec)./sceneGeometry.constraintTolerance;
+areaErrorVec = min([areaErrorVec ones(size(ellipses,1),1)],[],2);
+colorMatrix = zeros(3,size(ellipses,1));
+colorMatrix(1,:)=1;
+colorMatrix(2,:)= areaErrorVec;
+scatter(ellipses(:,1),ellipses(:,2),[],colorMatrix','o','filled');
+
+% label and clean up the plot
+axis equal
+set(gca,'Ydir','reverse')
+title('Area error')
+xlim (xPlotBounds);
+ylim (yPlotBounds);
+
+
+% Create a legend
+hSub = subplot(3,3,9);
+
+scatter(nan, nan,2,'filled', ...
+    'MarkerFaceAlpha',6/8,'MarkerFaceColor',[1 0 0]);
+hold on
+scatter(nan, nan,2,'filled', ...
+    'MarkerFaceAlpha',6/8,'MarkerFaceColor',[1 0.5 0]);
+scatter(nan, nan,2,'filled', ...
+    'MarkerFaceAlpha',6/8,'MarkerFaceColor',[1 1 0]);
+set(hSub, 'Visible', 'off');
+legend({'0',num2str(sceneGeometry.constraintTolerance/2), ['=> ' num2str(sceneGeometry.constraintTolerance)]},'Location','north', 'Orientation','vertical');
+
+%% Save the plot
+saveas(figHandle,sceneDiagnosticPlotFileName)
+close(figHandle)
+
+end % saveSceneDiagnosticPlot
+

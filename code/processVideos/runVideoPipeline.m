@@ -11,7 +11,7 @@ function runVideoPipeline( pathParams, varargin )
 %       fitPupilPerimeter -- with minimal constraints
 %       estimateSceneGeometry
 %       fitPupilPerimeter -- fit again with scene geometry constraints
-%       smoothPupilArea
+%       smoothPupilRadius
 %       makeFitVideo
 %
 %   The user can stop the execution after any of the stages with the
@@ -182,7 +182,7 @@ switch p.Results.videoTypeChoice
             '''nSplits'', 0, varargin{:});']...
             ['makeFitVideo(grayVideoName, finalFitVideoName,' ...
             ' ''perimeterFileName'', perimeterFileName,''perimeterColor'',''r'','...
-            ' ''pupilFileName'', pupilFileName, ''whichFieldToPlot'', ''ellipseParamsUnconstrained_mean'',' ...
+            ' ''pupilFileName'', pupilFileName, ''ellipseFitLabel'', ''initial'',' ...
             ' varargin{:});']...
             };
     case 'LiveTrackWithVTOP_eye'
@@ -198,7 +198,7 @@ switch p.Results.videoTypeChoice
             '''sceneDiagnosticPlotFileName'', sceneDiagnosticPlotFileName, varargin{:});']...
             ['fitPupilPerimeter(correctedPerimeterFileName, pupilFileName,' ...
             '''sceneGeometryFileName'', sceneGeometryFileName, varargin{:});']...
-            'smoothPupilArea(correctedPerimeterFileName, pupilFileName, sceneGeometryFileName, varargin{:});'...
+            'smoothPupilRadius(correctedPerimeterFileName, pupilFileName, sceneGeometryFileName, varargin{:});'...
             ['makeFitVideo(grayVideoName, finalFitVideoName,' ...
             '''glintFileName'', glintFileName, ''perimeterFileName'', correctedPerimeterFileName,'...
             '''pupilFileName'', pupilFileName, ''sceneGeometryFileName'', sceneGeometryFileName,' ...
@@ -346,11 +346,11 @@ switch funNames{ff}
         % If the sceneGeometry has been determined by this point, we can
         % plot the sceneConstrained ellipse fit, otherwise plot the
         % unconstrained
-        varargin={varargin{:}, 'whichFieldToPlot', 'ellipseParamsUnconstrained_mean'};
+        varargin={varargin{:}, 'ellipseFitLabel', 'initial'};
         sceneFunCallIdx=find(strcmp(funNames,'estimateSceneGeometry'));
         if ~isempty(sceneFunCallIdx)
             if sceneFunCallIdx < ff
-                varargin={varargin{:}, 'whichFieldToPlot', 'ellipseParamsSceneConstrained_mean'};
+                varargin={varargin{:}, 'ellipseFitLabel', 'sceneConstrained'};
             end
         end
     case 'estimateSceneGeometry'
@@ -359,8 +359,8 @@ switch funNames{ff}
         end
         perimeterFileName=correctedPerimeterFileName;
         irisFileName=[];
-        varargin={varargin{:}, 'whichFieldToPlot', 'ellipseParamsUnconstrained_mean'};
-    case 'smoothPupilArea'
+        varargin={varargin{:}, 'ellipseFitLabel', 'initial'};
+    case 'smoothPupilRadius'
         if ~exist(glintFileName,'file')
             glintFileName = [];
         end

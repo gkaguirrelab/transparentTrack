@@ -24,7 +24,7 @@ function makeFitVideo(videoInFileName, videoOutFileName, varargin)
 %                           to be included in the video. 
 %  'glint/perimeter/pupil/sceneGeometry/Color' - Text string that assigns
 %                           a color to the display of this item.
-%  'whichFieldToPlot'     - The field of the pupilData file that contains
+%  'ellipseFitLabel'      - The field of the pupilData file that contains
 %                           ellipse fit params to be added to the video.
 %  'controlFileName'      - Full path to the control file to be included.
 %
@@ -56,7 +56,7 @@ p.addParameter('glintColor','r',@ischar);
 p.addParameter('perimeterColor','w',@ischar);
 p.addParameter('pupilColor','green',@ischar);
 p.addParameter('sceneGeometryColor','magenta',@ischar);
-p.addParameter('whichFieldToPlot', 'ellipseParamsAreaSmoothed_mean',@(x)(isempty(x) | ischar(x)));
+p.addParameter('ellipseFitLabel', 'radiusSmoothed',@(x)(isempty(x) | ischar(x)));
 p.addParameter('controlFileName',[],@(x)(isempty(x) | ischar(x)));
 
 % parse
@@ -94,7 +94,7 @@ if ~isempty(p.Results.pupilFileName)
     dataLoad = load(p.Results.pupilFileName);
     pupilData = dataLoad.pupilData;
     clear dataLoad
-    pupilFitParams = pupilData.(p.Results.whichFieldToPlot);
+    pupilFitParams = pupilData.(p.Results.ellipseFitLabel).ellipse.values;
 else
     pupilFitParams=[];
 end
@@ -227,9 +227,11 @@ for ii = 1:nFrames
         end
     end
     
-    % add the center of projection
+    % add the center of rotation
     if ~isempty(p.Results.sceneGeometryFileName)
-        plot(sceneGeometry.eyeCenter.X,sceneGeometry.eyeCenter.Y,['x' p.Results.sceneGeometryColor]);
+        centerOfRotation = pupilProjection_fwd([0 0 2], sceneGeometry);
+
+        plot(centerOfRotation(1),centerOfRotation(2),['+' p.Results.sceneGeometryColor]);
     end
     
     % Get the frame and close the figure

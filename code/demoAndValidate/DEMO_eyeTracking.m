@@ -69,12 +69,20 @@ if ~exist (demoPackage,'file')
     cd (currentDir)
 end
 
+% Make a list of frames from which we will derive sceneGeometry. If this
+% list were not provided as a key/value pair, then the
+% estimateSceneGeometry routine would pick the ellipses to study. It does a
+% pretty good job, but this refined list gives pretty results.
+ellipseArrayList = [1561 1555 1981 1860 1862  658  694  755 1602 1556 1946 1768 1886  604  608  564  562 1767  481  270 1763  599  173   88   23  797  790 1275 1219  316  208  817  864  928 1212  502  220 1341  466  1474  452 1621 1616 1350 1434 1050 1059 1718];
 
-%% Perform the entire analysis with one call
+
+%% Run the analysis pipeline
 runVideoPipeline( pathParams, ...
     'nFrames',nFrames,'verbosity', verbosity, 'tbSnapshot',tbSnapshot, 'useParallel',true, ...
     'pupilRange', [40 200], 'pupilCircleThresh', 0.04, 'pupilGammaCorrection', 1.5, ...
-    'overwriteControlFile', true, 'catchErrors', false);
+    'ellipseArrayList',ellipseArrayList,...
+    'overwriteControlFile', true, 'catchErrors', false,...
+    'skipStageByNumber',1:1:6,'makeFitVideoByNumber',[6 8]);
 
 
 %% Plot some fits
@@ -83,57 +91,57 @@ dataLoad = load(pupilFileName);
 pupilData = dataLoad.pupilData;
 clear dataLoad
 
-temporalSupport = 0:1/60.:(size(pupilData.ellipseParamsSceneConstrained_mean,1)-1)/60; % seconds
+temporalSupport = 0:1/60.:(size(pupilData.initial.ellipse.values,1)-1)/60; % seconds
 temporalSupport = temporalSupport / 60; % minutes
 
 % Make a plot of pupil area, both on the image plane and on the eye
 figure
 subplot(2,1,1)
-plot(temporalSupport,pupilData.ellipseParamsUnconstrained_mean(:,3),'-k','LineWidth',2);
+plot(temporalSupport,pupilData.initial.ellipse.values(:,3),'-k','LineWidth',2);
 hold on
-plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,3),'-b');
-plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,3)-pupilData.ellipseParamsSceneConstrained_splitsSD(:,3),'-','Color',[0 0 0.7])
-plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,3)+pupilData.ellipseParamsSceneConstrained_splitsSD(:,3),'-','Color',[0 0 0.7])
-plot(temporalSupport,pupilData.ellipseParamsAreaSmoothed_mean(:,3),'-r','LineWidth',2)
+plot(temporalSupport,pupilData.sceneConstrained.ellipse.values(:,3),'-b');
+plot(temporalSupport,pupilData.sceneConstrained.ellipse.values(:,3)-pupilData.sceneConstrained.ellipse.splitsSD(:,3),'-','Color',[0 0 0.7])
+plot(temporalSupport,pupilData.sceneConstrained.ellipse.values(:,3)+pupilData.sceneConstrained.ellipse.splitsSD(:,3),'-','Color',[0 0 0.7])
+plot(temporalSupport,pupilData.radiusSmoothed.ellipse.values(:,3),'-r','LineWidth',2)
 xlim([0 max(temporalSupport)]);
 xlabel('time [mins]');
 ylabel('pupil area [pixels in plane]');
 hold off
 
 subplot(2,1,2)
-plot(temporalSupport,pupilData.meta.smoothPupilArea.pupilAreaMean,'-k');
+plot(temporalSupport,pupilData.sceneConstrained.eyeParams.values(:,3),'-k','LineWidth',2);
 hold on
-plot(temporalSupport,pupilData.meta.smoothPupilArea.pupilAreaMean-pupilData.meta.smoothPupilArea.pupilAreaSD,'-','Color',[0 0 0.7])
-plot(temporalSupport,pupilData.meta.smoothPupilArea.pupilAreaMean+pupilData.meta.smoothPupilArea.pupilAreaSD,'-','Color',[0 0 0.7])
-plot(temporalSupport,pupilData.meta.smoothPupilArea.pupilAreaMean,'-r','LineWidth',2)
+plot(temporalSupport,pupilData.sceneConstrained.eyeParams.values(:,3),'-b');
+plot(temporalSupport,pupilData.sceneConstrained.eyeParams.values(:,3)-pupilData.sceneConstrained.eyeParams.splitsSD(:,3),'-','Color',[0 0 0.7])
+plot(temporalSupport,pupilData.sceneConstrained.eyeParams.values(:,3)+pupilData.sceneConstrained.eyeParams.splitsSD(:,3),'-','Color',[0 0 0.7])
+plot(temporalSupport,pupilData.radiusSmoothed.eyeParams.values(:,3),'-r','LineWidth',2)
 xlim([0 max(temporalSupport)]);
 xlabel('time [mins]');
-ylabel('pupil area [pixels on eye]');
+ylabel('pupil radius [mm on eye]');
 hold off
 
 % Make a plot of X and Y eye pupil position on the image plane
 figure
 subplot(2,1,1)
+plot(temporalSupport,pupilData.initial.ellipse.values(:,1),'-k','LineWidth',2);
 hold on
-plot(temporalSupport,pupilData.ellipseParamsUnconstrained_mean(:,1),'-k','LineWidth',2);
-hold on
-plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,1),'-b');
-plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,1)-pupilData.ellipseParamsSceneConstrained_splitsSD(:,1),'-','Color',[0 0 0.7])
-plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,1)+pupilData.ellipseParamsSceneConstrained_splitsSD(:,1),'-','Color',[0 0 0.7])
-plot(temporalSupport,pupilData.ellipseParamsAreaSmoothed_mean(:,1),'-r','LineWidth',2)
+plot(temporalSupport,pupilData.sceneConstrained.ellipse.values(:,1),'-b');
+plot(temporalSupport,pupilData.sceneConstrained.ellipse.values(:,1)-pupilData.sceneConstrained.ellipse.splitsSD(:,1),'-','Color',[0 0 0.7])
+plot(temporalSupport,pupilData.sceneConstrained.ellipse.values(:,1)+pupilData.sceneConstrained.ellipse.splitsSD(:,1),'-','Color',[0 0 0.7])
+plot(temporalSupport,pupilData.radiusSmoothed.ellipse.values(:,1),'-r','LineWidth',2)
 xlim([0 max(temporalSupport)]);
 xlabel('time [mins]');
 ylabel('X position [pixels]');
 hold off
 
 subplot(2,1,2)
+plot(temporalSupport,pupilData.initial.ellipse.values(:,2),'-k','LineWidth',2);
 hold on
-plot(temporalSupport,pupilData.ellipseParamsUnconstrained_mean(:,2),'-k','LineWidth',2);
-hold on
-plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,2),'-b');
-plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,2)-pupilData.ellipseParamsSceneConstrained_splitsSD(:,2),'-','Color',[0 0 0.7])
-plot(temporalSupport,pupilData.ellipseParamsSceneConstrained_mean(:,2)+pupilData.ellipseParamsSceneConstrained_splitsSD(:,2),'-','Color',[0 0 0.7])
-plot(temporalSupport,pupilData.ellipseParamsAreaSmoothed_mean(:,2),'-r','LineWidth',2)
+plot(temporalSupport,pupilData.sceneConstrained.ellipse.values(:,2),'-b');
+plot(temporalSupport,pupilData.sceneConstrained.ellipse.values(:,2)-pupilData.sceneConstrained.ellipse.splitsSD(:,2),'-','Color',[0 0 0.7])
+plot(temporalSupport,pupilData.sceneConstrained.ellipse.values(:,2)+pupilData.sceneConstrained.ellipse.splitsSD(:,2),'-','Color',[0 0 0.7])
+plot(temporalSupport,pupilData.radiusSmoothed.ellipse.values(:,2),'-r','LineWidth',2)
+
 xlim([0 max(temporalSupport)]);
 xlabel('time [mins]');
 ylabel('Y position [pixels]');
