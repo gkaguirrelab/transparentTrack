@@ -1,7 +1,7 @@
 # transparentTrack
 Code to analyze pupil size and gaze location in IR videos of the eye.
 
-These MATLAB routines are designed to operate upon infra-red videos of the human eye and extract the elliptical boundary of the pupil in the image plane. Additional routines support calibration of absolute pupil size and gaze position, resulting in extracted time-series data that provide eye gaze in degrees of visual angle relative to a viewed screen and pupil size in mm^2 on the surface of the eye.
+These MATLAB routines are designed to operate upon infra-red videos of the human eye and extract the elliptical boundary of the pupil in the image plane. Additional routines support calibration of absolute pupil size and gaze position, resulting in extracted time-series data that provide eye gaze in degrees of visual angle relative to a viewed screen and pupil radius in mm on the surface of the eye.
 
 Notably, this software is computationally intensive and is designed to be run off-line upon videos collected during an experimental session. A particular design goal is to provide an accurate fit to the pupil boundary even when it is partially obscured by the eyelid. This circumstance is encountered when the pupil is large (as is seen in data collected under low-light conditions) or in people with retinal disease.
 
