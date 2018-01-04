@@ -112,7 +112,9 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %	pupilFileName         - Full path to a pupilData file, or a cell array
 %                           of such paths. If a cell array is provided, the
 %                           ellipse data from each pupilData file will be
-%                           loaded and concatenated.
+%                           loaded and concatenated. If set to empty, a
+%                           sceneGeometry structure with default values
+%                           will be returned.
 %   sceneGeometryFileName - Full path to the file in which the
 %                           sceneGeometry data should be saved
 %
@@ -183,8 +185,8 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 p = inputParser; p.KeepUnmatched = true;
 
 % Required
-p.addRequired('pupilFileName',@(x)(iscell(x) | ischar(x)));
-p.addRequired('sceneGeometryFileName',@ischar);
+p.addRequired('pupilFileName',@(x)(isempty(x) | iscell(x) | ischar(x)));
+p.addRequired('sceneGeometryFileName',@(x)(isempty(x) | ischar(x)));
 
 % Optional display and I/O params
 p.addParameter('verbosity', 'none', @isstr);
@@ -220,6 +222,26 @@ p.addParameter('nBinsPerDimension',10,@isnumeric);
 
 % parse
 p.parse(pupilFileName, sceneGeometryFileName, varargin{:})
+
+
+%% Create the initial sceneGeometry structure and bounds
+% sceneGeometry
+initialSceneGeometry.radialDistortionVector = p.Results.radialDistortionVector;
+initialSceneGeometry.intrinsicCameraMatrix = p.Results.intrinsicCameraMatrix;
+initialSceneGeometry.extrinsicTranslationVector = p.Results.extrinsicTranslationVector;
+initialSceneGeometry.extrinsicRotationMatrix = p.Results.extrinsicRotationMatrix;
+initialSceneGeometry.constraintTolerance = p.Results.constraintTolerance;
+initialSceneGeometry.eyeRadius = p.Results.eyeRadius;
+
+% Bounds
+sceneParamsLB = [p.Results.extrinsicTranslationVectorLB; p.Results.eyeRadiusLB];
+sceneParamsUB = [p.Results.extrinsicTranslationVectorUB; p.Results.eyeRadiusUB];
+
+% Return the initialSceneGeometry if pupilFileName is empty
+if isempty(pupilFileName)
+    sceneGeometry = initialSceneGeometry;
+    return
+end
 
 
 %% Announce we are starting
@@ -318,20 +340,6 @@ errorWeights = 1./errorWeights;
 errorWeights=errorWeights./mean(errorWeights);
 
 
-%% Create the initial sceneGeometry structure and bounds
-% sceneGeometry
-initialSceneGeometry.radialDistortionVector = p.Results.radialDistortionVector;
-initialSceneGeometry.intrinsicCameraMatrix = p.Results.intrinsicCameraMatrix;
-initialSceneGeometry.extrinsicTranslationVector = p.Results.extrinsicTranslationVector;
-initialSceneGeometry.extrinsicRotationMatrix = p.Results.extrinsicRotationMatrix;
-initialSceneGeometry.constraintTolerance = p.Results.constraintTolerance;
-initialSceneGeometry.eyeRadius = p.Results.eyeRadius;
-
-% Bounds
-sceneParamsLB = [p.Results.extrinsicTranslationVectorLB; p.Results.eyeRadiusLB];
-sceneParamsUB = [p.Results.extrinsicTranslationVectorUB; p.Results.eyeRadiusUB];
-
-
 %% Perform the search
 % Call out to the local function that performs the serach
 sceneGeometry = ...
@@ -343,10 +351,12 @@ sceneGeometry = ...
     p.Results.eyeParamsLB, ...
     p.Results.eyeParamsUB);
 
-%% Save the sceneGeometry file
-% add a meta field
+% add additional search and meta field info to sceneGeometry
 sceneGeometry.search.ellipseArrayList = ellipseArrayList;
 sceneGeometry.meta = p.Results;
+
+
+%% Save the sceneGeometry file
 if ~isempty(sceneGeometryFileName)
     save(sceneGeometryFileName,'sceneGeometry');
 end
