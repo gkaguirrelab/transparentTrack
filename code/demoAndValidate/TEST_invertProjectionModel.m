@@ -1,11 +1,7 @@
 %% UNIT TEST OF FORWARD AND INVERSE PUPIL PROJECTION MODEL
 
 % Construct a sceneGeometry structure
-sceneGeometry.intrinsicCameraMatrix = [772.5483 0 320; 0 772.5483 240; 0 0 1];
-sceneGeometry.extrinsicRotationMatrix = [1 0 0; 0 -1 0; 0 0 -1];
-sceneGeometry.eyeRadius = 11.29;
-sceneGeometry.extrinsicTranslationVector = [0; 0; 50];
-sceneGeometry.constraintTolerance = 0.02;
+sceneGeometry = estimateSceneGeometry([],[]);
 
 azimuths=[];
 elevations=[];
