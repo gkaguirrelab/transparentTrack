@@ -69,7 +69,10 @@ if ~exist (demoPackage,'file')
     cd (currentDir)
 end
 
-% Make a list of frames from which we will derive sceneGeometry
+% Make a list of frames from which we will derive sceneGeometry. If this
+% list were not provided as a key/value pair, then the
+% estimateSceneGeometry routine would pick the ellipses to study. It does a
+% pretty good job, but this refined list gives pretty results.
 ellipseArrayList = [1561 1555 1981 1860 1862  658  694  755 1602 1556 1946 1768 1886  604  608  564  562 1767  481  270 1763  599  173   88   23  797  790 1275 1219  316  208  817  864  928 1212  502  220 1341  466  1474  452 1621 1616 1350 1434 1050 1059 1718];
 
 
