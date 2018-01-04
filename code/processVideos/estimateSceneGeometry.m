@@ -38,18 +38,17 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %   empirically measured for a camera using a calibration approach
 %   (https://www.mathworks.com/help/vision/ref/cameramatrix.html).
 %   Therefore, the intrinsicCameraMatrix is locked and not modified in the
-%   sceneGeometry search.
+%   sceneGeometry search. The default values are those that we measured by
+%   calibration of the LiveTrack AV, 12M-i camera.
 %
 %   radialDistortionVector - A two element vector of the form:
 %
 %       [k1 k2]
 %
-%   that models the radial distortion introduced by the rather small lens
-%   that is typically used for eye tracking. This is an empirically
-%   measured property of the camera system and so these parameters are
-%   locked here. A discussion of the modeling of radial distortion can be
-%   found here:
-%       https://www.mathworks.com/help/vision/ref/cameraintrinsics-class.html
+%   that models the radial distortion introduced the lens. This is an
+%   empirically measured property of the camera system and so these
+%   parameters are locked here. The default values are those that we
+%   measured by calibration of the LiveTrack AV, 12M-i camera.
 %
 %   extrinsicTranslationVector - a vector of the form:
 %
@@ -76,28 +75,22 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %   projection of pupil circles from scene to image is invariant to
 %   rotations of the camera matrix, these values are locked.
 %
-%   eyeRadius -  Scalar which specifies the radius of the eye in mm.
-%   Initial value and bounds on the eye radius are taken from:
-%
-%       Atchison, David A., et al. "Shape of the retinal surface in
-%       emmetropia and myopia." Investigative ophthalmology & visual
-%       science 46.8 (2005): 2698-2707.
-%
-%   From Table 1 (mean of axial length and width, and 95% CI)
-%           emmetrope:  11.29 (11.07 - 11.51)
-%           myope:      11.66 (11.54 - 11.80)
-%
-%   The default values in the routine are for an emmetrope.
-%
-% This calculation can also be made by first noting that the eye center of
-% rotation is on average 13.3 mm behind the corneal apex. (Gunter K.
-% vonNoorden, MD; Emilio C. Campos "Binocular Vision and Ocular Motility
-% Theory and Management of Strabismus" American Orthoptic Journal 51.1
-% (2001): 161-162.) We futher note that the depth of the anterior chamber
-% of the eye is 2.44 ± 0.34 mm in a healthy population (Guo, Li, et al.
-% "Characterization of ocular biometrics and aqueous humor dynamics in
-% primary angle closure suspects." Medicine 96.7 (2017).). Therefore, the
-% distance of the center of rotation of the eye to the pupil is 10.86 mm.
+%   eyeRadius -  Scalar which specifies the radius of the eye in mm. The
+%   relevant measure is the distance between the center of rotation of the
+%   eye (which is not equivalent to the center of the eye) and the pupil
+%   plane (which is several millimeters behind the front surface of the
+%   cornea). We compute our default value using the approach described in
+%   the Optometrika Matlab toolbox craeted by Yury Petrov and Neil Tandon.
+%   The eye center of rotation is on average 13.3 mm behind the corneal
+%   apex. (Gunter K. vonNoorden, MD; Emilio C. Campos "Binocular Vision and
+%   Ocular Motility Theory and Management of Strabismus" American Orthoptic
+%   Journal 51.1 (2001): 161-162.) We futher note that the pupil plane lies
+%   3 mm behind the corneal apex of the anterior chamber (Gullstrand, Av.
+%   "The optical system of the eye." Physiological Optics 1 (1909):
+%   350-358.) This gives us the default value of 10.3 mm for the eyeRadius
+%   in the emmetropic eye. In myopia, the axial length of the eye is
+%   increased. Consequently, we make greater range available for this
+%   parameter on the upper as compared to the lower bound.
 %
 %   constraintTolerance - A scalar. The inverse projection from ellipse on
 %   the image plane to eye params (azimuth, elevation) imposes a constraint
@@ -215,7 +208,7 @@ p.addParameter('extrinsicRotationMatrix',[1 0 0; 0 -1 0; 0 0 -1],@isnumeric);
 p.addParameter('extrinsicTranslationVector',[0; 0; 120],@isnumeric);
 p.addParameter('extrinsicTranslationVectorLB',[-10; -10; 100],@isnumeric);
 p.addParameter('extrinsicTranslationVectorUB',[10; 10; 180],@isnumeric);
-p.addParameter('eyeRadius',10.25,@isnumeric);
+p.addParameter('eyeRadius',10.3,@isnumeric);
 p.addParameter('eyeRadiusLB',10.00,@isnumeric);
 p.addParameter('eyeRadiusUB',12.00,@isnumeric);
 p.addParameter('constraintTolerance',0.02,@isnumeric);
@@ -438,7 +431,7 @@ x0 = [initialSceneGeometry.extrinsicTranslationVector; initialSceneGeometry.eyeR
 
 % Define search options
 options = optimoptions(@patternsearch, ...
-    'Display','iter',...
+    'Display','off',...
     'AccelerateMesh',false,...
     'UseParallel', true, ...
     'FunctionTolerance',1e-6);
@@ -556,8 +549,6 @@ if ~isempty(Xedges)
     end
     binSpaceX = Xedges(2)-Xedges(1);
     binSpaceY = Yedges(2)-Yedges(1);
-    xlim ([Xedges(1)-binSpaceX Xedges(end)+binSpaceX]);
-    ylim ([Yedges(1)-binSpaceY Yedges(end)+binSpaceY]);
 end
 
 % plot the ellipse centers
@@ -595,10 +586,25 @@ end
 centerOfRotationEllipse = pupilProjection_fwd([0 0 2], sceneGeometry);
 plot(centerOfRotationEllipse(1),centerOfRotationEllipse(2), '+g', 'MarkerSize', 5);
 
+% Calculate the plot limits
+if ~isempty(Xedges)
+    xPlotBounds = [Xedges(1)-binSpaceX Xedges(end)+binSpaceX];
+    yPlotBounds = [Yedges(1)-binSpaceY Yedges(end)+binSpaceY];
+else
+    minX = min([projectedEllipses(:,1);ellipses(:,1)]);
+    maxX = max([projectedEllipses(:,1);ellipses(:,1)]);
+    minY = min([projectedEllipses(:,2);ellipses(:,2)]);
+    maxY = max([projectedEllipses(:,2);ellipses(:,2)]);
+    xPlotBounds = [(minX - (maxX-minX)/10) (maxX + (maxX-minX)/10) ];
+    yPlotBounds = [(minY - (maxY-minY)/10) (maxY + (maxY-minY)/10) ];
+end
+    
 % label and clean up the plot
 axis equal
 set(gca,'Ydir','reverse')
 title('Distance error')
+xlim (xPlotBounds);
+ylim (yPlotBounds);
 
 % Create a legend
 hSub = subplot(3,3,7);
@@ -627,10 +633,6 @@ if ~isempty(Xedges)
     for yy=1: length(Yedges)
         plot([Xedges(1) Xedges(end)], [Yedges(yy) Yedges(yy)], '-', 'Color', [0.9 0.9 0.9], 'LineWidth', 0.5);
     end
-    binSpaceX = Xedges(2)-Xedges(1);
-    binSpaceY = Yedges(2)-Yedges(1);
-    xlim ([Xedges(1)-binSpaceX Xedges(end)+binSpaceX]);
-    ylim ([Yedges(1)-binSpaceY Yedges(end)+binSpaceY]);
 end
 
 % Calculate a color for each plot point corresponding to the degree of
@@ -646,6 +648,8 @@ scatter(ellipses(:,1),ellipses(:,2),[],colorMatrix','o','filled');
 axis equal
 set(gca,'Ydir','reverse')
 title('Shape error')
+xlim (xPlotBounds);
+ylim (yPlotBounds);
 
 % Create a legend
 hSub = subplot(3,3,8);
@@ -675,17 +679,13 @@ if ~isempty(Xedges)
     for yy=1: length(Yedges)
         plot([Xedges(1) Xedges(end)], [Yedges(yy) Yedges(yy)], '-', 'Color', [0.9 0.9 0.9], 'LineWidth', 0.5);
     end
-    binSpaceX = Xedges(2)-Xedges(1);
-    binSpaceY = Yedges(2)-Yedges(1);
-    xlim ([Xedges(1)-binSpaceX Xedges(end)+binSpaceX]);
-    ylim ([Yedges(1)-binSpaceY Yedges(end)+binSpaceY]);
 end
 
 % Calculate a color for each plot point corresponding to the degree of
 % shape error
 areaErrorVec = sceneGeometry.search.areaErrorByEllipse;
 areaErrorVec = abs(areaErrorVec)./sceneGeometry.constraintTolerance;
-areaErrorVec = min([areaErrorVec' ones(size(ellipses,1),1)],[],2)';
+areaErrorVec = min([areaErrorVec ones(size(ellipses,1),1)],[],2);
 colorMatrix = zeros(3,size(ellipses,1));
 colorMatrix(1,:)=1;
 colorMatrix(2,:)= areaErrorVec;
@@ -695,6 +695,9 @@ scatter(ellipses(:,1),ellipses(:,2),[],colorMatrix','o','filled');
 axis equal
 set(gca,'Ydir','reverse')
 title('Area error')
+xlim (xPlotBounds);
+ylim (yPlotBounds);
+
 
 % Create a legend
 hSub = subplot(3,3,9);
