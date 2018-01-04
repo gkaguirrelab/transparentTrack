@@ -1,5 +1,5 @@
 function [pupilEllipseOnImagePlane, pupilCenterOnImagePlane] = pupilProjection_fwd(eyeParams, sceneGeometry)
-% Project the pupil circle to an to ellipse on the image plane
+% Project the pupil circle to an ellipse on the image plane
 %
 % Description:
 %	Given the sceneGeometry, this routine simulates a circular pupil on a
@@ -227,6 +227,7 @@ imagePoints(:,1) = ...
 imagePoints(:,2) = ...
     imagePointsUnscaled(:,2)./imagePointsUnscaled(:,3);
 
+
 %% Apply radial lens distortion
 % This step introduces "pincushion" (or "barrel") distortion produced by
 % the lens. The x and y distortion equations are in the normalized image
@@ -251,6 +252,7 @@ imagePointsNormalizedDistorted(:,2) = imagePointsNormalized(:,2).*distortionVect
 
 imagePointsDistorted = (imagePointsNormalizedDistorted .* [sceneGeometry.intrinsicCameraMatrix(1,1) sceneGeometry.intrinsicCameraMatrix(2,2)]) +...
     [sceneGeometry.intrinsicCameraMatrix(1,3) sceneGeometry.intrinsicCameraMatrix(2,3)];
+
 
 %% Fit the ellipse in the image plane and store values
 % Obtain the transparent ellipse params of the projection of the pupil

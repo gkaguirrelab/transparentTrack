@@ -99,6 +99,7 @@ p.addParameter('constraintTolerance',[],@(x)(isempty(x) | isnumeric(x)));
 % Parse and check the parameters
 p.parse(pupilEllipseOnImagePlane, sceneGeometry, varargin{:});
 
+
 %% Check inputs and handle immediate exits
 if isempty(pupilEllipseOnImagePlane)
     centerError=NaN;
@@ -273,8 +274,6 @@ constraintFun = @constr; % the constraint function, nested below
             otherwise
         end
     end
-
-%% Now optimize for pupil radius
 
 % Store the params of the best fitting ellipse 
 bestMatchEllipseOnImagePlane = nestedCandidateEllipse;
