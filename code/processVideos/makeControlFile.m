@@ -77,8 +77,9 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 %                           Any candiate glint beyond this radius will be
 %                           disregarded.
 %  'glintZoneCenter'      - [X Y] location of the glint zone center. If not
-%                           specified, the glint zone Center will be the median value of the
-%                           candidate glint locations throughout the run.
+%                           specified, the glint zone center will be the
+%                           median value of the candidate glint locations
+%                           throughout the run.
 %  'glintPatchRadius'     - The radius of the glint patch
 %
 % Optional key/value pairs (Pupil cutting)
@@ -383,9 +384,9 @@ parfor (ii = 1:nFrames, nWorkers)
     thisFrame(sub2ind(frameSize,frameCellArray{ii}.Yp,frameCellArray{ii}.Xp))=255;
     
     % make glint patch
-    if ~any(isnan(glintData_X(:,ii)))
+    if ~isnan(glintData_X(ii))
         glintPatch = ones(size(thisFrame));
-        glintPatch = insertShape(glintPatch,'FilledCircle',[glintData_X(:,ii)' glintData_Y(:,ii)' p.Results.glintPatchRadius],'Color','black');
+        glintPatch = insertShape(glintPatch,'FilledCircle',[glintData_X(ii) glintData_Y(ii) p.Results.glintPatchRadius],'Color','black');
         glintPatch = im2bw(glintPatch);
         
         % apply glint patch
@@ -394,8 +395,8 @@ parfor (ii = 1:nFrames, nWorkers)
         % check if glint patch had an effect. If so, save out glintPatch
         % instruction for this frame
         if ~isempty(find(thisFrame - thisFramePatched))
-            glintPatchX(ii) = glintData_X(:,ii)';
-            glintPatchY(ii) = glintData_Y(:,ii)';
+            glintPatchX(ii) = glintData_X(ii);
+            glintPatchY(ii) = glintData_Y(ii);
             glintPatchRadius(ii) = p.Results.glintPatchRadius;
             
             % also, use the patched frame to search for the cut
