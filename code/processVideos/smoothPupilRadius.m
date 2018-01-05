@@ -257,6 +257,7 @@ parfor (ii = 1:nFrames, nWorkers)
         % each frame, scaled to range within the window from zero to unity.
         % Thus, the noisiest measurement will not influence the prior.
         precisionVector = squeeze(pupilData.(ellipseFitLabel).eyeParams.splitsSD(:,3))';
+        precisionVector = precisionVector+realmin;
         precisionVector=precisionVector.^(-1);
         precisionVector=precisionVector(rangeLowSignal:rangeHiSignal);
         precisionVector=precisionVector-nanmin(precisionVector);
