@@ -64,9 +64,9 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %                           video. The default values selected here
 %                           represent the physical and mathematical limits,
 %                           as the constraint for the fit will be provided
-%                           by the scene geometry. A mild constraint (0.75)
+%                           by the scene geometry. A mild constraint (0.6)
 %                           is placed upon the eccentricity, corresponding
-%                           to an aspect ration of 3:2.
+%                           to an aspect ration of 4:5.
 %  'eyeParamsLB/UB'       - Upper and lower bounds on the eyeParams
 %                           [azimuth, elevation, pupil radius]. Biological
 %                           limits in eye rotation and pupil size would
@@ -116,8 +116,8 @@ p.addParameter('hostname',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional analysis params
-p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, 0],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('ellipseTransparentUB',[640,480,20000,0.75, pi],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('ellipseTransparentLB',[0,0,800,0,0],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('ellipseTransparentUB',[640,480,20000,0.6,pi],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('eyeParamsLB',[-35,-25,0.5],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('eyeParamsUB',[35,25,5],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nSplits',8,@isnumeric);
