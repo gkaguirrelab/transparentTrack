@@ -5,24 +5,24 @@ function [calibratedPupil] = applySizeCalibration(pupilFileName,sizeCalFactorsFi
 %   This routine applies the size calibration values to the pupil data.
 % 
 % OUTPUTS
-%   calibratedPupil: struct containing the calibrated pupil width, height
+%   calibratedPupil - struct containing the calibrated pupil width, height
 %   and area. The calibrated units are dependent on the size calibration
 %   method used.
 % 
 % 
 % INPUTS:
-%   pupilFileName: name of the file with the pupil data to be calibrated, 
+%   pupilFileName - name of the file with the pupil data to be calibrated, 
 %       as it results from the pupil pipeline.
-%   sizeCalFactorsFileName: name of the mat file to save the size
+%   sizeCalFactorsFileName - name of the mat file to save the size
 %       conversion factor.
 % 
 % Optional params:
-%   calibratedPupilFileName: name of the output file containing the
+%   calibratedPupilFileName - name of the output file containing the
 %       calibrated data, if the user wishes to save it on file.
-%   calibratedUnits: units in which the calibrated data is expressed
+%   calibratedUnits - units in which the calibrated data is expressed
 %       (default [mm])
-%   whichFitToCalibrate: which of the pupil fit resulting from
-%   fitPupilPerimeter to calibrate (default pPosteriorMeanTransparent).
+%   whichFitToCalibrate - which of the pupil fit in the pupil file to calibrate
+%   	(default 'radiusSmoothed', also available 'sceneConstrained' and 'initial')
 % 
 % Optional key/value pairs (display and I/O)
 %  'verbosity' - level of verbosity. [none, full]
@@ -43,7 +43,7 @@ p.addRequired('sizeCalFactorsFileName',@ischar);
 % Optional analysis parameters
 p.addParameter('calibratedPupilFileName','',@ischar);
 p.addParameter('calibratedUnits','mm', @ischar);
-p.addParameter('whichFitToCalibrate','pPosteriorMeanTransparent', @ischar);
+p.addParameter('whichFitToCalibrate','radiusSmoothed', @ischar);
 
 % Optional display and I/O parameters
 p.addParameter('verbosity','none', @ischar);
@@ -62,7 +62,7 @@ p.parse(pupilFileName, sizeCalFactorsFileName, varargin{:})
 
 tmpData = load(pupilFileName);
 % pull transparent raw pupil data
-rawPupilTransparent = tmpData.pupilData.(p.Results.whichFitToCalibrate);
+rawPupilTransparent = tmpData.pupilData.(p.Results.whichFitToCalibrate).ellipse;
 % convert to explicit data
 for ii = 1 : size(rawPupilTransparent,1)
     rawPupilExplicit(ii,:) = ellipse_transparent2ex(rawPupilTransparent(ii,:));
