@@ -46,8 +46,8 @@ function [calibratedGaze] = applyGazeCalibration(pupilFileName,glintFileName,gaz
 %       calibrated data, if the user wishes to save it on file.
 %   calibratedUnits - units in which the calibrated data is expressed
 %       (default [mmOnScreen])
-%   whichFitToCalibrate - which of the pupil fit resulting from
-%   fitPupilPerimeter to calibrate (default pPosteriorMeanTransparent).
+%   whichFitToCalibrate - which of the pupil fit in the pupil file to calibrate
+%   	(default 'radiusSmoothed', also available 'sceneConstrained' and 'initial')
 %   analysisPass - set the pass number in case calibration data undergoes
 %       some kind of iterative correction process.
 % 
@@ -71,7 +71,7 @@ p.addRequired('gazeCalFactorsFileName',@ischar);
 % Optional analysis parameters
 p.addParameter('calibratedGazeFileName','',@ischar);
 p.addParameter('calibratedUnits','mm', @ischar);
-p.addParameter('whichFitToCalibrate','pPosteriorMeanTransparent', @ischar);
+p.addParameter('whichFitToCalibrate','radiusSmoothed', @ischar);
 p.addParameter('analysisPass',1, @isnumeric);
 
 % Optional display and I/O parameters
@@ -91,8 +91,8 @@ tmpData = load(pupilFileName);
 % pull transparent raw pupil data
 rawPupilTransparent = tmpData.pupilData.(p.Results.whichFitToCalibrate);
 % extract X and Y coordinates of pupil center
-pupil.X = rawPupilTransparent(:,1);
-pupil.Y = rawPupilTransparent(:,2);
+pupil.X = rawPupilTransparent.ellipse(:,1);
+pupil.Y = rawPupilTransparent.ellipse(:,2);
 
 clear tmpData
 clear rawPupilTransparent
