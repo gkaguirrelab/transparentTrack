@@ -4,35 +4,36 @@ function [calibratedPupil] = applySizeCalibration(pupilFileName,sizeCalFactorsFi
 % Description:
 %   This routine applies the size calibration values to the pupil data.
 % 
-% OUTPUTS
-%   calibratedPupil - struct containing the calibrated pupil width, height
-%   and area. The calibrated units are dependent on the size calibration
-%   method used.
-% 
-% 
-% INPUTS:
-%   pupilFileName - name of the file with the pupil data to be calibrated, 
-%       as it results from the pupil pipeline.
-%   sizeCalFactorsFileName - name of the mat file to save the size
-%       conversion factor.
-% 
-% Optional params:
-%   calibratedPupilFileName - name of the output file containing the
-%       calibrated data, if the user wishes to save it on file.
-%   calibratedUnits - units in which the calibrated data is expressed
-%       (default [mm])
-%   whichFitToCalibrate - which of the pupil fit in the pupil file to calibrate
-%   	(default 'radiusSmoothed', also available 'sceneConstrained' and 'initial')
+% Inputs:
+%  pupilFileName              - name of the file with the pupil data to be calibrated, 
+%                               as it results from the pupil pipeline.
+%  sizeCalFactorsFileName     - name of the mat file to save the size
+%       						conversion factor.
 % 
 % Optional key/value pairs (display and I/O)
-%  'verbosity' - level of verbosity. [none, full]
+%  'verbosity'                - level of verbosity. [none, full]
 %
-% Options (environment)
-%   tbSnapshot - the passed tbSnapshot output that is to be saved along
-%      with the data
-%   timestamp / username / hostname - these are automatically derived and
-%      saved within the p.Results structure.
+% Optional key/value pairs (analysis)
+% 'calibratedPupilFileName'   - name of the output file containing the
+%                               calibrated data, if the user wishes to save it on file.
+%  'calibratedUnits'          - units in which the calibrated data is expressed
+%                              (default [mm])
+%  'whichFitToCalibrate'      - which of the pupil fit in the pupil file to calibrate
+%   	                       (default 'radiusSmoothed', also available 'sceneConstrained' and 'initial')
 %
+% Optional key/value pairs (environment)
+%  'tbSnapshot'               - the passed tbSnapshot output that is to be saved along
+%      			                with the data
+%  'timestamp'            	  - AUTOMATIC; The current time and date
+%  'username'             	  - AUTOMATIC; The user
+%  'hostname'             	  - AUTOMATIC; The host
+%
+% Outputs:
+%  calibratedPupil            - structure containing the calibrated pupil width, height
+%                               and area. The calibrated units are dependent on the size calibration
+%                               method used.
+% 
+
 %% Parse vargin for options passed here
 p = inputParser; p.KeepUnmatched = true;
 

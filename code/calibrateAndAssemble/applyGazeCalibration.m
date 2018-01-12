@@ -1,65 +1,74 @@
 function [calibratedGaze] = applyGazeCalibration(pupilFileName,glintFileName,gazeCalFactorsFileName,varargin)
-% applyGazeCalibration(pupilFileName,glintFileName,gazeCalFactorsFileName)
-%
-% this function applies the gaze calibration parameters to the raw pupil
-% and glint data.
+% Applies the gaze calibration parameters to the raw pupil
+% and glint data
 % 
-% All the necessary calibration parameters are stored in the gazeCalParams
-% file.
-% The calibration strategy is as follows:
-% 
-% [aXYZW] = calMatrix * [(pX-gX)/Rpc; (pY-gY)/Rpc; (1 - sqrt(((pX-gX)/Rpc)^2 + ((pY-gY)/Rpc)^2)); 1];
-% [calGazeX;calGazeY;viewingDistance] =    (aXYZW(1:3)/aXYZW(4))';
-% 
-% Where:
-%   aXYZW = calibrated Gaze Data in homogeneous screen coordinates
-%   calMatrix = calibration matrix
-%   [pX pY] = center of pupil in pixels
-%   [gX gY] = center of glint in pixels
-%   Rpc = relative perspective correction (between target and apparent gaze
-%       vector)
+% Description:
+%    This function applies the gaze calibration parameters to the raw pupil
+%    and glint data, using the "gaze vector" approach. The gaze vector is
+%    defined as (P - G) , where P and G are the X,Y position on the scene of 
+%    the center of the pupil and the glint, respectively.
 %   
-% Note that the first line applies the calMatrix to the 3-D projection of
-% the apparent gaze vector (in pixels) in homogeneous coordinates, while
-% the second line converts the calibrated data from homogeneous
-% coordinates to 3-D screen coordinates, where the 3rd dimension is the
-% distance between the observer and the screen.
+%    All the necessary calibration parameters are stored in the gazeCalParams
+%    file, and are derived from one or more trials in which the gaze vector is
+%    calculated for targets presented on screen at known locations.
+%    
+%    The calibration strategy is as follows:
 % 
-% More info about the calibration strategy can be found in the
-% calcCalibrationMatrix and calcRpc functions header.
+%    [aXYZW] = calMatrix * [(pX-gX)/Rpc; (pY-gY)/Rpc; (1 - sqrt(((pX-gX)/Rpc)^2 + ((pY-gY)/Rpc)^2)); 1];
+%    [calGazeX;calGazeY;viewingDistance] =    (aXYZW(1:3)/aXYZW(4))';
 % 
-% OUTPUTS:
-%   calibratedGaze: struct containing the calibrated pupil width, height
-%   and area. The calibrated units are dependent on the size calibration
-%   method used.
+%    Where:
+%      aXYZW = calibrated Gaze Data in homogeneous screen coordinates
+%      calMatrix = calibration matrix
+%      [pX pY] = center of pupil in pixels
+%      [gX gY] = center of glint in pixels
+%      Rpc = relative perspective correction (between target and apparent gaze
+%            vector)
+%   
+% 	 Note that the first line applies the calMatrix to the 3-D projection of
+% 	 the apparent gaze vector (in pixels) in homogeneous coordinates, while
+% 	 the second line converts the calibrated data from homogeneous
+% 	 coordinates to 3-D screen coordinates, where the 3rd dimension is the
+%    distance between the observer and the screen.
 % 
+% 	 More info about the calibration strategy can be found in the
+%    calcCalibrationMatrix and calcRpc functions header.
 % 
-% INPUTS:
-%   pupilFileName - name of the file with the pupil data to be calibrated, 
-%       as it results from the pupil pipeline.
-%   glintFileName - name of the mat with glint data
-%   gazeCalFactorsFileName - name of the mat file with the gaze calibration
-%       params.
-% 
-% Optional params:
-%  calibratedGazeFileName - name of the output file containing the
-%       calibrated data, if the user wishes to save it on file.
-%   calibratedUnits - units in which the calibrated data is expressed
-%       (default [mmOnScreen])
-%   whichFitToCalibrate - which of the pupil fit in the pupil file to calibrate
-%   	(default 'radiusSmoothed', also available 'sceneConstrained' and 'initial')
-%   analysisPass - set the pass number in case calibration data undergoes
-%       some kind of iterative correction process.
+% Inputs:
+%   pupilFileName           - name of the file with the pupil data to be calibrated, 
+%                             as it results from the pupil pipeline.
+%   glintFileName           - name of the mat with glint data
+%   gazeCalFactorsFileName  - name of the mat file with the gaze calibration
+%                             params.
 % 
 % Optional key/value pairs (display and I/O)
-%  'verbosity' - level of verbosity. [none, full]
+%  'verbosity' 			`   - level of verbosity. [none, full]
 %
-% Options (environment)
-%   tbSnapshot - the passed tbSnapshot output that is to be saved along
-%      with the data
-%   timestamp / username / hostname - these are automatically derived and
-%      saved within the p.Results structure.
+% Optional key/value pairs (environment)
+%  'tbSnapshot'             - This should contain the output of the
+%                             tbDeploymentSnapshot performed upon the result
+%                             of the tbUse command. This documents the state
+%                             of the system at the time of analysis.
+%  'timestamp'              - AUTOMATIC; The current time and date
+%  'username'               - AUTOMATIC; The user
+%  'hostname'               - AUTOMATIC; The host
 %
+% Optional key/value pairs (analysis)
+%  'calibratedGazeFileName' - name of the output file containing the
+%       					  calibrated data, if the user wishes to save it on file.
+%   'calibratedUnits'       - units in which the calibrated data is expressed
+%                             (default [mmOnScreen])
+%   'whichFitToCalibrate'   - which of the pupil fit in the pupil file to calibrate
+%   	                     (default 'radiusSmoothed', also available 'sceneConstrained' and 'initial')
+%   'analysisPass'          - set the pass number in case calibration data undergoes
+%                             some kind of iterative correction process.
+%
+%   Outputs:
+%   calibratedGaze          - structure containing the calibrated pupil width, height
+%                             and area. The calibrated units are dependent on the size calibration
+%                    	      method used.
+% 
+
 %% Parse vargin for options passed here
 p = inputParser; p.KeepUnmatched = true;
 
