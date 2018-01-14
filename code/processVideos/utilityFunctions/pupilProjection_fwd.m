@@ -55,16 +55,14 @@ eyeElevation = eyeParams(2);
 pupilRadius = eyeParams(3);
 
 
-%% Define a pupil circle in pupilWorld coordinates
+%% Define an eye in eyeWorld coordinates
 % This coordinate frame is in mm units and has the dimensions (p1,p2,p3).
 % The diagram is of a cartoon pupil, being viewed directly from the front.
 %
-%  coordinate [0,0,0] corresponds to the point at the center of the pupil.
-%  The first dimension is depth, which is unused (set to zero) as we model
-%  the points of the pupil as lying on a plane.
-%
-%  p1 values positive --> closer to the subject / farther away from the
-%  camera
+% Coordinate [0,0,0] corresponds to the point at the center of the pupil
+% on the surface of the cornea. The first dimension is depth, has a value
+% of zero at the apex of the corneal surfae, and is negative towards the
+% center of the eye.
 %
 %                 |
 %     ^         __|__
@@ -82,19 +80,18 @@ pupilRadius = eyeParams(3);
 % included so that the discrepancy between the projected center of the
 % pupil and measured center of the ellipse may be examined.
 nPerimPoints = 5;
-pupilWorldPointsAngles = 0:2*pi/nPerimPoints:2*pi-(2*pi/nPerimPoints);
-pupilWorldPoints(:,3) = sin(pupilWorldPointsAngles)*pupilRadius(1);
-pupilWorldPoints(:,2) = cos(pupilWorldPointsAngles)*pupilRadius(1);
-pupilWorldPoints(:,1) = 0;
-pupilWorldPoints(nPerimPoints+1,:) = [0 0 0];
+eyeWorldPointsAngles = 0:2*pi/nPerimPoints:2*pi-(2*pi/nPerimPoints);
+eyeWorldPoints(:,3) = sin(eyeWorldPointsAngles)*pupilRadius(1);
+eyeWorldPoints(:,2) = cos(eyeWorldPointsAngles)*pupilRadius(1);
+eyeWorldPoints(:,1) = -0.001;
+eyeWorldPoints(nPerimPoints+1,:) = [0 0 0];
 
 
 %% Project the pupil circle points to headWorld coordinates.
 % This coordinate frame is in mm units and has the dimensions (h1,h2,h3).
 % The diagram is of a cartoon eye, being viewed directly from the front.
 %
-%  h1 values positive --> closer to the subject / farther away from the
-%  camera
+%  h1 values negative --> towards the head, positive towards the camera
 %
 %         h2
 %    0,0 ----> 
@@ -148,18 +145,14 @@ eyeRotation = R1*R2*R3;
 centerOfRotation = [-sceneGeometry.eyeRadius 0 0];
 
 % Apply the eye rotation to the pupil plane
-headWorldPoints = (eyeRotation*(pupilWorldPoints+centerOfRotation)')'-centerOfRotation;
-
-% We sign reverse the h1 axis (depth) values to conform to our axis
-% direction convention
-headWorldPoints(:,1)=headWorldPoints(:,1)*(-1);
+headWorldPoints = (eyeRotation*(eyeWorldPoints-centerOfRotation)')'+centerOfRotation;
 
 % We sign reverse the h2 and h3 axis values so that azimuth and elevation
 % rotations produce the called for directions of movement of the eye.
 % (positive azimuth and elevation move the center of the pupil up and to
 % the right in the image plane).
-headWorldPoints(:,2)=headWorldPoints(:,2)*(-1);
-headWorldPoints(:,3)=headWorldPoints(:,3)*(-1);
+%headWorldPoints(:,2)=headWorldPoints(:,2)*(-1);
+%headWorldPoints(:,3)=headWorldPoints(:,3)*(-1);
 
 
 %% Project the pupil circle points to sceneWorld coordinates.
@@ -167,20 +160,20 @@ headWorldPoints(:,3)=headWorldPoints(:,3)*(-1);
 % The diagram is of a cartoon head (borrowed from Leszek Swirski), being
 % viewed from above:
 %
-%   ^
+%   |
 %   |    .-.
 %   |   |   | <- Head
 %   |   `^u^'
 % Z |      :V <- Camera    (As seen from above)
 %   |      :
 %   |      :
-%   |      o <- Target
+%  \|/     o <- Target
 %
 %     ----------> X
 %
 % +X = right
 % +Y = up
-% +Z = back (farther from the camera)
+% +Z = front (towards the camera)
 %
 % The origin [0,0,0] corresponds to the front surface of the eye and the
 % center of the pupil when the line that connects the center of rotation of
