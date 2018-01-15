@@ -42,8 +42,8 @@ p.addParameter('videoOutFrameRate', 60, @isnumeric);
 p.addParameter('saveCompressedVideo', true, @islogical);
 p.addParameter('videoSizeX', 640, @isnumeric);
 p.addParameter('videoSizeY', 480, @isnumeric);
-p.addParameter('labelNames', {'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber'}, @iscell);
-p.addParameter('plotColors', {'.w' '.b' '.g' '.y'}, @iscell);
+p.addParameter('labelNames', {'rotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber'}, @iscell);
+p.addParameter('plotColors', {'+r' '.w' '.b' '.g' '.y'}, @iscell);
 p.addParameter('ellipseFitLabel', 'radiusSmoothed', @ischar);
 
 % parse
