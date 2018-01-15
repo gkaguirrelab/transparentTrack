@@ -58,9 +58,10 @@ function [pupilEllipseOnImagePlane, eyeWorldPoints, imagePoints, pointLabels] = 
 %                           on the image plane for each of the eyeWorld
 %                           points.
 %   pointsLabels          - An nx1 cell array that identifies each of the
-%                           points, from the set {'posteriorChamber',
-%                           'irisPerimeter', 'pupilPerimeter',
-%                           'anteriorChamber'}.
+%                           points, from the set {'pupilCenter',
+%                           'irisCenter', 'rotationCenter',
+%                           'posteriorChamber', 'irisPerimeter',
+%                           'pupilPerimeter', 'anteriorChamber'}.
 %
 
 %% Check the input
@@ -160,8 +161,8 @@ if fullEyeModel
     tmpLabels(:) = {'posteriorChamber'};
     pointLabels = [pointLabels; tmpLabels];
     
-    % Define 10 points around the perimeter of the iris
-    nIrisPerimPoints = 10;
+    % Define 100 points around the perimeter of the iris
+    nIrisPerimPoints = 100;
     perimeterPointAngles = 0:2*pi/nIrisPerimPoints:2*pi-(2*pi/nIrisPerimPoints);
     irisPoints(1:nIrisPerimPoints,3) = ...
         sin(perimeterPointAngles)*sceneGeometry.eye.irisRadius + sceneGeometry.eye.irisCenter(3);
