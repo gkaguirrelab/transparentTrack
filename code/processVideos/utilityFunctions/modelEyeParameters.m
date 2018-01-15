@@ -58,7 +58,6 @@ eye.posteriorEllipsoidRadii = [...
     11.365 - 0.090 * spectacleRefractionDiopters ...
     11.455 - 0.043 * spectacleRefractionDiopters ];
 
-
 % We position the posterior chamber by placing the anterior apex of the
 % ellipsoid at a fixed distance behind the corneal apex. The value for this
 % fixed distance is derived from the Atchison model eye as follows: The
