@@ -44,7 +44,7 @@ p.addParameter('videoSizeX', 640, @isnumeric);
 p.addParameter('videoSizeY', 480, @isnumeric);
 p.addParameter('labelNames', {'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber'}, @iscell);
 p.addParameter('plotColors', {'.w' '.b' '.g' '.y'}, @iscell);
-p.addParameter('ellipseFitLabel', 'radiusSmoothed', @(x)(isempty(x) | ischar(x)));
+p.addParameter('ellipseFitLabel', 'radiusSmoothed', @ischar);
 
 % parse
 p.parse(videoOutFileName, pupilFileName, sceneGeometryFileName, varargin{:})

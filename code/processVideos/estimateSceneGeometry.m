@@ -347,8 +347,8 @@ sceneGeometry = ...
     p.Results.eyeParamsUB);
 
 % add additional search and meta field info to sceneGeometry
-sceneGeometry.search.ellipseArrayList = ellipseArrayList';
-sceneGeometry.meta = p.Results;
+sceneGeometry.meta.estimateGeometry.parameters = p.Results;
+sceneGeometry.meta.estimateGeometry.search.ellipseArrayList = ellipseArrayList';
 
 
 %% Save the sceneGeometry file
@@ -491,19 +491,19 @@ sceneGeometry.extrinsicRotationMatrix = initialSceneGeometry.extrinsicRotationMa
 sceneGeometry.constraintTolerance = initialSceneGeometry.constraintTolerance;
 sceneGeometry.eye = initialSceneGeometry.eye;
 sceneGeometry.eye.centerOfRotation(1) = -x(4);
-sceneGeometry.search.options = options;
-sceneGeometry.search.errorForm = errorForm;
-sceneGeometry.search.initialSceneGeometry = initialSceneGeometry;
-sceneGeometry.search.ellipses = ellipses;
-sceneGeometry.search.errorWeights = errorWeights;
-sceneGeometry.search.sceneParamsLB = sceneParamsLB;
-sceneGeometry.search.sceneParamsUB = sceneParamsUB;
-sceneGeometry.search.eyeParamsLB = eyeParamsLB;
-sceneGeometry.search.eyeParamsUB = eyeParamsUB;
-sceneGeometry.search.fVal = fVal;
-sceneGeometry.search.centerDistanceErrorByEllipse = centerDistanceErrorByEllipse;
-sceneGeometry.search.shapeErrorByEllipse = shapeErrorByEllipse;
-sceneGeometry.search.areaErrorByEllipse = areaErrorByEllipse;
+sceneGeometry.meta.estimateGeometry.search.options = options;
+sceneGeometry.meta.estimateGeometry.search.errorForm = errorForm;
+sceneGeometry.meta.estimateGeometry.search.initialSceneGeometry = initialSceneGeometry;
+sceneGeometry.meta.estimateGeometry.search.ellipses = ellipses;
+sceneGeometry.meta.estimateGeometry.search.errorWeights = errorWeights;
+sceneGeometry.meta.estimateGeometry.search.sceneParamsLB = sceneParamsLB;
+sceneGeometry.meta.estimateGeometry.search.sceneParamsUB = sceneParamsUB;
+sceneGeometry.meta.estimateGeometry.search.eyeParamsLB = eyeParamsLB;
+sceneGeometry.meta.estimateGeometry.search.eyeParamsUB = eyeParamsUB;
+sceneGeometry.meta.estimateGeometry.search.fVal = fVal;
+sceneGeometry.meta.estimateGeometry.search.centerDistanceErrorByEllipse = centerDistanceErrorByEllipse;
+sceneGeometry.meta.estimateGeometry.search.shapeErrorByEllipse = shapeErrorByEllipse;
+sceneGeometry.meta.estimateGeometry.search.areaErrorByEllipse = areaErrorByEllipse;
 
 end % local search function
 
