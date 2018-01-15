@@ -204,7 +204,7 @@ p.addParameter('extrinsicTranslationVector',[0; 0; 120],@isnumeric);
 p.addParameter('extrinsicTranslationVectorLB',[-10; -10; 100],@isnumeric);
 p.addParameter('extrinsicTranslationVectorUB',[10; 10; 180],@isnumeric);
 p.addParameter('spectacleRefractionDiopters',0,@isnumeric);
-p.addParameter('eyeRotationDepth',13.3,@isnumeric);
+p.addParameter('eyeRotationDepth',13.0,@isnumeric);
 p.addParameter('eyeRotationDepthLB',12.5,@isnumeric);
 p.addParameter('eyeRotationDepthUB',15.0,@isnumeric);
 p.addParameter('constraintTolerance',0.02,@isnumeric);
@@ -347,7 +347,7 @@ sceneGeometry = ...
     p.Results.eyeParamsUB);
 
 % add additional search and meta field info to sceneGeometry
-sceneGeometry.search.ellipseArrayList = ellipseArrayList;
+sceneGeometry.search.ellipseArrayList = ellipseArrayList';
 sceneGeometry.meta = p.Results;
 
 
@@ -438,6 +438,8 @@ x0 = [initialSceneGeometry.extrinsicTranslationVector; -initialSceneGeometry.eye
 options = optimoptions(@patternsearch, ...
     'Display','off',...
     'AccelerateMesh',false,...
+    'Cache','on',...
+    'CompleteSearch','on',...
     'UseParallel', true, ...
     'FunctionTolerance',1e-6);
 
