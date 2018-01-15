@@ -43,7 +43,7 @@ eye.corneaBackSurfaceCenter = [-7.22 0 0];
 
 % We position the pupil plane at the depth of the anterior point of the
 % lens
-eye.pupilPlaneCenter = [-3.7 0 0];
+eye.pupilCenter = [-3.7 0 0];
 
 % Define the properties of the iris
 eye.irisRadius = 6.5;
@@ -53,7 +53,7 @@ eye.irisCenter = [-4.5 0 0];
 % dimensions of the ellipsoid are set by the values observed for the radius
 % of curvature of the retina in Atchison 2005. Note the greater dependence
 % of the first dimension (axial length) upon refractive error.
-eye.posteriorEllipsoidRadii = [...
+eye.posteriorChamberRadii = [...
     10.148 - 0.163 * spectacleRefractionDiopters ...
     11.365 - 0.090 * spectacleRefractionDiopters ...
     11.455 - 0.043 * spectacleRefractionDiopters ];
@@ -71,8 +71,8 @@ eye.posteriorEllipsoidRadii = [...
 %
 % Therefore, the apex of the posterior ellipsoid is 23.5800 - 20.2836 =
 % 3.2964 mm behind the corneal apex.
-eye.posteriorEllipsoidCenter = ...
-    [(-3.2964 - eye.posteriorEllipsoidRadii(1)) 0 0];
+eye.posteriorChamberCenter = ...
+    [(-3.2964 - eye.posteriorChamberRadii(1)) 0 0];
 
 % The eye center of rotation is on average 13.3 mm behind the corneal
 % apex per Gunter K. vonNoorden, MD; Emilio C. Campos "Binocular Vision and

@@ -101,9 +101,12 @@ pupilRadius = eyeParams(3);
 % constrains the ellipse in the image plane.
 nPupilPerimPoints = 5;
 perimeterPointAngles = 0:2*pi/nPupilPerimPoints:2*pi-(2*pi/nPupilPerimPoints);
-eyeWorldPoints(1:nPupilPerimPoints,3) = sin(perimeterPointAngles)*pupilRadius + sceneGeometry.eye.pupilPlaneCenter(3);
-eyeWorldPoints(1:nPupilPerimPoints,2) = cos(perimeterPointAngles)*pupilRadius + sceneGeometry.eye.pupilPlaneCenter(2);
-eyeWorldPoints(1:nPupilPerimPoints,1) = 0 + sceneGeometry.eye.pupilPlaneCenter(1);
+eyeWorldPoints(1:nPupilPerimPoints,3) = ...
+    sin(perimeterPointAngles)*pupilRadius + sceneGeometry.eye.pupilCenter(3);
+eyeWorldPoints(1:nPupilPerimPoints,2) = ...
+    cos(perimeterPointAngles)*pupilRadius + sceneGeometry.eye.pupilCenter(2);
+eyeWorldPoints(1:nPupilPerimPoints,1) = ...
+    0 + sceneGeometry.eye.pupilCenter(1);
 
 % Create labels for the pupilPerimeter points
 tmpLabels = cell(nPupilPerimPoints, 1);
@@ -116,26 +119,34 @@ pointLabels = tmpLabels;
 % eye.
 if fullEyeModel
     
-    % Create the posterior chamber ellipsoid. We switch dimensions here so that
-    % the ellipsoid points have their poles at corneal apex and posterior apex
-    % of the eye
+    % Add points for the center of the pupil, iris, and rotation
+    eyeWorldPoints = [eyeWorldPoints; sceneGeometry.eye.pupilCenter];
+    pointLabels = [pointLabels; 'pupilCenter'];
+    eyeWorldPoints = [eyeWorldPoints; sceneGeometry.eye.irisCenter];
+    pointLabels = [pointLabels; 'irisCenter'];
+    eyeWorldPoints = [eyeWorldPoints; sceneGeometry.eye.centerOfRotation];
+    pointLabels = [pointLabels; 'centerOfRotation'];
+    
+    % Create the posterior chamber ellipsoid. We switch dimensions here so
+    % that the ellipsoid points have their poles at corneal apex and
+    % posterior apex of the eye
     [p3tmp, p2tmp, p1tmp] = ellipsoid( ...
-        sceneGeometry.eye.posteriorEllipsoidCenter(3), ...
-        sceneGeometry.eye.posteriorEllipsoidCenter(2), ...
-        sceneGeometry.eye.posteriorEllipsoidCenter(1), ...
-        sceneGeometry.eye.posteriorEllipsoidRadii(3), ...
-        sceneGeometry.eye.posteriorEllipsoidRadii(2), ...
-        sceneGeometry.eye.posteriorEllipsoidRadii(1), ...
+        sceneGeometry.eye.posteriorChamberCenter(3), ...
+        sceneGeometry.eye.posteriorChamberCenter(2), ...
+        sceneGeometry.eye.posteriorChamberCenter(1), ...
+        sceneGeometry.eye.posteriorChamberRadii(3), ...
+        sceneGeometry.eye.posteriorChamberRadii(2), ...
+        sceneGeometry.eye.posteriorChamberRadii(1), ...
         30);
-    % Convert the surface matrices to a vector of points and switch the axes
-    % back
+    % Convert the surface matrices to a vector of points and switch the
+    % axes back
     ansTmp = surf2patch(p1tmp, p2tmp, p3tmp);
     posteriorChamberPoints=ansTmp.vertices;
     
     % Retain those points that are anterior to the center of the posterior
     % chamber and are posterior to the iris plane
     retainIdx = logical(...
-        (posteriorChamberPoints(:,1) > sceneGeometry.eye.posteriorEllipsoidCenter(1)) .* ...
+        (posteriorChamberPoints(:,1) > sceneGeometry.eye.posteriorChamberCenter(1)) .* ...
         (posteriorChamberPoints(:,1) < sceneGeometry.eye.irisCenter(1)) ...
         );
     if all(~retainIdx)
@@ -152,9 +163,12 @@ if fullEyeModel
     % Define 10 points around the perimeter of the iris
     nIrisPerimPoints = 10;
     perimeterPointAngles = 0:2*pi/nIrisPerimPoints:2*pi-(2*pi/nIrisPerimPoints);
-    irisPoints(1:nIrisPerimPoints,3) = sin(perimeterPointAngles)*sceneGeometry.eye.irisRadius + sceneGeometry.eye.irisCenter(3);
-    irisPoints(1:nIrisPerimPoints,2) = cos(perimeterPointAngles)*sceneGeometry.eye.irisRadius + sceneGeometry.eye.irisCenter(2);
-    irisPoints(1:nIrisPerimPoints,1) = 0 + sceneGeometry.eye.irisCenter(1);
+    irisPoints(1:nIrisPerimPoints,3) = ...
+        sin(perimeterPointAngles)*sceneGeometry.eye.irisRadius + sceneGeometry.eye.irisCenter(3);
+    irisPoints(1:nIrisPerimPoints,2) = ...
+        cos(perimeterPointAngles)*sceneGeometry.eye.irisRadius + sceneGeometry.eye.irisCenter(2);
+    irisPoints(1:nIrisPerimPoints,1) = ...
+        0 + sceneGeometry.eye.irisCenter(1);
     
     % Add the points and labels
     eyeWorldPoints = [eyeWorldPoints; irisPoints];
@@ -171,8 +185,8 @@ if fullEyeModel
         sceneGeometry.eye.corneaFrontSurfaceRadius, ...
         sceneGeometry.eye.corneaFrontSurfaceRadius, ...
         30);
-    % Convert the surface matrices to a vector of points and switch the axes
-    % back
+    % Convert the surface matrices to a vector of points and switch the
+    % axes back
     ansTmp = surf2patch(p1tmp, p2tmp, p3tmp);
     anteriorChamberPoints=ansTmp.vertices;
     
