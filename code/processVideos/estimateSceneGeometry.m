@@ -580,7 +580,7 @@ scatter(projectedEllipses(:,1),projectedEllipses(:,2),'o','filled', ...
     'MarkerFaceAlpha',2/8,'MarkerFaceColor',[0 0 1]);
 
 % connect the centers with lines
-errorWeightVec=sceneGeometry.search.errorWeights;
+errorWeightVec=sceneGeometry.meta.estimateGeometry.search.errorWeights;
 for ii=1:size(ellipses,1)
     lineAlpha = errorWeightVec(ii)/max(errorWeightVec);
     lineWeight = 0.5 + (errorWeightVec(ii)/max(errorWeightVec));
@@ -645,7 +645,7 @@ end
 
 % Calculate a color for each plot point corresponding to the degree of
 % shape error
-shapeErrorVec = sceneGeometry.search.shapeErrorByEllipse;
+shapeErrorVec = sceneGeometry.meta.estimateGeometry.search.shapeErrorByEllipse;
 shapeErrorVec = shapeErrorVec./sceneGeometry.constraintTolerance;
 colorMatrix = zeros(3,size(ellipses,1));
 colorMatrix(1,:)=1;
@@ -691,7 +691,7 @@ end
 
 % Calculate a color for each plot point corresponding to the degree of
 % shape error
-areaErrorVec = sceneGeometry.search.areaErrorByEllipse;
+areaErrorVec = sceneGeometry.meta.estimateGeometry.search.areaErrorByEllipse;
 areaErrorVec = abs(areaErrorVec)./sceneGeometry.constraintTolerance;
 areaErrorVec = min([areaErrorVec ones(size(ellipses,1),1)],[],2);
 colorMatrix = zeros(3,size(ellipses,1));
