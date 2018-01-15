@@ -1,4 +1,4 @@
-function sceneGeometry = refineIrisRadius(pupilFileName, sceneGeometryFileName, varargin)
+function sceneGeometry = refineIrisRadius(grayVideoName, pupilFileName, sceneGeometryFileName, varargin)
 % Adjust the model iris radius to best fit the image plane data 
 %
 % Description:
@@ -11,6 +11,7 @@ function sceneGeometry = refineIrisRadius(pupilFileName, sceneGeometryFileName, 
 %   saved.
 %
 % Inputs:
+%	grayVideoName -       - Full path to the gray video to track
 %	pupilFileName         - Full path to a pupilData file, or a cell array
 %                           of such paths. If a cell array is provided, the
 %                           ellipse data from each pupilData file will be
@@ -49,7 +50,7 @@ function sceneGeometry = refineIrisRadius(pupilFileName, sceneGeometryFileName, 
 % Optional key/value pairs (analysis)
 %  'irisRadiusLB'         - Scalar
 %  'irisRadiusUB'         - Scalar
-%  'whichEllipseFitField' - Identifies the field in pupilData that contains
+%  'ellipseFitLabel'      - Identifies the field in pupilData that contains
 %                           the ellipse fit params for which the search
 %                           will be conducted.
 %  'ellipseArrayList'     - A vector of frame numbers (indexed from 1)
@@ -69,8 +70,9 @@ function sceneGeometry = refineIrisRadius(pupilFileName, sceneGeometryFileName, 
 p = inputParser; p.KeepUnmatched = true;
 
 % Required
-p.addRequired('pupilFileName',@(x)(isempty(x) | iscell(x) | ischar(x)));
-p.addRequired('sceneGeometryFileName',@(x)(isempty(x) | ischar(x)));
+p.addRequired('grayVideoName',@ischar);
+p.addRequired('pupilFileName',@ischar);
+p.addRequired('sceneGeometryFileName',@ischar);
 
 % Optional display and I/O params
 p.addParameter('verbosity', 'none', @isstr);
@@ -88,6 +90,7 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional analysis params
+p.addParameter('irisGammaCorrection',1,@isnumeric);
 p.addParameter('irisRadiusLB',12.5,@isnumeric);
 p.addParameter('irisRadiusUB',15.0,@isnumeric);
 p.addParameter('ellipseFitLabel', 'radiusSmoothed', @ischar);
@@ -143,21 +146,24 @@ end
 
 %% Load pupil data
 if iscell(pupilFileName)
+    eyeParams = [];
     ellipses = [];
     ellipseFitSEM = [];
     for cc = 1:length(pupilFileName)
         load(pupilFileName{cc})
-        ellipses = [ellipses;pupilData.(p.Results.whichEllipseFitField).ellipse.values];
-        ellipseFitSEM = [ellipseFitSEM; pupilData.(p.Results.whichEllipseFitField).ellipse.RMSE];
+        eyeParams = [eyeParams; pupilData.(p.Results.ellipseFitLabel).eyeParams.values];
+        ellipses = [ellipses; pupilData.(p.Results.ellipseFitLabel).ellipse.values];
+        ellipseFitSEM = [ellipseFitSEM; pupilData.(p.Results.ellipseFitLabel).ellipse.RMSE];
     end
 else
     load(pupilFileName)
-    ellipses = pupilData.(p.Results.whichEllipseFitField).ellipse.values;
-    ellipseFitSEM = pupilData.(p.Results.whichEllipseFitField).ellipse.RMSE;
+    eyeParams = pupilData.(p.Results.ellipseFitLabel).eyeParams.values;
+    ellipses = pupilData.(p.Results.ellipseFitLabel).ellipse.values;
+    ellipseFitSEM = pupilData.(p.Results.ellipseFitLabel).ellipse.RMSE;
 end
 
 
-%% Identify the ellipses that will guide the sceneGeometry estimation
+%% Identify the frames that will guide the iris radius search
 % If not supplied, we will generate a list of ellipses to use for the
 % estimation.
 if ~isempty(p.Results.ellipseArrayList)
@@ -194,17 +200,39 @@ errorWeights= ellipseFitSEM(ellipseArrayList);
 errorWeights = 1./errorWeights;
 errorWeights=errorWeights./mean(errorWeights);
 
+
 %% Load the sceneGeometry
 dataLoad = load(p.Results.sceneGeometryFileName);
 initialSceneGeometry = dataLoad.sceneGeometry;
 clear dataLoad
 
 
+%% Load and store the video frames to be fit
+videoInObj = VideoReader(grayVideoName);
+% get video dimensions
+videoSizeX = videoInObj.Width;
+videoSizeY = videoInObj.Height;
+% initialize variable to hold the perimeter data
+grayVideoFrames = zeros(videoSizeY,videoSizeX,length(ellipseArrayList),'uint8');
+% read the video into memory, adjusting gamma and local contrast
+idx=1;
+for ii = 1:nFrames
+    thisFrame = readFrame(videoInObj);
+    if sum(ellipseArrayList==1)==1
+        grayVideoFrames(idx,:,:)=rgb2gray(imadjust(thisFrame,[],[],p.Results.irisGammaCorrection));
+        idx=idx+1;
+    end
+end
+% close the video object
+clear videoInObj
+
+
 %% Perform the search
 % Call out to the local function that performs the serach
 sceneGeometry = ...
     performIrisRadiusSearch(initialSceneGeometry, ...
-    ellipses(ellipseArrayList,:), ...
+    grayVideoFrames, ...
+    eyeParams(ellipseArrayList,:), ...
     errorWeights, ...
     p.Results.irisRadiusLB, ...
     p.Results.irisRadiusUB);
@@ -250,7 +278,7 @@ end % main function
 
 %% LOCAL FUNCTIONS
 
-function sceneGeometry = performIrisRadiusSearch(initialSceneGeometry, ellipses, errorWeights, irisRadiusLB, irisRadiusUB)
+function sceneGeometry = performIrisRadiusSearch(initialSceneGeometry, eyeParams, errorWeights, irisRadiusLB, irisRadiusUB)
 % Search for best fitting irisRadius
 %
 % Description:
@@ -288,13 +316,13 @@ areaErrorByEllipse=[];
         [~, ~, centerDistanceErrorByEllipse, shapeErrorByEllipse, areaErrorByEllipse] = ...
             arrayfun(@(x) pupilProjection_inv...
             (...
-                ellipses(x,:),...
+                eyeParams(x,:),...
                 candidateSceneGeometry,...
                 'constraintTolerance', candidateSceneGeometry.constraintTolerance,...
                 'eyeParamsLB',eyeParamsLB,...
                 'eyeParamsUB',eyeParamsUB...
             ),...
-            1:1:size(ellipses,1),'UniformOutput',false);
+            1:1:size(eyeParams,1),'UniformOutput',false);
         
         % Now compute objective function as the RMSE of the distance
         % between the taget and modeled ellipses
@@ -323,7 +351,7 @@ sceneGeometry.eye.centerOfRotation(1) = -x(4);
 sceneGeometry.meta.refineIris.search.options = options;
 sceneGeometry.meta.refineIris.search.errorForm = errorForm;
 sceneGeometry.meta.refineIris.search.initialSceneGeometry = initialSceneGeometry;
-sceneGeometry.meta.refineIris.search.ellipses = ellipses;
+sceneGeometry.meta.refineIris.search.ellipses = eyeParams;
 sceneGeometry.meta.refineIris.search.errorWeights = errorWeights;
 sceneGeometry.meta.refineIris.search.sceneParamsLB = sceneParamsLB;
 sceneGeometry.meta.refineIris.search.sceneParamsUB = sceneParamsUB;
