@@ -90,7 +90,7 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional analysis params
-p.addParameter('irisGammaCorrection',1,@isnumeric);
+p.addParameter('irisImageIntensityStretchRange',[50 150],@isnumeric);
 p.addParameter('irisRadiusLB',12.5,@isnumeric);
 p.addParameter('irisRadiusUB',15.0,@isnumeric);
 p.addParameter('ellipseFitLabel', 'radiusSmoothed', @ischar);
@@ -98,14 +98,14 @@ p.addParameter('ellipseArrayList',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nBinsPerDimension',10,@isnumeric);
 
 % parse
-p.parse(pupilFileName, sceneGeometryFileName, varargin{:})
+p.parse(grayVideoName, pupilFileName, sceneGeometryFileName, varargin{:})
 
 
 
 %% Announce we are starting
 if strcmp(p.Results.verbosity,'full')
     tic
-    fprintf(['Refining iris readius. Started ' char(datetime('now')) '\n']);
+    fprintf(['Refining iris radius. Started ' char(datetime('now')) '\n']);
 end
 
 
@@ -216,10 +216,12 @@ videoSizeY = videoInObj.Height;
 grayVideoFrames = zeros(videoSizeY,videoSizeX,length(ellipseArrayList),'uint8');
 % read the video into memory, adjusting gamma and local contrast
 idx=1;
-for ii = 1:nFrames
+for ii = 1:max(ellipseArrayList)
     thisFrame = readFrame(videoInObj);
-    if sum(ellipseArrayList==1)==1
-        grayVideoFrames(idx,:,:)=rgb2gray(imadjust(thisFrame,[],[],p.Results.irisGammaCorrection));
+    if sum(ellipseArrayList==ii)==1
+        tmpFrame=rgb2gray(imadjust(thisFrame,[],[],p.Results.irisGammaCorrection));
+        tmpFrame=imadjust(tmpFrame./255,[p.Results.irisImageIntensityStretchRange(1)/255 p.Results.irisImageIntensityStretchRange(2)/255],[0 1]).*255;
+        grayVideoFrames(:,:,idx)=tmpFrame;
         idx=idx+1;
     end
 end
@@ -284,6 +286,22 @@ function sceneGeometry = performIrisRadiusSearch(initialSceneGeometry, eyeParams
 % Description:
 %
 %
+
+ii=1;
+ep = eyeParams(ii,:);
+ep(3)=ep(3)*1.1;
+[pupilEllipseOnImagePlane, ~, imagePoints, pointLabels] = pupilProjection_fwd(ep, initialSceneGeometry, true);
+irisCenter = find(strcmp(pointLabels,'irisCenter'));
+irisPoints = find(strcmp(pointLabels,'irisPerimeter'));
+centeredIrisPoints = imagePoints(irisPoints,:)-imagePoints(irisCenter,:);
+irisCenter = find(strcmp(pointLabels,'irisCenter'));
+irisPoints = find(strcmp(pointLabels,'irisPerimeter'));
+for ii=1:length(irisPoints)
+[~,~,c] = improfile(grayVideoFrames(:,:,1),[imagePoints(irisCenter,1) imagePoints(irisPoints(ii),1)],[imagePoints(irisCenter,2) imagePoints(irisPoints(ii),2)],200);
+hold on
+plot(c)
+end
+
 
 % Set the error form
 errorForm = 'SSE';
