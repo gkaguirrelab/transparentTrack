@@ -40,7 +40,7 @@ function [pupilEllipseOnImagePlane, eyeWorldPoints, imagePoints, pointLabels] = 
 %                               that define the anatomical properties of
 %                               the eye. The values are largely those
 %                               returned by modelEyeParameters(), with the
-%                               centerOfRotation field adjusted by the
+%                               rotationCenter field adjusted by the
 %                               sceneGeometry search
 %   fullEyeModel          - Logical. Determines if the full posterior and
 %                           anterior chamber eye model will be created.
@@ -124,8 +124,8 @@ if fullEyeModel
     pointLabels = [pointLabels; 'pupilCenter'];
     eyeWorldPoints = [eyeWorldPoints; sceneGeometry.eye.irisCenter];
     pointLabels = [pointLabels; 'irisCenter'];
-    eyeWorldPoints = [eyeWorldPoints; sceneGeometry.eye.centerOfRotation];
-    pointLabels = [pointLabels; 'centerOfRotation'];
+    eyeWorldPoints = [eyeWorldPoints; sceneGeometry.eye.rotationCenter];
+    pointLabels = [pointLabels; 'rotationCenter'];
     
     % Create the posterior chamber ellipsoid. We switch dimensions here so
     % that the ellipsoid points have their poles at corneal apex and
@@ -263,7 +263,7 @@ R1 = [1 0 0; 0 cosd(eyeTorsion) -sind(eyeTorsion); 0 sind(eyeTorsion) cosd(eyeTo
 eyeRotation = R1*R2*R3;
 
 % Apply the eye rotation to the pupil plane
-headWorldPoints = (eyeRotation*(eyeWorldPoints-sceneGeometry.eye.centerOfRotation)')'+sceneGeometry.eye.centerOfRotation;
+headWorldPoints = (eyeRotation*(eyeWorldPoints-sceneGeometry.eye.rotationCenter)')'+sceneGeometry.eye.rotationCenter;
 
 
 %% Project the pupil circle points to sceneWorld coordinates.

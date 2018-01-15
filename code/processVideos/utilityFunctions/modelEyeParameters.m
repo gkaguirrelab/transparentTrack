@@ -78,7 +78,7 @@ eye.posteriorChamberCenter = ...
 % apex per Gunter K. vonNoorden, MD; Emilio C. Campos "Binocular Vision and
 % Ocular Motility Theory and Management of Strabismus" American Orthoptic
 % Journal 51.1 (2001): 161-162.
-eye.centerOfRotation = [-13.3 0 0];
+eye.rotationCenter = [-13.3 0 0];
 
 % Refractive index values from Atchison 2006.
 eye.corneaRefractiveIndex = 1.376;
