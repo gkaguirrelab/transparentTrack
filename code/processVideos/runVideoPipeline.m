@@ -13,6 +13,7 @@ function runVideoPipeline( pathParams, varargin )
 %       fitPupilPerimeter -- fit again with scene geometry constraints
 %       smoothPupilRadius
 %       makeFitVideo
+%       makeEyeModelVideo
 %
 %   The user can stop the execution after any of the stages with the
 %   optional param 'lastStage', or skip any number of stages listing them
@@ -163,7 +164,7 @@ pupilFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_pup
 sceneGeometryFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sceneGeometry.mat']);
 sceneDiagnosticPlotFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sceneDiagnosticPlot.pdf']);
 finalFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_finalFit.avi']);
-irisFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_iris.mat']);
+eyeModelVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_eyeModel.avi']);
 
 
 %% Conduct the analysis
@@ -187,7 +188,7 @@ switch p.Results.videoTypeChoice
             };
     case 'LiveTrackWithVTOP_eye'
         funCalls = {...
-            'deinterlaceVideo(rawVideoName,grayVideoName, varargin{:});'...
+            'deinterlaceVideo(rawVideoName, grayVideoName, varargin{:});'...
             'findGlint(grayVideoName, glintFileName, varargin{:});'...
             'findPupilPerimeter(grayVideoName, perimeterFileName, varargin{:});'...
             'makeControlFile(controlFileName, perimeterFileName, glintFileName, varargin{:});' ...
@@ -203,6 +204,7 @@ switch p.Results.videoTypeChoice
             '''glintFileName'', glintFileName, ''perimeterFileName'', correctedPerimeterFileName,'...
             '''pupilFileName'', pupilFileName, ''sceneGeometryFileName'', sceneGeometryFileName,' ...
             '''controlFileName'',controlFileName,varargin{:});']...
+            'makeEyeModelVideo(eyeModelVideoName, pupilFileName, sceneGeometryFileName)'...
             };
     case 'custom'
         funCalls = p.Results.customFunCalls;
