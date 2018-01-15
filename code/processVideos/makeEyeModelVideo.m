@@ -44,7 +44,7 @@ p.addParameter('videoSizeX', 640, @isnumeric);
 p.addParameter('videoSizeY', 480, @isnumeric);
 p.addParameter('labelNames', {'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber'}, @iscell);
 p.addParameter('plotColors', {'.w' '.b' '.g' '.y'}, @iscell);
-p.addParameter('ellipseFitLabel', 'radiusSmoothed',@(x)(isempty(x) | ischar(x)));
+p.addParameter('ellipseFitLabel', 'radiusSmoothed', @(x)(isempty(x) | ischar(x)));
 
 % parse
 p.parse(videoOutFileName, pupilFileName, sceneGeometryFileName, varargin{:})
@@ -62,7 +62,7 @@ end
 dataLoad = load(p.Results.pupilFileName);
 pupilData = dataLoad.pupilData;
 clear dataLoad
-pupilFitParams = pupilData.(p.Results.ellipseFitLabel).eyeParams.values;
+eyeParams = pupilData.(p.Results.ellipseFitLabel).eyeParams.values;
 
 % Read in the sceneGeometry file
 dataLoad = load(p.Results.sceneGeometryFileName);
@@ -94,7 +94,10 @@ end
 blankFrame = zeros(480,640)+0.5;
 
 % Obtain the number of frames
-nFrames = size(pupilFitParams,1);
+nFrames = size(eyeParams,1);
+
+% Open a figure
+frameFig = figure( 'Visible', 'off');
 
 %% Loop through the frames
 for ii = 1:nFrames
@@ -104,30 +107,32 @@ for ii = 1:nFrames
         fprintf('\b.\n');
     end
     
-    % Create a figure
-    frameFig = figure( 'Visible', 'off');
+    % Plot the blank frame
     imshow(blankFrame, 'Border', 'tight');
     hold on
-
-    % Obtain the pupilProjection of the model eye to the image plane
-    [~, ~, imagePoints, pointLabels] = pupilProjection_fwd(pupilFitParams(ii,:), sceneGeometry, true);    
-
-    % Loop through the point labels present in the eye model
-    for pp = 1:length(p.Results.labelNames)
-        idx = strcmp(pointLabels,p.Results.labelNames{pp});
-        plot(imagePoints(idx,1), imagePoints(idx,2), p.Results.plotColors{pp})
+    axis off
+    axis equal
+    xlim([0 p.Results.videoSizeX]);
+    ylim([0 p.Results.videoSizeY]);
+    
+    if ~any(isnan(eyeParams(ii,:)))
+        
+        % Obtain the pupilProjection of the model eye to the image plane
+        [~, ~, imagePoints, pointLabels] = pupilProjection_fwd(eyeParams(ii,:), sceneGeometry, true);
+        
+        % Loop through the point labels present in the eye model
+        for pp = 1:length(p.Results.labelNames)
+            idx = strcmp(pointLabels,p.Results.labelNames{pp});
+            plot(imagePoints(idx,1), imagePoints(idx,2), p.Results.plotColors{pp})
+        end
+        
     end
     
     % Clean up the plot
     hold off
-    axis equal
-    xlim([0 p.Results.videoSizeX]);
-    ylim([0 p.Results.videoSizeY]);
-    axis off
     
     % Get the frame and close the figure
     thisFrame=getframe(frameFig);
-    close(frameFig);
     
     % Write out this frame
     if p.Results.saveCompressedVideo
@@ -142,6 +147,9 @@ end % Loop over frames
 
 
 %% Save and cleanup
+
+% Close the figure
+close(frameFig);
 
 % close the video objects
 clear videoOutObj videoInObj
