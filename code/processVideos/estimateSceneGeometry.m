@@ -75,22 +75,13 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %   projection of pupil circles from scene to image is invariant to
 %   rotations of the camera matrix, these values are locked.
 %
-%   eyeRadius -  Scalar which specifies the radius of the eye in mm. The
-%   relevant measure is the distance between the center of rotation of the
-%   eye (which is not equivalent to the center of the eye) and the pupil
-%   plane (which is several millimeters behind the front surface of the
-%   cornea). We compute our default value using the approach described in
-%   the Optometrika Matlab toolbox craeted by Yury Petrov and Neil Tandon.
-%   The eye center of rotation is on average 13.3 mm behind the corneal
-%   apex. (Gunter K. vonNoorden, MD; Emilio C. Campos "Binocular Vision and
-%   Ocular Motility Theory and Management of Strabismus" American Orthoptic
-%   Journal 51.1 (2001): 161-162.) We futher note that the pupil plane lies
-%   3 mm behind the corneal apex of the anterior chamber (Gullstrand, Av.
-%   "The optical system of the eye." Physiological Optics 1 (1909):
-%   350-358.) This gives us the default value of 10.3 mm for the eyeRadius
-%   in the emmetropic eye. In myopia, the axial length of the eye is
-%   increased. Consequently, we make greater range available for this
-%   parameter on the upper as compared to the lower bound.
+%   eye -  This is itself a structure that is returned by the function 
+%   modelEyeParameters(). The parameters define the anatomical properties
+%   of the eye, including the size and shape of the anterior and posterior
+%   chamber. These parameters are adjusted for the measured spherical
+%   refractive error of the subject. The relevant value for the fitting of
+%   the pupil ellipse is establishing the center of rotation of the eye.
+%   The default value is 13.3 mm posterior to the corneal apex.
 %
 %   constraintTolerance - A scalar. The inverse projection from ellipse on
 %   the image plane to eye params (azimuth, elevation) imposes a constraint
@@ -151,9 +142,11 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %  'extrinsicTranslationVector' - 3x1 vector
 %  'extrinsicTranslationVectorLB' - 3x1 vector
 %  'extrinsicTranslationVectorUB' - 3x1 vector
-%  'eyeRadius'            - Scalar
-%  'eyeRadiusLB'          - Scalar
-%  'eyeRadiusUB'          - Scalar
+%  'spectacleRefractionDiopters' - Scalar. A negative value is appropriate
+%                           for a myopic subject.
+%  'eyeRotationDepth'     - Scalar
+%  'eyeRotationDepthLB'   - Scalar
+%  'eyeRotationDepthUB'   - Scalar
 %  'constraintTolerance'  - Scalar. Range 0-1.
 %  'eyeParamsLB/UB'       - Upper and lower bounds on the eyeParams
 %                           [azimuth, elevation, pupil radius]. Biological
@@ -210,9 +203,10 @@ p.addParameter('extrinsicRotationMatrix',[1 0 0; 0 -1 0; 0 0 -1],@isnumeric);
 p.addParameter('extrinsicTranslationVector',[0; 0; 120],@isnumeric);
 p.addParameter('extrinsicTranslationVectorLB',[-10; -10; 100],@isnumeric);
 p.addParameter('extrinsicTranslationVectorUB',[10; 10; 180],@isnumeric);
-p.addParameter('eyeRadius',10.3,@isnumeric);
-p.addParameter('eyeRadiusLB',10.00,@isnumeric);
-p.addParameter('eyeRadiusUB',12.00,@isnumeric);
+p.addParameter('spectacleRefractionDiopters',0,@isnumeric);
+p.addParameter('eyeRotationDepth',13.3,@isnumeric);
+p.addParameter('eyeRotationDepthLB',12.5,@isnumeric);
+p.addParameter('eyeRotationDepthUB',15.0,@isnumeric);
 p.addParameter('constraintTolerance',0.02,@isnumeric);
 p.addParameter('eyeParamsLB',[-35,-25,0.5],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('eyeParamsUB',[35,25,5],@(x)(isempty(x) | isnumeric(x)));
@@ -231,11 +225,12 @@ initialSceneGeometry.intrinsicCameraMatrix = p.Results.intrinsicCameraMatrix;
 initialSceneGeometry.extrinsicTranslationVector = p.Results.extrinsicTranslationVector;
 initialSceneGeometry.extrinsicRotationMatrix = p.Results.extrinsicRotationMatrix;
 initialSceneGeometry.constraintTolerance = p.Results.constraintTolerance;
-initialSceneGeometry.eyeRadius = p.Results.eyeRadius;
+initialSceneGeometry.eye = modelEyeParameters(p.Results.spectacleRefractionDiopters);
+initialSceneGeometry.eye.centerOfRotation(1) = -p.Results.eyeRotationDepth;
 
 % Bounds
-sceneParamsLB = [p.Results.extrinsicTranslationVectorLB; p.Results.eyeRadiusLB];
-sceneParamsUB = [p.Results.extrinsicTranslationVectorUB; p.Results.eyeRadiusUB];
+sceneParamsLB = [p.Results.extrinsicTranslationVectorLB; p.Results.eyeRotationDepthLB];
+sceneParamsUB = [p.Results.extrinsicTranslationVectorUB; p.Results.eyeRotationDepthUB];
 
 % Return the initialSceneGeometry if pupilFileName is empty
 if isempty(pupilFileName)
@@ -407,10 +402,10 @@ function sceneGeometry = performSceneSearch(initialSceneGeometry, ellipses, erro
 %   plane, given the constraint that the ellipse shape (and area) must also
 %   match the prediction of the forward model. The passed sceneGeometry
 %   structure is used as the starting point for the search. The
-%   extrinsicTranslationVector and the eyeRadius parameters are optimized,
-%   limited by the passed bounds. Across each iteration of the search, a
-%   candidate sceneGeometry is assembled from the current values of the
-%   parameters. This sceneGeometry is then used in the inverse pupil
+%   extrinsicTranslationVector and the eyeRotationDepth parameters are
+%   optimized, limited by the passed bounds. Across each iteration of the
+%   search, a candidate sceneGeometry is assembled from the current values
+%   of the parameters. This sceneGeometry is then used in the inverse pupil
 %   projection model. The inverse projection searches for an eye azimuth,
 %   elevation, and pupil radius that, given the sceneGeometry, best
 %   accounts for the parameters of the target ellipse on the image plane.
@@ -437,7 +432,7 @@ function sceneGeometry = performSceneSearch(initialSceneGeometry, ellipses, erro
 errorForm = 'SSE';
 
 % Extract the initial search point from initialSceneGeometry
-x0 = [initialSceneGeometry.extrinsicTranslationVector; initialSceneGeometry.eyeRadius];
+x0 = [initialSceneGeometry.extrinsicTranslationVector; -initialSceneGeometry.eye.centerOfRotation(1)];
 
 % Define search options
 options = optimoptions(@patternsearch, ...
@@ -458,7 +453,7 @@ areaErrorByEllipse=[];
     function fval = objfun(x)
         candidateSceneGeometry = initialSceneGeometry;
         candidateSceneGeometry.extrinsicTranslationVector = x(1:3);
-        candidateSceneGeometry.eyeRadius = x(4);
+        candidateSceneGeometry.eye.centerOfRotation(1) = -x(4);
         [~, ~, centerDistanceErrorByEllipse, shapeErrorByEllipse, areaErrorByEllipse] = ...
             arrayfun(@(x) pupilProjection_inv...
             (...
@@ -492,7 +487,8 @@ sceneGeometry.intrinsicCameraMatrix = initialSceneGeometry.intrinsicCameraMatrix
 sceneGeometry.extrinsicTranslationVector = x(1:3);
 sceneGeometry.extrinsicRotationMatrix = initialSceneGeometry.extrinsicRotationMatrix;
 sceneGeometry.constraintTolerance = initialSceneGeometry.constraintTolerance;
-sceneGeometry.eyeRadius = x(4);
+sceneGeometry.eye = initialSceneGeometry.eye;
+sceneGeometry.eye.centerOfRotation(1) = -x(4);
 sceneGeometry.search.options = options;
 sceneGeometry.search.errorForm = errorForm;
 sceneGeometry.search.initialSceneGeometry = initialSceneGeometry;
