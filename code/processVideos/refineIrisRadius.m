@@ -168,12 +168,10 @@ end
 % estimation.
 if ~isempty(p.Results.ellipseArrayList)
     ellipseArrayList = p.Results.ellipseArrayList;
-    Xedges = [];
-    Yedges = [];
 else
     % First we divide the ellipse centers amongst a set of 2D bins across image
     % space. We will ultimately minimize the fitting error across bins
-    [ellipseCenterCounts,Xedges,Yedges,binXidx,binYidx] = ...
+    [ellipseCenterCounts,~,~,binXidx,binYidx] = ...
         histcounts2(ellipses(:,1),ellipses(:,2),p.Results.nBinsPerDimension);
     
     % Anonymous functions for row and column identity given array position
@@ -213,15 +211,15 @@ videoInObj = VideoReader(grayVideoName);
 videoSizeX = videoInObj.Width;
 videoSizeY = videoInObj.Height;
 % initialize variable to hold the perimeter data
-grayVideoFrames = zeros(videoSizeY,videoSizeX,length(ellipseArrayList),'uint8');
+grayVideoFrames = zeros(videoSizeY,videoSizeX,length(ellipseArrayList));
 % read the video into memory, adjusting gamma and local contrast
 idx=1;
 for ii = 1:max(ellipseArrayList)
     thisFrame = readFrame(videoInObj);
     if sum(ellipseArrayList==ii)==1
-        tmpFrame=rgb2gray(imadjust(thisFrame,[],[],p.Results.irisGammaCorrection));
-        tmpFrame=imadjust(tmpFrame./255,[p.Results.irisImageIntensityStretchRange(1)/255 p.Results.irisImageIntensityStretchRange(2)/255],[0 1]).*255;
-        grayVideoFrames(:,:,idx)=tmpFrame;
+        thisFrame=double(rgb2gray(thisFrame));
+        thisFrame=imadjust(thisFrame./255,[p.Results.irisImageIntensityStretchRange(1)/255 p.Results.irisImageIntensityStretchRange(2)/255],[0 1]).*255;
+        grayVideoFrames(:,:,idx)=thisFrame;
         idx=idx+1;
     end
 end
@@ -288,16 +286,11 @@ function sceneGeometry = performIrisRadiusSearch(initialSceneGeometry, eyeParams
 %
 
 ii=1;
-ep = eyeParams(ii,:);
-ep(3)=ep(3)*1.1;
-[pupilEllipseOnImagePlane, ~, imagePoints, pointLabels] = pupilProjection_fwd(ep, initialSceneGeometry, true);
+[~, ~, imagePoints, pointLabels] = pupilProjection_fwd(eyeParams(ii,:), initialSceneGeometry, true);
 irisCenter = find(strcmp(pointLabels,'irisCenter'));
 irisPoints = find(strcmp(pointLabels,'irisPerimeter'));
-centeredIrisPoints = imagePoints(irisPoints,:)-imagePoints(irisCenter,:);
-irisCenter = find(strcmp(pointLabels,'irisCenter'));
-irisPoints = find(strcmp(pointLabels,'irisPerimeter'));
-for ii=1:length(irisPoints)
-[~,~,c] = improfile(grayVideoFrames(:,:,1),[imagePoints(irisCenter,1) imagePoints(irisPoints(ii),1)],[imagePoints(irisCenter,2) imagePoints(irisPoints(ii),2)],200);
+for pp=1:length(irisPoints)
+[~,~,c] = improfile(grayVideoFrames(:,:,1),[imagePoints(irisCenter,1) imagePoints(irisPoints(pp),1)],[imagePoints(irisCenter,2) imagePoints(irisPoints(pp),2)],200);
 hold on
 plot(c)
 end
