@@ -161,8 +161,8 @@ if fullEyeModel
     tmpLabels(:) = {'posteriorChamber'};
     pointLabels = [pointLabels; tmpLabels];
     
-    % Define 100 points around the perimeter of the iris
-    nIrisPerimPoints = 100;
+    % Define 360 points around the perimeter of the iris
+    nIrisPerimPoints = 360;
     perimeterPointAngles = 0:2*pi/nIrisPerimPoints:2*pi-(2*pi/nIrisPerimPoints);
     irisPoints(1:nIrisPerimPoints,3) = ...
         sin(perimeterPointAngles)*sceneGeometry.eye.irisRadius + sceneGeometry.eye.irisCenter(3);
