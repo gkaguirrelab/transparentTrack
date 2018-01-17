@@ -229,8 +229,8 @@ clear videoInObj
 
 %% Perform the search
 % Call out to the local function that performs the serach
-sceneGeometry = ...
-    performIrisRadiusSearch(initialSceneGeometry, ...
+sceneGeometry = performIrisRadiusSearch(...
+    initialSceneGeometry, ...
     grayVideoFrames, ...
     eyeParams(ellipseArrayList,:), ...
     errorWeights, ...
@@ -278,7 +278,7 @@ end % main function
 
 %% LOCAL FUNCTIONS
 
-function sceneGeometry = performIrisRadiusSearch(initialSceneGeometry, eyeParams, errorWeights, irisRadiusLB, irisRadiusUB)
+function sceneGeometry = performIrisRadiusSearch(initialSceneGeometry, grayVideoFrames, eyeParams, errorWeights, irisRadiusLB, irisRadiusUB)
 % Search for best fitting irisRadius
 %
 % Description:
@@ -295,61 +295,6 @@ hold on
 plot(c)
 end
 
-
-% Set the error form
-errorForm = 'SSE';
-
-% Extract the initial search point from initialSceneGeometry
-x0 = initialSceneGeometry.eye.irisRadius;
-
-% Define search options
-options = optimoptions(@patternsearch, ...
-    'Display','off',...
-    'AccelerateMesh',false,...
-    'Cache','on',...
-    'CompleteSearch','on',...
-    'UseParallel', true, ...
-    'FunctionTolerance',1e-6);
-
-% Define anonymous functions for the objective and constraint
-objectiveFun = @objfun; % the objective function, nested below
-
-% Define nested variables for within the search
-centerDistanceErrorByEllipse=[];
-shapeErrorByEllipse=[];
-areaErrorByEllipse=[];
-
-[x, fVal] = patternsearch(objectiveFun, x0,[],[],[],[],sceneParamsLB,sceneParamsUB,[],options);
-    function fval = objfun(x)
-        candidateSceneGeometry = initialSceneGeometry;
-        candidateSceneGeometry.extrinsicTranslationVector = x(1:3);
-        candidateSceneGeometry.eye.centerOfRotation(1) = -x(4);
-        [~, ~, centerDistanceErrorByEllipse, shapeErrorByEllipse, areaErrorByEllipse] = ...
-            arrayfun(@(x) pupilProjection_inv...
-            (...
-                eyeParams(x,:),...
-                candidateSceneGeometry,...
-                'constraintTolerance', candidateSceneGeometry.constraintTolerance,...
-                'eyeParamsLB',eyeParamsLB,...
-                'eyeParamsUB',eyeParamsUB...
-            ),...
-            1:1:size(eyeParams,1),'UniformOutput',false);
-        
-        % Now compute objective function as the RMSE of the distance
-        % between the taget and modeled ellipses
-        centerDistanceErrorByEllipse = cell2mat(centerDistanceErrorByEllipse)';
-        shapeErrorByEllipse = cell2mat(shapeErrorByEllipse)';
-        areaErrorByEllipse = cell2mat(areaErrorByEllipse)';
-        switch errorForm
-            case 'SSE'
-                fval=sum((centerDistanceErrorByEllipse.*(shapeErrorByEllipse.*100+1).*(areaErrorByEllipse.*100+1).*errorWeights).^2);
-            case 'RMSE'
-                fval = mean((centerDistanceErrorByEllipse.*(shapeErrorByEllipse.*100+1).*(areaErrorByEllipse.*100+1).*errorWeights).^2)^(1/2);
-            otherwise
-                error('I do not recognize that error form');
-        end
-        
-    end
 
 % Assemble the sceneGeometry file to return
 sceneGeometry.radialDistortionVector = initialSceneGeometry.radialDistortionVector;
