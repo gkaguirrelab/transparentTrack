@@ -42,9 +42,7 @@ function [outputRay, thetas, imageCoords] = rayTraceCenteredSphericalSurfaces(co
 %                           ray. Thus, the refractive index value given in
 %                           the first row species the index of the medium
 %                           in which the raw arises. The center and radius
-%                           values will not be used, and instead will be
-%                           replaced by values deried from the initial
-%                           coords and theta.
+%                           values for the first row are ignored.
 %   figureFlag            - Logical or structure. If logical, the true or
 %                           false value controls whether the default style
 %                           plot is created. If empty, it will be set to
@@ -59,19 +57,23 @@ function [outputRay, thetas, imageCoords] = rayTraceCenteredSphericalSurfaces(co
 %                           virtual extension) intersects the optical axis.
 %
 % Examples:
+%   Examples 2 and 3 require the modelEyeParametersFunction from the
+%   transparentTrack toolbox.
+%
 %   Ex. 1 - Elagha 2017
 %       The paper provides a numerical example in section C which is
-%       implemented here as an example. The returned values should be:
-%       thetaOut = -26.583586 degrees, and imagePosition = 17.768432.
+%       implemented here as an example. Compare the returned theta values
+%       with those given on page 340, section C.
 %{
     thetaInitial = deg2rad(17.309724);
     coordsInitial = [0 0];
     figureFlag=true;
-    opticalSystem=[0 0 1; 22 10 1.2; 9 -8 1; 34 12 1.5; 20 -10 1.0];
+    opticalSystem=[nan nan 1; 22 10 1.2; 9 -8 1; 34 12 1.5; 20 -10 1.0];
     [outputRay, thetas, imageCoords] = rayTraceCenteredSphericalSurfaces(coordsInitial, thetaInitial, opticalSystem, figureFlag);
     for ii=1:length(thetas)
         fprintf('theta%d: %f \n',ii-1,rad2deg(thetas(ii)));
     end
+    fprintf('Elegha gives a final image distance of 17.768432. we obtain:\n')
     fprintf('i5 - c5 = K4 = %f \n',imageCoords(end,1)-opticalSystem(5,1));
 %}
 %
@@ -83,7 +85,7 @@ function [outputRay, thetas, imageCoords] = rayTraceCenteredSphericalSurfaces(co
     pupilRadius = 2;
     theta = deg2rad(-45);
     coords = [eye.pupilCenter(1) pupilRadius];
-    opticalSystem = [0 0 eye.aqueousRefractiveIndex; ...
+    opticalSystem = [nan nan eye.aqueousRefractiveIndex; ...
                      eye.corneaBackSurfaceCenter(1) -eye.corneaBackSurfaceRadius eye.corneaRefractiveIndex; ...
                      eye.corneaFrontSurfaceCenter(1) -eye.corneaFrontSurfaceRadius 1.0];
     figureFlag=true;
@@ -94,7 +96,7 @@ function [outputRay, thetas, imageCoords] = rayTraceCenteredSphericalSurfaces(co
 %{
     eye = modelEyeParameters();
     pupilRadius = 2;
-    opticalSystem = [0 0 eye.aqueousRefractiveIndex; ...
+    opticalSystem = [nan nan eye.aqueousRefractiveIndex; ...
                      eye.corneaBackSurfaceCenter(1) -eye.corneaBackSurfaceRadius eye.corneaRefractiveIndex; ...
                      eye.corneaFrontSurfaceCenter(1) -eye.corneaFrontSurfaceRadius 1.0];
     figure;
@@ -154,11 +156,12 @@ thetas=zeros(nSurfaces,1);
 relativeIndices=ones(nSurfaces,1);
 aVals=ones(nSurfaces,1);
 
-% Set the values for ray at the first surface
+% Set the values for at the first surface (initial position of ray)
 thetas(1)=thetaInitial;
 intersectionCoords(1,:)=coordsInitial;
 imageCoords(1,:)=[coordsInitial(1)-(coordsInitial(2)/tan(thetaInitial)) 0];
 opticalSystem(1,1)=imageCoords(1,1);
+opticalSystem(1,2)=0;
 
 % Start the figure
 if figureFlag.show
