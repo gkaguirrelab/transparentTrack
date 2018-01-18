@@ -33,6 +33,12 @@ function eye = modelEyeParameters( spectacleRefractionDiopters )
 %   eye                   - A structure with fields that contain the values
 %                           for the model eye.
 
+%% Check the input
+if nargin==0
+    spectacleRefractionDiopters=0;
+end
+
+
 % These values taken from Achison 2006, Table 1. The center of the cornea
 % circle for the back surface is positioned so that there is 0.55 between
 % the front and back surface of the cornea at the apex.
