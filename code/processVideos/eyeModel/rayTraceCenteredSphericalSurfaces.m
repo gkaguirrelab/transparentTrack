@@ -54,7 +54,9 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
 %   outputRay             - a 2x2 matrix that contains a unit vector which
 %                           describes the location and vector direction of
 %                           a ray that is the virtual image for this system
-%                           for the input. The first row contains the
+%                           for the input. The first columns contains the z
+%                           positions and the second column the h(eight)
+%                           position. The first row contains the
 %                           coordinates of a point on the optic axis and
 %                           the second row contains a point on a ray
 %                           arising from the first point that has unit
@@ -163,7 +165,12 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
 %
 %   Ex.5 - Pupil through cornea, symbolic variables
 %       Demonstrates the creation of a function handle to allow rapid
-%       evaluation of many values for the symbolic expression
+%       evaluation of many values for the symbolic expression. The function
+%       unitRayFromPupil_zh returns a unitRay for a given pupil height and 
+%       theta. The function is then called for the pupil heights and thetas
+%       that might reflect the position of a point on the pupil perimeter
+%       in the x and y dimensions, creating a zxRay and a zyRay. The zyRay 
+%       is then adjusted to share the same Z dimension point of origin.
 %{
     clear coords
     clear theta
@@ -176,10 +183,13 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
                      eye.corneaFrontSurfaceCenter(1) -eye.corneaFrontSurfaceRadius 1.0];
     outputRay = rayTraceCenteredSphericalSurfaces(coords, theta, opticalSystem);
     symvar(outputRay)
-    unitRayFromPupilxyZ = matlabFunction(outputRay);
-    t = deg2rad(-45);
-    y = 2;
-    unitRayFromPupilxyZ(y,t)
+    unitRayFromPupil_zh = matlabFunction(outputRay);
+    zxRay=unitRayFromPupil_zh(2,pi/4)
+    zyRay=unitRayFromPupil_zh(1.7,pi/8)
+    slope =zyRay(2,2)/(zyRay(2,1)-zyRay(1,1));
+    zOffset=zxRay(1,1)-zyRay(1,1);
+    zyRay(:,1)=zyRay(:,1)+zOffset;
+    zyRay(:,2)=zyRay(:,2)+(zOffset*slope)
 %}
 
 
