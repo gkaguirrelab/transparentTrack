@@ -1,4 +1,4 @@
-function displaceEyeCoordThroughCornea( sceneGeometry, eyeRotation )
+function displaceEyeCoordThroughCornea( eyeWorldCoord, sceneGeometry, eyeRotation )
 %UNTITLED Summary of this function goes here
 %   Detailed explanation goes here
 
@@ -6,26 +6,17 @@ function displaceEyeCoordThroughCornea( sceneGeometry, eyeRotation )
 % This function traces a ray arising on the pupil through the cornea within
 % a plane that includes the optic axis of the eye and a "height" dimension
 
-    eye = sceneGeometry.eye;
-    syms theta
-    syms pupilPointHeight
-    coords = [eye.pupilCenter(1) pupilPointHeight];
-    opticalSystem = [nan nan eye.aqueousRefractiveIndex; ...
-                     eye.corneaBackSurfaceCenter(1) -eye.corneaBackSurfaceRadius eye.corneaRefractiveIndex; ...
-                     eye.corneaFrontSurfaceCenter(1) -eye.corneaFrontSurfaceRadius 1.0];
-    outputRay = rayTraceCenteredSphericalSurfaces(coords, theta, opticalSystem);
-    unitRayFromPupilFunc = matlabFunction(outputRay);
-    clear outputRay theta pupilPointHeight
+[ cornealRayTraceFunc ] = createCornealRayTraceFunction( sceneGeometry );
     
     % Create a function that takes a fixed pupil height and a symbolic
     % theta
     
     syms theta_p1p2
     syms theta_p1p3
-    pupilPointHeight_p2 = 2;
-    pupilPointHeight_p3 = 0;
-    outputRayEyeWorld_p1p2 = unitRayFromPupilFunc(pupilPointHeight_p2, theta_p1p2);
-    outputRayEyeWorld_p1p3 = unitRayFromPupilFunc(pupilPointHeight_p3, theta_p1p3);
+    pupilPointHeight_p2 = eyeWorldCoordinate(2);
+    pupilPointHeight_p3 = eyeWorldCoordinate(3);
+    outputRayEyeWorld_p1p2 = cornealRayTraceFunc(pupilPointHeight_p2, theta_p1p2);
+    outputRayEyeWorld_p1p3 = cornealRayTraceFunc(pupilPointHeight_p3, theta_p1p3);
 
     % Adjust the p1 (optical axis) position of the p1p3 ray to have the
     % same initial p1 positio nas the p1p2 ray.
@@ -34,19 +25,33 @@ function displaceEyeCoordThroughCornea( sceneGeometry, eyeRotation )
     outputRayEyeWorld_p1p3(:,1)=outputRayEyeWorld_p1p3(:,1)+zOffset;
     outputRayEyeWorld_p1p3(:,2)=outputRayEyeWorld_p1p3(:,2)+(zOffset*slope);
     
-    outputRayHeadWorld = (eyeRotation*(outputRayEyeWorld-sceneGeometry.eye.rotationCenter)')'+sceneGeometry.eye.rotationCenter;
+    outputRayEyeWorld(1,:) = [outputRayEyeWorld_p1p2(1,1) outputRayEyeWorld_p1p2(1,2) outputRayEyeWorld_p1p3(1,2)] - sceneGeometry.eye.rotationCenter;
+    outputRayEyeWorld(2,:) = [outputRayEyeWorld_p1p2(2,1) outputRayEyeWorld_p1p2(2,2) outputRayEyeWorld_p1p3(2,2)] - sceneGeometry.eye.rotationCenter;
+        
+    outputRayHeadWorld = (eyeRotation*(outputRayEyeWorld)')';
+    
+    outputRayHeadWorld(1,:)=outputRayHeadWorld(1,:)+sceneGeometry.eye.rotationCenter;
+    outputRayHeadWorld(2,:)=outputRayHeadWorld(2,:)+sceneGeometry.eye.rotationCenter;
 
     % Re-arrange the head world coordinate frame to transform to the scene
-% world coordinate frame
+    % world coordinate frame
     outputRaySceneWorld = outputRayHeadWorld(:,[2 3 1]);
 
     % We reverse the direction of the Y axis so that positive elevation of the
     % eye corresponds to a movement of the pupil upward in the image
     outputRaySceneWorld(:,2) = outputRaySceneWorld(:,2)*(-1);
     
-    
-    
+    % Obtain an expression for X and Y distances between the nodal point of the camera in the sceneWorld plane and the
+    % point at which the ray will strike the plane that contains the camera
+    slope_xZ =(outputRaySceneWorld(2,1)-outputRaySceneWorld(1,1))/(outputRaySceneWorld(2,3)-outputRaySceneWorld(1,3));
+    slope_yZ =(outputRaySceneWorld(2,2)-outputRaySceneWorld(1,2))/(outputRaySceneWorld(2,3)-outputRaySceneWorld(1,3));
 
+    zCameraPlaneX = outputRaySceneWorld(1,1)+((sceneGeometry.extrinsicTranslationVector(3)-outputRaySceneWorld(1,3))*slope_xZ);
+    zCameraPlaneY = outputRaySceneWorld(1,2)+((sceneGeometry.extrinsicTranslationVector(3)-outputRaySceneWorld(1,3))*slope_yZ);
+    
+%    double(subs(zCameraPlaneX,theta_p1p2,pi/8))
+%    double(subs(zCameraPlaneY,[ theta_p1p2, theta_p1p3],[pi/8,0.0001]))
+   
 
 end
 
