@@ -12,18 +12,26 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
 %
 %   The equations assume a set of spherical surfaces, with each spherical
 %   surface having its center of curvature positioned on the optical axis.
-%   A ray is specified as originating from position 0 on the optical axis,
-%   traveling left-to-right, and making the angle theta with the optical
+%   The initial state of the ray is specified by its two-dimensional
+%   coordinates and by the angle (theta) that it makes with the optical
 %   axis. By convention, the optical axis is termed "z", and the orthogonal
-%   axis is termed "height". Positive values of theta correspond to the ray
-%   diverging to a position above the optical axis. Each spherical surface
-%   is specified by a center of curvature and a radius. The center of
-%   curvature must lie on the optical axis; positive values place the
-%   center to the right of the origin of the ray. A positive radius
-%   presents the ray with a convex surface; a negative radius presents the
-%   ray with a concave surface. The output of the routine is the position
-%   and angle at which the ray (or its reverse projection) intersects the
-%   optical axis.
+%   axis is termed "height". Positive values of z are to the right. A theta
+%   of zero indicates a ray that is parallel to the optical axis. Positive
+%   values of theta correspond to the ray diverging to a position above the
+%   optical axis. Each spherical surface is specified by a center of
+%   curvature and a radius. The center of curvature must lie on the optical
+%   axis; positive values place the center to the right of the origin of
+%   the ray. A positive radius presents the ray with a convex surface; a
+%   negative radius presents the ray with a concave surface. The output of
+%   the routine is the position and angle at which the ray (or its reverse
+%   projection) intersects the optical axis.
+%
+%   The routine is able to take symbolic variables for some or all of the
+%   input components. When the input contains a symbolic variable:
+%     - plotting is disabled
+%     - intersectionCoords are not calculated and instead returned as empty
+%     - checks for incidence angles above the critical angle or rays that
+%       miss an optical surface are not conducted
 %
 % Inputs:
 %   coordsInitial         - a 2x1 matrix, with the values corresponding to
@@ -332,6 +340,7 @@ for ii = 2:nSurfaces
             % If it returns only one coordinate the ray either was tangential
             % to the surface or missed entirely. We therefore exit the ray
             % tracing
+            warning('The ray is either tangential to or misses surface %d \n',ii);
             break
         end
     end
@@ -351,6 +360,7 @@ for ii = 2:nSurfaces
         end
     end
 end
+
 
 %% Finish and clean up
 % Assemble an output which is the unit vector for the final ray
@@ -379,7 +389,6 @@ if figureFlag.show
     end
     hold off
 end
-
 
 end % function
 
