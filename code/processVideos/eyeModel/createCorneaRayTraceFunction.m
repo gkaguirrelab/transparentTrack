@@ -1,4 +1,4 @@
-function [ cornealRayTraceFunc ] = createCornealRayTraceFunction( sceneGeometry )
+function [ corneaRayTraceFunc ] = createCorneaRayTraceFunction( sceneGeometry )
 
 % Assumes the output medium in which the camera resides is air (index of
 % refraction is 1.0)
@@ -11,7 +11,7 @@ function [ cornealRayTraceFunc ] = createCornealRayTraceFunction( sceneGeometry 
                      eye.corneaBackSurfaceCenter(1) -eye.corneaBackSurfaceRadius eye.corneaRefractiveIndex; ...
                      eye.corneaFrontSurfaceCenter(1) -eye.corneaFrontSurfaceRadius 1.0];
     outputRay = rayTraceCenteredSphericalSurfaces(coords, theta, opticalSystem);
-    cornealRayTraceFunc = matlabFunction(outputRay);
+    corneaRayTraceFunc = matlabFunction(outputRay);
 
 end
 
