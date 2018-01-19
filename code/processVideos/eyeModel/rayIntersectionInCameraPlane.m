@@ -1,22 +1,15 @@
-function displaceEyeCoordThroughCornea( eyeWorldCoord, sceneGeometry, eyeRotation )
+function [zCameraPlaneX,zCameraPlaneY] = rayIntersectionInCameraPlane( sceneGeometry, eyeRotation, corneaRayTraceFunc )
 %UNTITLED Summary of this function goes here
 %   Detailed explanation goes here
 
-%% Build a rayTrace function
-% This function traces a ray arising on the pupil through the cornea within
-% a plane that includes the optic axis of the eye and a "height" dimension
-
-[ cornealRayTraceFunc ] = createCornealRayTraceFunction( sceneGeometry );
-    
-    % Create a function that takes a fixed pupil height and a symbolic
-    % theta
+   
     
     syms theta_p1p2
     syms theta_p1p3
-    pupilPointHeight_p2 = eyeWorldCoordinate(2);
-    pupilPointHeight_p3 = eyeWorldCoordinate(3);
-    outputRayEyeWorld_p1p2 = cornealRayTraceFunc(pupilPointHeight_p2, theta_p1p2);
-    outputRayEyeWorld_p1p3 = cornealRayTraceFunc(pupilPointHeight_p3, theta_p1p3);
+    syms pupilPointHeight_p2;
+    syms pupilPointHeight_p3;
+    outputRayEyeWorld_p1p2 = corneaRayTraceFunc(pupilPointHeight_p2, theta_p1p2);
+    outputRayEyeWorld_p1p3 = corneaRayTraceFunc(pupilPointHeight_p3, theta_p1p3);
 
     % Adjust the p1 (optical axis) position of the p1p3 ray to have the
     % same initial p1 positio nas the p1p2 ray.
@@ -50,7 +43,7 @@ function displaceEyeCoordThroughCornea( eyeWorldCoord, sceneGeometry, eyeRotatio
     zCameraPlaneY = outputRaySceneWorld(1,2)+((sceneGeometry.extrinsicTranslationVector(3)-outputRaySceneWorld(1,3))*slope_yZ);
     
 %    double(subs(zCameraPlaneX,theta_p1p2,pi/8))
-%    double(subs(zCameraPlaneY,[ theta_p1p2, theta_p1p3],[pi/8,0.0001]))
+%    double(subs(zCameraPlaneY,[ theta_p1p2, theta_p1p3],[pi/8,0.01]))
    
 
 end
