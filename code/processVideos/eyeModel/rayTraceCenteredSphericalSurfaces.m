@@ -243,6 +243,7 @@ else
 end
 
 %% Initialize variables and plotting
+outputRay = [];
 nSurfaces = size(opticalSystemIn,1);
 
 % Set the values for at the first surface (initial position of ray)
@@ -296,8 +297,8 @@ for ii = 2:nSurfaces
     % are not working with symbolic variables
     if ~symbolicFlag
         if abs((aVals(ii)*relativeIndices(ii))) > 1
-            warning('Angle of incidence for surface %d greater than critical angle',ii);
-            break
+            warning('Angle of incidence for surface %d greater than critical angle. Returning.',ii);
+            return
         end
     end
     % Find the angle of the ray after it enters the current surface
@@ -329,7 +330,16 @@ for ii = 2:nSurfaces
             slope = intersectionCoords(ii-1,2)/(intersectionCoords(ii-1,1)-imageCoords(ii-1,1));
         end
         intercept = (0-imageCoords(ii-1))*slope;
-        [xout,yout] = linecirc(slope,intercept,opticalSystem(ii,1),0,abs(opticalSystem(ii,2)));
+        % Place the linecirc test in a try-catch block. There are
+        % circumstances in which the ray does not have a feasible
+        % intersection with the surface, resulting in an error from the
+        % linecirc function
+        try
+            [xout,yout] = linecirc(slope,intercept,opticalSystem(ii,1),0,abs(opticalSystem(ii,2)));
+        catch
+            warning('The ray is either tangential to or misses surface %d. Returning.',ii);
+            return
+        end
         % This next bit of logic figures out which of the two coordinates of
         % intersection of the ray with a sphere correspond to the one we want
         % for the lens
@@ -340,8 +350,8 @@ for ii = 2:nSurfaces
             % If it returns only one coordinate the ray either was tangential
             % to the surface or missed entirely. We therefore exit the ray
             % tracing
-            warning('The ray is either tangential to or misses surface %d \n',ii);
-            break
+            warning('The ray is either tangential to or misses surface %d. Returning.',ii);
+            return
         end
     end
     % Update the plot
