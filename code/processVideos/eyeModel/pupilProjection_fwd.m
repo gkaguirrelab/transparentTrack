@@ -1,4 +1,4 @@
-function [pupilEllipseOnImagePlane, eyeWorldPoints, imagePoints, pointLabels] = pupilProjection_fwd(eyeParams, sceneGeometry, fullEyeModel)
+function [pupilEllipseOnImagePlane, virtualEyeWorldPoints, imagePoints, pointLabels] = pupilProjection_fwd(eyeParams, sceneGeometry, corneaRayTraceFunc, fullEyeModel)
 % Project the pupil circle to an ellipse on the image plane
 %
 % Description:
@@ -65,8 +65,21 @@ function [pupilEllipseOnImagePlane, eyeWorldPoints, imagePoints, pointLabels] = 
 %
 
 %% Check the input
-% If a value was not passed for fullEyeModel, set to false.
-if nargin==2
+if nargin==0
+    % No inputs were provided
+    error('Provide the parameters for the pose of the eye [eyeAzimuth, eyeElevation, pupilRadius].');
+end
+if nargin==1
+    % No sceneGeometry was provided. Use the default settings
+    sceneGeometry = estimateSceneGeometry('','');
+end
+if nargin<=2
+    % No ray trace function was provided. Set to empty
+    corneaRayTraceFunc = [];
+    corneaRayTraceFunc = createCorneaRayTraceFunction( sceneGeometry );
+end
+if nargin<=3
+    % No valye was passed for the fullEyeModel flag. Set to false.
     fullEyeModel = false;
 end
 
@@ -113,7 +126,6 @@ eyeWorldPoints(1:nPupilPerimPoints,1) = ...
 tmpLabels = cell(nPupilPerimPoints, 1);
 tmpLabels(:) = {'pupilPerimeter'};
 pointLabels = tmpLabels;
-
 
 % If the fullEyeModel flag is set, then we will create a set of points that
 % define an anatomical model of the posterior and anterior chambers of the
@@ -263,8 +275,19 @@ R1 = [1 0 0; 0 cosd(eyeTorsion) -sind(eyeTorsion); 0 sind(eyeTorsion) cosd(eyeTo
 % rotation matrix and would corresponds to the "Fick coordinate" scheme.
 eyeRotation = R1*R2*R3;
 
+%% Prior to rotation, adjust the eyeWorld points for the refraction of the cornea
+if isempty(corneaRayTraceFunc)
+    virtualEyeWorldPoints = eyeWorldPoints;
+else
+    % Obtain the functions that calculate the intersection of the ray
+    % from an eyeWorldPoint on the camera plane
+    [zCameraPlaneX,zCameraPlaneY] = rayIntersectCameraPlane( sceneGeometry, eyeRotation, corneaRayTraceFunc );
+    % Find the virtual image points
+    virtualEyeWorldPoints = findVirtualImage( eyeWorldPoints, zCameraPlaneX, zCameraPlaneY, corneaRayTraceFunc);
+end
+
 % Apply the eye rotation to the pupil plane
-headWorldPoints = (eyeRotation*(eyeWorldPoints-sceneGeometry.eye.rotationCenter)')'+sceneGeometry.eye.rotationCenter;
+headWorldPoints = (eyeRotation*(virtualEyeWorldPoints-sceneGeometry.eye.rotationCenter)')'+sceneGeometry.eye.rotationCenter;
 
 
 %% Project the pupil circle points to sceneWorld coordinates.
@@ -364,10 +387,10 @@ imagePoints = (imagePointsNormalizedDistorted .* [sceneGeometry.intrinsicCameraM
 % circle on the image plane.
 pupilEllipseOnImagePlane = ellipse_ex2transparent(...
     ellipse_im2ex(...
-        ellipsefit_direct( imagePoints(1:nPupilPerimPoints,1), ...
-            imagePoints(1:nPupilPerimPoints,2)  ...
-            ) ...
-        )...
+    ellipsefit_direct( imagePoints(1:nPupilPerimPoints,1), ...
+    imagePoints(1:nPupilPerimPoints,2)  ...
+    ) ...
+    )...
     );
 
 % place theta within the range of 0 to pi
@@ -377,3 +400,58 @@ end
 
 end % pupilProjection_fwd
 
+
+%% LOCAL FUNCTIONS
+
+function virtualEyeWorldPoints = findVirtualImage( eyeWorldPoints, zCameraPlaneX, zCameraPlaneY, corneaRayTraceFunc )
+
+
+syms p1 p2 p3
+syms theta_p1p2 theta_p1p3
+
+for ii=1:size(eyeWorldPoints,1)
+    eyeWorldPoint=eyeWorldPoints(ii,:);
+    xErrorFunc = matlabFunction(abs(subs(zCameraPlaneX,[ p1, p2, theta_p1p2],[eyeWorldPoint(1), eyeWorldPoint(2), theta_p1p2])));
+    [solution_theta_p1p2, xError] = fminbnd(xErrorFunc,-(deg2rad(45)),(deg2rad(45)));
+    yErrorFunc = matlabFunction(abs(subs(zCameraPlaneY,[ p1, p2, p3, theta_p1p2, theta_p1p3],[eyeWorldPoint(1), eyeWorldPoint(2), eyeWorldPoint(3), solution_theta_p1p2, theta_p1p3])));
+    [solution_theta_p1p3, yError] = fminbnd(yErrorFunc,-(deg2rad(45)),(deg2rad(45)));
+    
+    % obtain the
+    virtualImageRay = corneaRayTraceFunc(eyeWorldPoint(1), eyeWorldPoint(2), eyeWorldPoint(3), solution_theta_p1p2, solution_theta_p1p3);
+    virtualEyeWorldPoints(ii,:) = virtualImageRay(1,:);
+end
+end
+
+
+function [zCameraPlaneX,zCameraPlaneY] = rayIntersectCameraPlane( sceneGeometry, eyeRotation, corneaRayTraceFunc )
+
+% Obtain the outputRay within the eye reference frame
+syms p1 p2 p3
+syms theta_p1p2 theta_p1p3
+outputRayEyeWorld = corneaRayTraceFunc(p1,p2,p3,theta_p1p2,theta_p1p3);
+
+% Shift the eyeWorld ray to the rotational center of the eye,
+% rotate for this eye pose, undo the centering
+outputRayHeadWorld(1,:)=outputRayEyeWorld(1,:)-sceneGeometry.eye.rotationCenter;
+outputRayHeadWorld(2,:)=outputRayEyeWorld(2,:)-sceneGeometry.eye.rotationCenter;
+outputRayHeadWorld = (eyeRotation*(outputRayHeadWorld)')';
+outputRayHeadWorld(1,:)=outputRayHeadWorld(1,:)+sceneGeometry.eye.rotationCenter;
+outputRayHeadWorld(2,:)=outputRayHeadWorld(2,:)+sceneGeometry.eye.rotationCenter;
+
+% Re-arrange the head world coordinate frame to transform to the scene
+% world coordinate frame
+outputRaySceneWorld = outputRayHeadWorld(:,[2 3 1]);
+
+% We reverse the direction of the Y axis so that positive elevation of the
+% eye corresponds to a movement of the pupil upward in the image
+outputRaySceneWorld(:,2) = outputRaySceneWorld(:,2)*(-1);
+
+% Obtain an expression for X and Y distances between the nodal point of the camera in the sceneWorld plane and the
+% point at which the ray will strike the plane that contains the camera
+slope_xZ =(outputRaySceneWorld(2,1)-outputRaySceneWorld(1,1))/(outputRaySceneWorld(2,3)-outputRaySceneWorld(1,3));
+slope_yZ =(outputRaySceneWorld(2,2)-outputRaySceneWorld(1,2))/(outputRaySceneWorld(2,3)-outputRaySceneWorld(1,3));
+
+zCameraPlaneX = outputRaySceneWorld(1,1)+((sceneGeometry.extrinsicTranslationVector(3)-outputRaySceneWorld(1,3))*slope_xZ);
+zCameraPlaneY = outputRaySceneWorld(1,2)+((sceneGeometry.extrinsicTranslationVector(3)-outputRaySceneWorld(1,3))*slope_yZ);
+
+end
