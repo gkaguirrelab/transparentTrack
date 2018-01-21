@@ -1,4 +1,4 @@
-function [pupilEllipseOnImagePlane, eyeWorldPoints, imagePoints, pointLabels, rayTraceErrors] = pupilProjection_fwd(eyeParams, sceneGeometry, rayTraceFuncs, fullEyeModelFlag)
+function [pupilEllipseOnImagePlane, eyeWorldPoints, imagePoints, pointLabels, rayTraceErrors] = pupilProjection_fwd(eyeParams, sceneGeometry, rayTraceFuncs, varargin)
 % Project the pupil circle to an ellipse on the image plane
 %
 % Description:
@@ -42,8 +42,20 @@ function [pupilEllipseOnImagePlane, eyeWorldPoints, imagePoints, pointLabels, ra
 %                               returned by modelEyeParameters(), with the
 %                               rotationCenter field adjusted by the
 %                               sceneGeometry search
-%   fullEyeModelFlag      - Logical. Determines if the full posterior and
+%   rayTraceFuncs         - A structure that contains handles to the ray
+%                           tracing functions created by
+%                           assembleRayTraceFuncs()
+%
+% Optional key/value pairs:
+%  'fullEyeModelFlag'     - Logical. Determines if the full posterior and
 %                           anterior chamber eye model will be created.
+%  'rayThetaResolution'   - The resolution at which theta values in the
+%                           ray tracing solution are optimized. The default
+%                           value corresponds to 1° of angular resolution.
+%  'maxAbsRayTheta'       - The maximum allowable absolute theta value.
+%                           This is set to less than pi, as the ray-tracing
+%                           equations become poorly behaved when rays
+%                           become close to vertical to the optical axis.   
 %
 % Outputs:
 %   pupilEllipseOnImagePlane - A 1x5 vector that contains the parameters of
@@ -64,27 +76,29 @@ function [pupilEllipseOnImagePlane, eyeWorldPoints, imagePoints, pointLabels, ra
 %                           'pupilPerimeter', 'anteriorChamber'}.
 %
 
+%% input parser
+p = inputParser; p.KeepUnmatched = true;
+
+% Required
+p.addRequired('eyeParams',@isnumeric);
+p.addRequired('sceneGeometry',@(x)(isempty(x) | isstruct(x)));
+p.addRequired('rayTraceFuncs',@(x)(isempty(x) | isstruct(x)));
+
+p.addParameter('fullEyeModelFlag',false,@islogical);
+p.addParameter('rayThetaResolution',pi/180,@isnumeric);
+p.addParameter('maxAbsRayTheta',8/9*pi,@isnumeric);
+
+% parse
+p.parse(eyeParams, sceneGeometry, rayTraceFuncs, varargin{:})
+
+
 %% Check the input
-if nargin==0
-    % No inputs were provided
-    error('Provide the parameters for the pose of the eye [eyeAzimuth, eyeElevation, pupilRadius].');
-end
-if nargin==1
+
+if isempty(sceneGeometry)
     % No sceneGeometry was provided. Use the default settings
     sceneGeometry = estimateSceneGeometry('','');
 end
-if nargin<=2
-    % No ray trace function was provided. Set to empty
-    rayTraceFuncs = [];
-end
-if nargin<=3
-    % No value was passed for the fullEyeModel flag. Set to false.
-    fullEyeModelFlag = false;
-end
 
-% This provides precision in the ray tracing to one tenth of a degree.
-rayThetaResolution = pi/18000;
-maxAbsRayTheta = 8/90*pi;
 
 %% Prepare variables
 % Separate the eyeParams into individual variables
@@ -132,7 +146,7 @@ pointLabels = tmpLabels;
 % If the fullEyeModel flag is set, then we will create a set of points that
 % define an anatomical model of the posterior and anterior chambers of the
 % eye.
-if fullEyeModelFlag
+if p.Results.fullEyeModelFlag
     
     % Add points for the center of the pupil, iris, and rotation
     eyeWorldPoints = [eyeWorldPoints; sceneGeometry.eye.pupilCenter];
@@ -281,7 +295,7 @@ eyeRotation = R1*R2*R3;
 %% Obtain the virtual image for the eyeWorld points
 % This steps accounts for the effect of corneal refraction upon the
 % appearance of points from the iris and pupil
-rayTraceError = nan(size(eyeWorldPoints,1),1);
+rayTraceErrors = nan(size(eyeWorldPoints,1),1);
 if ~isempty(rayTraceFuncs)
     % Identify the eyeWorldPoints that are subject to refraction by the cornea
     idx = find(strcmp(pointLabels,'pupilPerimeter')+...
@@ -292,8 +306,9 @@ if ~isempty(rayTraceFuncs)
     % ray departing the eyeWorldPoint makes with the optic axis of th eye.
     % We exclude a theta of exactly zero as the equations are undefined at
     % that value.
-    candidateThetas=[-maxAbsRayTheta:rayThetaResolution:-rayThetaResolution ...
-        rayThetaResolution:rayThetaResolution:maxAbsRayTheta];
+    candidateThetas=[-p.Results.maxAbsRayTheta:p.Results.rayThetaResolution:-p.Results.rayThetaResolution ...
+        p.Results.rayThetaResolution:p.Results.rayThetaResolution:p.Results.maxAbsRayTheta];
+    % Loop through the eyeWorldPoints that are to be refracted
     for ii=1:length(idx)
         eyeWorldPoint=eyeWorldPoints(ii,:);
         errorFunc = @(theta) rayTraceFuncs.cameraNodeDistanceError2D.p1p2(...
