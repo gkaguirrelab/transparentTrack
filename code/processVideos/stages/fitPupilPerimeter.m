@@ -132,13 +132,14 @@ nEllipseParams=5; % 5 params in the transparent ellipse form
 nEyeParams=3; % 3 values (azimuth, elevation, pupil radius) for eyeParams
 
 
-%% Load the pupil perimeter data and optionally sceneGeometry
+%% Load data
 % Load the pupil perimeter data. It will be a structure variable
 % "perimeter", with the fields .data and .meta
 dataLoad=load(perimeterFileName);
 perimeter=dataLoad.perimeter;
 clear dataLoad
 
+% Optionally load a sceneGeometry file
 if isempty(p.Results.sceneGeometryFileName)
     sceneGeometry=[];
 else
@@ -146,6 +147,15 @@ else
     dataLoad=load(p.Results.sceneGeometryFileName);
     sceneGeometry=dataLoad.sceneGeometry;
     clear dataLoad
+end
+
+% Optionally load the pupilData file
+if exist(p.Results.pupilFileName, 'file') == 2
+    dataLoad=load(pupilFileName);
+    pupilData=dataLoad.pupilData;
+    clear dataLoad
+else
+    pupilData=[];
 end
 
 % determine how many frames we will process
@@ -160,8 +170,12 @@ end
 % Create an anonymous function to return a rotation matrix given theta in
 % radians
 returnRotMat = @(theta) [cos(theta) -sin(theta); sin(theta) cos(theta)];
+
 % If sceneGeometry is defined, prepare the ray tracing functions
 if ~isempty(sceneGeometry)
+    if strcmp(p.Results.verbosity,'full')
+        fprintf('Assembling ray tracing functions.\n');
+    end
     [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
 else
     rayTraceFuncs = [];
@@ -227,8 +241,9 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 % Loop through the frames
-parfor (ii = 1:nFrames, nWorkers)
-    
+%parfor (ii = 1:nFrames, nWorkers)
+for ii = 1:nFrames
+        
     % Update progress
     if strcmp(verbosity,'full')
         if mod(ii,round(nFrames/50))==0
@@ -262,8 +277,19 @@ parfor (ii = 1:nFrames, nWorkers)
                     ellipseTransparentUB, ...
                     []);
             else
+                % Obtain a first guess by running the inverse projection on
+                % the initial ellipse fit parameters without ray tracing
+                eyeParams_x0 = [0 0 2];
+                if ~isempty(pupilData)
+                    if isfield(pupilData, 'initial')
+                        eyeParams_x0 = pupilProjection_inv(pupilData.initial.ellipse.values(ii,:), sceneGeometry, []);
+                    end
+                end
+                % Identify the best fitting eye parameters for the  the
+                % pupil perimeter
                 [eyeParams, eyeParamsObjectiveError] = ...
-                    eyeParamEllipseFit(Xp, Yp, sceneGeometry, 'eyeParamsLB', eyeParamsLB, 'eyeParamsUB', eyeParamsUB);
+                    eyeParamEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs, 'x0', eyeParams_x0, 'eyeParamsLB', eyeParamsLB, 'eyeParamsUB', eyeParamsUB);
+                % Obtain the parameters of the ellipse
                 ellipseParamsTransparent = ...
                     pupilProjection_fwd(eyeParams, sceneGeometry, rayTraceFuncs);
             end
@@ -309,11 +335,11 @@ parfor (ii = 1:nFrames, nWorkers)
                             []);
                     else
                         pFitEyeParamSplit(1,ss,:) = ...
-                            eyeParamEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry, 'eyeParamsLB', eyeParamsLB, 'eyeParamsUB', eyeParamsUB);
+                            eyeParamEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry, rayTraceFuncs, 'x0', eyeParams, 'eyeParamsLB', eyeParamsLB, 'eyeParamsUB', eyeParamsUB);
                         pFitTransparentSplit(1,ss,:) = ...
                             pupilProjection_fwd(pFitEyeParamSplit(1,ss,:), sceneGeometry, rayTraceFuncs);
                         pFitEyeParamSplit(2,ss,:) = ...
-                            eyeParamEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry, 'eyeParamsLB', eyeParamsLB, 'eyeParamsUB', eyeParamsUB);
+                            eyeParamEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry, rayTraceFuncs, 'x0', eyeParams, 'eyeParamsLB', eyeParamsLB, 'eyeParamsUB', eyeParamsUB);
                         pFitTransparentSplit(2,ss,:) = ...
                             pupilProjection_fwd(pFitEyeParamSplit(2,ss,:), sceneGeometry, rayTraceFuncs);
                     end
@@ -349,15 +375,6 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 %% Clean up and save
-
-% Check if the pupilData file already exists. If so, load it. This allows
-% us to preserve the Unconstrained results when a subsequent, sceneGeometry
-% constrained fit is constructed.
-if exist(p.Results.pupilFileName, 'file') == 2
-    dataLoad=load(pupilFileName);
-    pupilData=dataLoad.pupilData;
-    clear dataLoad
-end
 
 % Establish a label to save the fields of the ellipse fit data
 if isempty(p.Results.ellipseFitLabel)
