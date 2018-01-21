@@ -1,4 +1,4 @@
-function [eyeParams, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, varargin)
+function [eyeParams, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs, varargin)
 % Project an ellipse on the image plane to a pupil circle in the scene
 %
 % Description:
@@ -43,6 +43,7 @@ function [eyeParams, bestMatchEllipseOnImagePlane, centerError, shapeError, area
 %                               expressed as a proportion, that defines the
 %                               tolerance for violation of the nonlinear
 %                               constraints on ellipse shape and area.
+%   rayTraceFuncs         - DESCRIBE
 %
 % Optional key/value pairs:
 %  'x0'                   - Starting point of the search for the eyeParams.
@@ -88,6 +89,7 @@ p = inputParser;
 % Required input
 p.addRequired('pupilEllipseOnImagePlane',@isnumeric);
 p.addRequired('sceneGeometry',@isstruct);
+p.addRequired('rayTraceFuncs',@(x)(isempty(x) | isstruct(x)));
 
 % Optional params
 p.addParameter('x0',[],@(x)(isempty(x) | isnumeric(x)));
@@ -97,7 +99,7 @@ p.addParameter('centerErrorThreshold',1e-4,@isnumeric);
 p.addParameter('constraintTolerance',[],@(x)(isempty(x) | isnumeric(x)));
 
 % Parse and check the parameters
-p.parse(pupilEllipseOnImagePlane, sceneGeometry, varargin{:});
+p.parse(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs, varargin{:});
 
 
 %% Check inputs and handle immediate exits
@@ -144,7 +146,8 @@ end
 if isempty(p.Results.x0)
     % Probe the forward model to determine how many pixels of change in the
     % location of the pupil ellipse correspond to one degree of rotation.
-    probeEllipse=pupilProjection_fwd([1 0 2],sceneGeometry);
+    % Omit ray-tracing for speed.
+    probeEllipse=pupilProjection_fwd([1 0 2],sceneGeometry, []);
     pixelsPerDeg = probeEllipse(1)-CoP(1);
     
     % Estimate the eye azimuth and elevation by the X and Y displacement of
@@ -159,8 +162,8 @@ if isempty(p.Results.x0)
     pupilRadiusPixels = sqrt(pupilEllipseOnImagePlane(3) / (pi * ellipseAspectRatio));
     
     % Probe the forward model at the estimated Azimuth and Elevation to
-    % estimate the pupil radius.
-    probeEllipse=pupilProjection_fwd([x0(1) x0(2) 2],sceneGeometry);
+    % estimate the pupil radius. Omit ray-tracing for speed.
+    probeEllipse=pupilProjection_fwd([x0(1) x0(2) 2], sceneGeometry, []);
     pixelsPerMM = sqrt(probeEllipse(3)/pi)/2;
     
     % Set the initial value for pupil radius in mm
@@ -215,7 +218,7 @@ constraintFun = @constr; % the constraint function, nested below
 
     function fval = objfun(x)
         if ~isequal(x,xLast) % Check if computation is necessary
-            nestedCandidateEllipse = pupilProjection_fwd(x, nestedSceneGeometry);
+            nestedCandidateEllipse = pupilProjection_fwd(x, nestedSceneGeometry, rayTraceFuncs);
             xLast = x;
         end
         % Compute objective function as Euclidean distance in the target
@@ -226,7 +229,7 @@ constraintFun = @constr; % the constraint function, nested below
 
     function [c,ceq] = constr(x)
         if ~isequal(x,xLast) % Check if computation is necessary
-            nestedCandidateEllipse = pupilProjection_fwd(x, nestedSceneGeometry);
+            nestedCandidateEllipse = pupilProjection_fwd(x, nestedSceneGeometry, rayTraceFuncs);
             xLast = x;
         end
         % c:
