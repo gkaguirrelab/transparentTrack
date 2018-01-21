@@ -1,4 +1,4 @@
-function [pupilEllipseOnImagePlane, virtualEyeWorldPoints, imagePoints, pointLabels] = pupilProjection_fwd(eyeParams, sceneGeometry, rayTraceFuncs, fullEyeModelFlag)
+function [pupilEllipseOnImagePlane, eyeWorldPoints, imagePoints, pointLabels, rayTraceErrors] = pupilProjection_fwd(eyeParams, sceneGeometry, rayTraceFuncs, fullEyeModelFlag)
 % Project the pupil circle to an ellipse on the image plane
 %
 % Description:
@@ -281,7 +281,6 @@ eyeRotation = R1*R2*R3;
 %% Obtain the virtual image for the eyeWorld points
 % This steps accounts for the effect of corneal refraction upon the
 % appearance of points from the iris and pupil
-virtualEyeWorldPoints = eyeWorldPoints;
 rayTraceError = nan(size(eyeWorldPoints,1),1);
 if ~isempty(rayTraceFuncs)
     % Identify the eyeWorldPoints that are subject to refraction by the cornea
@@ -318,20 +317,20 @@ if ~isempty(rayTraceFuncs)
         [~,idx]=min(errorFunc(candidateThetas));
         theta_p1p3=candidateThetas(idx);
         virtualImageRay = rayTraceFuncs.virtualImageRay(eyeWorldPoint(1), eyeWorldPoint(2), eyeWorldPoint(3), theta_p1p2, theta_p1p3);
-        virtualEyeWorldPoints(ii,:) = virtualImageRay(1,:);
-        rayTraceError = rayTraceFuncs.cameraNodeDistanceError3D(...
+        eyeWorldPoints(ii,:) = virtualImageRay(1,:);
+        rayTraceErrors = rayTraceFuncs.cameraNodeDistanceError3D(...
             sceneGeometry.extrinsicTranslationVector(1),...
             sceneGeometry.extrinsicTranslationVector(2),...
             sceneGeometry.extrinsicTranslationVector(3),...
             deg2rad(eyeAzimuth), deg2rad(eyeElevation),...
             eyeWorldPoint(1),eyeWorldPoint(2),eyeWorldPoint(3),...
             sceneGeometry.eye.rotationCenter(1),...
-            theta_p1p2, theta_p1p3)
+            theta_p1p2, theta_p1p3);
     end
 end
 
 % Apply the eye rotation to the pupil plane
-headWorldPoints = (eyeRotation*(virtualEyeWorldPoints-sceneGeometry.eye.rotationCenter)')'+sceneGeometry.eye.rotationCenter;
+headWorldPoints = (eyeRotation*(eyeWorldPoints-sceneGeometry.eye.rotationCenter)')'+sceneGeometry.eye.rotationCenter;
 
 
 %% Project the pupil circle points to sceneWorld coordinates.
