@@ -163,6 +163,8 @@ returnRotMat = @(theta) [cos(theta) -sin(theta); sin(theta) cos(theta)];
 % If sceneGeometry is defined, prepare the ray tracing functions
 if ~isempty(sceneGeometry)
     [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
+else
+    rayTraceFuncs = [];
 end
 
 
