@@ -146,6 +146,9 @@ if ~isfield(pupilData.(p.Results.ellipseFitLabel).eyeParams,'splitsSD')
 end
 
 % Assemble the ray tracing functions
+if strcmp(p.Results.verbosity,'full')
+    fprintf('Assembling ray tracing functions.\n');
+end
 [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
 
 %% Set up the parallel pool
@@ -325,7 +328,7 @@ parfor (ii = 1:nFrames, nWorkers)
         x0 = pupilData.(ellipseFitLabel).eyeParams.values(ii,:);
         x0(3)=posteriorPupilRadius;
         [posteriorEyeParams, posteriorEyeParamsObjectiveError] = ...
-            eyeParamEllipseFit(Xp, Yp, sceneGeometry, 'eyeParamsLB', lb_pin, 'eyeParamsUB', ub_pin, 'x0', x0 );
+            eyeParamEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs, 'eyeParamsLB', lb_pin, 'eyeParamsUB', ub_pin, 'x0', x0 );
         posteriorEllipseParams = pupilProjection_fwd(posteriorEyeParams, sceneGeometry, rayTraceFuncs);
         
     end % check if there are any perimeter points to fit

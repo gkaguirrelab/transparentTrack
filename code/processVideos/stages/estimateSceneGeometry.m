@@ -218,8 +218,17 @@ p.addParameter('nBinsPerDimension',10,@isnumeric);
 p.parse(pupilFileName, sceneGeometryFileName, varargin{:})
 
 
-%% Create the initial sceneGeometry structure and bounds
-% sceneGeometry
+%% Announce we are starting
+if strcmp(p.Results.verbosity,'full')
+    tic
+    fprintf(['Estimating scene geometry from pupil ellipses. Started ' char(datetime('now')) '\n']);
+end
+
+%% Create initial sceneGeometry structure and ray tracing functions
+% Announce
+if strcmp(p.Results.verbosity,'full')
+    fprintf('Creating initial scene geometry.\n');
+end
 initialSceneGeometry.radialDistortionVector = p.Results.radialDistortionVector;
 initialSceneGeometry.intrinsicCameraMatrix = p.Results.intrinsicCameraMatrix;
 initialSceneGeometry.extrinsicTranslationVector = p.Results.extrinsicTranslationVector;
@@ -238,12 +247,12 @@ if isempty(pupilFileName)
     return
 end
 
-
-%% Announce we are starting
+% Assemble the ray tracing functions
 if strcmp(p.Results.verbosity,'full')
-    tic
-    fprintf(['Estimating scene geometry from pupil ellipses. Started ' char(datetime('now')) '\n']);
+    fprintf('Assembling ray tracing functions.\n');
 end
+[rayTraceFuncs] = assembleRayTraceFuncs( initialSceneGeometry );
+
 
 
 %% Set up the parallel pool
@@ -305,6 +314,10 @@ if ~isempty(p.Results.ellipseArrayList)
     Xedges = [];
     Yedges = [];
 else
+    if strcmp(p.Results.verbosity,'full')
+        fprintf('Selecting ellipses to guide the search.\n');
+    end
+
     % First we divide the ellipse centers amongst a set of 2D bins across image
     % space. We will ultimately minimize the fitting error across bins
     [ellipseCenterCounts,Xedges,Yedges,binXidx,binYidx] = ...
@@ -336,9 +349,12 @@ errorWeights=errorWeights./mean(errorWeights);
 
 
 %% Perform the search
+if strcmp(p.Results.verbosity,'full')
+    fprintf('Searching over camera translation and eye rotation center.\n');
+end
 % Call out to the local function that performs the serach
 sceneGeometry = ...
-    performSceneSearch(initialSceneGeometry, ...
+    performSceneSearch(initialSceneGeometry, rayTraceFuncs, ...
     ellipses(ellipseArrayList,:), ...
     errorWeights, ...
     sceneParamsLB, ...
@@ -359,7 +375,7 @@ end
 
 %% Create a sceneGeometry plot
 if ~isempty(p.Results.sceneDiagnosticPlotFileName)
-    saveSceneDiagnosticPlot(ellipses(ellipseArrayList,:), Xedges, Yedges, sceneGeometry, p.Results.sceneDiagnosticPlotFileName)
+    saveSceneDiagnosticPlot(ellipses(ellipseArrayList,:), Xedges, Yedges, sceneGeometry, rayTraceFuncs, p.Results.sceneDiagnosticPlotFileName)
 end
 
 
@@ -393,7 +409,7 @@ end % main function
 
 %% LOCAL FUNCTIONS
 
-function sceneGeometry = performSceneSearch(initialSceneGeometry, ellipses, errorWeights, sceneParamsLB, sceneParamsUB, eyeParamsLB, eyeParamsUB)
+function sceneGeometry = performSceneSearch(initialSceneGeometry, rayTraceFuncs, ellipses, errorWeights, sceneParamsLB, sceneParamsUB, eyeParamsLB, eyeParamsUB)
 % Pattern search for best fitting sceneGeometry parameters
 %
 % Description:
@@ -436,7 +452,7 @@ x0 = [initialSceneGeometry.extrinsicTranslationVector; -initialSceneGeometry.eye
 
 % Define search options
 options = optimoptions(@patternsearch, ...
-    'Display','off',...
+    'Display','iter',...
     'AccelerateMesh',false,...
     'Cache','on',...
     'CompleteSearch','on',...
@@ -460,7 +476,7 @@ areaErrorByEllipse=[];
             arrayfun(@(x) pupilProjection_inv...
             (...
                 ellipses(x,:),...
-                candidateSceneGeometry,...
+                candidateSceneGeometry, rayTraceFuncs, ...
                 'constraintTolerance', candidateSceneGeometry.constraintTolerance,...
                 'eyeParamsLB',eyeParamsLB,...
                 'eyeParamsUB',eyeParamsUB...
@@ -508,7 +524,7 @@ sceneGeometry.meta.estimateGeometry.search.areaErrorByEllipse = areaErrorByEllip
 end % local search function
 
 
-function [] = saveSceneDiagnosticPlot(ellipses, Xedges, Yedges, sceneGeometry, sceneDiagnosticPlotFileName)
+function [] = saveSceneDiagnosticPlot(ellipses, Xedges, Yedges, sceneGeometry, rayTraceFuncs, sceneDiagnosticPlotFileName)
 % Creates and saves a plot that illustrates the sceneGeometry results
 %
 % Inputs:
@@ -570,6 +586,7 @@ hold on
     (...
     ellipses(x,:),...
     sceneGeometry,...
+    rayTraceFuncs,...
     'constraintTolerance', sceneGeometry.constraintTolerance...
     ),...
     1:1:size(ellipses,1),'UniformOutput',false);
@@ -591,7 +608,7 @@ for ii=1:size(ellipses,1)
 end
 
 % plot the estimated center of rotation of the eye
-rotationCenterEllipse = pupilProjection_fwd([0 0 2], sceneGeometry);
+rotationCenterEllipse = pupilProjection_fwd([0 0 2], sceneGeometry, rayTraceFuncs);
 plot(rotationCenterEllipse(1),rotationCenterEllipse(2), '+g', 'MarkerSize', 5);
 
 % Calculate the plot limits
