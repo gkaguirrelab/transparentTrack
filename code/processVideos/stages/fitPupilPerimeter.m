@@ -131,10 +131,6 @@ p.parse(perimeterFileName, pupilFileName, varargin{:});
 nEllipseParams=5; % 5 params in the transparent ellipse form
 nEyeParams=3; % 3 values (azimuth, elevation, pupil radius) for eyeParams
 
-%% Prepare some anonymous functions
-% Create an anonymous function to return a rotation matrix given theta in
-% radians
-returnRotMat = @(theta) [cos(theta) -sin(theta); sin(theta) cos(theta)];
 
 %% Load the pupil perimeter data and optionally sceneGeometry
 % Load the pupil perimeter data. It will be a structure variable
@@ -157,6 +153,16 @@ if p.Results.nFrames == Inf
     nFrames=size(perimeter.data,1);
 else
     nFrames = p.Results.nFrames;
+end
+
+
+%% Prepare some functions
+% Create an anonymous function to return a rotation matrix given theta in
+% radians
+returnRotMat = @(theta) [cos(theta) -sin(theta); sin(theta) cos(theta)];
+% If sceneGeometry is defined, prepare the ray tracing functions
+if ~isempty(sceneGeometry)
+    [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
 end
 
 
@@ -257,7 +263,7 @@ parfor (ii = 1:nFrames, nWorkers)
                 [eyeParams, eyeParamsObjectiveError] = ...
                     eyeParamEllipseFit(Xp, Yp, sceneGeometry, 'eyeParamsLB', eyeParamsLB, 'eyeParamsUB', eyeParamsUB);
                 ellipseParamsTransparent = ...
-                    pupilProjection_fwd(eyeParams, sceneGeometry);
+                    pupilProjection_fwd(eyeParams, sceneGeometry, rayTraceFuncs);
             end
             
             % Re-calculate fit for splits of data points, if requested
@@ -303,11 +309,11 @@ parfor (ii = 1:nFrames, nWorkers)
                         pFitEyeParamSplit(1,ss,:) = ...
                             eyeParamEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry, 'eyeParamsLB', eyeParamsLB, 'eyeParamsUB', eyeParamsUB);
                         pFitTransparentSplit(1,ss,:) = ...
-                            pupilProjection_fwd(pFitEyeParamSplit(1,ss,:), sceneGeometry);
+                            pupilProjection_fwd(pFitEyeParamSplit(1,ss,:), sceneGeometry, rayTraceFuncs);
                         pFitEyeParamSplit(2,ss,:) = ...
                             eyeParamEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry, 'eyeParamsLB', eyeParamsLB, 'eyeParamsUB', eyeParamsUB);
                         pFitTransparentSplit(2,ss,:) = ...
-                            pupilProjection_fwd(pFitEyeParamSplit(2,ss,:), sceneGeometry);
+                            pupilProjection_fwd(pFitEyeParamSplit(2,ss,:), sceneGeometry, rayTraceFuncs);
                     end
                 end % loop through splits
                 

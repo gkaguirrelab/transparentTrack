@@ -69,6 +69,9 @@ dataLoad = load(p.Results.sceneGeometryFileName);
 sceneGeometry = dataLoad.sceneGeometry;
 clear dataLoad
 
+% Assemble the ray tracing functions
+[rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
+
 % Open a video object for writing
 if p.Results.saveCompressedVideo
     videoOutObj = VideoWriter(videoOutFileName);
@@ -118,7 +121,7 @@ for ii = 1:nFrames
     if ~any(isnan(eyeParams(ii,:)))
         
         % Obtain the pupilProjection of the model eye to the image plane
-        [~, ~, imagePoints, pointLabels] = pupilProjection_fwd(eyeParams(ii,:), sceneGeometry, true);
+        [~, ~, imagePoints, pointLabels] = pupilProjection_fwd(eyeParams(ii,:), sceneGeometry, rayTraceFuncs, true);
         
         % Loop through the point labels present in the eye model
         for pp = 1:length(p.Results.labelNames)

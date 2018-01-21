@@ -104,6 +104,7 @@ p.addParameter('likelihoodErrorExponent',1.0,@isnumeric);
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
 p.addParameter('ellipseFitLabel','sceneConstrained',@ischar);
 
+
 %% Parse and check the parameters
 p.parse(perimeterFileName, pupilFileName, sceneGeometryFileName, varargin{:});
 
@@ -144,6 +145,8 @@ if ~isfield(pupilData.(p.Results.ellipseFitLabel).eyeParams,'splitsSD')
     error('This fit field does not have the required subfield: eyeParams.splitsSD');
 end
 
+% Assemble the ray tracing functions
+[rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
 
 %% Set up the parallel pool
 if p.Results.useParallel
@@ -191,6 +194,7 @@ eyeParamsLB = p.Results.eyeParamsLB;
 eyeParamsUB = p.Results.eyeParamsUB;
 badFrameErrorThreshold = p.Results.badFrameErrorThreshold;
 ellipseFitLabel = p.Results.ellipseFitLabel;
+
 
 %% Conduct empirical Bayes smoothing
 
@@ -322,7 +326,7 @@ parfor (ii = 1:nFrames, nWorkers)
         x0(3)=posteriorPupilRadius;
         [posteriorEyeParams, posteriorEyeParamsObjectiveError] = ...
             eyeParamEllipseFit(Xp, Yp, sceneGeometry, 'eyeParamsLB', lb_pin, 'eyeParamsUB', ub_pin, 'x0', x0 );
-        posteriorEllipseParams = pupilProjection_fwd(posteriorEyeParams, sceneGeometry);
+        posteriorEllipseParams = pupilProjection_fwd(posteriorEyeParams, sceneGeometry, rayTraceFuncs);
         
     end % check if there are any perimeter points to fit
     
