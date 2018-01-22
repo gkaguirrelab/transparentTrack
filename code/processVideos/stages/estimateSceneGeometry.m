@@ -205,11 +205,11 @@ p.addParameter('extrinsicTranslationVectorLB',[-10; -10; 100],@isnumeric);
 p.addParameter('extrinsicTranslationVectorUB',[10; 10; 180],@isnumeric);
 p.addParameter('spectacleRefractionDiopters',0,@isnumeric);
 p.addParameter('rotationCenterDepth',13.0,@isnumeric);
-p.addParameter('rotationCenterDepthLB',12.5,@isnumeric);
+p.addParameter('rotationCenterDepthLB',12.0,@isnumeric);
 p.addParameter('rotationCenterDepthUB',15.0,@isnumeric);
 p.addParameter('constraintTolerance',0.02,@isnumeric);
 p.addParameter('eyeParamsLB',[-35,-25,0.5],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('eyeParamsUB',[35,25,5],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('eyeParamsUB',[35,25,4],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('ellipseFitLabel','initial',@ischar);
 p.addParameter('ellipseArrayList',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nBinsPerDimension',10,@isnumeric);
@@ -375,6 +375,9 @@ end
 
 %% Create a sceneGeometry plot
 if ~isempty(p.Results.sceneDiagnosticPlotFileName)
+    if strcmp(p.Results.verbosity,'full')
+    fprintf('Creating a sceneGeometry diagnostic plot.\n');
+    end
     saveSceneDiagnosticPlot(ellipses(ellipseArrayList,:), Xedges, Yedges, sceneGeometry, rayTraceFuncs, p.Results.sceneDiagnosticPlotFileName)
 end
 
