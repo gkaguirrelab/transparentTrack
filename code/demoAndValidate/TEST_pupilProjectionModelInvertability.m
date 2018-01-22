@@ -23,6 +23,8 @@
 % file that contains the default parameters.
 sceneGeometry = estimateSceneGeometry([],[]);
 
+%% Obtain the ray tracing functions
+rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
 
 %% Define some variables
 pupilRadiusMM = 2;
@@ -38,14 +40,17 @@ for thisAzimuth = -35:5:35
         eyeParams=[thisAzimuth,thisElevation,pupilRadiusMM];
         
         % Forward projection from eyeParams to image ellipse
-        pupilEllipseOnImagePlane = pupilProjection_fwd(eyeParams, sceneGeometry);
+        tic
+        pupilEllipseOnImagePlane = pupilProjection_fwd(eyeParams, sceneGeometry, rayTraceFuncs);
+        toc
         
         % Inverse projection from image ellipse to eyeParams
-        reconstructedEyeParams = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry);
+        tic
+        reconstructedEyeParams = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs);
+        toc
         
         % Calculate and save the error
         eyeParamErrors = [eyeParamErrors; eyeParams-reconstructedEyeParams];
-        
     end
 end
 
