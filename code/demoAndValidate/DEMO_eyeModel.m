@@ -22,8 +22,8 @@ pathParams.dataOutputDirFull = fullfile(sandboxDir);
 
 %% Create a pupilData file with simulated eye positions
 idx = 1;
-for thisAzimuth = -35:5:35
-    for thisElevation = -25:5:25
+for thisElevation = -25:5:25
+    for thisAzimuth = -35:5:35
         for thisPupilRadius = 1:0.5:3
             eyeParams=[thisAzimuth,thisElevation,thisPupilRadius];
             pupilData.radiusSmoothed.eyeParams.values(idx,:)= eyeParams;
