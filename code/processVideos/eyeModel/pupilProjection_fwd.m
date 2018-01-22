@@ -1,4 +1,4 @@
-function [pupilEllipseOnImagePlane, eyeWorldPoints, imagePoints, pointLabels, rayTraceErrors] = pupilProjection_fwd(eyeParams, sceneGeometry, rayTraceFuncs, varargin)
+function [pupilEllipseOnImagePlane, eyeWorldPoints, imagePoints, pointLabels] = pupilProjection_fwd(eyeParams, sceneGeometry, rayTraceFuncs, varargin)
 % Project the pupil circle to an ellipse on the image plane
 %
 % Description:
@@ -49,13 +49,6 @@ function [pupilEllipseOnImagePlane, eyeWorldPoints, imagePoints, pointLabels, ra
 % Optional key/value pairs:
 %  'fullEyeModelFlag'     - Logical. Determines if the full posterior and
 %                           anterior chamber eye model will be created.
-%  'rayThetaResolution'   - The resolution at which theta values in the
-%                           ray tracing solution are optimized. The default
-%                           value corresponds to 1° of angular resolution.
-%  'maxAbsRayTheta'       - The maximum allowable absolute theta value.
-%                           This is set to less than pi, as the ray-tracing
-%                           equations become poorly behaved when rays
-%                           become close to vertical to the optical axis.   
 %
 % Outputs:
 %   pupilEllipseOnImagePlane - A 1x5 vector that contains the parameters of
@@ -85,8 +78,10 @@ p.addRequired('sceneGeometry',@(x)(isempty(x) | isstruct(x)));
 p.addRequired('rayTraceFuncs',@(x)(isempty(x) | isstruct(x)));
 
 p.addParameter('fullEyeModelFlag',false,@islogical);
-p.addParameter('rayThetaResolution',pi/12,@isnumeric);
-p.addParameter('maxAbsRayTheta',8/9*pi,@isnumeric);
+p.addParameter('nPupilPerimPoints',5,@isnumeric);
+p.addParameter('nIrisPerimPoints',5,@isnumeric);
+p.addParameter('posteriorChamberEllipsoidPoints',30,@isnumeric);
+p.addParameter('anteriorChamberEllipsoidPoints',30,@isnumeric);
 
 % parse
 p.parse(eyeParams, sceneGeometry, rayTraceFuncs, varargin{:})
@@ -105,7 +100,7 @@ end
 eyeAzimuth = eyeParams(1);
 eyeElevation = eyeParams(2);
 pupilRadius = eyeParams(3);
-
+nPupilPerimPoints = p.Results.nPupilPerimPoints;
 
 %% Define an eye in eyeWorld coordinates
 % This coordinate frame is in mm units and has the dimensions (p1,p2,p3).
@@ -129,7 +124,6 @@ pupilRadius = eyeParams(3);
 
 % Five points are defined around the pupil circle, which uniquely
 % constrains the ellipse in the image plane.
-nPupilPerimPoints = 5;
 perimeterPointAngles = 0:2*pi/nPupilPerimPoints:2*pi-(2*pi/nPupilPerimPoints);
 eyeWorldPoints(1:nPupilPerimPoints,3) = ...
     sin(perimeterPointAngles)*pupilRadius + sceneGeometry.eye.pupilCenter(3);
@@ -166,7 +160,7 @@ if p.Results.fullEyeModelFlag
         sceneGeometry.eye.posteriorChamberRadii(3), ...
         sceneGeometry.eye.posteriorChamberRadii(2), ...
         sceneGeometry.eye.posteriorChamberRadii(1), ...
-        30);
+        p.Results.posteriorChamberEllipsoidPoints);
     % Convert the surface matrices to a vector of points and switch the
     % axes back
     ansTmp = surf2patch(p1tmp, p2tmp, p3tmp);
@@ -189,8 +183,8 @@ if p.Results.fullEyeModelFlag
     tmpLabels(:) = {'posteriorChamber'};
     pointLabels = [pointLabels; tmpLabels];
     
-    % Define 5 points around the perimeter of the iris
-    nIrisPerimPoints = 5;
+    % Define points around the perimeter of the iris
+    nIrisPerimPoints = p.Results.nIrisPerimPoints;
     perimeterPointAngles = 0:2*pi/nIrisPerimPoints:2*pi-(2*pi/nIrisPerimPoints);
     irisPoints(1:nIrisPerimPoints,3) = ...
         sin(perimeterPointAngles)*sceneGeometry.eye.irisRadius + sceneGeometry.eye.irisCenter(3);
@@ -213,7 +207,7 @@ if p.Results.fullEyeModelFlag
         sceneGeometry.eye.corneaFrontSurfaceRadius, ...
         sceneGeometry.eye.corneaFrontSurfaceRadius, ...
         sceneGeometry.eye.corneaFrontSurfaceRadius, ...
-        30);
+        p.Results.anteriorChamberEllipsoidPoints);
     % Convert the surface matrices to a vector of points and switch the
     % axes back
     ansTmp = surf2patch(p1tmp, p2tmp, p3tmp);
@@ -295,19 +289,12 @@ eyeRotation = R1*R2*R3;
 %% Obtain the virtual image for the eyeWorld points
 % This steps accounts for the effect of corneal refraction upon the
 % appearance of points from the iris and pupil
-rayTraceErrors = nan(size(eyeWorldPoints,1),1);
 if ~isempty(rayTraceFuncs)
     % Identify the eyeWorldPoints that are subject to refraction by the cornea
     refractPointsIdx = find(strcmp(pointLabels,'pupilPerimeter')+...
         strcmp(pointLabels,'irisPerimeter')+...
         strcmp(pointLabels,'pupilCenter')+...
         strcmp(pointLabels,'irisCenter'));
-    % Set up a vector of candidate thetas, which is the angle that the
-    % ray departing the eyeWorldPoint makes with the optic axis of th eye.
-    % We exclude a theta of exactly zero as the equations are undefined at
-    % that value.
-    candidateThetas=[-p.Results.maxAbsRayTheta:p.Results.rayThetaResolution:-p.Results.rayThetaResolution ...
-        p.Results.rayThetaResolution:p.Results.rayThetaResolution:p.Results.maxAbsRayTheta];
     % Loop through the eyeWorldPoints that are to be refracted
     for ii=1:length(refractPointsIdx)
         eyeWorldPoint=eyeWorldPoints(refractPointsIdx(ii),:);
@@ -319,8 +306,7 @@ if ~isempty(rayTraceFuncs)
             eyeWorldPoint(1),eyeWorldPoint(2),eyeWorldPoint(3),...
             sceneGeometry.eye.rotationCenter(1),...
             theta);
-        [~,idx]=min(errorFunc(candidateThetas));
-        theta_p1p2=candidateThetas(idx);
+        theta_p1p2=fminsearch(errorFunc,0);
         errorFunc = @(theta) rayTraceFuncs.cameraNodeDistanceError2D.p1p3(...
             sceneGeometry.extrinsicTranslationVector(1),...
             sceneGeometry.extrinsicTranslationVector(2),...
@@ -329,18 +315,9 @@ if ~isempty(rayTraceFuncs)
             eyeWorldPoint(1),eyeWorldPoint(2),eyeWorldPoint(3),...
             sceneGeometry.eye.rotationCenter(1),...
             theta);
-        [~,idx]=min(errorFunc(candidateThetas));
-        theta_p1p3=candidateThetas(idx);
+        theta_p1p3=fminsearch(errorFunc,0);
         virtualImageRay = rayTraceFuncs.virtualImageRay(eyeWorldPoint(1), eyeWorldPoint(2), eyeWorldPoint(3), theta_p1p2, theta_p1p3);
         eyeWorldPoints(refractPointsIdx(ii),:) = virtualImageRay(1,:);
-        rayTraceErrors(refractPointsIdx(ii)) = rayTraceFuncs.cameraNodeDistanceError3D(...
-            sceneGeometry.extrinsicTranslationVector(1),...
-            sceneGeometry.extrinsicTranslationVector(2),...
-            sceneGeometry.extrinsicTranslationVector(3),...
-            deg2rad(eyeAzimuth), deg2rad(eyeElevation),...
-            eyeWorldPoint(1),eyeWorldPoint(2),eyeWorldPoint(3),...
-            sceneGeometry.eye.rotationCenter(1),...
-            theta_p1p2, theta_p1p3);
     end
 end
 
