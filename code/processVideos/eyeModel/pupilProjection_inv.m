@@ -94,7 +94,7 @@ p.addRequired('rayTraceFuncs',@(x)(isempty(x) | isstruct(x)));
 % Optional params
 p.addParameter('x0',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('eyeParamsLB',[-89,-89,0.5],@isnumeric);
-p.addParameter('eyeParamsUB',[89,89,5],@isnumeric);
+p.addParameter('eyeParamsUB',[89,89,4],@isnumeric);
 p.addParameter('centerErrorThreshold',1e-4,@isnumeric);
 p.addParameter('constraintTolerance',[],@(x)(isempty(x) | isnumeric(x)));
 
@@ -162,8 +162,8 @@ if isempty(p.Results.x0)
     pupilRadiusPixels = sqrt(pupilEllipseOnImagePlane(3) / (pi * ellipseAspectRatio));
     
     % Probe the forward model at the estimated Azimuth and Elevation to
-    % estimate the pupil radius. Omit ray-tracing for speed.
-    probeEllipse=pupilProjection_fwd([x0(1) x0(2) 2], sceneGeometry, []);
+    % estimate the pupil radius.
+    probeEllipse=pupilProjection_fwd([x0(1) x0(2) 2], sceneGeometry, rayTraceFuncs);
     pixelsPerMM = sqrt(probeEllipse(3)/pi)/2;
     
     % Set the initial value for pupil radius in mm
