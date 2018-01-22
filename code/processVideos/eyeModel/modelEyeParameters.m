@@ -52,7 +52,7 @@ eye.corneaBackSurfaceCenter = [-7.22 0 0];
 eye.pupilCenter = [-3.7 0 0];
 
 % Define the properties of the iris
-eye.irisRadius = 6.5;
+eye.irisRadius = 5;
 eye.irisCenter = [-4.5 0 0];
 
 % The posterior chamber of the eye is modeled as an ellipsoid. The
