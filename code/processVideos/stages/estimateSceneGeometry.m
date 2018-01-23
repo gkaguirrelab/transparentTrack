@@ -311,13 +311,13 @@ if iscell(pupilFileName)
     ellipseFitSEM = [];
     for cc = 1:length(pupilFileName)
         load(pupilFileName{cc})
-        ellipses = [ellipses;pupilData.(p.Results.ellipseFitLabel).ellipse.values];
-        ellipseFitSEM = [ellipseFitSEM; pupilData.(p.Results.ellipseFitLabel).ellipse.RMSE];
+        ellipses = [ellipses;pupilData.(p.Results.ellipseFitLabel).ellipses.values];
+        ellipseFitSEM = [ellipseFitSEM; pupilData.(p.Results.ellipseFitLabel).ellipses.RMSE];
     end
 else
     load(pupilFileName)
-    ellipses = pupilData.(p.Results.ellipseFitLabel).ellipse.values;
-    ellipseFitSEM = pupilData.(p.Results.ellipseFitLabel).ellipse.RMSE;
+    ellipses = pupilData.(p.Results.ellipseFitLabel).ellipses.values;
+    ellipseFitSEM = pupilData.(p.Results.ellipseFitLabel).ellipses.RMSE;
 end
 
 
@@ -485,13 +485,14 @@ centerDistanceErrorByEllipse=zeros(size(ellipses,1),1);
 shapeErrorByEllipse=zeros(size(ellipses,1),1);
 areaErrorByEllipse=zeros(size(ellipses,1),1);
 
-[x, fVal] = patternsearch(objectiveFun, x0,[],[],[],[],sceneParamsLB,sceneParamsUB,[],options);
+[reverseX, fVal] = patternsearch(objectiveFun, fliplr(x0),[],[],[],[],fliplr(sceneParamsLB),fliplr(sceneParamsUB),[],options);
     % Nested function computes the objective for the patternsearch
     function fval = objfun(x)
         % Assemble a candidate sceneGeometry structure
+        flipx=fliplr(x);
         candidateSceneGeometry = initialSceneGeometry;
-        candidateSceneGeometry.extrinsicTranslationVector = x(1:3);
-        candidateSceneGeometry.eye.rotationCenter(1) = x(4);
+        candidateSceneGeometry.extrinsicTranslationVector = flipx(1:3);
+        candidateSceneGeometry.eye.rotationCenter(1) = flipx(4);
         % For each ellipse, perform the inverse projection from the ellipse
         % on the image plane to eyeParams. We retain the errors from the
         % inverse projection and use these to assemble the objective
@@ -518,6 +519,8 @@ areaErrorByEllipse=zeros(size(ellipses,1),1);
         end
         
     end
+
+x = fliplr(reverseX);
 
 % Assemble the sceneGeometry file to return
 sceneGeometry.radialDistortionVector = initialSceneGeometry.radialDistortionVector;
