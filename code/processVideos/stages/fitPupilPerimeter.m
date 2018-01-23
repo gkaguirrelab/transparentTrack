@@ -118,8 +118,8 @@ p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@i
 % Optional analysis params
 p.addParameter('ellipseTransparentLB',[0,0,800,0,0],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('ellipseTransparentUB',[640,480,20000,0.6,pi],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('eyeParamsLB',[-35,-25,0.5],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('eyeParamsUB',[35,25,4],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('eyeParamsLB',[-35,-25,0,0.25],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('eyeParamsUB',[35,25,0,4],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nSplits',8,@isnumeric);
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('ellipseFitLabel',[],@(x)(isempty(x) | ischar(x)));
@@ -129,7 +129,7 @@ p.addParameter('ellipseFitLabel',[],@(x)(isempty(x) | ischar(x)));
 p.parse(perimeterFileName, pupilFileName, varargin{:});
 
 nEllipseParams=5; % 5 params in the transparent ellipse form
-nEyeParams=3; % 3 values (azimuth, elevation, pupil radius) for eyeParams
+nEyeParams=4; % 4 values (azimuth, elevation, torsion, pupil radius) for eyeParams
 
 
 %% Load data
@@ -279,7 +279,7 @@ for ii = 1:nFrames
             else
                 % Obtain a first guess by running the inverse projection on
                 % the initial ellipse fit parameters without ray tracing
-                eyeParams_x0 = [0 0 2];
+                eyeParams_x0 = [0 0 0 2];
                 if ~isempty(pupilData)
                     if isfield(pupilData, 'initial')
                         eyeParams_x0 = pupilProjection_inv(pupilData.initial.ellipse.values(ii,:), sceneGeometry, []);
@@ -406,8 +406,8 @@ if ~isempty(sceneGeometry)
     if nSplits~=0
         pupilData.(ellipseFitLabel).eyeParams.splitsSD = loopVar_eyeParamsSplitsSD;
     end
-    pupilData.(ellipseFitLabel).eyeParams.meta.labels = {'azimuth','elevation','pupil radius'};
-    pupilData.(ellipseFitLabel).eyeParams.meta.units = {'deg','deg','mm'};
+    pupilData.(ellipseFitLabel).eyeParams.meta.labels = {'azimuth','elevation','torsion','pupil radius'};
+    pupilData.(ellipseFitLabel).eyeParams.meta.units = {'deg','deg','deg','mm'};
     pupilData.(ellipseFitLabel).eyeParams.meta.coordinateSystem = 'head fixed (extrinsic)';
 end
 

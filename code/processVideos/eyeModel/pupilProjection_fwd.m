@@ -2,12 +2,18 @@ function [pupilEllipseOnImagePlane, eyeWorldPoints, imagePoints, pointLabels] = 
 % Project the pupil circle to an ellipse on the image plane
 %
 % Description:
-%	Given the sceneGeometry, this routine simulates a circular pupil on a
-%   spherical eye and then measures the parameters of the ellipse (in
-%   transparent format) of the projection of the pupil to the image plane.
+%	Given the sceneGeometry--and optionaly ray tracing functions through
+%   the cornea--this routine simulates a circular pupil on a spherical eye
+%   and then measures the parameters of the ellipse (in transparent format)
+%   of the projection of the pupil to the image plane.
+%
+%   The forward model is a perspective projection of an anatomically
+%   accurate eye, with points positioned behind the cornea subject
+%   to refractive displacement. The projection incorporates the intrinsic
+%   properties of the camera, including any radial lens distortion.
 %
 % Notes:
-%   Rotations - Eye rotations are given as azimuth and elevations in
+%   Rotations - Eye rotation is given as azimuth, elevation, and torsion in
 %   degrees. These values correspond to degrees of rotation of the eye
 %   relative to a head-fixed (extrinsic) coordinate frame. Note that this
 %   is different from an eye-fixed (intrinsic) coordinate frame (such as
@@ -15,17 +21,19 @@ function [pupilEllipseOnImagePlane, eyeWorldPoints, imagePoints, pointLabels] = 
 %   to the position of the eye when a line that connects the center of
 %   rotation of the eye with the center of the pupil is normal to the image
 %   plane. Positive rotations correspond to rightward, upward, translation
-%   of the pupil center in the image.
+%   of the pupil center in the image. Torsion of zero corresponds to the
+%   torsion of the eye when it is in primary position.
 %
 %   Units - Eye rotations are in units of degrees. However, the units of
 %   theta in the transparent ellipse parameters are radians. This is in
 %   part to help us keep the two units separate conceptually.
 %
 % Inputs:
-%   eyeParams             - A 1x3 vector provides values for [eyeAzimuth,
-%                           eyeElevation, pupilRadius]. Azimuth and
-%                           elevation are in units of head-centered
-%                           (extrinsic) degrees, and pupil radius is in mm.
+%   eyeParams             - A 1x4 vector provides values for [eyeAzimuth,
+%                           eyeElevation, eyeTorsion, pupilRadius].
+%                           Azimuth, elevation, and torsion are in units of
+%                           head-centered (extrinsic) degrees, and pupil
+%                           radius is in mm.
 %   sceneGeometry         - A structure that contains the fields:
 %                             - A 1x2 vector of radial distortion params
 %                             - intrinsicCameraMatrix: a 3x3 matrix in
@@ -36,6 +44,13 @@ function [pupilEllipseOnImagePlane, eyeWorldPoints, imagePoints, pointLabels] = 
 %                               of the camera
 %                             - extrinsicRotationMatrix: a 3x3 matrix in
 %                               units of millimeters
+%                             - primaryPosition: a 1x3 vector in units of
+%                               degrees that gives the head-centered
+%                               rotation values for to the eye when it is
+%                               in primary position (needed for
+%                               implementation of Listing's Law).
+%                             - constraintTolerance: The shape and area
+%                               constraint employed by pupilProjection_inv.
 %                             - eye: a sub-structure that contains fields
 %                               that define the anatomical properties of
 %                               the eye. The values are largely those
@@ -99,7 +114,8 @@ end
 % Separate the eyeParams into individual variables
 eyeAzimuth = eyeParams(1);
 eyeElevation = eyeParams(2);
-pupilRadius = eyeParams(3);
+eyeTorsion = eyeParams(3);
+pupilRadius = eyeParams(4);
 nPupilPerimPoints = p.Results.nPupilPerimPoints;
 
 %% Define an eye in eyeWorld coordinates
@@ -269,8 +285,14 @@ nEyeWorldPoints = size(eyeWorldPoints,1);
 
 
 %% Define the eye rotation matrix
-% Set pupil torsion to zero, as this will not impact the imaged ellipse
-eyeTorsion = 0;
+
+% This is where Listing's Law could be implemented. If the passed
+% torsion value is set to NaN, then the information regarding the primary
+% position of the eye contained in the sceneGeometry structure would
+% be used to compute the torsion.
+if isnan(eyeTorsion)
+    eyeTorsion = 0;
+end
 
 % Assemble a rotation matrix from the head-fixed Euler angle rotations. In
 % the head-centered world coordinate frame, positive azimuth, elevation and
@@ -279,6 +301,7 @@ eyeTorsion = 0;
 R3 = [cosd(eyeAzimuth) -sind(eyeAzimuth) 0; sind(eyeAzimuth) cosd(eyeAzimuth) 0; 0 0 1];
 R2 = [cosd(eyeElevation) 0 sind(eyeElevation); 0 1 0; -sind(eyeElevation) 0 cosd(eyeElevation)];
 R1 = [1 0 0; 0 cosd(eyeTorsion) -sind(eyeTorsion); 0 sind(eyeTorsion) cosd(eyeTorsion)];
+
 
 % This order (1-2-3) corresponds to a head-fixed, extrinsic, rotation
 % matrix. The reverse order (3-2-1) would be an eye-fixed, intrinsic
@@ -422,7 +445,7 @@ imagePoints = (imagePointsNormalizedDistorted .* [sceneGeometry.intrinsicCameraM
 % circle on the image plane.
 pupilPerimIdx = find(strcmp(pointLabels,'pupilPerimeter'));
 
-if eyeParams(3)==0 || ~isreal(imagePoints(pupilPerimIdx,:))
+if eyeParams(4)==0 || ~isreal(imagePoints(pupilPerimIdx,:))
     pupilEllipseOnImagePlane=nan(1,5);
 else
     

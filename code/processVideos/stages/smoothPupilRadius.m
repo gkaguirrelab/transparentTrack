@@ -97,8 +97,8 @@ p.addParameter('hostname',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional fitting params
-p.addParameter('eyeParamsLB',[-35,-25,0.5],@isnumeric);
-p.addParameter('eyeParamsUB',[35,25,4],@isnumeric);
+p.addParameter('eyeParamsLB',[-35,-25,0,0.5],@isnumeric);
+p.addParameter('eyeParamsUB',[35,25,0,4],@isnumeric);
 p.addParameter('exponentialTauParam',3,@isnumeric);
 p.addParameter('likelihoodErrorExponent',1.0,@isnumeric);
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
@@ -109,7 +109,8 @@ p.addParameter('ellipseFitLabel','sceneConstrained',@ischar);
 p.parse(perimeterFileName, pupilFileName, sceneGeometryFileName, varargin{:});
 
 nEllipseParams=5; % 5 params in the transparent ellipse form
-nEyeParams=3; % 3 values (azimuth, elevation, pupil radius) for eyeParams
+nEyeParams=4; % 3 values (azimuth, elevation, torsion, pupil radius) for eyeParams
+radiusIdx = 4;
 
 % Load the pupil perimeter data. It will be a structure variable
 % "perimeter", with the fields .data and .meta
@@ -244,7 +245,7 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % if this frame has data, and eyeParam radius is not nan, then proceed
     % to calculate the posterior
-    if ~isempty(Xp) &&  ~isempty(Yp) && ~isnan(pupilData.(ellipseFitLabel).eyeParams.values(ii,3))
+    if ~isempty(Xp) &&  ~isempty(Yp) && ~isnan(pupilData.(ellipseFitLabel).eyeParams.values(ii,radiusIdx))
         % Calculate the pupil radius prior. The prior mean is given by the
         % surrounding radius values, weighted by a decaying exponential in
         % time and the inverse of the standard deviation of each measure.
@@ -258,12 +259,12 @@ parfor (ii = 1:nFrames, nWorkers)
         restrictHiWindow = max([(nFrames-ii-window)*-1,0]);
         
         % Get the dataVector, restricted to the window range
-        dataVector=squeeze(pupilData.(ellipseFitLabel).eyeParams.values(rangeLowSignal:rangeHiSignal,3))';
+        dataVector=squeeze(pupilData.(ellipseFitLabel).eyeParams.values(rangeLowSignal:rangeHiSignal,radiusIdx))';
         
         % Build the precisionVector as the inverse of the measurement SD on
         % each frame, scaled to range within the window from zero to unity.
         % Thus, the noisiest measurement will not influence the prior.
-        precisionVector = squeeze(pupilData.(ellipseFitLabel).eyeParams.splitsSD(:,3))';
+        precisionVector = squeeze(pupilData.(ellipseFitLabel).eyeParams.splitsSD(:,radiusIdx))';
         precisionVector = precisionVector+realmin;
         precisionVector=precisionVector.^(-1);
         precisionVector=precisionVector(rangeLowSignal:rangeHiSignal);
@@ -295,8 +296,8 @@ parfor (ii = 1:nFrames, nWorkers)
         priorPupilRadiusSD = nanstd(dataVector,temporalWeightVector);
         
         % Retrieve the initialFit for this frame
-        likelihoodPupilRadiusMean = pupilData.(ellipseFitLabel).eyeParams.values(ii,3);
-        likelihoodPupilRadiusSD = pupilData.(ellipseFitLabel).eyeParams.splitsSD(ii,3);
+        likelihoodPupilRadiusMean = pupilData.(ellipseFitLabel).eyeParams.values(ii,radiusIdx);
+        likelihoodPupilRadiusSD = pupilData.(ellipseFitLabel).eyeParams.splitsSD(ii,radiusIdx);
         
         % Raise the estimate of the SD from the initial fit to an
         % exponent. This is used to adjust the relative weighting of
@@ -323,10 +324,10 @@ parfor (ii = 1:nFrames, nWorkers)
         % value. Pass the prior azimuth and elevation as x0.
         lb_pin = eyeParamsLB;
         ub_pin = eyeParamsUB;
-        lb_pin(3)=posteriorPupilRadius;
-        ub_pin(3)=posteriorPupilRadius;
+        lb_pin(radiusIdx)=posteriorPupilRadius;
+        ub_pin(radiusIdx)=posteriorPupilRadius;
         x0 = pupilData.(ellipseFitLabel).eyeParams.values(ii,:);
-        x0(3)=posteriorPupilRadius;
+        x0(radiusIdx)=posteriorPupilRadius;
         [posteriorEyeParams, posteriorEyeParamsObjectiveError] = ...
             eyeParamEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs, 'eyeParamsLB', lb_pin, 'eyeParamsUB', ub_pin, 'x0', x0 );
         posteriorEllipseParams = pupilProjection_fwd(posteriorEyeParams, sceneGeometry, rayTraceFuncs);
@@ -359,8 +360,8 @@ pupilData.radiusSmoothed.ellipse.meta.coordinateSystem = 'intrinsic image';
 
 pupilData.radiusSmoothed.eyeParams.values=loopVar_posteriorEyeParams;
 pupilData.radiusSmoothed.eyeParams.radiusSD=loopVar_posteriorPupilRadiusSD';
-pupilData.radiusSmoothed.eyeParams.meta.labels = {'azimuth','elevation','pupil radius'};
-pupilData.radiusSmoothed.eyeParams.meta.units = {'deg','deg','mm'};
+pupilData.radiusSmoothed.eyeParams.meta.labels = {'azimuth','elevation','torsion','pupil radius'};
+pupilData.radiusSmoothed.eyeParams.meta.units = {'deg','deg','deg','mm'};
 pupilData.radiusSmoothed.eyeParams.meta.coordinateSystem = 'head fixed (extrinsic)';
 
 % add a meta field with analysis details

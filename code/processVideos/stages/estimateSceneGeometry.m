@@ -60,9 +60,9 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %   depth, respectively) of the principle offset point of the camera in mm
 %   relative to the scene coordinate system. We define the origin of the
 %   scene coordinate system to be x=0, y=0 at the center of rotation of the
-%   eye, and z=0 to be the front surface of the spherical eye ball. The
-%   default values and params can be guided by knowledge of the physical
-%   arrangement of the subject and recording apparatus.
+%   eye, and z=0 to be the apex of the corneal surface. The default values
+%   and params can be guided by knowledge of the physical arrangement of
+%   the subject and recording apparatus.
 %
 %   extrinsicRotationMatrix - A 3x3 matrix with the fixed values of:
 %
@@ -75,13 +75,13 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %   projection of pupil circles from scene to image is invariant to
 %   rotations of the camera matrix, these values are locked.
 %
-%   eye -  This is itself a structure that is returned by the function 
-%   modelEyeParameters(). The parameters define the anatomical properties
-%   of the eye, including the size and shape of the anterior and posterior
-%   chamber. These parameters are adjusted for the measured spherical
-%   refractive error of the subject. The relevant value for the fitting of
-%   the pupil ellipse is establishing the center of rotation of the eye.
-%   The default value is 13.3 mm posterior to the corneal apex.
+%   primaryPosition - A 1x3 vector of:
+%
+%       [eyeAzimuth, eyeElevation, eyeTorsion]
+%
+%   that specifies the rotation angles (in head fixed axes) for which the
+%   eye is in primary position (as defined by Listing's Law). These are set
+%   to zero and are not modified in this routine.
 %
 %   constraintTolerance - A scalar. The inverse projection from ellipse on
 %   the image plane to eye params (azimuth, elevation) imposes a constraint
@@ -98,6 +98,14 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %   upon the image plane deviates from perfectly elliptical due to
 %   perspective effects. We find that a value in the range 0.01 - 0.03
 %   provides an acceptable compromise in empirical data.
+%
+%   eye -  This is itself a structure that is returned by the function 
+%   modelEyeParameters(). The parameters define the anatomical properties
+%   of the eye, including the size and shape of the anterior and posterior
+%   chamber. These parameters are adjusted for the measured spherical
+%   refractive error of the subject. The relevant value for the fitting of
+%   the pupil ellipse is establishing the center of rotation of the eye.
+%   The default value is 13.3 mm posterior to the corneal apex.
 %
 % Inputs:
 %	pupilFileName         - Full path to a pupilData file, or a cell array
@@ -144,20 +152,24 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %  'extrinsicTranslationVectorUB' - 3x1 vector
 %  'spectacleRefractionDiopters' - Scalar. A negative value is appropriate
 %                           for a myopic subject.
-%  'rotationCenterDepth'  - Scalar
+%  'rotationCenterDepth'  - Scalar. If undefined, the default value from
+%                           modelEyeParameters() is used.
 %  'rotationCenterDepthLB' - Scalar
 %  'rotationCenterDepthUB' - Scalar
-%  'constraintTolerance'  - Scalar. Range 0-1.
+%  'primaryPosition'      - 1x3 vector
+%  'constraintTolerance'  - Scalar. Range 0-1. Typical value 0.01 - 0.03
 %  'eyeParamsLB/UB'       - Upper and lower bounds on the eyeParams
-%                           [azimuth, elevation, pupil radius]. Biological
-%                           limits in eye rotation and pupil size would
-%                           suggest boundaries of [±35, ±25, 0.5-5]. Note,
-%                           however, that these angles are relative to the
-%                           center of projection, not the primary position
-%                           of the eye. Therefore, in circumstances in
-%                           which the camera is viewing the eye from an
-%                           off-center angle, the bounds will need to be
-%                           shifted accordingly.
+%                           [azimuth, elevation, torsion, pupil radius].
+%                           The torsion value is unusued and is bounded to
+%                           zero. Biological limits in eye rotation and
+%                           pupil size would suggest boundaries of [±35,
+%                           ±25, 0, 0.25-5]. Note, however, that these
+%                           angles are relative to the center of
+%                           projection, not the primary position of the
+%                           eye. Therefore, in circumstances in which the
+%                           camera is viewing the eye from an off-center
+%                           angle, the bounds will need to be shifted
+%                           accordingly.
 %  'ellipseFitLabel'      - Identifies the field in pupilData that contains
 %                           the ellipse fit params for which the search
 %                           will be conducted.
@@ -204,12 +216,13 @@ p.addParameter('extrinsicTranslationVector',[0; 0; 120],@isnumeric);
 p.addParameter('extrinsicTranslationVectorLB',[-10; -10; 100],@isnumeric);
 p.addParameter('extrinsicTranslationVectorUB',[10; 10; 180],@isnumeric);
 p.addParameter('spectacleRefractionDiopters',0,@isnumeric);
-p.addParameter('rotationCenterDepth',13.0,@isnumeric);
-p.addParameter('rotationCenterDepthLB',12.0,@isnumeric);
+p.addParameter('rotationCenterDepth',[],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('rotationCenterDepthLB',12.5,@isnumeric);
 p.addParameter('rotationCenterDepthUB',15.0,@isnumeric);
+p.addParameter('primaryPosition',[0 0 0],@isnumeric);
 p.addParameter('constraintTolerance',0.02,@isnumeric);
-p.addParameter('eyeParamsLB',[-35,-25,0.5],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('eyeParamsUB',[35,25,4],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('eyeParamsLB',[-35,-25,0,0.25],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('eyeParamsUB',[35,25,0,4],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('ellipseFitLabel','initial',@ischar);
 p.addParameter('ellipseArrayList',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nBinsPerDimension',10,@isnumeric);
@@ -233,9 +246,12 @@ initialSceneGeometry.radialDistortionVector = p.Results.radialDistortionVector;
 initialSceneGeometry.intrinsicCameraMatrix = p.Results.intrinsicCameraMatrix;
 initialSceneGeometry.extrinsicTranslationVector = p.Results.extrinsicTranslationVector;
 initialSceneGeometry.extrinsicRotationMatrix = p.Results.extrinsicRotationMatrix;
+initialSceneGeometry.primaryPosition = p.Results.primaryPosition;
 initialSceneGeometry.constraintTolerance = p.Results.constraintTolerance;
 initialSceneGeometry.eye = modelEyeParameters(p.Results.spectacleRefractionDiopters);
-initialSceneGeometry.eye.rotationCenter(1) = -p.Results.rotationCenterDepth;
+if ~isempty(p.Results.rotationCenterDepth)
+    initialSceneGeometry.eye.rotationCenter(1) = -p.Results.rotationCenterDepth;
+end
 
 % Bounds
 sceneParamsLB = [p.Results.extrinsicTranslationVectorLB; p.Results.rotationCenterDepthLB];
@@ -252,7 +268,6 @@ if strcmp(p.Results.verbosity,'full')
     fprintf('Assembling ray tracing functions.\n');
 end
 [rayTraceFuncs] = assembleRayTraceFuncs( initialSceneGeometry );
-
 
 
 %% Set up the parallel pool
@@ -459,7 +474,6 @@ options = optimoptions(@patternsearch, ...
     'AccelerateMesh',false,...
     'Cache','on',...
     'CompleteSearch','on',...
-    'UseParallel', true, ...
     'FunctionTolerance',1e-6);
 
 % Define anonymous functions for the objective and constraint
@@ -507,6 +521,7 @@ sceneGeometry.radialDistortionVector = initialSceneGeometry.radialDistortionVect
 sceneGeometry.intrinsicCameraMatrix = initialSceneGeometry.intrinsicCameraMatrix;
 sceneGeometry.extrinsicTranslationVector = x(1:3);
 sceneGeometry.extrinsicRotationMatrix = initialSceneGeometry.extrinsicRotationMatrix;
+sceneGeometry.primaryPosition = initialSceneGeometry.primaryPosition;
 sceneGeometry.constraintTolerance = initialSceneGeometry.constraintTolerance;
 sceneGeometry.eye = initialSceneGeometry.eye;
 sceneGeometry.eye.rotationCenter(1) = -x(4);
