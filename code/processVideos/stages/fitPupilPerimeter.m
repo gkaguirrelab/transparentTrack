@@ -388,19 +388,19 @@ else
 end
 
 % Store the ellipse fit data in informative fields
-pupilData.(ellipseFitLabel).ellipse.values = loopVar_ellipseParamsTransparent;
+pupilData.(ellipseFitLabel).ellipses.values = loopVar_ellipseParamsTransparent;
 if isempty(sceneGeometry)
-    pupilData.(ellipseFitLabel).ellipse.RMSE = loopVar_ellipseParamsObjectiveError';
+    pupilData.(ellipseFitLabel).ellipses.RMSE = loopVar_ellipseParamsObjectiveError';
 else
-    pupilData.(ellipseFitLabel).ellipse.RMSE = loopVar_eyeParamsObjectiveError';
+    pupilData.(ellipseFitLabel).ellipses.RMSE = loopVar_eyeParamsObjectiveError';
 end
 if nSplits~=0
-    pupilData.(ellipseFitLabel).ellipse.splitsSD = loopVar_ellipseParamsSplitsSD;
+    pupilData.(ellipseFitLabel).ellipses.splitsSD = loopVar_ellipseParamsSplitsSD;
 end
-pupilData.(ellipseFitLabel).ellipse.meta.ellipseForm = 'transparent';
-pupilData.(ellipseFitLabel).ellipse.meta.labels = {'x','y','area','eccentricity','theta'};
-pupilData.(ellipseFitLabel).ellipse.meta.units = {'pixels','pixels','squared pixels','non-linear eccentricity','rads'};
-pupilData.(ellipseFitLabel).ellipse.meta.coordinateSystem = 'intrinsic image';
+pupilData.(ellipseFitLabel).ellipses.meta.ellipseForm = 'transparent';
+pupilData.(ellipseFitLabel).ellipses.meta.labels = {'x','y','area','eccentricity','theta'};
+pupilData.(ellipseFitLabel).ellipses.meta.units = {'pixels','pixels','squared pixels','non-linear eccentricity','rads'};
+pupilData.(ellipseFitLabel).ellipses.meta.coordinateSystem = 'intrinsic image';
 if ~isempty(sceneGeometry)
     pupilData.(ellipseFitLabel).eyeParams.values = loopVar_eyeParams;
     if nSplits~=0
