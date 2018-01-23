@@ -5,21 +5,21 @@
 %   The cornea refracts the image of the pupil, causing it to appear
 %   magnified and (depending upon viewing angle) shifted. The appearance of
 %   the pupil in the image plane is referred to as the "entrance pupil".
-%   Fedtke and colleagues implemented the Navarro schematic model eye in the
-%   Zemax ray tracing software package:
+%   Fedtke and colleagues implemented the Navarro schematic model eye in
+%   the Zemax ray tracing software package:
 %
 %       Fedtke, Cathleen, Fabrice Manns, and Arthur Ho. "The entrance pupil
 %       of the human eye: a three-dimensional model as a function of
 %       viewing angle." Optics express 18.21 (2010): 22364-22376.
 %
-%   Figure 8 of their paper reports the vertical and horizontal magnification of the entrance pupil, and
-%	Figure 9 expresses the ratio of horizontal to vertical entrance pupil
-%	size as a function of viewing angle, and compares the output of their
-%	model to empirical measurements made by Jay (1962) and Spring & Stiles
-%	(1948).
+%   Figure 8 of their paper reports the vertical and horizontal
+%   magnification of the entrance pupil, and Figure 9 expresses the ratio
+%   of horizontal to vertical entrance pupil size as a function of viewing
+%   angle, and compares the output of their model to empirical measurements
+%   made by Jay (1962) and Spring & Stiles (1948).
 %
-%   This routine calculates these values for our model, and compares the
-%   results to those of the prior studies.
+%   Here we calculates these values for our model, and compare the results
+%   to the prior studies.
 %
 
 % Obtain the default sceneGeometry
@@ -32,7 +32,7 @@ rayTraceFuncs = assembleRayTraceFuncs( initialSceneGeometry );
 % tracing effects
 pupilDiam = 3;
 [~, ~, imagePoints] = pupilProjection_fwd([0 0 0 pupilDiam/2], sceneGeometry, [], 'nPupilPerimPoints',50);
-veridicalPixelDiam3mmPupil = max(imagePoints(:,1))-minmax(imagePoints(:,1));
+veridicalPupilPixelDiam = max(imagePoints(:,1))-minmax(imagePoints(:,1));
 
 % Rotate the eye between 0 and 80 degrees of azimuth and obtain the
 % horizontal and vertical diameter of the pupil image
@@ -41,13 +41,14 @@ vertDiam=[];
 for azimuthDeg = 0:10:80
     eyeParams=[deg2rad(azimuthDeg) 0 0 pupilDiam/2];
     [~, ~, imagePoints, pointLabels] = pupilProjection_fwd(eyeParams, sceneGeometry, rayTraceFuncs, 'nPupilPerimPoints',50);
-    horizDiam=[horizMag max(imagePoints(:,1))-minmax(imagePoints(:,1))];
+    horizDiam=[horizDiam max(imagePoints(:,1))-minmax(imagePoints(:,1))];
     vertDiam=[vertDiam max(imagePoints(:,2))-minmax(imagePoints(:,2))];
 end
 
-horizMag = horizDiam ./ veridicalPixelDiam3mmPupil;
-vertMag = vertDiam ./ veridicalPixelDiam3mmPupil;
+horizMag = horizDiam ./ veridicalPupilPixelDiam;
+vertMag = vertDiam ./ veridicalPupilPixelDiam;
 
+% These are equations 1a and 2 of Fedtke 2010
 MtanFedtke = @(azimuthDeg, p) (1.133-6.3e-4*p^2)*cos((-0.8798+4.8e-3*p).*azimuthDeg+3.7e-44.*azimuthDeg.^2);
 MsagFedtke = @(azimuthDeg) 4.4e-6.*(azimuthDeg.^2.299)+1.125;
 
@@ -55,9 +56,22 @@ figure
 subplot(1,2,1);
 plot(0:1:80,MtanFedtke(0:1:80, pupilDiam),'-r');
 hold on
-plot(0:10:80,horizMag);
+plot(0:10:80,horizMag,'xk');
+xlim([0 90]);
+ylim([0.4 1.2]);
 
 subplot(1,2,2);
 plot(0:1:80,MsagFedtke(0:1:80),'-r');
 hold on
-plot(0:10:80,vertMag);
+plot(0:10:80,vertMag,'xk');
+xlim([0 90]);
+ylim([1.1 1.25]);
+
+figure
+plot(0:1:80,MtanFedtke(0:1:80, pupilDiam)./MsagFedtke(0:1:80),'-r');
+hold on
+plot(0:10:80,horizDiam./vertDiam,'xk');
+xlim([0 90]);
+ylim([0.3 1.1]);
+
+
