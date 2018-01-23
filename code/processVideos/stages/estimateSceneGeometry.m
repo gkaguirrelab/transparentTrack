@@ -217,8 +217,8 @@ p.addParameter('extrinsicTranslationVectorLB',[-10; -10; 100],@isnumeric);
 p.addParameter('extrinsicTranslationVectorUB',[10; 10; 180],@isnumeric);
 p.addParameter('spectacleRefractionDiopters',0,@isnumeric);
 p.addParameter('rotationCenterDepth',[],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('rotationCenterDepthLB',12.5,@isnumeric);
-p.addParameter('rotationCenterDepthUB',15.0,@isnumeric);
+p.addParameter('rotationCenterDepthLB',-15.0,@isnumeric);
+p.addParameter('rotationCenterDepthUB',-12.5,@isnumeric);
 p.addParameter('primaryPosition',[0 0 0],@isnumeric);
 p.addParameter('constraintTolerance',0.02,@isnumeric);
 p.addParameter('eyeParamsLB',[-35,-25,0,0.25],@(x)(isempty(x) | isnumeric(x)));
@@ -250,7 +250,7 @@ initialSceneGeometry.primaryPosition = p.Results.primaryPosition;
 initialSceneGeometry.constraintTolerance = p.Results.constraintTolerance;
 initialSceneGeometry.eye = modelEyeParameters(p.Results.spectacleRefractionDiopters);
 if ~isempty(p.Results.rotationCenterDepth)
-    initialSceneGeometry.eye.rotationCenter(1) = -p.Results.rotationCenterDepth;
+    initialSceneGeometry.eye.rotationCenter(1) = p.Results.rotationCenterDepth;
 end
 
 % Bounds
@@ -375,7 +375,8 @@ sceneGeometry = ...
     sceneParamsLB, ...
     sceneParamsUB, ...
     p.Results.eyeParamsLB, ...
-    p.Results.eyeParamsUB);
+    p.Results.eyeParamsUB, ...
+    nWorkers);
 
 % add additional search and meta field info to sceneGeometry
 sceneGeometry.meta.estimateGeometry.parameters = p.Results;
@@ -427,7 +428,7 @@ end % main function
 
 %% LOCAL FUNCTIONS
 
-function sceneGeometry = performSceneSearch(initialSceneGeometry, rayTraceFuncs, ellipses, errorWeights, sceneParamsLB, sceneParamsUB, eyeParamsLB, eyeParamsUB)
+function sceneGeometry = performSceneSearch(initialSceneGeometry, rayTraceFuncs, ellipses, errorWeights, sceneParamsLB, sceneParamsUB, eyeParamsLB, eyeParamsUB, nWorkers)
 % Pattern search for best fitting sceneGeometry parameters
 %
 % Description:
@@ -466,7 +467,7 @@ function sceneGeometry = performSceneSearch(initialSceneGeometry, rayTraceFuncs,
 errorForm = 'SSE';
 
 % Extract the initial search point from initialSceneGeometry
-x0 = [initialSceneGeometry.extrinsicTranslationVector; -initialSceneGeometry.eye.rotationCenter(1)];
+x0 = [initialSceneGeometry.extrinsicTranslationVector; initialSceneGeometry.eye.rotationCenter(1)];
 
 % Define search options
 options = optimoptions(@patternsearch, ...
@@ -480,31 +481,33 @@ options = optimoptions(@patternsearch, ...
 objectiveFun = @objfun; % the objective function, nested below
 
 % Define nested variables for within the search
-centerDistanceErrorByEllipse=[];
-shapeErrorByEllipse=[];
-areaErrorByEllipse=[];
+centerDistanceErrorByEllipse=zeros(size(ellipses,1),1);
+shapeErrorByEllipse=zeros(size(ellipses,1),1);
+areaErrorByEllipse=zeros(size(ellipses,1),1);
 
 [x, fVal] = patternsearch(objectiveFun, x0,[],[],[],[],sceneParamsLB,sceneParamsUB,[],options);
+    % Nested function computes the objective for the patternsearch
     function fval = objfun(x)
+        % Assemble a candidate sceneGeometry structure
         candidateSceneGeometry = initialSceneGeometry;
         candidateSceneGeometry.extrinsicTranslationVector = x(1:3);
-        candidateSceneGeometry.eye.rotationCenter(1) = -x(4);
-        [~, ~, centerDistanceErrorByEllipse, shapeErrorByEllipse, areaErrorByEllipse] = ...
-            arrayfun(@(x) pupilProjection_inv...
-            (...
-                ellipses(x,:),...
+        candidateSceneGeometry.eye.rotationCenter(1) = x(4);
+        % For each ellipse, perform the inverse projection from the ellipse
+        % on the image plane to eyeParams. We retain the errors from the
+        % inverse projection and use these to assemble the objective
+        % function. We parallelize the computation across ellipses.
+        parfor (ii = 1:size(ellipses,1), nWorkers)
+            [~, ~, centerDistanceErrorByEllipse(ii), shapeErrorByEllipse(ii), areaErrorByEllipse(ii)] = ...
+                pupilProjection_inv(...
+                ellipses(ii,:),...
                 candidateSceneGeometry, rayTraceFuncs, ...
                 'constraintTolerance', candidateSceneGeometry.constraintTolerance,...
                 'eyeParamsLB',eyeParamsLB,...
                 'eyeParamsUB',eyeParamsUB...
-            ),...
-            1:1:size(ellipses,1),'UniformOutput',false);
-        
+                );
+        end
         % Now compute objective function as the RMSE of the distance
         % between the taget and modeled ellipses
-        centerDistanceErrorByEllipse = cell2mat(centerDistanceErrorByEllipse)';
-        shapeErrorByEllipse = cell2mat(shapeErrorByEllipse)';
-        areaErrorByEllipse = cell2mat(areaErrorByEllipse)';
         switch errorForm
             case 'SSE'
                 fval=sum((centerDistanceErrorByEllipse.*(shapeErrorByEllipse.*100+1).*(areaErrorByEllipse.*100+1).*errorWeights).^2);
@@ -524,7 +527,7 @@ sceneGeometry.extrinsicRotationMatrix = initialSceneGeometry.extrinsicRotationMa
 sceneGeometry.primaryPosition = initialSceneGeometry.primaryPosition;
 sceneGeometry.constraintTolerance = initialSceneGeometry.constraintTolerance;
 sceneGeometry.eye = initialSceneGeometry.eye;
-sceneGeometry.eye.rotationCenter(1) = -x(4);
+sceneGeometry.eye.rotationCenter(1) = x(4);
 sceneGeometry.meta.estimateGeometry.search.options = options;
 sceneGeometry.meta.estimateGeometry.search.errorForm = errorForm;
 sceneGeometry.meta.estimateGeometry.search.initialSceneGeometry = initialSceneGeometry;
