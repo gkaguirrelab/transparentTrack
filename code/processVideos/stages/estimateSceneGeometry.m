@@ -2,7 +2,7 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 % Estimate eye radius and eye center given a set of image plane ellipses
 %
 % Description:
-%   This function searches over the set of ellipses in the passed pupil
+%   This function searches over a set of ellipses from the passed pupil
 %   file(s) to estimate the sceneGeometry features that define a
 %   perspective projection. The search attempts to minimize the error
 %   associated with the prediction of the center of ellipses in the image
@@ -16,12 +16,8 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %   circular object targets: Mathematical formulation and correction." The
 %   Photogrammetric Record 16.93 (1999): 485-502.). The modeling solution
 %   implemented here accounts for this property, as we implement a full,
-%   numeric forward projection of the pupil circle to the image plane.
-%   Similarly, we are aware that there are analytic approximations for the
-%   parameters of an ellipse in the image plane given a particular
-%   projective circumstance. These analytic approaches may provide an
-%   improvement in computation time in comparison to the numeric, forward
-%   simulation approach we adopt here, although at some cost in precision.
+%   numeric forward projection of the pupil circle to the image plane,
+%   including accounting for refraction at the cornea.
 %
 % Components of the projection model:
 %   intrinsicCameraMatrix - This matrix has the form:
@@ -30,16 +26,15 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %       [0  fy y0]
 %       [0   0  1]
 %
-%   where fx, fy are the focal lengths of the camera in the x and y image
-%   dimensions, s is the axis skew, and x0, y0 define the principle offset
-%   point. For a camera sensor with square pixels, fx = fy. Ideally, skew
-%   should be zero. The principle offset point should be in the center of
-%   the sensor. Units are traditionally in pixels. These values can be
+%   where fx and fy are the focal lengths of the camera in the x and y
+%   image dimensions, s is the axis skew, and x0, y0 define the principle
+%   offset point. For a camera sensor with square pixels, fx = fy. Ideally,
+%   skew should be zero. The principle offset point should be in the center
+%   of the sensor. Units are traditionally in pixels. These values can be
 %   empirically measured for a camera using a calibration approach
 %   (https://www.mathworks.com/help/vision/ref/cameramatrix.html).
-%   Therefore, the intrinsicCameraMatrix is locked and not modified in the
-%   sceneGeometry search. The default values are those that we measured by
-%   calibration of the LiveTrack AV, 12M-i camera.
+%   The default values are those that we measured by calibration of the
+%   LiveTrack AV, 12M-i camera.
 %
 %   radialDistortionVector - A two element vector of the form:
 %
