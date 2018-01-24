@@ -26,16 +26,17 @@ pathParams.dataOutputDirFull = fullfile(sandboxDir);
 idx = 1;
 thisTorsion = 0;
 azimuthFlip=1;
+elevationFlip=1;
 for thisPupilRadius = 1:0.5:3
     for thisElevation = -25:5:25
         for thisAzimuth = -35:5:35
-            eyeParams=[thisAzimuth*azimuthFlip,thisElevation,thisTorsion,thisPupilRadius];
+            eyeParams=[thisAzimuth*azimuthFlip,thisElevation*elevationFlip,thisTorsion,thisPupilRadius];
             pupilData.radiusSmoothed.eyeParams.values(idx,:)= eyeParams;
             idx = idx+1;
         end
         azimuthFlip = azimuthFlip*-1;
     end
-    azimuthFlip = azimuthFlip*-1;
+    elevationFlip = elevationFlip*-1;
 end
 save(pupilFileName,'pupilData')
 
