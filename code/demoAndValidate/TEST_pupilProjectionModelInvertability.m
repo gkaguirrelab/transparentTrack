@@ -33,11 +33,12 @@ eyeParamErrors = [];
 %% Loop over aimuths and elevations
 % The range of values used here corresponds to the biological limits of the
 % rotation of the eye horizontally and vertically.
+thisTorsion = 0;
 for thisAzimuth = -35:5:35
     for thisElevation = -25:5:25
         
         % Assemble the eyeParams variable
-        eyeParams=[thisAzimuth,thisElevation,pupilRadiusMM];
+        eyeParams=[thisAzimuth,thisElevation,thisTorsion,pupilRadiusMM];
         
         % Forward projection from eyeParams to image ellipse
         tic
@@ -57,4 +58,4 @@ end
 %% Report the errors
 fprintf('The largest azimuth error is %f degrees.\n',max(eyeParamErrors(:,1)));
 fprintf('The largest elevation error is %f degrees.\n',max(eyeParamErrors(:,2)));
-fprintf('The largest radius error is %f millimeters.\n',max(eyeParamErrors(:,3)));
+fprintf('The largest radius error is %f millimeters.\n',max(eyeParamErrors(:,4)));
