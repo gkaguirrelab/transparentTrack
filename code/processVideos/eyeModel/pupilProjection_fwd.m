@@ -124,16 +124,17 @@ nPupilPerimPoints = p.Results.nPupilPerimPoints;
 %
 %                 |
 %     ^         __|__
-%  +  |        /     \
+%  -  |        /     \
 % p3  -  -----(   +   )-----
-%  -  |        \_____/
+%  +  |        \_____/
 %     v           |
 %                 |
 %
 %           - <--p2--> +
 %
 % For the right eye, negative values on the p2 dimension are more temporal,
-% and positive values are more nasal
+% and positive values are more nasal. Positive values of p3 are downward,
+% and negative values are upward
 
 % Define points around the pupil circle
 perimeterPointAngles = 0:2*pi/nPupilPerimPoints:2*pi-(2*pi/nPupilPerimPoints);
