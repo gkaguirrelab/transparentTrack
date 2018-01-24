@@ -2,6 +2,7 @@
 %
 % Demonstrate the forward model of the eye
 
+clear all
 
 %% set paths and make directories
 % create test sandbox on desktop
@@ -22,6 +23,7 @@ pathParams.dataOutputDirFull = fullfile(sandboxDir);
 
 %% Create a pupilData file with simulated eye positions
 
+idx = 1;
 thisTorsion = 0;
 azimuthFlip=1;
 for thisPupilRadius = 1:0.5:3
@@ -33,6 +35,7 @@ for thisPupilRadius = 1:0.5:3
         end
         azimuthFlip = azimuthFlip*-1;
     end
+    azimuthFlip = azimuthFlip*-1;
 end
 save(pupilFileName,'pupilData')
 
