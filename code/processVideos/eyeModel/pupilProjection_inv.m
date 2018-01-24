@@ -150,7 +150,7 @@ if isempty(p.Results.x0)
     
     % Probe the forward model at the estimated Azimuth and Elevation to
     % estimate the pupil radius.
-    probeEllipse=pupilProjection_fwd([x0(1) x0(2) 0 2], sceneGeometry, rayTraceFuncs);
+    probeEllipse=pupilProjection_fwd([x0(1) x0(2) x0(3) 2], sceneGeometry, rayTraceFuncs);
     pixelsPerMM = sqrt(probeEllipse(3)/pi)/2;
     
     % Set the initial value for pupil radius in mm
