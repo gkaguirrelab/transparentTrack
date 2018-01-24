@@ -44,10 +44,10 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
 %                           anterior chamber eye model will be created.
 %  'nPupilPerimPoints'    - The number of points that are distributed
 %                           around the pupil circle. A minimum of 5 is
-%                           required.
+%                           required to uniquely specify the image ellipse.
 %  'nIrisPerimPoints'     - The number of points that are distributed
 %                           around the iris circle. A minimum of 5 is
-%                           required.
+%                           required to uniquely specify the image ellipse.
 %  'posteriorChamberEllipsoidPoints' - The number of points that are on
 %                           each latitude line of the posterior chamber
 %                           ellipsoid. About 30 makes a nice image.
@@ -135,8 +135,7 @@ nPupilPerimPoints = p.Results.nPupilPerimPoints;
 % For the right eye, negative values on the p2 dimension are more temporal,
 % and positive values are more nasal
 
-% Five points are defined around the pupil circle, which uniquely
-% constrains the ellipse in the image plane.
+% Define points around the pupil circle
 perimeterPointAngles = 0:2*pi/nPupilPerimPoints:2*pi-(2*pi/nPupilPerimPoints);
 eyeWorldPoints(1:nPupilPerimPoints,3) = ...
     sin(perimeterPointAngles)*pupilRadius + sceneGeometry.eye.pupilCenter(3);
@@ -150,9 +149,8 @@ tmpLabels = cell(nPupilPerimPoints, 1);
 tmpLabels(:) = {'pupilPerimeter'};
 pointLabels = tmpLabels;
 
-% If the fullEyeModel flag is set, then we will create a set of points that
-% define an anatomical model of the posterior and anterior chambers of the
-% eye.
+% If the fullEyeModel flag is set, then we will create a model of the
+% posterior and anterior chambers of the eye.
 if p.Results.fullEyeModelFlag
     
     % Add points for the center of the pupil, iris, and rotation
@@ -245,8 +243,6 @@ if p.Results.fullEyeModelFlag
     eyeWorldPoints = [eyeWorldPoints; cornealApex];
     pointLabels = [pointLabels; 'cornealApex'];    
 end
-
-nEyeWorldPoints = size(eyeWorldPoints,1);
 
 
 %% Project the pupil circle points to headWorld coordinates.
@@ -398,6 +394,7 @@ sceneWorldPoints(:,2) = sceneWorldPoints(:,2)*(-1);
 
 % Add a column of ones to support the upcoming matrix multiplication with a
 % combined rotation and translation matrix
+nEyeWorldPoints = size(eyeWorldPoints,1);
 sceneWorldPoints=[sceneWorldPoints, ones(nEyeWorldPoints,1)];
 
 % Create the projectionMatrix
