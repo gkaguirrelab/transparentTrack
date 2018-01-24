@@ -22,7 +22,7 @@ function makeEyeModelVideo(videoOutFileName,pupilFileName, sceneGeometryFileName
 %                           to be displayed.
 %  'plotColors'           - The colors to be used for the plotting of each
 %                           of the label names.
-%  'ellipseFitLabel'      - The field of the pupilData file that contains
+%  'fitLabel'      - The field of the pupilData file that contains
 %
 % Outputs:
 %   None
@@ -42,9 +42,9 @@ p.addParameter('videoOutFrameRate', 60, @isnumeric);
 p.addParameter('saveCompressedVideo', true, @islogical);
 p.addParameter('videoSizeX', 640, @isnumeric);
 p.addParameter('videoSizeY', 480, @isnumeric);
-p.addParameter('labelNames', {'rotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber'}, @iscell);
-p.addParameter('plotColors', {'+r' '.w' '.b' '.g' '.y'}, @iscell);
-p.addParameter('ellipseFitLabel', 'radiusSmoothed', @ischar);
+p.addParameter('labelNames', {'rotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex'}, @iscell);
+p.addParameter('plotColors', {'+r' '.w' '.b' '*g' '.y' '*y'}, @iscell);
+p.addParameter('fitLabel', 'radiusSmoothed', @ischar);
 
 % parse
 p.parse(videoOutFileName, pupilFileName, sceneGeometryFileName, varargin{:})
@@ -62,7 +62,7 @@ end
 dataLoad = load(p.Results.pupilFileName);
 pupilData = dataLoad.pupilData;
 clear dataLoad
-eyeParams = pupilData.(p.Results.ellipseFitLabel).eyeParams.values;
+eyeParams = pupilData.(p.Results.fitLabel).eyeParams.values;
 
 % Read in the sceneGeometry file
 dataLoad = load(p.Results.sceneGeometryFileName);
@@ -121,11 +121,28 @@ for ii = 1:nFrames
     if ~any(isnan(eyeParams(ii,:)))
         
         % Obtain the pupilProjection of the model eye to the image plane
-        [~, ~, imagePoints, pointLabels] = pupilProjection_fwd(eyeParams(ii,:), sceneGeometry, rayTraceFuncs, 'fullEyeModelFlag', true);
+        [pupilEllipseParams, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyeParams(ii,:), sceneGeometry, rayTraceFuncs, 'fullEyeModelFlag', true);
         
         % Loop through the point labels present in the eye model
         for pp = 1:length(p.Results.labelNames)
             idx = strcmp(pointLabels,p.Results.labelNames{pp});
+            if strcmp(p.Results.labelNames,'pupilPerimeter')
+                % Just before we plot the pupil perimeter points, add the
+                % pupil fit ellipse
+                pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(pupilEllipseParams));
+                fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
+                % superimpose the ellipse using fimplicit or ezplot (ezplot
+                % is the fallback option for older Matlab versions)
+                if exist('fimplicit','file')==2
+                    fimplicit(fh,[1, p.Results.videoSizeX, 1, p.Results.videoSizeY],'Color', 'g','LineWidth',1);
+                    set(gca,'position',[0 0 1 1],'units','normalized')
+                    axis off;
+                else
+                    plotHandle=ezplot(fh,[1, videoSizeX, 1, videoSizeY]);
+                    set(plotHandle, 'Color', p.Results.pupilColor)
+                    set(plotHandle,'LineWidth',1);
+                end
+            end
             plot(imagePoints(idx,1), imagePoints(idx,2), p.Results.plotColors{pp})
         end
         
