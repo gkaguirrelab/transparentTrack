@@ -122,7 +122,7 @@ p.addParameter('eyeParamsLB',[-35,-25,0,0.25],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('eyeParamsUB',[35,25,0,4],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nSplits',8,@isnumeric);
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('ellipseFitLabel',[],@(x)(isempty(x) | ischar(x)));
+p.addParameter('fitLabel',[],@(x)(isempty(x) | ischar(x)));
 
 
 %% Parse and check the parameters
@@ -241,7 +241,8 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 % Loop through the frames
-parfor (ii = 1:nFrames, nWorkers)
+%parfor (ii = 1:nFrames, nWorkers)
+for ii = 1:nFrames
         
     % Update progress
     if strcmp(verbosity,'full')
@@ -249,7 +250,7 @@ parfor (ii = 1:nFrames, nWorkers)
             fprintf('\b.\n');
         end
     end
-    
+    tic
     % Initialize the results variables
     ellipseParamsTransparent=NaN(1,nEllipseParams);
     ellipseParamsSplitsSD=NaN(1,nEllipseParams);
@@ -358,6 +359,7 @@ parfor (ii = 1:nFrames, nWorkers)
         loopVar_eyeParamsSplitsSD(ii,:) = eyeParamsSplitsSD';
         loopVar_eyeParamsObjectiveError(ii) = eyeParamsObjectiveError;
     end
+    toc
 end % loop over frames
 
 % alert the user that we are done with the fit loop
@@ -369,42 +371,42 @@ end
 %% Clean up and save
 
 % Establish a label to save the fields of the ellipse fit data
-if isempty(p.Results.ellipseFitLabel)
+if isempty(p.Results.fitLabel)
     if isempty(sceneGeometry)
-        ellipseFitLabel = 'initial';
+        fitLabel = 'initial';
     else
-        ellipseFitLabel = 'sceneConstrained';
+        fitLabel = 'sceneConstrained';
     end
 else
-    ellipseFitLabel = p.Results.ellipseFitLabel;
+    fitLabel = p.Results.fitLabel;
 end
 
 % Store the ellipse fit data in informative fields
-pupilData.(ellipseFitLabel).ellipses.values = loopVar_ellipseParamsTransparent;
+pupilData.(fitLabel).ellipses.values = loopVar_ellipseParamsTransparent;
 if isempty(sceneGeometry)
-    pupilData.(ellipseFitLabel).ellipses.RMSE = loopVar_ellipseParamsObjectiveError';
+    pupilData.(fitLabel).ellipses.RMSE = loopVar_ellipseParamsObjectiveError';
 else
-    pupilData.(ellipseFitLabel).ellipses.RMSE = loopVar_eyeParamsObjectiveError';
+    pupilData.(fitLabel).ellipses.RMSE = loopVar_eyeParamsObjectiveError';
 end
 if nSplits~=0
-    pupilData.(ellipseFitLabel).ellipses.splitsSD = loopVar_ellipseParamsSplitsSD;
+    pupilData.(fitLabel).ellipses.splitsSD = loopVar_ellipseParamsSplitsSD;
 end
-pupilData.(ellipseFitLabel).ellipses.meta.ellipseForm = 'transparent';
-pupilData.(ellipseFitLabel).ellipses.meta.labels = {'x','y','area','eccentricity','theta'};
-pupilData.(ellipseFitLabel).ellipses.meta.units = {'pixels','pixels','squared pixels','non-linear eccentricity','rads'};
-pupilData.(ellipseFitLabel).ellipses.meta.coordinateSystem = 'intrinsic image';
+pupilData.(fitLabel).ellipses.meta.ellipseForm = 'transparent';
+pupilData.(fitLabel).ellipses.meta.labels = {'x','y','area','eccentricity','theta'};
+pupilData.(fitLabel).ellipses.meta.units = {'pixels','pixels','squared pixels','non-linear eccentricity','rads'};
+pupilData.(fitLabel).ellipses.meta.coordinateSystem = 'intrinsic image';
 if ~isempty(sceneGeometry)
-    pupilData.(ellipseFitLabel).eyeParams.values = loopVar_eyeParams;
+    pupilData.(fitLabel).eyeParams.values = loopVar_eyeParams;
     if nSplits~=0
-        pupilData.(ellipseFitLabel).eyeParams.splitsSD = loopVar_eyeParamsSplitsSD;
+        pupilData.(fitLabel).eyeParams.splitsSD = loopVar_eyeParamsSplitsSD;
     end
-    pupilData.(ellipseFitLabel).eyeParams.meta.labels = {'azimuth','elevation','torsion','pupil radius'};
-    pupilData.(ellipseFitLabel).eyeParams.meta.units = {'deg','deg','deg','mm'};
-    pupilData.(ellipseFitLabel).eyeParams.meta.coordinateSystem = 'head fixed (extrinsic)';
+    pupilData.(fitLabel).eyeParams.meta.labels = {'azimuth','elevation','torsion','pupil radius'};
+    pupilData.(fitLabel).eyeParams.meta.units = {'deg','deg','deg','mm'};
+    pupilData.(fitLabel).eyeParams.meta.coordinateSystem = 'head fixed (extrinsic)';
 end
 
 % add meta data
-pupilData.(ellipseFitLabel).meta = p.Results;
+pupilData.(fitLabel).meta = p.Results;
 
 % save the ellipse fit results
 save(p.Results.pupilFileName,'pupilData')
