@@ -241,8 +241,7 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 % Loop through the frames
-%parfor (ii = 1:nFrames, nWorkers)
-for ii = 1:nFrames
+parfor (ii = 1:nFrames, nWorkers)
         
     % Update progress
     if strcmp(verbosity,'full')
@@ -277,16 +276,9 @@ for ii = 1:nFrames
                     ellipseTransparentUB, ...
                     []);
             else
-                % Obtain a first guess by running the inverse projection on
-                % the initial ellipse fit parameters without ray tracing
-                eyeParams_x0 = [0 0 0 2];
-                if ~isempty(pupilData)
-                    if isfield(pupilData, 'initial')
-                        eyeParams_x0 = pupilProjection_inv(pupilData.initial.ellipse.values(ii,:), sceneGeometry, []);
-                    end
-                end
                 % Identify the best fitting eye parameters for the  the
                 % pupil perimeter
+                eyeParams_x0 = [0 0 0 2];
                 [eyeParams, eyeParamsObjectiveError] = ...
                     eyeParamEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs, 'x0', eyeParams_x0, 'eyeParamsLB', eyeParamsLB, 'eyeParamsUB', eyeParamsUB);
                 % Obtain the parameters of the ellipse
