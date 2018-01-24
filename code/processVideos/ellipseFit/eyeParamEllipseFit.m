@@ -37,7 +37,7 @@ p.addRequired('Yp',@isnumeric);
 p.addRequired('sceneGeometry',@isstruct);
 p.addRequired('rayTraceFuncs',@(x)(isempty(x) | isstruct(x)));
 
-p.addParameter('x0',[0 0 2],@isnumeric);
+p.addParameter('x0',[0 0 0 2],@isnumeric);
 p.addParameter('eyeParamsLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyeParamsUB',[89,89,0,4],@isnumeric);
 
