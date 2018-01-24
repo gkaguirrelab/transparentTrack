@@ -1,4 +1,4 @@
-function eye = modelEyeParameters( spectacleRefractionDiopters )
+function eye = modelEyeParameters( spectacleRefractionDiopters, laterality )
 % Return the parameters of a model eye
 %
 % Description:
@@ -28,6 +28,10 @@ function eye = modelEyeParameters( spectacleRefractionDiopters )
 %                           spherical refractive correction for the
 %                           subject. A negative number is the correction
 %                           that would be used for a myopic person.
+%   laterality            - A text string that specifies which eye (left, 
+%                           right) to model. Allowed values (in any case)
+%                           are {'left','right','L','R','OS','OD'}
+%                       
 %
 % Outputs:
 %   eye                   - A structure with fields that contain the values
@@ -36,6 +40,11 @@ function eye = modelEyeParameters( spectacleRefractionDiopters )
 %% Check the input
 if nargin==0
     spectacleRefractionDiopters=0;
+    laterality = 'right';
+end
+
+if nargin==1
+    laterality = 'right';
 end
 
 
@@ -48,8 +57,21 @@ eye.corneaBackSurfaceRadius = 6.4;
 eye.corneaBackSurfaceCenter = [-7.22 0 0];
 
 % We position the pupil plane at the depth of the anterior point of the
-% lens
-eye.pupilCenter = [-3.7 0 0];
+% lens. Additionally, following (page 643):
+%
+%   G. Westheimer (1970) Image Quality in the Human Eye, Optica Acta:
+%   International Journal of Optics, 17:9, 641-658
+%
+% the pupil center is displaced 0.5 mm nasal to the optical axis
+%
+switch laterality
+    case {'right','RIGHT','Right','R','r','od','OD'}
+        eye.pupilCenter = [-3.7 0.5 -0.25];
+    case {'left','LEFT','Left','L','l','os','OS'}
+        eye.pupilCenter = [-3.7 -0.5 -0.25];
+    otherwise
+        error('Please specify a valid eye laterality for the model eye');
+end
 
 % Define the properties of the iris
 eye.irisRadius = 5;
@@ -92,9 +114,10 @@ eye.aqueousRefractiveIndex = 1.3374;
 
 % Meta data regarding the units of the model
 eye.meta.spectacleRefractionDiopters = spectacleRefractionDiopters;
+eye.meta.laterality = laterality;
 eye.meta.units = 'mm';
 eye.meta.coordinates = 'eyeWorld';
-eye.meta.dimensions = {'depth (axial)' 'vertical' 'horizontal'};
+eye.meta.dimensions = {'depth (axial)' 'horizontal' 'vertical'};
 
 end
 
