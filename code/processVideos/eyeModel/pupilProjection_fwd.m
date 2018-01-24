@@ -125,14 +125,15 @@ nPupilPerimPoints = p.Results.nPupilPerimPoints;
 %                 |
 %     ^         __|__
 %  +  |        /     \
-% p2  -  -----(   +   )-----
+% p3  -  -----(   +   )-----
 %  -  |        \_____/
 %     v           |
 %                 |
 %
-%           - <--p3--> +
+%           - <--p2--> +
 %
-
+% For the right eye, negative values on the p2 dimension are more temporal,
+% and positive values are more nasal
 
 % Five points are defined around the pupil circle, which uniquely
 % constrains the ellipse in the image plane.
