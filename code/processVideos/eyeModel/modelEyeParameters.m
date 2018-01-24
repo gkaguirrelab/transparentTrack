@@ -12,12 +12,12 @@ function eye = modelEyeParameters( spectacleRefractionDiopters, eyeLaterality )
 %       Atchison, David A., et al. "Shape of the retinal surface in 
 %       emmetropia and myopia." IOVS 46.8 (2005): 2698-2707.
 %
-%   Achison uses the dimensions [x, y, z] corresponding to the width, 
+%   Atchison uses the dimensions [x, y, z] corresponding to the width, 
 %   height, and depth (axial length) of the model eye. The parameters
 %   returned by this routine correspond to the eyeWorld coordinate space
-%   used in pupilProjection_fwd. The coordinates space is relative to the
-%   apex of the cornea, with the dimensions [depth, vertical, horizontal],
-%   and negative values of depth towards the center of the eye.
+%   used in pupilProjection_fwd, which is relative to the apex of the
+%   cornea and has the dimensions [depth, vertical, horizontal]; negative
+%   values of depth towards the center of the eye.
 %
 % Inputs:
 %   spectacleRefractionDiopters - Scalar, in units of diopters. The
@@ -57,18 +57,19 @@ eye.corneaBackSurfaceRadius = 6.4;
 eye.corneaBackSurfaceCenter = [-7.22 0 0];
 
 % We position the pupil plane at the depth of the anterior point of the
-% lens. Additionally, following (page 643):
-%
-%   G. Westheimer (1970) Image Quality in the Human Eye, Optica Acta:
-%   International Journal of Optics, 17:9, 641-658
-%
-% the pupil center is displaced 0.5 mm nasal to the optical axis
+% lens. The center of the pupil is usually found to be decentered from the
+% corneal apex, typically shifted temporally and downwards on the eye. We
+% have calculated for the optical model of the eye the decentration values
+% that produce an entrance pupil width / height ratio that best matches
+% empirical measurements (see TEST_EntrancePupilShape). The values from
+% that search are used here for the p2 and p3 position of the center of the
+% pupil.
 %
 switch eyeLaterality
     case {'right','RIGHT','Right','R','r','od','OD'}
-        eye.pupilCenter = [-3.7 0.0022 -0.23];
+        eye.pupilCenter = [-3.7 0.1445 -0.3639];
     case {'left','LEFT','Left','L','l','os','OS'}
-        eye.pupilCenter = [-3.7 -0.0022 -0.23];
+        eye.pupilCenter = [-3.7 -0.1445 -0.3639];
     otherwise
         error('Please specify a valid eye laterality for the model eye');
 end
