@@ -67,9 +67,9 @@ eye.corneaBackSurfaceCenter = [-7.22 0 0];
 %
 switch eyeLaterality
     case {'right','RIGHT','Right','R','r','od','OD'}
-        eye.pupilCenter = [-3.7 0.1445 -0.3639];
+        eye.pupilCenter = [-3.7 0.1445 0.3639];
     case {'left','LEFT','Left','L','l','os','OS'}
-        eye.pupilCenter = [-3.7 -0.1445 -0.3639];
+        eye.pupilCenter = [-3.7 -0.1445 0.3639];
     otherwise
         error('Please specify a valid eye laterality for the model eye');
 end
