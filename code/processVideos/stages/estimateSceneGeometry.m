@@ -165,7 +165,7 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %                           camera is viewing the eye from an off-center
 %                           angle, the bounds will need to be shifted
 %                           accordingly.
-%  'ellipseFitLabel'      - Identifies the field in pupilData that contains
+%  'fitLabel'      - Identifies the field in pupilData that contains
 %                           the ellipse fit params for which the search
 %                           will be conducted.
 %  'ellipseArrayList'     - A vector of frame numbers (indexed from 1)
@@ -218,7 +218,7 @@ p.addParameter('primaryPosition',[0 0 0],@isnumeric);
 p.addParameter('constraintTolerance',0.02,@isnumeric);
 p.addParameter('eyeParamsLB',[-35,-25,0,0.25],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('eyeParamsUB',[35,25,0,4],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('ellipseFitLabel','initial',@ischar);
+p.addParameter('fitLabel','initial',@ischar);
 p.addParameter('ellipseArrayList',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nBinsPerDimension',10,@isnumeric);
 
@@ -306,13 +306,13 @@ if iscell(pupilFileName)
     ellipseFitSEM = [];
     for cc = 1:length(pupilFileName)
         load(pupilFileName{cc})
-        ellipses = [ellipses;pupilData.(p.Results.ellipseFitLabel).ellipses.values];
-        ellipseFitSEM = [ellipseFitSEM; pupilData.(p.Results.ellipseFitLabel).ellipses.RMSE];
+        ellipses = [ellipses;pupilData.(p.Results.fitLabel).ellipses.values];
+        ellipseFitSEM = [ellipseFitSEM; pupilData.(p.Results.fitLabel).ellipses.RMSE];
     end
 else
     load(pupilFileName)
-    ellipses = pupilData.(p.Results.ellipseFitLabel).ellipses.values;
-    ellipseFitSEM = pupilData.(p.Results.ellipseFitLabel).ellipses.RMSE;
+    ellipses = pupilData.(p.Results.fitLabel).ellipses.values;
+    ellipseFitSEM = pupilData.(p.Results.fitLabel).ellipses.RMSE;
 end
 
 
@@ -627,7 +627,7 @@ for ii=1:size(ellipses,1)
 end
 
 % plot the estimated center of rotation of the eye
-rotationCenterEllipse = pupilProjection_fwd([0 0 2], sceneGeometry, rayTraceFuncs);
+rotationCenterEllipse = pupilProjection_fwd([0 0 0 2], sceneGeometry, rayTraceFuncs);
 plot(rotationCenterEllipse(1),rotationCenterEllipse(2), '+g', 'MarkerSize', 5);
 
 % Calculate the plot limits
