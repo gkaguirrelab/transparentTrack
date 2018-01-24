@@ -13,14 +13,6 @@
 %       as viewed along the horizontal visual field." Journal of vision
 %       13.6 (2013): 3-3.
 %
-%   Fedtke and colleagues created a model of the appearance of the entrance
-%   pupil as a function of viewing angle by implementing the Navarro
-%   schematic model eye in the Zemax ray tracing software package:
-%
-%       Fedtke, Cathleen, Fabrice Manns, and Arthur Ho. "The entrance pupil
-%       of the human eye: a three-dimensional model as a function of
-%       viewing angle." Optics express 18.21 (2010): 22364-22376.
-%
 %   A key property of the entrance pupil is that it changes in appearance
 %   as a function of viewing angle differently when viewed from the nasal
 %   and temporal side. This asymmetry is related (at least in part) to the
@@ -29,20 +21,19 @@
 %
 %   Here, we search for values for the center of the pupil relative to the
 %   optical axis of the eye that best fits the empirical work of
-%   Mathur 2013, and we compare the output of our model to output of the
-%   Fedtke model.
+%   Mathur 2013.
 %   
 %   Note that Mathur 2013 reports results by the visual field angle from
 %   which the right eye of the subject was observed. A negative angle
 %   corresponds to viewing the eye from the temporal visual field of the
 %   subject.
 %
-%   Our model is rotating the eye. For the right eye, a positive azimuth
+%   Our model rotates the eye. For the right eye, a positive azimuth
 %   rotates the eye such that the center of the pupil moves to the right of
 %   the image. This means that a positive azimuth corresponds to the camera
-%   being positioned in the temporal portion of the visual field. So, we must
-%   sign reverse the interpretation of our azimuthal values for measurements
-%   made in the right eye to correspond to the Mathur results.
+%   being positioned in the temporal portion of the visual field. So, we
+%   must sign reverse the interpretation of our azimuthal values for
+%   measurements made in the right eye to correspond to the Mathur results.
 %
 
 close all
@@ -74,17 +65,19 @@ pupilDiam = 6;
 mathurEq = @(viewingAngle) 0.99.*cosd((viewingAngle+5.3)/1.121);
 
 % Search over pupil center locations to find the best match to the Marthur
-% equation. We first create an objective function that is the difference
-% between the horizontal / vertical ratio from our model and Mathur's model
-% as a function of viewing angle.
-% NOTE: we sign reverse the azimuth here to produce viewing angle.
-myObjFunc = @(x) sum((mathurEq(-azimuthsDeg) - calcPupilDiameterRatio(x,azimuthsDeg,pupilDiam,sceneGeometry,rayTraceFuncs)).^2);
+% equation.
 
 % Define some of the parameters of the search.
 azimuthsDeg = -60:10:60;
 x0=[0.5 -0.25];
 ub = [2 2];
 lb = [-2 -2];
+
+% Create an objective function that is the difference
+% between the horizontal / vertical ratio from our model and Mathur's model
+% as a function of viewing angle.
+% NOTE: we sign reverse the azimuth here to produce viewing angle.
+myObjFunc = @(x) sum((mathurEq(-azimuthsDeg) - calcPupilDiameterRatio(x,azimuthsDeg,pupilDiam,sceneGeometry,rayTraceFuncs)).^2);
 
 % Perform the search
 [x, fVal] = fmincon(myObjFunc,x0,[],[],[],[],lb,ub);
@@ -94,11 +87,11 @@ diamRatio = calcPupilDiameterRatio(x,azimuthsDeg,pupilDiam,sceneGeometry,rayTrac
 
 % Plot Figure 10 of Mathur 2013 with our model output
 figure
-plot(-80:1:80,mathurEq(-80:1:80),'-r');
+plot(-azimuthsDeg,mathurEq(-azimuthsDeg),'-r');
 hold on
-plot(-80:1:80,cosd(-80:1:80),'--k');
-% NOTE: we sign reverse the azimuth here to produce viewing angle.
-plot(-azimuthsDeg,diamRatio ,'xk');
+plot(-azimuthsDeg,cosd(-azimuthsDeg),'--k');
+% NOTE: plot the diamRatio against viewingAngle
+plot(azimuthsDeg,diamRatio ,'xk');
 xlim([-90 90]);
 ylim([0 1.1]);
 xlabel('Viewing angle [deg]')
@@ -109,37 +102,7 @@ fprintf('For the right eye, the best fitting pupil center was found at:\n');
 fprintf('\tp2: %f \n',x(1));
 fprintf('\tp3: %f \n',x(2));
 
-%
-% horizMag = horizDiam ./ veridicalPupilPixelDiam;
-% vertMag = vertDiam ./ veridicalPupilPixelDiam;
-%
-% % These are equations 1a and 2 of Fedtke 2010
-% MtanFedtke = @(azimuthDeg, p) (1.133-6.3e-4*p^2)*cosd((-0.8798+4.8e-3*p).*azimuthDeg+3.7e-4.*azimuthDeg.^2);
-% MsagFedtke = @(azimuthDeg) 4.4e-6.*(azimuthDeg.^2.299)+1.125;
-%
-% figure
-% subplot(2,1,1);
-% plot(0:1:80,MtanFedtke(0:1:80, pupilDiam),'-r');
-% hold on
-% plot(0:1:80,cosd(0:1:80),'--k');
-% plot(0:5:60,horizMag,'xk');
-% xlim([0 90]);
-% ylim([0.4 1.2]);
-%
-% subplot(2,1,2);
-% plot(0:1:80,MsagFedtke(0:1:80),'-r');
-% hold on
-% plot(0:5:60,vertMag,'xk');
-% xlim([0 90]);
-% ylim([1.1 1.25]);
-%
-% figure
-% plot(0:1:80,MtanFedtke(0:1:80, pupilDiam)./MsagFedtke(0:1:80),'-r');
-% hold on
-% plot(0:5:60,horizDiam./vertDiam,'xk');
-% xlim([0 90]);
-% ylim([0.3 1.1]);
-%
+
 
 
 %% LOCAL FUNCTION
