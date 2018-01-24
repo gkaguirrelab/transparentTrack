@@ -211,6 +211,7 @@ p.addParameter('extrinsicTranslationVector',[0; 0; 120],@isnumeric);
 p.addParameter('extrinsicTranslationVectorLB',[-10; -10; 100],@isnumeric);
 p.addParameter('extrinsicTranslationVectorUB',[10; 10; 180],@isnumeric);
 p.addParameter('spectacleRefractionDiopters',0,@isnumeric);
+p.addParameter('eyeLaterality','right',@ischar);
 p.addParameter('rotationCenterDepth',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('rotationCenterDepthLB',-15.0,@isnumeric);
 p.addParameter('rotationCenterDepthUB',-12.5,@isnumeric);
@@ -243,7 +244,7 @@ initialSceneGeometry.extrinsicTranslationVector = p.Results.extrinsicTranslation
 initialSceneGeometry.extrinsicRotationMatrix = p.Results.extrinsicRotationMatrix;
 initialSceneGeometry.primaryPosition = p.Results.primaryPosition;
 initialSceneGeometry.constraintTolerance = p.Results.constraintTolerance;
-initialSceneGeometry.eye = modelEyeParameters(p.Results.spectacleRefractionDiopters);
+initialSceneGeometry.eye = modelEyeParameters(p.Results.spectacleRefractionDiopters, p.Results.eyeLaterality);
 if ~isempty(p.Results.rotationCenterDepth)
     initialSceneGeometry.eye.rotationCenter(1) = p.Results.rotationCenterDepth;
 end

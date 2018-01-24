@@ -1,4 +1,4 @@
-function eye = modelEyeParameters( spectacleRefractionDiopters, laterality )
+function eye = modelEyeParameters( spectacleRefractionDiopters, eyeLaterality )
 % Return the parameters of a model eye
 %
 % Description:
@@ -28,7 +28,7 @@ function eye = modelEyeParameters( spectacleRefractionDiopters, laterality )
 %                           spherical refractive correction for the
 %                           subject. A negative number is the correction
 %                           that would be used for a myopic person.
-%   laterality            - A text string that specifies which eye (left, 
+%   eyeLaterality         - A text string that specifies which eye (left, 
 %                           right) to model. Allowed values (in any case)
 %                           are {'left','right','L','R','OS','OD'}
 %                       
@@ -40,11 +40,11 @@ function eye = modelEyeParameters( spectacleRefractionDiopters, laterality )
 %% Check the input
 if nargin==0
     spectacleRefractionDiopters=0;
-    laterality = 'right';
+    eyeLaterality = 'right';
 end
 
 if nargin==1
-    laterality = 'right';
+    eyeLaterality = 'right';
 end
 
 
@@ -64,11 +64,11 @@ eye.corneaBackSurfaceCenter = [-7.22 0 0];
 %
 % the pupil center is displaced 0.5 mm nasal to the optical axis
 %
-switch laterality
+switch eyeLaterality
     case {'right','RIGHT','Right','R','r','od','OD'}
-        eye.pupilCenter = [-3.7 0.5 -0.25];
+        eye.pupilCenter = [-3.7 0.0022 -0.23];
     case {'left','LEFT','Left','L','l','os','OS'}
-        eye.pupilCenter = [-3.7 -0.5 -0.25];
+        eye.pupilCenter = [-3.7 -0.0022 -0.23];
     otherwise
         error('Please specify a valid eye laterality for the model eye');
 end
@@ -114,7 +114,7 @@ eye.aqueousRefractiveIndex = 1.3374;
 
 % Meta data regarding the units of the model
 eye.meta.spectacleRefractionDiopters = spectacleRefractionDiopters;
-eye.meta.laterality = laterality;
+eye.meta.laterality = eyeLaterality;
 eye.meta.units = 'mm';
 eye.meta.coordinates = 'eyeWorld';
 eye.meta.dimensions = {'depth (axial)' 'horizontal' 'vertical'};
