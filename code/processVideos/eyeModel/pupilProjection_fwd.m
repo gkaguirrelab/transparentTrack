@@ -1,4 +1,4 @@
-function [pupilEllipseOnImagePlane, eyeWorldPoints, imagePoints, pointLabels] = pupilProjection_fwd(eyeParams, sceneGeometry, rayTraceFuncs, varargin)
+function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoints, pointLabels] = pupilProjection_fwd(eyeParams, sceneGeometry, rayTraceFuncs, varargin)
 % Project the pupil circle to an ellipse on the image plane
 %
 % Description:
@@ -34,29 +34,7 @@ function [pupilEllipseOnImagePlane, eyeWorldPoints, imagePoints, pointLabels] = 
 %                           Azimuth, elevation, and torsion are in units of
 %                           head-centered (extrinsic) degrees, and pupil
 %                           radius is in mm.
-%   sceneGeometry         - A structure that contains the fields:
-%                             - A 1x2 vector of radial distortion params
-%                             - intrinsicCameraMatrix: a 3x3 matrix in
-%                               arbitrary units (typically pixels)
-%                             - extrinsicTranslationVector: a 3x1 vector
-%                               in units of millimeters that relates center
-%                               of rotation of the eye to the optical axis
-%                               of the camera
-%                             - extrinsicRotationMatrix: a 3x3 matrix in
-%                               units of millimeters
-%                             - primaryPosition: a 1x3 vector in units of
-%                               degrees that gives the head-centered
-%                               rotation values for to the eye when it is
-%                               in primary position (needed for
-%                               implementation of Listing's Law).
-%                             - constraintTolerance: The shape and area
-%                               constraint employed by pupilProjection_inv.
-%                             - eye: a sub-structure that contains fields
-%                               that define the anatomical properties of
-%                               the eye. The values are largely those
-%                               returned by modelEyeParameters(), with the
-%                               rotationCenter field adjusted by the
-%                               sceneGeometry search
+%   sceneGeometry         - A structure; described in estimateSceneGeometry
 %   rayTraceFuncs         - A structure that contains handles to the ray
 %                           tracing functions created by
 %                           assembleRayTraceFuncs()
@@ -64,24 +42,42 @@ function [pupilEllipseOnImagePlane, eyeWorldPoints, imagePoints, pointLabels] = 
 % Optional key/value pairs:
 %  'fullEyeModelFlag'     - Logical. Determines if the full posterior and
 %                           anterior chamber eye model will be created.
+%  'nPupilPerimPoints'    - The number of points that are distributed
+%                           around the pupil circle. A minimum of 5 is
+%                           required.
+%  'nIrisPerimPoints'     - The number of points that are distributed
+%                           around the iris circle. A minimum of 5 is
+%                           required.
+%  'posteriorChamberEllipsoidPoints' - The number of points that are on
+%                           each latitude line of the posterior chamber
+%                           ellipsoid. About 30 makes a nice image.
+%  'anteriorChamberEllipsoidPoints' - The number of points that are on
+%                           each longitude line of the anterior chamber
+%                           ellipsoid. About 30 makes a nice image.
 %
 % Outputs:
 %   pupilEllipseOnImagePlane - A 1x5 vector that contains the parameters of
 %                           pupil ellipse on the image plane cast in
-%                           transparent form
-%   eyeWorldPoints        - An nx3 matrix that gives the coordinates of the
-%                           points of the eye model in the eyeWorld
-%                           coordinate frame. If fullEyeModel is set to
-%                           false, then n=5 for just the pupil perimeter.
-%                           If fullEyeModel is true, then n ~500.
+%                           transparent form.
 %   imagePoints           - An nx2 matrix that specifies the x, y location
 %                           on the image plane for each of the eyeWorld
 %                           points.
+%   sceneWorldPoints      - An nx3 matrix of the coordinates of the
+%                           points of the eye model in the sceneWorld
+%                           coordinate frame. If fullEyeModel is set to
+%                           false, then there will only be points for the
+%                           pupil perimeter. If fullEyeModel is true, then
+%                           the entire model of ~1000 points will be
+%                           returned.
+%   eyeWorldPoints        - An nx3 matrix of the coordinates of the
+%                           points of the eye model in the eyeWorld
+%                           coordinate frame.
 %   pointsLabels          - An nx1 cell array that identifies each of the
 %                           points, from the set {'pupilCenter',
 %                           'irisCenter', 'rotationCenter',
 %                           'posteriorChamber', 'irisPerimeter',
-%                           'pupilPerimeter', 'anteriorChamber'}.
+%                           'pupilPerimeter',
+%                           'anteriorChamber','cornealApex'}.
 %
 
 %% input parser
@@ -89,12 +85,12 @@ p = inputParser; p.KeepUnmatched = true;
 
 % Required
 p.addRequired('eyeParams',@isnumeric);
-p.addRequired('sceneGeometry',@(x)(isempty(x) | isstruct(x)));
-p.addRequired('rayTraceFuncs',@(x)(isempty(x) | isstruct(x)));
+p.addRequired('sceneGeometry',@(x)(isempty(x) || isstruct(x)));
+p.addRequired('rayTraceFuncs',@(x)(isempty(x) || isstruct(x)));
 
 p.addParameter('fullEyeModelFlag',false,@islogical);
-p.addParameter('nPupilPerimPoints',5,@isnumeric);
-p.addParameter('nIrisPerimPoints',5,@isnumeric);
+p.addParameter('nPupilPerimPoints',5,@(x)(isnumeric(x) && x>=4));
+p.addParameter('nIrisPerimPoints',5,@(x)(isnumeric(x) && x>=4));
 p.addParameter('posteriorChamberEllipsoidPoints',30,@isnumeric);
 p.addParameter('anteriorChamberEllipsoidPoints',30,@isnumeric);
 
@@ -243,6 +239,10 @@ if p.Results.fullEyeModelFlag
     tmpLabels(:) = {'anteriorChamber'};
     pointLabels = [pointLabels; tmpLabels];
     
+    % Add a point for the corneal apex
+    cornealApex=[0 0 0];
+    eyeWorldPoints = [eyeWorldPoints; cornealApex];
+    pointLabels = [pointLabels; 'cornealApex'];    
 end
 
 nEyeWorldPoints = size(eyeWorldPoints,1);
@@ -344,7 +344,7 @@ if ~isempty(rayTraceFuncs)
     end
 end
 
-% Apply the eye rotation to the pupil plane
+%% Apply the eye rotation
 headWorldPoints = (eyeRotation*(eyeWorldPoints-sceneGeometry.eye.rotationCenter)')'+sceneGeometry.eye.rotationCenter;
 
 
