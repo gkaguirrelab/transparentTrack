@@ -126,7 +126,7 @@ for ii = 1:nFrames
         % Loop through the point labels present in the eye model
         for pp = 1:length(p.Results.labelNames)
             idx = strcmp(pointLabels,p.Results.labelNames{pp});
-            if strcmp(p.Results.labelNames,'pupilPerimeter')
+            if strcmp(p.Results.labelNames{pp},'pupilPerimeter')
                 % Just before we plot the pupil perimeter points, add the
                 % pupil fit ellipse
                 pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(pupilEllipseParams));
