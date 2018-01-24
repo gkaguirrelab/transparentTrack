@@ -22,45 +22,49 @@
 %   to the prior studies.
 %
 
+close all
+
 % Obtain the default sceneGeometry
-sceneGeometry = estimateSceneGeometry([],[]);
+sceneGeometry = estimateSceneGeometry([],[], ...
+    'radialDistortionVector', [0 0]);
 
 % Assemble the ray tracing functions
-rayTraceFuncs = assembleRayTraceFuncs( initialSceneGeometry );
+rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
 
 % Determine the diameter of a 1.5 mm pupil in the image plane without ray
 % tracing effects
 pupilDiam = 3;
 [~, ~, imagePoints] = pupilProjection_fwd([0 0 0 pupilDiam/2], sceneGeometry, [], 'nPupilPerimPoints',50);
-veridicalPupilPixelDiam = max(imagePoints(:,1))-minmax(imagePoints(:,1));
+veridicalPupilPixelDiam = max(imagePoints(:,1)')-min(imagePoints(:,1)');
 
 % Rotate the eye between 0 and 80 degrees of azimuth and obtain the
 % horizontal and vertical diameter of the pupil image
 horizDiam=[];
 vertDiam=[];
 for azimuthDeg = 0:10:80
-    eyeParams=[deg2rad(azimuthDeg) 0 0 pupilDiam/2];
+    eyeParams=[-azimuthDeg 0 0 pupilDiam/2];
     [~, ~, imagePoints, pointLabels] = pupilProjection_fwd(eyeParams, sceneGeometry, rayTraceFuncs, 'nPupilPerimPoints',50);
-    horizDiam=[horizDiam max(imagePoints(:,1))-minmax(imagePoints(:,1))];
-    vertDiam=[vertDiam max(imagePoints(:,2))-minmax(imagePoints(:,2))];
+    horizDiam =[horizDiam max(imagePoints(:,1)')-min(imagePoints(:,1)')];
+    vertDiam  =[vertDiam max(imagePoints(:,2)')-min(imagePoints(:,2)')];
 end
 
 horizMag = horizDiam ./ veridicalPupilPixelDiam;
 vertMag = vertDiam ./ veridicalPupilPixelDiam;
 
 % These are equations 1a and 2 of Fedtke 2010
-MtanFedtke = @(azimuthDeg, p) (1.133-6.3e-4*p^2)*cos((-0.8798+4.8e-3*p).*azimuthDeg+3.7e-44.*azimuthDeg.^2);
+MtanFedtke = @(azimuthDeg, p) (1.133-6.3e-4*p^2)*cosd((-0.8798+4.8e-3*p).*azimuthDeg+3.7e-4.*azimuthDeg.^2);
 MsagFedtke = @(azimuthDeg) 4.4e-6.*(azimuthDeg.^2.299)+1.125;
 
 figure
-subplot(1,2,1);
+subplot(2,1,1);
 plot(0:1:80,MtanFedtke(0:1:80, pupilDiam),'-r');
 hold on
+plot(0:1:80,cosd(0:1:80),'--k');
 plot(0:10:80,horizMag,'xk');
 xlim([0 90]);
 ylim([0.4 1.2]);
 
-subplot(1,2,2);
+subplot(2,1,2);
 plot(0:1:80,MsagFedtke(0:1:80),'-r');
 hold on
 plot(0:10:80,vertMag,'xk');
