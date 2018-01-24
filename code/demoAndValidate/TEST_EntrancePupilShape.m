@@ -69,9 +69,12 @@ mathurEq = @(viewingAngle) 0.99.*cosd((viewingAngle+5.3)/1.121);
 
 % Define some of the parameters of the search.
 azimuthsDeg = -60:10:60;
-x0=[0.5 -0.25];
-ub = [2 2];
-lb = [-2 -2];
+x0=sceneGeometry.eye.pupilCenter(2:3);
+% As the solution is symmetric for p3 values around zero, we make the lower
+% bound on the p3 value zero to place the resulting pupil center downward
+% from the corneal apex.
+lb = [-1 0];
+ub = [1 1];
 
 % Create an objective function that is the difference
 % between the horizontal / vertical ratio from our model and Mathur's model
