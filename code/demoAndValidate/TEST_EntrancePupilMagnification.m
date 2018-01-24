@@ -24,9 +24,14 @@
 
 close all
 
-% Obtain the default sceneGeometry
+% Obtain the default sceneGeometry, although with no lens distortion, and
+% setting the camera distance to 100 mm.
+
+initialCameraPosition = [0; 0; 100];
+
 sceneGeometry = estimateSceneGeometry([],[], ...
-    'radialDistortionVector', [0 0]);
+    'radialDistortionVector', [0 0], ...
+    'extrinsicTranslationVector',initialCameraPosition);
 
 % Assemble the ray tracing functions
 rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
@@ -34,7 +39,7 @@ rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
 % Determine the diameter of a 1.5 mm pupil in the image plane without ray
 % tracing effects
 pupilDiam = 3;
-[~, ~, imagePoints] = pupilProjection_fwd([0 0 0 pupilDiam/2], sceneGeometry, [], 'nPupilPerimPoints',50);
+[~, imagePoints] = pupilProjection_fwd([0 0 0 pupilDiam/2], sceneGeometry, [], 'nPupilPerimPoints',50);
 veridicalPupilPixelDiam = max(imagePoints(:,1)')-min(imagePoints(:,1)');
 
 % Rotate the eye between 0 and 80 degrees of azimuth and obtain the
@@ -43,7 +48,17 @@ horizDiam=[];
 vertDiam=[];
 for azimuthDeg = 0:10:80
     eyeParams=[-azimuthDeg 0 0 pupilDiam/2];
-    [~, ~, imagePoints, pointLabels] = pupilProjection_fwd(eyeParams, sceneGeometry, rayTraceFuncs, 'nPupilPerimPoints',50);
+    % We first identify the position of the corneal
+    % apex in sceneWorld coordinates following the eye rotation
+    [~, ~, sceneWorldPoints, ~, pointLabels] = pupilProjection_fwd(eyeParams, sceneGeometry, rayTraceFuncs);
+    cornealApexIdx = find(strcmp(pointLabels,'cornealApex'));
+    % In the Fedtke model, and in the measurements reported by Jay and
+    % Spring & Stiles, the camera is positioned at a fixed distance from the corneal apex, and translates horizontally with the
+    % eye as it rotates. We therefore adjust the sceneGeometry so that the
+    tmpSceneGeometry = sceneGeometry;
+    tmpSceneGeometry.extrinsicTranslationVector = initialCameraPosition + sceneWorldPoints(cornealApexIdx,:)';
+    % Find the image points for this translated camera position.
+    [~, imagePoints] = pupilProjection_fwd(eyeParams, sceneGeomettmpSceneGeometryry, rayTraceFuncs, 'nPupilPerimPoints',50);
     horizDiam =[horizDiam max(imagePoints(:,1)')-min(imagePoints(:,1)')];
     vertDiam  =[vertDiam max(imagePoints(:,2)')-min(imagePoints(:,2)')];
 end
