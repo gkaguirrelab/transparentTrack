@@ -242,8 +242,7 @@ end
 
 % Loop through the frames
 parfor (ii = 1:nFrames, nWorkers)
-%for ii = 1:nFrames
-        
+    
     % Update progress
     if strcmp(verbosity,'full')
         if mod(ii,round(nFrames/50))==0
@@ -332,14 +331,14 @@ parfor (ii = 1:nFrames, nWorkers)
                         pFitTransparentSplit(1,ss,:) = ...
                             pupilProjection_fwd(pFitEyeParamSplit(1,ss,:), sceneGeometry, rayTraceFuncs);
                         pFitEyeParamSplit(2,ss,:) = ...
-                            eyeParamEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry, rayTraceFuncs, 'x0', eyeParams, 'eyeParamsLB', eyeParamsLB, 'eyeParamsUB', eyeParamsUB);
+                            eyeParamEllipseFit(Xp(splitIdx2), Yp(splitIdx2), sceneGeometry, rayTraceFuncs, 'x0', eyeParams, 'eyeParamsLB', eyeParamsLB, 'eyeParamsUB', eyeParamsUB);
                         pFitTransparentSplit(2,ss,:) = ...
                             pupilProjection_fwd(pFitEyeParamSplit(2,ss,:), sceneGeometry, rayTraceFuncs);
                     end
                 end % loop through splits
                 
                 % Calculate the SD of the parameters across splits
-                    ellipseParamsSplitsSD=nanstd(reshape(pFitTransparentSplit,ss*2,nEllipseParams));
+                ellipseParamsSplitsSD=nanstd(reshape(pFitTransparentSplit,ss*2,nEllipseParams));
                 if ~isempty(sceneGeometry)
                     eyeParamsSplitsSD=nanstd(reshape(pFitEyeParamSplit,ss*2,nEyeParams));
                 end
