@@ -63,7 +63,7 @@ function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, scene
 %                           threshold have their posterior values
 %                           determined entirely by the prior. Additionally,
 %                           these frames do not contribue to the prior.
-%  'fitLabel'      - Identifies the field in pupilData that contains
+%  'fitLabel'             - Identifies the field in pupilData that contains
 %                           the ellipse fit params for which the search
 %                           will be conducted.
 %
@@ -109,8 +109,8 @@ p.addParameter('fitLabel','sceneConstrained',@ischar);
 p.parse(perimeterFileName, pupilFileName, sceneGeometryFileName, varargin{:});
 
 nEllipseParams=5; % 5 params in the transparent ellipse form
-nEyeParams=4; % 3 values (azimuth, elevation, torsion, pupil radius) for eyeParams
-radiusIdx = 4;
+nEyeParams=4; % 4 eyeParams values (azimuth, elevation, torsion, radius) 
+radiusIdx = 4; % The 4th eyeParam entry holds the radius value
 
 % Load the pupil perimeter data. It will be a structure variable
 % "perimeter", with the fields .data and .meta
@@ -224,7 +224,7 @@ end
 
 % Loop through the frames
 parfor (ii = 1:nFrames, nWorkers)
-    
+
     % update progress
     if strcmp(verbosity,'full')
         if mod(ii,round(nFrames/50))==0
@@ -262,24 +262,27 @@ parfor (ii = 1:nFrames, nWorkers)
         dataVector=squeeze(pupilData.(fitLabel).eyeParams.values(rangeLowSignal:rangeHiSignal,radiusIdx))';
         
         % Build the precisionVector as the inverse of the measurement SD on
-        % each frame, scaled to range within the window from zero to unity.
-        % Thus, the noisiest measurement will not influence the prior.
+        % each frame.
         precisionVector = squeeze(pupilData.(fitLabel).eyeParams.splitsSD(:,radiusIdx))';
         precisionVector = precisionVector+realmin;
         precisionVector=precisionVector.^(-1);
         precisionVector=precisionVector(rangeLowSignal:rangeHiSignal);
-        precisionVector=precisionVector-nanmin(precisionVector);
-        precisionVector=precisionVector/nanmax(precisionVector);
         
         % Identify any time points within the window for which the fit RMSE
-        % was greater than threshold, and therefore should not contribute
-        % to the prior. We detect the edge case in which every frame in the
-        % window is "bad", in which case we retain them all.
+        % was greater than threshold. We set the precision vector for these
+        % to zero, so that they do not contribute to the prior. We detect
+        % the edge case in which every frame in the window is "bad", in
+        % which case we retain them all.
         rmseVector = pupilData.(fitLabel).ellipses.RMSE(rangeLowSignal:rangeHiSignal)';
         badFrameIdx = rmseVector > badFrameErrorThreshold;
         if sum(badFrameIdx) > 0 && sum(badFrameIdx) < length(badFrameIdx)
             precisionVector(badFrameIdx)=0;
         end
+        
+        % Scale the precision vector within the window from zero to unity.
+        % Thus, the noisiest measurement will not influence the prior.
+        precisionVector=precisionVector-nanmin(precisionVector);
+        precisionVector=precisionVector/nanmax(precisionVector);
         
         % The temporal weight vector is simply the exponential weights,
         % restricted to the available data widow
@@ -292,7 +295,7 @@ parfor (ii = 1:nFrames, nWorkers)
         priorPupilRadius = nansum(dataVector.*combinedWeightVector,2)./ ...
             nansum(combinedWeightVector(~isnan(dataVector)),2);
         
-        % Obtain the standard deviation of the prior
+        % Obtain the standard deviation of the prior, weighted over time
         priorPupilRadiusSD = nanstd(dataVector,temporalWeightVector);
         
         % Retrieve the initialFit for this frame
@@ -319,7 +322,7 @@ parfor (ii = 1:nFrames, nWorkers)
         % Calculate the SD of the posterior of the pupil radius
         posteriorPupilRadiusSD = sqrt((priorPupilRadiusSD.^2.*likelihoodPupilRadiusSD.^2) ./ ...
             (priorPupilRadiusSD.^2+likelihoodPupilRadiusSD.^2));
-        
+                
         % Re-fit the ellipse with the radius constrained to the posterior
         % value. Pass the prior azimuth and elevation as x0.
         lb_pin = eyeParamsLB;
