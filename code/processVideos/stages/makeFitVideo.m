@@ -94,7 +94,7 @@ if ~isempty(p.Results.pupilFileName)
     dataLoad = load(p.Results.pupilFileName);
     pupilData = dataLoad.pupilData;
     clear dataLoad
-    pupilFitParams = pupilData.(p.Results.ellipseFitLabel).ellipse.values;
+    pupilFitParams = pupilData.(p.Results.ellipseFitLabel).ellipses.values;
 else
     pupilFitParams=[];
 end
