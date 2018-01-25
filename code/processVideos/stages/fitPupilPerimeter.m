@@ -241,8 +241,8 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 % Loop through the frames
-%parfor (ii = 1:nFrames, nWorkers)
-for ii = 1:nFrames
+parfor (ii = 1:nFrames, nWorkers)
+%for ii = 1:nFrames
         
     % Update progress
     if strcmp(verbosity,'full')
@@ -250,7 +250,7 @@ for ii = 1:nFrames
             fprintf('\b.\n');
         end
     end
-    tic
+    
     % Initialize the results variables
     ellipseParamsTransparent=NaN(1,nEllipseParams);
     ellipseParamsSplitsSD=NaN(1,nEllipseParams);
@@ -359,7 +359,7 @@ for ii = 1:nFrames
         loopVar_eyeParamsSplitsSD(ii,:) = eyeParamsSplitsSD';
         loopVar_eyeParamsObjectiveError(ii) = eyeParamsObjectiveError;
     end
-    toc
+    
 end % loop over frames
 
 % alert the user that we are done with the fit loop
