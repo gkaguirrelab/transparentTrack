@@ -19,7 +19,14 @@ function [eyeParams, bestMatchEllipseOnImagePlane, centerError, shapeError, area
 %
 %   The default values set for the bounds on these rotation values reflect
 %   the physical limits of the projection model. Tighter, biologically
-%   informed constraints may be passed by the calling function.
+%   informed constraints may be passed by the calling function. Note that
+%   the search is underconstrained if there is freedom in the values to be
+%   found for azimuth, elevation, and torsion. Indeed, Listing's Law
+%   describes the tendency of the eye (for head-fixed saccades) to hold
+%   torsion to zero when rotation the eye to a new location. Therefore, the
+%   upper and lower bounds on torsion should generally be set to zero,
+%   unless there is some specific desire to model this component under
+%   different circumstances (e.g., peripheral nystagmus).
 %
 %   Units - Eye rotations are in units of degrees. However, the units of
 %   theta in the transparent ellipse parameters are radians. This is in
