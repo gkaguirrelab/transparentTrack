@@ -274,24 +274,14 @@ end
 %
 %
 % Position [0,-,-] indicates the front surface of the eye.
-% Position [-,0,0] indicates the h2 / h3 position for the center of the
-%   pupil when the line that connects the center of the eye and the center
-%   of the pupil is normal to the image plane.
+% Position [-,0,0] indicates the h2 / h3 position of the optical axis of
+% the eye when it is normal to the image plane.
 %
 % We will convert from this coordinate frame to that of the camera scene
 % later.
 
 
 %% Define the eye rotation matrix
-
-% This is where Listing's Law could be implemented. If the passed
-% torsion value is set to NaN, then the information regarding the primary
-% position of the eye contained in the sceneGeometry structure would
-% be used to compute the torsion.
-if isnan(eyeTorsion)
-    eyeTorsion = 0;
-end
-
 % Assemble a rotation matrix from the head-fixed Euler angle rotations. In
 % the head-centered world coordinate frame, positive azimuth, elevation and
 % torsion values correspond to leftward, downward and clockwise (as seen
@@ -299,7 +289,6 @@ end
 R3 = [cosd(eyeAzimuth) -sind(eyeAzimuth) 0; sind(eyeAzimuth) cosd(eyeAzimuth) 0; 0 0 1];
 R2 = [cosd(eyeElevation) 0 sind(eyeElevation); 0 1 0; -sind(eyeElevation) 0 cosd(eyeElevation)];
 R1 = [1 0 0; 0 cosd(eyeTorsion) -sind(eyeTorsion); 0 sind(eyeTorsion) cosd(eyeTorsion)];
-
 
 % This order (1-2-3) corresponds to a head-fixed, extrinsic, rotation
 % matrix. The reverse order (3-2-1) would be an eye-fixed, intrinsic
@@ -318,7 +307,12 @@ if ~isempty(rayTraceFuncs)
         strcmp(pointLabels,'irisCenter'));
     % Loop through the eyeWorldPoints that are to be refracted
     for ii=1:length(refractPointsIdx)
+        % Grab this eyeWorld point
         eyeWorldPoint=eyeWorldPoints(refractPointsIdx(ii),:);
+        % Define an error function which is the distance between the nodal
+        % point of the camera and a the point at which a ray impacts the
+        % plane that contains the camera, with the ray departing from the
+        % eyeWorld point at angle theta in the p1p2 plane.
         errorFunc = @(theta) rayTraceFuncs.cameraNodeDistanceError2D.p1p2(...
             sceneGeometry.extrinsicTranslationVector(1),...
             sceneGeometry.extrinsicTranslationVector(2),...
@@ -327,7 +321,11 @@ if ~isempty(rayTraceFuncs)
             eyeWorldPoint(1),eyeWorldPoint(2),eyeWorldPoint(3),...
             sceneGeometry.eye.rotationCenter(1),...
             theta);
+        % Conduct an fminsearch to find the p1p2 theta that results in a
+        % ray that strikes as close as possible to the camera nodal point
         theta_p1p2=fminsearch(errorFunc,0);
+        % Now repeat this process for a ray that varies in theta in the
+        % p1p3 plane
         errorFunc = @(theta) rayTraceFuncs.cameraNodeDistanceError2D.p1p3(...
             sceneGeometry.extrinsicTranslationVector(1),...
             sceneGeometry.extrinsicTranslationVector(2),...
@@ -337,7 +335,11 @@ if ~isempty(rayTraceFuncs)
             sceneGeometry.eye.rotationCenter(1),...
             theta);
         theta_p1p3=fminsearch(errorFunc,0);
+        % With both theta values calculated, now obtain the virtual image
+        % ray arising from the pupil plane that reflects the corneal optics
         virtualImageRay = rayTraceFuncs.virtualImageRay(eyeWorldPoint(1), eyeWorldPoint(2), eyeWorldPoint(3), theta_p1p2, theta_p1p3);
+        % Replace the original eyeWorld point with the virtual image 
+        % eyeWorld point
         eyeWorldPoints(refractPointsIdx(ii),:) = virtualImageRay(1,:);
     end
 end
@@ -367,8 +369,9 @@ headWorldPoints = (eyeRotation*(eyeWorldPoints-sceneGeometry.eye.rotationCenter)
 % +Z = front (towards the camera)
 %
 % The origin [0,0,0] corresponds to the front surface of the eye and the
-% center of the pupil when the line that connects the center of rotation of
-% the eye and the center of the pupil are normal to the image plane.
+% optical center of the eye when the line that connects the center of
+% rotation of the eye and the optical axis of the eye are normal to the
+% image plane.
 
 % Re-arrange the head world coordinate frame to transform to the scene
 % world coordinate frame
@@ -420,7 +423,6 @@ imagePointsPreDistortion(:,2) = ...
 % point), and the coordinates are in world units. To apply this distortion
 % to our image coordinate points, we subtract the optical center, and then
 % divide by fx and fy from the intrinsic matrix.
-
 imagePointsNormalized = (imagePointsPreDistortion - [sceneGeometry.intrinsicCameraMatrix(1,3) sceneGeometry.intrinsicCameraMatrix(2,3)]) ./ ...
     [sceneGeometry.intrinsicCameraMatrix(1,1) sceneGeometry.intrinsicCameraMatrix(2,2)];
 
@@ -435,6 +437,7 @@ distortionVector =   1 + ...
 imagePointsNormalizedDistorted(:,1) = imagePointsNormalized(:,1).*distortionVector;
 imagePointsNormalizedDistorted(:,2) = imagePointsNormalized(:,2).*distortionVector;
 
+% Place the distorted points back into the imagePoints vector
 imagePoints = (imagePointsNormalizedDistorted .* [sceneGeometry.intrinsicCameraMatrix(1,1) sceneGeometry.intrinsicCameraMatrix(2,2)]) +...
     [sceneGeometry.intrinsicCameraMatrix(1,3) sceneGeometry.intrinsicCameraMatrix(2,3)];
 
@@ -444,10 +447,9 @@ imagePoints = (imagePointsNormalizedDistorted .* [sceneGeometry.intrinsicCameraM
 % circle on the image plane.
 pupilPerimIdx = find(strcmp(pointLabels,'pupilPerimeter'));
 
-if eyeParams(4)==0 || ~isreal(imagePoints(pupilPerimIdx,:))
+if eyeParams(4)==0 || ~isreal(imagePoints(pupilPerimIdx,:)) || length(pupilPerimIdx)<5
     pupilEllipseOnImagePlane=nan(1,5);
 else
-    
     pupilEllipseOnImagePlane = ellipse_ex2transparent(...
         ellipse_im2ex(...
         ellipsefit_direct( imagePoints(pupilPerimIdx,1), ...
