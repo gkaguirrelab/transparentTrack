@@ -95,10 +95,20 @@ p.addParameter('constraintTolerance',[],@(x)(isempty(x) | isnumeric(x)));
 p.parse(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs, varargin{:});
 
 
-%% Check inputs and handle immediate exits
+%% Check inputs
+% Handle an immediate exit
 if isempty(pupilEllipseOnImagePlane)
     centerError=NaN;
     return
+end
+
+% Issue a warning if the bounds do not fully constrain at least one eye 
+% rotation parameter. This is because there are multiple combinations of
+% the three axis rotations that can bring an eye to a destination.
+% Typically, the torsion will be constrained with upper and lower bounds of
+% zero, reflecting Listing's Law.
+if sum((p.Results.eyeParamsUB(1:3) - p.Results.eyeParamsLB(1:3))==0) < 1
+    warning('The inverse search across possible eye rotations is underconstrained');
 end
 
 %% Assemble bounds and x0
