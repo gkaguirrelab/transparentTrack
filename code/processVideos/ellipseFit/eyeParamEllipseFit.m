@@ -1,4 +1,4 @@
-function [eyeParams, RMSE] = eyeParamEllipseFit(Xp, Yp, sceneGeometry, varargin)
+function [eyeParams, RMSE] = eyeParamEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs, varargin)
 % Fit an image plane ellipse by perspective projection of a pupil circle
 %
 % Description:
@@ -20,8 +20,8 @@ function [eyeParams, RMSE] = eyeParamEllipseFit(Xp, Yp, sceneGeometry, varargin)
 %  'eyeParamsUB'          - Upper bound on the eyeParams
 %
 % Outputs:
-%   eyeParams             - A 1x3 matrix containing the best fitting eye
-%                           parameters (azimuth, elevation, pupil radius)
+%   eyeParams             - A 1x4 matrix containing the best fitting eye
+%                           parameters (azimuth, elevation, torsion, pupil radius)
 %   RMSE                  - Root mean squared error of the distance of
 %                           boundary point in the image to the fitted
 %                           ellipse
@@ -35,13 +35,14 @@ p = inputParser;
 p.addRequired('Xp',@isnumeric);
 p.addRequired('Yp',@isnumeric);
 p.addRequired('sceneGeometry',@isstruct);
+p.addRequired('rayTraceFuncs',@(x)(isempty(x) | isstruct(x)));
 
-p.addParameter('x0',[0 0 2],@isnumeric);
-p.addParameter('eyeParamsLB',[-89,-89,0.5],@isnumeric);
-p.addParameter('eyeParamsUB',[89,89,5],@isnumeric);
+p.addParameter('x0',[0 0 0 2],@isnumeric);
+p.addParameter('eyeParamsLB',[-89,-89,0,0.1],@isnumeric);
+p.addParameter('eyeParamsUB',[89,89,0,4],@isnumeric);
 
 % Parse and check the parameters
-p.parse(Xp, Yp, sceneGeometry, varargin{:});
+p.parse(Xp, Yp, sceneGeometry, rayTraceFuncs, varargin{:});
 
 
 %% Define the objective function
@@ -54,7 +55,7 @@ myFun = @(p) ...
                 Xp,...
                 Yp,...
                 ellipse_transparent2ex(...
-                    pupilProjection_fwd(p, sceneGeometry)...
+                    pupilProjection_fwd(p, sceneGeometry, rayTraceFuncs)...
             	)...
         	).^2 ...
     	)...

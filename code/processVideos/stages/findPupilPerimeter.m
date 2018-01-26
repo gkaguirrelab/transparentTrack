@@ -124,7 +124,6 @@ p.parse(grayVideoName, perimeterFileName, varargin{:})
 
 
 %% Read video file into memory
-% load pupilPerimeter
 videoInObj = VideoReader(grayVideoName);
 % get number of frames
 if p.Results.nFrames == Inf

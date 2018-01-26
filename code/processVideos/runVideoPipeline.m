@@ -12,6 +12,7 @@ function runVideoPipeline( pathParams, varargin )
 %       estimateSceneGeometry
 %       fitPupilPerimeter -- fit again with scene geometry constraints
 %       smoothPupilRadius
+%       refineIrisRadius
 %       makeFitVideo
 %       makeEyeModelVideo
 %
@@ -211,6 +212,10 @@ switch p.Results.videoTypeChoice
     otherwise
         error('VideoTypeChoice is not defined')
 end
+
+% Parking this line here while this stage is under development
+%            'refineIrisRadius(grayVideoName, pupilFileName, sceneGeometryFileName, varargin{:});'...
+
 
 % Grab the function names as the portion of the funCalls that preceed the
 % open parenthesis
