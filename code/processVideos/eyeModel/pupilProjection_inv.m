@@ -1,6 +1,9 @@
 function [eyeParams, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs, varargin)
 % Project an ellipse on the image plane to a pupil circle in the scene
 %
+% Syntax:
+%  [eyeParams, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs)
+%
 % Description:
 %	Given the sceneGeometry and an ellipse on the image plane, this routine
 %   finds parameters of the rotation of the eye and pupil sizes that can
@@ -36,8 +39,10 @@ function [eyeParams, bestMatchEllipseOnImagePlane, centerError, shapeError, area
 %   pupilEllipseOnImagePlane - A 1x5 vector that contains the parameters of
 %                           pupil ellipse on the image plane cast in
 %                           transparent form
-%   sceneGeometry         - The sceneGeometry structure.
-%   rayTraceFuncs         - DESCRIBE
+%   sceneGeometry         - The sceneGeometry structure. Defined in
+%                           estimateSceneGeometry()
+%   rayTraceFuncs         - A structure of function handles. Defined in
+%                           assembleRayTraceFuncs().
 %
 % Optional key/value pairs:
 %  'x0'                   - Starting point of the search for the eyeParams.

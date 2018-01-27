@@ -1,6 +1,9 @@
 function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varargin)
 % Perform non-linear, constrained ellipse fitting to pupil perimeters
 %
+% Syntax:
+%  [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName)
+%
 % Description:
 %   This routine fits an ellipse to each frame of a video that contains the
 %   perimeter of the pupil. A non-linear search routine is used, with

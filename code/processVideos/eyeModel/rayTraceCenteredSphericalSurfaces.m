@@ -2,7 +2,7 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
 % Returns the position and angle of a resultant ray WRT optical axis
 %
 % Syntax:
-%   [thetaOut, imagePositionCurrent] = rayTraceCenteredSphericalSurfaces(thetaInitial, nInitial, opticalSystem)
+%   [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCenteredSphericalSurfaces(coordsInitial, thetaInitial, opticalSystemIn)
 
 % Description:
 %   This routine implements the 2D generalized ray tracing equations of:
@@ -84,18 +84,15 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
 %                           non-symbolic inputs are provided. This is
 %                           because there are two possible points of
 %                           intersection of a ray with the circular lens,
-%                           and this routine cannot resolve this ambiguity
+%                           and the routine cannot resolve this ambiguity
 %                           analytically.
 %
 % Examples:
-%   Examples 2-5 require the modelEyeParametersFunction from the
-%   transparentTrack toolbox.
-%
-%   Ex.1 - Elagha 2017
-%       The paper provides a numerical example in section C which is
-%       implemented here as an example. Compare the returned theta values
-%       with those given on page 340, section C.
 %{
+    %% Example 1 - Elagha 2017
+    % The paper provides a numerical example in section C which is
+    % implemented here as an example. Compare the returned theta values
+    % with those given on page 340, section C.
     clear coords
     clear theta
     coords = [0 0];
@@ -109,13 +106,13 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
     fprintf('Elegha gives a final image distance of 17.768432. we obtain:\n')
     fprintf('i5 - c5 = K4 = %f \n',imageCoords(end,1)-opticalSystem(5,1));
 %}
-%
-%   Ex.2 - Pupil through cornea
-%       A model of the passage of a point on the pupil perimeter through
-%       the cornea (units in mm).
 %{
+    %% Example 2 - Pupil through cornea
+    % A model of the passage of a point on the pupil perimeter through
+    % the cornea (units in mm)
     clear coords
     clear theta
+    %  Obtain the eye parameters from the modelEyeParameters() function
     eye = modelEyeParameters();
     pupilRadius = 2;
     theta = deg2rad(-45);
@@ -126,9 +123,8 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
     figureFlag=true;
     outputRay = rayTraceCenteredSphericalSurfaces(coords, theta, opticalSystem, figureFlag)
 %}
-%
-%   Ex.3 - Pupil through cornea, multiple points and rays
 %{
+    %% Example 3 - Pupil through cornea, multiple points and rays
     clear coords
     clear theta
     eye = modelEyeParameters();
@@ -136,8 +132,11 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
     opticalSystem = [nan nan eye.aqueousRefractiveIndex; ...
                      eye.corneaBackSurfaceCenter(1) -eye.corneaBackSurfaceRadius eye.corneaRefractiveIndex; ...
                      eye.corneaFrontSurfaceCenter(1) -eye.corneaFrontSurfaceRadius 1.0];
-    figure;
+    figure
     clear figureFlag
+    % Define FigureFlag as a structure, and set the new field to false so
+    % that subsequent calls to the ray tracing routine will plot on the
+    % same figure. Also, set the textLabels to false to reduce clutter
     figureFlag.show = true;
     figureFlag.new = false;
     figureFlag.surfaces = true;
@@ -150,11 +149,11 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
         end
     end
 %}
-%
-%   Ex.4 - Pupil through cornea, symbolic variables
-%       Compare the final values for thetas of the rays through the system
-%       to the values for thetas returned by Ex.2
 %{
+    %% Ex.4 - Pupil through cornea, symbolic variables
+    % The ray tracing routine can be called with symbolic variables.
+    % Compare the final values for thetas of the rays through the system
+    % to the values for thetas returned by Example 2
     clear coords
     clear theta
     eye = modelEyeParameters();
@@ -165,21 +164,22 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
                      eye.corneaBackSurfaceCenter(1) -eye.corneaBackSurfaceRadius eye.corneaRefractiveIndex; ...
                      eye.corneaFrontSurfaceCenter(1) -eye.corneaFrontSurfaceRadius 1.0];
     outputRay = rayTraceCenteredSphericalSurfaces(coords, theta, opticalSystem);
+    % The variable output ray contains symbolic variables
     symvar(outputRay)
     theta = deg2rad(-45);
     pupilPointHeight = 2;
+    % Substitute these new values for theta and height and evaluate
     double(subs(outputRay))
 %}
-%
-%   Ex.5 - Pupil through cornea, symbolic variables, create function
-%       Demonstrates the creation of a function handle to allow rapid
-%       evaluation of many values for the symbolic expression. The function
-%       unitRayFromPupilFunc returns a unitRay for a given pupil height and 
-%       theta. The function is then called for the pupil heights and thetas
-%       that might reflect the position of a point on the pupil perimeter
-%       in the x and y dimensions, creating a zxRay and a zyRay. The zyRay 
-%       is then adjusted to share the same Z dimension point of origin.
 %{
+    %% Example 5 - Pupil through cornea, symbolic variables, create function
+    % Demonstrates the creation of a function handle to allow rapid
+    % evaluation of many values for the symbolic expression. The function
+    % unitRayFromPupilFunc returns a unitRay for a given pupil height and 
+    % theta. The function is then called for the pupil heights and thetas
+    % that might reflect the position of a point on the pupil perimeter
+    % in the x and y dimensions, creating a zxRay and a zyRay. The zyRay 
+    % is then adjusted to share the same Z dimension point of origin.
     clear coords
     clear theta
     eye = modelEyeParameters();
@@ -190,14 +190,39 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
                      eye.corneaBackSurfaceCenter(1) -eye.corneaBackSurfaceRadius eye.corneaRefractiveIndex; ...
                      eye.corneaFrontSurfaceCenter(1) -eye.corneaFrontSurfaceRadius 1.0];
     outputRay = rayTraceCenteredSphericalSurfaces(coords, theta, opticalSystem);
+    % demonstrate that outputRay has symbolic variables
     symvar(outputRay)
+    % define a function based upon the symbolic equation in outputRay
     unitRayFromPupilFunc = matlabFunction(outputRay);
+    % call the unitRay function with inputs for the two planes (zx, zy)
     zxRay=unitRayFromPupilFunc(2,pi/4)
     zyRay=unitRayFromPupilFunc(1.7,pi/8)
     slope =zyRay(2,2)/(zyRay(2,1)-zyRay(1,1));
     zOffset=zxRay(1,1)-zyRay(1,1);
     zyRay(:,1)=zyRay(:,1)+zOffset;
     zyRay(:,2)=zyRay(:,2)+(zOffset*slope)
+%}
+%{
+    %% Example 6 - Function behavior with a non-intersecting ray
+    clear coords
+    clear theta
+    coords = [0 0];
+    opticalSystem=[nan nan 1.5; 20 10 1.0];
+    % This ray intersects the surface. Function returns without error.
+    theta = deg2rad(5);
+    outputRay = rayTraceCenteredSphericalSurfaces(coords, theta, opticalSystem);
+    % This theta will not intersect the surface. The function issues
+    % warning and returns an empty outputRay
+    theta = deg2rad(45);
+    outputRay = rayTraceCenteredSphericalSurfaces(coords, theta, opticalSystem);
+    % Now define outputRay with theta as a symbolic variable, then evaluate
+    % with a non-intersecting ray
+    clear theta
+    syms theta
+    outputRay = rayTraceCenteredSphericalSurfaces(coords, theta, opticalSystem);
+    testRay = double(subs(outputRay,'theta',deg2rad(45)))
+    % The routine returns an outout ray with imaginary values
+    isreal(testRay)
 %}
 
 
@@ -405,7 +430,7 @@ end % function
 
 %% LOCAL FUNCTIONS
 function plotLensArc(opticalSystem)
-%
+% Local function to handle plotting lens surfaces
 ang=pi/2:0.01:3*pi/2;
 xp=opticalSystem(2)*cos(ang);
 yp=opticalSystem(2)*sin(ang);

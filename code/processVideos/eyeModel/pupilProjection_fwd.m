@@ -1,8 +1,11 @@
 function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoints, pointLabels] = pupilProjection_fwd(eyeParams, sceneGeometry, rayTraceFuncs, varargin)
 % Project the pupil circle to an ellipse on the image plane
 %
+% Syntax:
+%  [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoints, pointLabels] = pupilProjection_fwd(eyeParams, sceneGeometry, rayTraceFuncs)
+%
 % Description:
-%	Given the sceneGeometry--and optionaly ray tracing functions through
+%   Given the sceneGeometry--and optionaly ray tracing functions through
 %   the cornea--this routine simulates a circular pupil on a spherical eye
 %   and then measures the parameters of the ellipse (in transparent format)
 %   of the projection of the pupil to the image plane.
@@ -79,6 +82,71 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
 %                           'pupilPerimeter',
 %                           'anteriorChamber','cornealApex'}.
 %
+% Examples:
+%{
+    %% Obtain the parameters of the pupil ellipse in the image
+    % Obtain a default sceneGeometry structure
+    sceneGeometry=estimateSceneGeometry([],[]);
+    % Define the ray tracing functions
+    rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
+    % Define in eyeParams the azimuth, elevation, torsion, and pupil radius
+    eyeParams = [-10, 5, 0 3];
+    % Obtain the pupil ellipse parameters in transparent format
+    pupilEllipseOnImagePlane = pupilProjection_fwd(eyeParams,sceneGeometry,rayTraceFuncs);
+%}
+%{
+    %% Display a 2D image of a slightly myopic, left, model eye
+    % Obtain a default sceneGeometry structure
+    sceneGeometry=estimateSceneGeometry([],[],'eyeLaterality','left','spectacleRefractionDiopters',-2);
+    % Define the ray tracing functions
+    rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
+    % Define in eyeParams the azimuth, elevation, torsion, and pupil radius
+    eyeParams = [-10, 5, 0 3];
+    % Perform the projection and request the full eye model
+    [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyeParams,sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
+    % Define some settings for display
+    eyePartLabels = {'rotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex'};
+    plotColors = {'+r' '.w' '.b' '*g' '.y' '*y'};
+    blankFrame = zeros(480,640)+0.5;
+    % Prepare a figure
+    figure
+    imshow(blankFrame, 'Border', 'tight');
+    hold on
+    axis off
+    axis equal
+    xlim([0 640]);
+    ylim([0 480]);
+    % Plot each anatomical component
+    for pp = 1:length(eyePartLabels)
+    	idx = strcmp(pointLabels,eyePartLabels{pp});
+        plot(imagePoints(idx,1), imagePoints(idx,2), plotColors{pp})
+    end
+%}
+%{
+    %% Display a 3D plot of a right eye
+    % Obtain a default sceneGeometry structure
+    sceneGeometry=estimateSceneGeometry([],[]);
+    % Define the ray tracing functions
+    rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
+    % Define in eyeParams the azimuth, elevation, torsion, and pupil radius
+    eyeParams = [0, 0, 0 3];
+    % Perform the projection and request the full eye model
+    [~, ~, ~, eyeWorldPoints, pointLabels] = pupilProjection_fwd(eyeParams,sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
+    % Define some settings for display
+    eyePartLabels = {'rotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex'};
+    plotColors = {'+r' '.k' '*b' '*g' '.y' '*y'};
+    % Prepare a figure
+    figure
+    % Plot each anatomical component
+    for pp = 1:length(eyePartLabels)
+    	idx = strcmp(pointLabels,eyePartLabels{pp});
+        plot3(eyeWorldPoints(idx,1), eyeWorldPoints(idx,2), eyeWorldPoints(idx,3), plotColors{pp})
+        hold on
+    end
+    hold off
+    axis equal
+%}
+
 
 %% input parser
 p = inputParser; p.KeepUnmatched = true;

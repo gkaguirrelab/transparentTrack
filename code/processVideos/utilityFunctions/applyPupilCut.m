@@ -1,6 +1,9 @@
 function [binPcut] = applyPupilCut(binP, radiusThresh, theta)
 % Trim the pupil perimeter in an image by a specified amount
 %
+% Syntax:
+%  [binPcut] = applyPupilCut(binP, radiusThresh, theta)
+%
 % Description:
 %   Removes points from the boundary of pupil according to the passed
 %   parameters. First, the non-zero points in the passed image are found.
@@ -21,7 +24,7 @@ function [binPcut] = applyPupilCut(binP, radiusThresh, theta)
 %                               pi    - right
 %                               3pi/2 - down
 %
-% Output:
+% Outputs:
 %   binPcut               - Image containing the refined pupil boundary
 %
 

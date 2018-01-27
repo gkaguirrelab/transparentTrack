@@ -1,6 +1,9 @@
 function [eyeParams, RMSE] = eyeParamEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs, varargin)
 % Fit an image plane ellipse by perspective projection of a pupil circle
 %
+% Syntax:
+%  [eyeParams, RMSE] = eyeParamEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs)
+%
 % Description:
 %   The routine fits points on the image plane based upon the eye
 %   parameters (azimuth, elevation, pupil radius) that would produce the

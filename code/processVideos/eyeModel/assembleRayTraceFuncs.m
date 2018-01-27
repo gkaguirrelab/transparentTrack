@@ -1,5 +1,8 @@
-function [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry )
+function rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry )
 % Function handles to symbolic ray tracing equations through the cornea
+%
+% Syntax:
+%  rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry )
 %
 % Description:
 %   This routine creates a structure of handles to functions that implement
@@ -21,6 +24,13 @@ function [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry )
 %   rayTraceFuncs         - A structure that contains fields that in turn
 %                           contain handles to functions.
 %
+% Examples:
+%{
+    % Obtain a default sceneGeometry
+    sceneGeometry = estimateSceneGeometry([],[]);
+    % Define the ray tracing functions
+    rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry )
+%}
 
 %% cornea
 % 2D ray tracing through the cornea

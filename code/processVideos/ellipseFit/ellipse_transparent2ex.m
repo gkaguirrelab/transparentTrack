@@ -1,6 +1,9 @@
 function p = ellipse_transparent2ex(varargin)
 % Cast ellipse defined in transparent form to explicit form
 %
+% Syntax:
+%  p = ellipse_transparent2ex(transparentEllipseParams)
+%
 % Description:
 %   In transparent form, the parameters of the ellipse are its center
 %   (cx,cy), its area (a), its eccentricity (e), and its angle of tilt
@@ -10,13 +13,13 @@ function p = ellipse_transparent2ex(varargin)
 %   its semi-major and semi-minor axes (a and b) and its angle of tilt
 %   (theta).
 %
-% Input:
+% Inputs:
 %   Either a single vector (5x1) of ellipse parameters in transparent form,
 %   or five separate scalar variables, containing the five parameters.
 %
-% Output:
-%   p - The parameters of an ellipse in explicit form as a single, 5x1
-%       vector
+% Outputs:
+%   p                     - The parameters of an ellipse in explicit form 
+%                           as a single, 5x1 vector
 %
 
 
