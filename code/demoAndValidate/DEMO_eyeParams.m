@@ -12,7 +12,8 @@ clear all
 close all
 clc
 
-fprintf('The pose of the eye is described by the parameters [azimuth, elevation, torsion, pupilRadius]\n');
+fprintf('The pose of the eye is described by the parameters:\n\n')
+fprintf('\t[azimuth, elevation, torsion, pupilRadius]\n\n');
 fprintf('The three rotation variables are in units of degrees, and are in the\n');
 fprintf('head-fixed, extrinsic coordinate space. This means that the parameters\n');
 fprintf('are unlike "Fick" coordinates, which are with reference to an intrinsic\n');
