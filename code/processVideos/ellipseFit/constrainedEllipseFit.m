@@ -1,6 +1,9 @@
 function [transparentEllipseParams, RMSE, constraintError] = constrainedEllipseFit(Xp, Yp, lb, ub, nonlinconst)
 % Non-linear fitting of an ellipse to a set of points
 %
+% Syntax:
+%  [transparentEllipseParams, RMSE, constraintError] = constrainedEllipseFit(Xp, Yp, lb, ub, nonlinconst)
+%
 % Description:
 %   The routine fits an ellipse to data by minimizing point-to-curve
 %   distance, using an iterative procedure. The search is conducted over
@@ -13,22 +16,24 @@ function [transparentEllipseParams, RMSE, constraintError] = constrainedEllipseF
 %   routine is dependent upon the quadfit toolbox.
 %
 % Input:
-%   Xp, Yp    - Vector of points to be fit
-%   lb, ub    - Upper and lower bounds for the fit search, in transparent
-%               ellipse form
-%   nonlinconst - Function handle to a non-linear constraint function. This
-%               function should take as input the set of ellipse parameters
-%               in transparent form and return [c, ceq], where the
-%               optimizer constrains the solution such that c<=0 and ceq=0.
-%               This is an optional input or can be sent as empty.
+%	Xp, Yp                - Vector of points to be fit
+%   lb, ub                - Upper and lower bounds for the fit search, in 
+%                           transparent ellipse form
+%   nonlinconst           - Function handle to a non-linear constraint
+%                           function. This function should take as input
+%                           the set of ellipse parameters in transparent
+%                           form and return [c, ceq], where the optimizer
+%                           constrains the solution such that c<=0 and
+%                           ceq=0. This is an optional input or can be sent
+%                           as empty.
 %
 % Output:
 %   transparentEllipseParams - Parameters of the best fitting ellipse
-%               expressed in transparent form [5x1 vector]
-%   RMSE      - Root mean squared error of the distance of each point in
-%               the data to the fitted ellipse
-%   constraintError - The value of the nonlinear constraint function for
-%               the best fitting ellipse
+%                           expressed in transparent form [5x1 vector]
+%   RMSE                  - Root mean squared error of the distance of each
+%                           point in the data to the fitted ellipse
+%   constraintError       - The value of the nonlinear constraint function
+%                           for the best fitting ellipse
 %
 %
 
@@ -47,7 +52,7 @@ p.addRequired('nonlinconst',@(x) (isempty(x) || isa(x, 'function_handle')) );
 p.parse(Xp, Yp, ub, lb, nonlinconst);
 
 
-%% Make an initial guess at theellipse parameters
+%% Make an initial guess at the ellipse parameters
 % This attempt is placed in a try-catch block, as the attempt can fail and
 % return non-real numbers.
 try
@@ -74,6 +79,7 @@ catch
     return
 end
 
+
 %% Define the objective function
 % This is the RMSE of the distance values of the boundary points to the
 % ellipse fit
@@ -87,6 +93,7 @@ if isempty(ub) && isempty(lb) && isempty(nonlinconst)
     constraintError = nan;
     return
 end
+
 
 %% Perform non-linear search for transparent ellipse params
 
