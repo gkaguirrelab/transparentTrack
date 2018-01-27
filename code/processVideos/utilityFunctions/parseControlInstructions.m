@@ -1,18 +1,22 @@
 function [varargout] = parseControlInstructions(instructionLine)
 % Returns the parameters for a line of the control file
 %
+% Syntax:
+%  [varargout] = parseControlInstructions(instructionLine)
+%
 % Description:
 %   This routine accepts a single line of a control file and then returns a
 %   variable number of output parameters that contain the instructions for
 %   modifying a frame of a pupil perimeter file.
 %
-% Input:
-%   instructionLine   - A struct that contains a line of elements from a
-%                       control file
+% Inputs:
+%   instructionLine       - A struct that contains a line of elements from
+%                           a control file
 %
-% Output:
-%   varargout         - A variable number of output variables that contain
-%                       the parameters specified in the instructionLine
+% Outputs:
+%   varargout             - A variable number of output variables that 
+%                           contain the parameters specified in the
+%                           instructionLine
 %
 
 

@@ -1,5 +1,8 @@
 function instructions = loadControlFile(controlFileName)
-% Imports a csv control file into a matlab variable.
+% Imports a csv control file into a matlab variable
+%
+% Syntax:
+%  instructions = loadControlFile(controlFileName)
 %
 % Description:
 %   The control file format must be as specified in makeControlFile.m, i.e.
@@ -13,15 +16,11 @@ function instructions = loadControlFile(controlFileName)
 %       instructions(ll).params = line ll, remaining columns of csv file
 %                                 (can be empty)
 %
-% Input: 
-% 	controlFileName   - full path (with csv extension) to the control file
-% 
-% Output:
-%   instructions      - struct with 3 fields
-% 
-% Example:
-%	controlFileName = fullfile(outputDir,'ControlFile');
-%   instructions = importControlFile(controlFileName);
+% Inputs: 
+% 	controlFileName       - full path (with csv extension) to the control 
+%                           file
+% Outputs:
+%   instructions          - struct with 3 fields
 % 
 
 
