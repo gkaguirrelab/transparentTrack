@@ -19,7 +19,7 @@ function eye = modelEyeParameters( spectacleRefractionDiopters, eyeLaterality, s
 %   height, and depth (axial length) of the model eye. The parameters
 %   returned by this routine correspond to the eyeWorld coordinate space
 %   used in pupilProjection_fwd, which is relative to the apex of the
-%   cornea and has the dimensions [depth, vertical, horizontal]; negative
+%   cornea and has the dimensions [depth, horizontal, vertical]; negative
 %   values of depth towards the center of the eye.
 %
 % Inputs:
@@ -90,12 +90,13 @@ switch species
         % pupil width / height ratio that best matches empirical
         % measurements (see TEST_EntrancePupilShape). The values from that
         % search are used here for the p2 and p3 position of the center of
-        % the pupil.
+        % the pupil. In both eyes, the pupil center is shifted slightly
+        % temporally and downward.
         switch eyeLaterality
             case {'right','RIGHT','Right','R','r','od','OD'}
-                eye.pupilCenter = [-3.7 0.1445 0.3639];
-            case {'left','LEFT','Left','L','l','os','OS'}
                 eye.pupilCenter = [-3.7 -0.1445 0.3639];
+            case {'left','LEFT','Left','L','l','os','OS'}
+                eye.pupilCenter = [-3.7 0.1445 0.3639];
             otherwise
                 error('Please specify a valid eye laterality for the model eye');
         end
