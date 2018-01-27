@@ -83,20 +83,27 @@ switch species
         eye.corneaBackSurfaceCenter = [-7.22 0 0];
         
         % We position the pupil plane at the depth of the anterior point of
-        % the lens. The center of the pupil is usually found to be
-        % decentered from the corneal apex, typically shifted temporally
-        % and downwards on the eye. We have calculated for the optical
+        % the lens. We have calculated for the optical
         % model of the eye the decentration values that produce an entrance
         % pupil width / height ratio that best matches empirical
         % measurements (see TEST_EntrancePupilShape). The values from that
         % search are used here for the p2 and p3 position of the center of
         % the pupil. In both eyes, the pupil center is shifted slightly
-        % temporally and downward.
+        % nasally and downward. This is in keeping with empirical
+        % observations that:
+        %
+        %   ...the typical entrance pupil is decentered
+        %   approximately 0.15 mm nasally and 0.1 mm inferior to the
+        %   geometric center of the visit iris circumference
+        %
+        % Bennett, Edward S., and Barry A. Weissman, eds. Clinical contact
+        % lens practice. Lippincott Williams & Wilkins, 2005, p119
+        %
         switch eyeLaterality
             case {'right','RIGHT','Right','R','r','od','OD'}
-                eye.pupilCenter = [-3.7 -0.1445 0.3639];
-            case {'left','LEFT','Left','L','l','os','OS'}
                 eye.pupilCenter = [-3.7 0.1445 0.3639];
+            case {'left','LEFT','Left','L','l','os','OS'}
+                eye.pupilCenter = [-3.7 -0.1445 0.3639];
             otherwise
                 error('Please specify a valid eye laterality for the model eye');
         end

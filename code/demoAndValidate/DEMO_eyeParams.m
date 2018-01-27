@@ -93,7 +93,7 @@ drawnow
 fprintf('Figure 2 shows just the perimeter of the pupil and the corneal apex\n');
 fprintf('for eyeParams [0 0 0 3] for the right and left eye. Here, the axis of\n');
 fprintf('the camera is aligned with the optical axis of the model eye. \n');
-fprintf('Note that the center of the pupil is displaced downwards and temporally\n');
+fprintf('Note that the center of the pupil is displaced downwards and nasally\n');
 fprintf('with respect to the optical axis of each eye. This physiologic property\n');
 fprintf('causes the entrance pupil to have a slightly different appearance\n');
 fprintf('when viewed from the nasal or temporal visual field (Atchison, 2013).\n');
