@@ -495,6 +495,10 @@ centerDistanceErrorByEllipse=zeros(size(ellipses,1),1);
 shapeErrorByEllipse=zeros(size(ellipses,1),1);
 areaErrorByEllipse=zeros(size(ellipses,1),1);
 
+% We reverse the order of the parameters (fliplr) for the search so that
+% the initial phase of the search focuses on the most informative
+% parameters (center of rotation, and camera distance).
+
 [reverseX, fVal] = patternsearch(objectiveFun, fliplr(x0),[],[],[],[],fliplr(sceneParamsLB),fliplr(sceneParamsUB),[],options);
     % Nested function computes the objective for the patternsearch
     function fval = objfun(x)
@@ -529,6 +533,7 @@ areaErrorByEllipse=zeros(size(ellipses,1),1);
         
     end
 
+% flip the parameters back to the original order
 x = fliplr(reverseX);
 
 % Assemble the sceneGeometry file to return
