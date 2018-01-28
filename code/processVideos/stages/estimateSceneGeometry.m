@@ -311,6 +311,7 @@ if iscell(pupilFileName)
         ellipses = [ellipses;pupilData.(p.Results.fitLabel).ellipses.values];
         ellipseFitSEM = [ellipseFitSEM; pupilData.(p.Results.fitLabel).ellipses.RMSE];
     end
+end
 if ischar(pupilFileName)
     load(pupilFileName)
     ellipses = pupilData.(p.Results.fitLabel).ellipses.values;
