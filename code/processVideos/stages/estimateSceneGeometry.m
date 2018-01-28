@@ -103,12 +103,13 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %   The default value is 13.3 mm posterior to the corneal apex.
 %
 % Inputs:
-%	pupilFileName         - Full path to a pupilData file, or a cell array
-%                           of such paths. If a cell array is provided, the
-%                           ellipse data from each pupilData file will be
-%                           loaded and concatenated. If set to empty, a
-%                           sceneGeometry structure with default values
-%                           will be returned.
+%	pupilFileName         - Full path to a pupilData file, a cell array
+%                           of such paths, or a pupilData structure itself.
+%                           If a single path, the pupilData file is loaded.
+%                           If a cell array, the ellipse data from each
+%                           pupilData file is loaded and concatenated. If
+%                           set to empty, a sceneGeometry structure with
+%                           default values will be returned.
 %   sceneGeometryFileName - Full path to the file in which the
 %                           sceneGeometry data should be saved
 %
@@ -185,7 +186,7 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 p = inputParser; p.KeepUnmatched = true;
 
 % Required
-p.addRequired('pupilFileName',@(x)(isempty(x) | iscell(x) | ischar(x)));
+p.addRequired('pupilFileName',@(x)(isempty(x) | isstruct(x) | iscell(x) | ischar(x)));
 p.addRequired('sceneGeometryFileName',@(x)(isempty(x) | ischar(x)));
 
 % Optional display and I/O params
@@ -310,10 +311,15 @@ if iscell(pupilFileName)
         ellipses = [ellipses;pupilData.(p.Results.fitLabel).ellipses.values];
         ellipseFitSEM = [ellipseFitSEM; pupilData.(p.Results.fitLabel).ellipses.RMSE];
     end
-else
+if ischar(pupilFileName)
     load(pupilFileName)
     ellipses = pupilData.(p.Results.fitLabel).ellipses.values;
     ellipseFitSEM = pupilData.(p.Results.fitLabel).ellipses.RMSE;
+end
+if isstruct(pupilFileName)
+    pupilData = pupilFileName;
+    ellipses = pupilData.(p.Results.fitLabel).ellipses.values;
+    ellipseFitSEM = pupilData.(p.Results.fitLabel).ellipses.RMSE;    
 end
 
 
