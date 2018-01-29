@@ -474,7 +474,7 @@ function sceneGeometry = performSceneSearch(initialSceneGeometry, rayTraceFuncs,
 %
 
 % Set the error form
-errorForm = 'SSE';
+errorForm = 'RMSE';
 
 % Extract the initial search point from initialSceneGeometry
 x0 = [initialSceneGeometry.extrinsicTranslationVector; initialSceneGeometry.eye.rotationCenter(1)];
