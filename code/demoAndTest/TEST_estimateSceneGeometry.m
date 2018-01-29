@@ -11,7 +11,7 @@ close all
 defaultSceneGeometry = estimateSceneGeometry([],[],'eyeLaterality','Right');
 
 % Create a set of 9 pupil radii which will be used for all the the searches
-pupilRadii = max([2+(randn(1,9)/5) 1]);
+pupilRadii = 2+(randn(9,1)./5)
         
 % Create variations in center of rotation and camera distance
 vsg={};
