@@ -11,7 +11,7 @@ close all
 defaultSceneGeometry = estimateSceneGeometry([],[],'eyeLaterality','Right');
 
 % Create a set of 9 pupil radii which will be used for all the the searches
-pupilRadii = 2+(randn(9,1)./5)
+pupilRadii = 2+(randn(9,1)./5);
         
 % Create variations in center of rotation and camera distance
 vsg={};
@@ -32,7 +32,7 @@ for CoR = -14:0.25:-13
             for ele=-15:15:15
                 eyeParams=[azi, ele, 0, pupilRadii(ellipseIdx)];
                 pupilData.initial.ellipses.values(ellipseIdx,:) = pupilProjection_fwd(eyeParams, veridicalSceneGeometry, rayTraceFuncs);
-                pupilData.initial.ellipses.RMSE(ellipseIdx) = 1;
+                pupilData.initial.ellipses.RMSE(ellipseIdx,1) = 1;
                 ellipseIdx=ellipseIdx+1;
             end
         end
