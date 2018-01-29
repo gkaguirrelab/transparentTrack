@@ -4,7 +4,7 @@
 % Description:
 
 %
-
+clear all
 close all
 
 % Obtain the default sceneGeometry
@@ -32,7 +32,7 @@ for CoR = -14:0.25:-13
             for ele=-15:15:15
                 eyeParams=[azi, ele, 0, pupilRadii(ellipseIdx)];
                 pupilData.initial.ellipses.values(ellipseIdx,:) = pupilProjection_fwd(eyeParams, veridicalSceneGeometry, rayTraceFuncs);
-                pupilData.initial.ellipses.RMSE(ellipseIdx,1) = 1;
+                pupilData.initial.ellipses.RMSE(ellipseIdx,:) = 1;
                 ellipseIdx=ellipseIdx+1;
             end
         end
