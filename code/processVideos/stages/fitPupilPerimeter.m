@@ -1,6 +1,9 @@
 function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varargin)
 % Perform non-linear, constrained ellipse fitting to pupil perimeters
 %
+% Syntax:
+%  [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName)
+%
 % Description:
 %   This routine fits an ellipse to each frame of a video that contains the
 %   perimeter of the pupil. A non-linear search routine is used, with
@@ -118,31 +121,28 @@ p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@i
 % Optional analysis params
 p.addParameter('ellipseTransparentLB',[0,0,800,0,0],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('ellipseTransparentUB',[640,480,20000,0.6,pi],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('eyeParamsLB',[-35,-25,0.5],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('eyeParamsUB',[35,25,5],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('nSplits',8,@isnumeric);
+p.addParameter('eyeParamsLB',[-35,-25,0,0.25],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('eyeParamsUB',[35,25,0,4],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('nSplits',2,@isnumeric);
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('ellipseFitLabel',[],@(x)(isempty(x) | ischar(x)));
+p.addParameter('fitLabel',[],@(x)(isempty(x) | ischar(x)));
 
 
 %% Parse and check the parameters
 p.parse(perimeterFileName, pupilFileName, varargin{:});
 
 nEllipseParams=5; % 5 params in the transparent ellipse form
-nEyeParams=3; % 3 values (azimuth, elevation, pupil radius) for eyeParams
+nEyeParams=4; % 4 values (azimuth, elevation, torsion, pupil radius) for eyeParams
 
-%% Prepare some anonymous functions
-% Create an anonymous function to return a rotation matrix given theta in
-% radians
-returnRotMat = @(theta) [cos(theta) -sin(theta); sin(theta) cos(theta)];
 
-%% Load the pupil perimeter data and optionally sceneGeometry
+%% Load data
 % Load the pupil perimeter data. It will be a structure variable
 % "perimeter", with the fields .data and .meta
 dataLoad=load(perimeterFileName);
 perimeter=dataLoad.perimeter;
 clear dataLoad
 
+% Optionally load a sceneGeometry file
 if isempty(p.Results.sceneGeometryFileName)
     sceneGeometry=[];
 else
@@ -152,11 +152,36 @@ else
     clear dataLoad
 end
 
+% Optionally load the pupilData file
+if exist(p.Results.pupilFileName, 'file') == 2
+    dataLoad=load(pupilFileName);
+    pupilData=dataLoad.pupilData;
+    clear dataLoad
+else
+    pupilData=[];
+end
+
 % determine how many frames we will process
 if p.Results.nFrames == Inf
     nFrames=size(perimeter.data,1);
 else
     nFrames = p.Results.nFrames;
+end
+
+
+%% Prepare some functions
+% Create an anonymous function to return a rotation matrix given theta in
+% radians
+returnRotMat = @(theta) [cos(theta) -sin(theta); sin(theta) cos(theta)];
+
+% If sceneGeometry is defined, prepare the ray tracing functions
+if ~isempty(sceneGeometry)
+    if strcmp(p.Results.verbosity,'full')
+        fprintf('Assembling ray tracing functions.\n');
+    end
+    [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
+else
+    rayTraceFuncs = [];
 end
 
 
@@ -219,8 +244,7 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 % Loop through the frames
-%parfor (ii = 1:nFrames, nWorkers)
-for ii = 1:nFrames
+parfor (ii = 1:nFrames, nWorkers)
     
     % Update progress
     if strcmp(verbosity,'full')
@@ -255,10 +279,14 @@ for ii = 1:nFrames
                     ellipseTransparentUB, ...
                     []);
             else
+                % Identify the best fitting eye parameters for the  the
+                % pupil perimeter
+                eyeParams_x0 = [0 0 0 2];
                 [eyeParams, eyeParamsObjectiveError] = ...
-                    eyeParamEllipseFit(Xp, Yp, sceneGeometry, 'eyeParamsLB', eyeParamsLB, 'eyeParamsUB', eyeParamsUB);
+                    eyeParamEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs, 'x0', eyeParams_x0, 'eyeParamsLB', eyeParamsLB, 'eyeParamsUB', eyeParamsUB);
+                % Obtain the parameters of the ellipse
                 ellipseParamsTransparent = ...
-                    pupilProjection_fwd(eyeParams, sceneGeometry);
+                    pupilProjection_fwd(eyeParams, sceneGeometry, rayTraceFuncs);
             end
             
             % Re-calculate fit for splits of data points, if requested
@@ -290,6 +318,8 @@ for ii = 1:nFrames
                     splitIdx2 = find((forwardPoints(1,:) >= median(forwardPoints(1,:))))';
                     % Fit the split sets of pupil boundary points
                     if isempty(sceneGeometry)
+                        % We don't have sceneGeometry defined, so fit an
+                        % ellipse to the splits of the pupil perimeter
                         pFitTransparentSplit(1,ss,:) = ...
                             constrainedEllipseFit(Xp(splitIdx1), Yp(splitIdx1), ...
                             ellipseTransparentLB, ...
@@ -301,19 +331,27 @@ for ii = 1:nFrames
                             ellipseTransparentUB, ...
                             []);
                     else
+                        % We do have sceneGeometry, so search for eyeParams
+                        % that best fit the splits of the pupil perimeter.
+                        % To speed up the search, we do not use ray tracing
+                        % here, as we are not interested in the absolute
+                        % values of the fits, but instead just their
+                        % variation.
                         pFitEyeParamSplit(1,ss,:) = ...
-                            eyeParamEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry, 'eyeParamsLB', eyeParamsLB, 'eyeParamsUB', eyeParamsUB);
-                        pFitTransparentSplit(1,ss,:) = ...
-                            pupilProjection_fwd(pFitEyeParamSplit(1,ss,:), sceneGeometry);
+                            eyeParamEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry, [], 'x0', eyeParams, 'eyeParamsLB', eyeParamsLB, 'eyeParamsUB', eyeParamsUB);
                         pFitEyeParamSplit(2,ss,:) = ...
-                            eyeParamEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry, 'eyeParamsLB', eyeParamsLB, 'eyeParamsUB', eyeParamsUB);
+                            eyeParamEllipseFit(Xp(splitIdx2), Yp(splitIdx2), sceneGeometry, [], 'x0', eyeParams, 'eyeParamsLB', eyeParamsLB, 'eyeParamsUB', eyeParamsUB);
+                        % Obtain the ellipse parameeters that correspond
+                        % the eyeParams
+                        pFitTransparentSplit(1,ss,:) = ...
+                            pupilProjection_fwd(pFitEyeParamSplit(1,ss,:), sceneGeometry, []);
                         pFitTransparentSplit(2,ss,:) = ...
-                            pupilProjection_fwd(pFitEyeParamSplit(2,ss,:), sceneGeometry);
+                            pupilProjection_fwd(pFitEyeParamSplit(2,ss,:), sceneGeometry, []);
                     end
                 end % loop through splits
                 
                 % Calculate the SD of the parameters across splits
-                    ellipseParamsSplitsSD=nanstd(reshape(pFitTransparentSplit,ss*2,nEllipseParams));
+                ellipseParamsSplitsSD=nanstd(reshape(pFitTransparentSplit,ss*2,nEllipseParams));
                 if ~isempty(sceneGeometry)
                     eyeParamsSplitsSD=nanstd(reshape(pFitEyeParamSplit,ss*2,nEyeParams));
                 end
@@ -333,6 +371,7 @@ for ii = 1:nFrames
         loopVar_eyeParamsSplitsSD(ii,:) = eyeParamsSplitsSD';
         loopVar_eyeParamsObjectiveError(ii) = eyeParamsObjectiveError;
     end
+    
 end % loop over frames
 
 % alert the user that we are done with the fit loop
@@ -343,52 +382,43 @@ end
 
 %% Clean up and save
 
-% Check if the pupilData file already exists. If so, load it. This allows
-% us to preserve the Unconstrained results when a subsequent, sceneGeometry
-% constrained fit is constructed.
-if exist(p.Results.pupilFileName, 'file') == 2
-    dataLoad=load(pupilFileName);
-    pupilData=dataLoad.pupilData;
-    clear dataLoad
-end
-
 % Establish a label to save the fields of the ellipse fit data
-if isempty(p.Results.ellipseFitLabel)
+if isempty(p.Results.fitLabel)
     if isempty(sceneGeometry)
-        ellipseFitLabel = 'initial';
+        fitLabel = 'initial';
     else
-        ellipseFitLabel = 'sceneConstrained';
+        fitLabel = 'sceneConstrained';
     end
 else
-    ellipseFitLabel = p.Results.ellipseFitLabel;
+    fitLabel = p.Results.fitLabel;
 end
 
 % Store the ellipse fit data in informative fields
-pupilData.(ellipseFitLabel).ellipse.values = loopVar_ellipseParamsTransparent;
+pupilData.(fitLabel).ellipses.values = loopVar_ellipseParamsTransparent;
 if isempty(sceneGeometry)
-    pupilData.(ellipseFitLabel).ellipse.RMSE = loopVar_ellipseParamsObjectiveError';
+    pupilData.(fitLabel).ellipses.RMSE = loopVar_ellipseParamsObjectiveError';
 else
-    pupilData.(ellipseFitLabel).ellipse.RMSE = loopVar_eyeParamsObjectiveError';
+    pupilData.(fitLabel).ellipses.RMSE = loopVar_eyeParamsObjectiveError';
 end
 if nSplits~=0
-    pupilData.(ellipseFitLabel).ellipse.splitsSD = loopVar_ellipseParamsSplitsSD;
+    pupilData.(fitLabel).ellipses.splitsSD = loopVar_ellipseParamsSplitsSD;
 end
-pupilData.(ellipseFitLabel).ellipse.meta.ellipseForm = 'transparent';
-pupilData.(ellipseFitLabel).ellipse.meta.labels = {'x','y','area','eccentricity','theta'};
-pupilData.(ellipseFitLabel).ellipse.meta.units = {'pixels','pixels','squared pixels','non-linear eccentricity','rads'};
-pupilData.(ellipseFitLabel).ellipse.meta.coordinateSystem = 'intrinsic image';
+pupilData.(fitLabel).ellipses.meta.ellipseForm = 'transparent';
+pupilData.(fitLabel).ellipses.meta.labels = {'x','y','area','eccentricity','theta'};
+pupilData.(fitLabel).ellipses.meta.units = {'pixels','pixels','squared pixels','non-linear eccentricity','rads'};
+pupilData.(fitLabel).ellipses.meta.coordinateSystem = 'intrinsic image';
 if ~isempty(sceneGeometry)
-    pupilData.(ellipseFitLabel).eyeParams.values = loopVar_eyeParams;
+    pupilData.(fitLabel).eyeParams.values = loopVar_eyeParams;
     if nSplits~=0
-        pupilData.(ellipseFitLabel).eyeParams.splitsSD = loopVar_eyeParamsSplitsSD;
+        pupilData.(fitLabel).eyeParams.splitsSD = loopVar_eyeParamsSplitsSD;
     end
-    pupilData.(ellipseFitLabel).eyeParams.meta.labels = {'azimuth','elevation','pupil radius'};
-    pupilData.(ellipseFitLabel).eyeParams.meta.units = {'deg','deg','mm'};
-    pupilData.(ellipseFitLabel).eyeParams.meta.coordinateSystem = 'head fixed (extrinsic)';
+    pupilData.(fitLabel).eyeParams.meta.labels = {'azimuth','elevation','torsion','pupil radius'};
+    pupilData.(fitLabel).eyeParams.meta.units = {'deg','deg','deg','mm'};
+    pupilData.(fitLabel).eyeParams.meta.coordinateSystem = 'head fixed (extrinsic)';
 end
 
 % add meta data
-pupilData.(ellipseFitLabel).meta = p.Results;
+pupilData.(fitLabel).meta = p.Results;
 
 % save the ellipse fit results
 save(p.Results.pupilFileName,'pupilData')

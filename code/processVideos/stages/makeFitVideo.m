@@ -94,7 +94,7 @@ if ~isempty(p.Results.pupilFileName)
     dataLoad = load(p.Results.pupilFileName);
     pupilData = dataLoad.pupilData;
     clear dataLoad
-    pupilFitParams = pupilData.(p.Results.ellipseFitLabel).ellipse.values;
+    pupilFitParams = pupilData.(p.Results.ellipseFitLabel).ellipses.values;
 else
     pupilFitParams=[];
 end
@@ -229,7 +229,7 @@ for ii = 1:nFrames
     
     % add the center of rotation
     if ~isempty(p.Results.sceneGeometryFileName)
-        centerOfRotation = pupilProjection_fwd([0 0 2], sceneGeometry);
+        centerOfRotation = pupilProjection_fwd([0 0 0 2], sceneGeometry, []);
 
         plot(centerOfRotation(1),centerOfRotation(2),['+' p.Results.sceneGeometryColor]);
     end

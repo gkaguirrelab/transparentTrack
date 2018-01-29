@@ -1,5 +1,8 @@
-function [eyeParams, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, varargin)
+function [eyeParams, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs, varargin)
 % Project an ellipse on the image plane to a pupil circle in the scene
+%
+% Syntax:
+%  [eyeParams, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs)
 %
 % Description:
 %	Given the sceneGeometry and an ellipse on the image plane, this routine
@@ -19,7 +22,14 @@ function [eyeParams, bestMatchEllipseOnImagePlane, centerError, shapeError, area
 %
 %   The default values set for the bounds on these rotation values reflect
 %   the physical limits of the projection model. Tighter, biologically
-%   informed constraints may be passed by the calling function.
+%   informed constraints may be passed by the calling function. Note that
+%   the search is underconstrained if there is freedom in the values to be
+%   found for azimuth, elevation, and torsion. Indeed, Listing's Law
+%   describes the tendency of the eye (for head-fixed saccades) to hold
+%   torsion to zero when rotation the eye to a new location. Therefore, the
+%   upper and lower bounds on torsion should generally be set to zero,
+%   unless there is some specific desire to model this component under
+%   different circumstances (e.g., peripheral nystagmus).
 %
 %   Units - Eye rotations are in units of degrees. However, the units of
 %   theta in the transparent ellipse parameters are radians. This is in
@@ -29,20 +39,10 @@ function [eyeParams, bestMatchEllipseOnImagePlane, centerError, shapeError, area
 %   pupilEllipseOnImagePlane - A 1x5 vector that contains the parameters of
 %                           pupil ellipse on the image plane cast in
 %                           transparent form
-%   sceneGeometry         - A structure that contains the fields:
-%                             - eyeRadius: scalar in millimeters
-%                             - extrinsicTranslationVector: a 3x1 matrix
-%                               in units of millimeters that relates center
-%                               of rotation of the eye to the optical axis
-%                               of the camera
-%                             - extrinsicRotationMatrix: a 3x3 matrix in
-%                               units of millimeters
-%                             - intrinsicCameraMatrix: a 3x3 matrix in
-%                               arbitrary units (typically pixels)
-%                             - constraintTolearance: A scalar value, 
-%                               expressed as a proportion, that defines the
-%                               tolerance for violation of the nonlinear
-%                               constraints on ellipse shape and area.
+%   sceneGeometry         - The sceneGeometry structure. Defined in
+%                           estimateSceneGeometry()
+%   rayTraceFuncs         - A structure of function handles. Defined in
+%                           assembleRayTraceFuncs().
 %
 % Optional key/value pairs:
 %  'x0'                   - Starting point of the search for the eyeParams.
@@ -50,11 +50,9 @@ function [eyeParams, bestMatchEllipseOnImagePlane, centerError, shapeError, area
 %                           estimated from the coordinates of the ellipse
 %                           center.
 %  'eyeParamsLB/UB'       - Upper and lower bounds on the eyeParams
-%                           [azimuth, elevation, pupil radius]. The default
-%                           values here represent the physical limits of
-%                           the projection model.
-%  'pupilRadiusBounds'    - A 1x2 vector that contains the lower and upper
-%                           bound on pupil radius, in mm.
+%                           [azimuth, elevation, torsion, pupil radius].
+%                           The default values here represent the physical
+%                           limits of the projection model.
 %  'centerErrorThreshold' - Scalar. Defines one of the two stopping point
 %                           criteria for the search.
 %  'constraintTolerance'  - Defines one of the two stopping point
@@ -63,10 +61,11 @@ function [eyeParams, bestMatchEllipseOnImagePlane, centerError, shapeError, area
 %                           structure.
 %
 % Outputs:
-%   eyeParams             - A 1x3 vector provides values for [eyeAzimuth,
-%                           eyeElevation, pupilRadius]. Azimuth and
-%                           elevation are in units of head-centered
-%                           (extrinsic) degrees, and pupil radius is in mm.
+%   eyeParams             - A 1x4 vector provides values for [eyeAzimuth,
+%                           eyeElevation, eyeTorsion, pupilRadius].
+%                           Azimuth, elevation, and torsion are in units of
+%                           head-centered (extrinsic) degrees, and pupil
+%                           radius is in mm.
 %   bestMatchEllipseOnImagePlane - A 1x5 vector that contains the
 %                           parameters of pupil ellipse on the image plane
 %                           cast in transparent form. This is the output of
@@ -88,22 +87,33 @@ p = inputParser;
 % Required input
 p.addRequired('pupilEllipseOnImagePlane',@isnumeric);
 p.addRequired('sceneGeometry',@isstruct);
+p.addRequired('rayTraceFuncs',@(x)(isempty(x) | isstruct(x)));
 
 % Optional params
 p.addParameter('x0',[],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('eyeParamsLB',[-89,-89,0.5],@isnumeric);
-p.addParameter('eyeParamsUB',[89,89,5],@isnumeric);
+p.addParameter('eyeParamsLB',[-89,-89,-179,0.5],@isnumeric);
+p.addParameter('eyeParamsUB',[89,89,179,4],@isnumeric);
 p.addParameter('centerErrorThreshold',1e-4,@isnumeric);
 p.addParameter('constraintTolerance',[],@(x)(isempty(x) | isnumeric(x)));
 
 % Parse and check the parameters
-p.parse(pupilEllipseOnImagePlane, sceneGeometry, varargin{:});
+p.parse(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs, varargin{:});
 
 
-%% Check inputs and handle immediate exits
+%% Check inputs
+% Handle an immediate exit
 if isempty(pupilEllipseOnImagePlane)
     centerError=NaN;
     return
+end
+
+% Issue a warning if the bounds do not fully constrain at least one eye 
+% rotation parameter. This is because there are multiple combinations of
+% the three axis rotations that can bring an eye to a destination.
+% Typically, the torsion will be constrained with upper and lower bounds of
+% zero, reflecting Listing's Law.
+if sum((p.Results.eyeParamsUB(1:3) - p.Results.eyeParamsLB(1:3))==0) < 1
+    warning('The inverse search across possible eye rotations is underconstrained');
 end
 
 %% Assemble bounds and x0
@@ -144,14 +154,16 @@ end
 if isempty(p.Results.x0)
     % Probe the forward model to determine how many pixels of change in the
     % location of the pupil ellipse correspond to one degree of rotation.
-    probeEllipse=pupilProjection_fwd([1 0 2],sceneGeometry);
+    % Omit ray-tracing for speed.
+    probeEllipse=pupilProjection_fwd([1 0 0 2],sceneGeometry, []);
     pixelsPerDeg = probeEllipse(1)-CoP(1);
     
     % Estimate the eye azimuth and elevation by the X and Y displacement of
-    % the ellipse center from the center of projection. Set the initial
-    % guess for the pupil radius to 2 mm.
+    % the ellipse center from the center of projection. Torsion is set to
+    % zero
     x0(1) = (pupilEllipseOnImagePlane(1) - CoP(1))/pixelsPerDeg;
     x0(2) = (CoP(2) - pupilEllipseOnImagePlane(2))/pixelsPerDeg;
+    x0(3) = 0;
     
     % Estimate the pupil radius in pixels, accounting for the eccentricity
     % of the ellipse in the image plane
@@ -160,11 +172,11 @@ if isempty(p.Results.x0)
     
     % Probe the forward model at the estimated Azimuth and Elevation to
     % estimate the pupil radius.
-    probeEllipse=pupilProjection_fwd([x0(1) x0(2) 2],sceneGeometry);
+    probeEllipse=pupilProjection_fwd([x0(1) x0(2) x0(3) 2], sceneGeometry, rayTraceFuncs);
     pixelsPerMM = sqrt(probeEllipse(3)/pi)/2;
     
     % Set the initial value for pupil radius in mm
-    x0(3) = pupilRadiusPixels/pixelsPerMM;
+    x0(4) = pupilRadiusPixels/pixelsPerMM;
     
     % Ensure that x0 lies within the bounds with a bit of headroom so that
     % the solver does not get stuck up against a bound.
@@ -215,7 +227,7 @@ constraintFun = @constr; % the constraint function, nested below
 
     function fval = objfun(x)
         if ~isequal(x,xLast) % Check if computation is necessary
-            nestedCandidateEllipse = pupilProjection_fwd(x, nestedSceneGeometry);
+            nestedCandidateEllipse = pupilProjection_fwd(x, nestedSceneGeometry, rayTraceFuncs);
             xLast = x;
         end
         % Compute objective function as Euclidean distance in the target
@@ -226,7 +238,7 @@ constraintFun = @constr; % the constraint function, nested below
 
     function [c,ceq] = constr(x)
         if ~isequal(x,xLast) % Check if computation is necessary
-            nestedCandidateEllipse = pupilProjection_fwd(x, nestedSceneGeometry);
+            nestedCandidateEllipse = pupilProjection_fwd(x, nestedSceneGeometry, rayTraceFuncs);
             xLast = x;
         end
         % c:

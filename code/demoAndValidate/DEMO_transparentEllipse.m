@@ -4,10 +4,10 @@
 % Description:
 %   Our routines express the parameters of an ellipse in "transparent"
 %   form:
-%       - center (cx,cy)
-%       - area (a)
-%       - eccentricity (e)
-%       - angle of tilt (theta)
+%     - center (cx,cy)
+%     - area (a)
+%     - eccentricity (e)
+%     - angle of tilt (theta)
 %
 %   This formulation allows for routines that perform non-linear fitting of
 %   an ellipse with constraints upon these parameters.
