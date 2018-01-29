@@ -526,7 +526,7 @@ areaErrorByEllipse=zeros(size(ellipses,1),1);
             case 'SSE'
                 fval=sum((centerDistanceErrorByEllipse.*(shapeErrorByEllipse.*100+1).*(areaErrorByEllipse.*100+1).*errorWeights).^2);
             case 'RMSE'
-                fval = mean((centerDistanceErrorByEllipse.*(shapeErrorByEllipse.*100+1).*(areaErrorByEllipse.*100+1).*errorWeights).^2)^(1/2);
+                fval = mean((centerDistanceErrorByEllipse.*(shapeErrorByEllipse.*100+1).*(areaErrorByEllipse.*100+1).*errorWeights).^2).^(1/2);
             otherwise
                 error('I do not recognize that error form');
         end
