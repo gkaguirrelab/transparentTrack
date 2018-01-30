@@ -181,7 +181,7 @@ switch p.Results.species
         % increase by 0.5 mm. Thus, there is a 1:1 relationship of axial
         % radius and rotation length.
         %
-        eye.rotationCenter = [-13.3 - (0.163 * spectacleRefractionDiopters) 0 0];
+        eye.rotationCenter = [-13.3 - (0.163 * p.Results.spectacleRefractionDiopters) 0 0];
         
         % Refractive index values from Atchison 2006.
         eye.corneaRefractiveIndex = 1.376;
@@ -192,9 +192,10 @@ switch p.Results.species
 end
 
 % Meta data regarding the units of the model
-eye.meta.spectacleRefractionDiopters = spectacleRefractionDiopters;
-eye.meta.laterality = eyeLaterality;
-eye.meta.species = species;
+eye.meta.spectacleRefractionDiopters = p.Results.spectacleRefractionDiopters;
+eye.meta.axialLength = p.Results.axialLength;
+eye.meta.laterality = p.Results.eyeLaterality;
+eye.meta.species = p.Results.species;
 eye.meta.units = 'mm';
 eye.meta.coordinates = 'eyeWorld';
 eye.meta.dimensions = {'depth (axial)' 'horizontal' 'vertical'};
