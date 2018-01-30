@@ -148,6 +148,10 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %  'extrinsicTranslationVectorUB' - 3x1 vector
 %  'spectacleRefractionDiopters' - Scalar. A negative value is appropriate
 %                           for a myopic subject.
+%  'axialLength'          - Scalar, defaults to empty. When set, this
+%                           causes the posterior chamber of the model eye
+%                           (and rotation center) to be adjusted to match
+%                           the passed empirical axial length (in mm).
 %  'rotationCenterDepth'  - Scalar. If undefined, the default value from
 %                           modelEyeParameters() is used.
 %  'rotationCenterDepthLB' - Scalar
@@ -212,6 +216,7 @@ p.addParameter('extrinsicTranslationVector',[0; 0; 120],@isnumeric);
 p.addParameter('extrinsicTranslationVectorLB',[-10; -10; 100],@isnumeric);
 p.addParameter('extrinsicTranslationVectorUB',[10; 10; 180],@isnumeric);
 p.addParameter('spectacleRefractionDiopters',0,@isnumeric);
+p.addParameter('axialLength',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('eyeLaterality','right',@ischar);
 p.addParameter('rotationCenterDepth',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('rotationCenterDepthLB',-15.0,@isnumeric);
@@ -245,7 +250,10 @@ initialSceneGeometry.extrinsicTranslationVector = p.Results.extrinsicTranslation
 initialSceneGeometry.extrinsicRotationMatrix = p.Results.extrinsicRotationMatrix;
 initialSceneGeometry.primaryPosition = p.Results.primaryPosition;
 initialSceneGeometry.constraintTolerance = p.Results.constraintTolerance;
-initialSceneGeometry.eye = modelEyeParameters(p.Results.spectacleRefractionDiopters, p.Results.eyeLaterality);
+initialSceneGeometry.eye = modelEyeParameters(...
+    'spectacleRefractionDiopters',p.Results.spectacleRefractionDiopters,...
+    'axialLength',p.Results.axialLength,...
+    'eyeLaterality',p.Results.eyeLaterality);
 if ~isempty(p.Results.rotationCenterDepth)
     initialSceneGeometry.eye.rotationCenter(1) = p.Results.rotationCenterDepth;
 end
