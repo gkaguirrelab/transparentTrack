@@ -261,7 +261,7 @@ end
 
 %% Set up the parallel pool
 if p.Results.useParallel
-    % If a parallel pool does not exist, attempt to createe one
+    % If a parallel pool does not exist, attempt to create one
     poolObj = gcp('nocreate');
     if isempty(poolObj)
         if strcmp(p.Results.verbosity,'full')
@@ -292,6 +292,8 @@ if p.Results.useParallel
             toc
             fprintf('\n');
         end
+    else
+        nWorkers = poolObj.NumWorkers;
     end
 else
     nWorkers=0;
