@@ -1,4 +1,4 @@
-function eye = eyeModelParameters( varargin )
+function eye = modelEyeParameters( varargin )
 % Return the parameters of a model eye
 %
 % Syntax:
