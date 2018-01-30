@@ -46,8 +46,8 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %
 %   extrinsicTranslationVector - a vector of the form:
 %
-%       [x] 
-%       [y] 
+%       [x]
+%       [y]
 %       [z]
 %
 %   with the values specifying the location (horizontal, vertical, and
@@ -94,7 +94,7 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %   perspective effects. We find that a value in the range 0.01 - 0.03
 %   provides an acceptable compromise in empirical data.
 %
-%   eye -  This is itself a structure that is returned by the function 
+%   eye -  This is itself a structure that is returned by the function
 %   modelEyeParameters(). The parameters define the anatomical properties
 %   of the eye, including the size and shape of the anterior and posterior
 %   chamber. These parameters are adjusted for the measured spherical
@@ -292,9 +292,9 @@ if p.Results.useParallel
             toc
             fprintf('\n');
         end
-    else
-        nWorkers=0;
     end
+else
+    nWorkers=0;
 end
 
 %% Load pupil data
@@ -315,7 +315,7 @@ end
 if isstruct(pupilFileName)
     pupilData = pupilFileName;
     ellipses = pupilData.(p.Results.fitLabel).ellipses.values;
-    ellipseFitSEM = pupilData.(p.Results.fitLabel).ellipses.RMSE;    
+    ellipseFitSEM = pupilData.(p.Results.fitLabel).ellipses.RMSE;
 end
 
 
@@ -330,7 +330,7 @@ else
     if strcmp(p.Results.verbosity,'full')
         fprintf('Selecting ellipses to guide the search.\n');
     end
-
+    
     % First we divide the ellipse centers amongst a set of 2D bins across image
     % space. We will ultimately minimize the fitting error across bins
     [ellipseCenterCounts,Xedges,Yedges,binXidx,binYidx] = ...
@@ -390,7 +390,7 @@ end
 %% Create a sceneGeometry plot
 if ~isempty(p.Results.sceneDiagnosticPlotFileName)
     if strcmp(p.Results.verbosity,'full')
-    fprintf('Creating a sceneGeometry diagnostic plot.\n');
+        fprintf('Creating a sceneGeometry diagnostic plot.\n');
     end
     saveSceneDiagnosticPlot(...
         ellipses(ellipseArrayList,:),...
@@ -473,7 +473,7 @@ shapeErrorByEllipse=zeros(size(ellipses,1),1);
 areaErrorByEllipse=zeros(size(ellipses,1),1);
 
 [x, fVal] = patternsearch(objectiveFun, x0,[],[],[],[],fliplr(translationVectorLB),fliplr(translationVectorUB),[],options);
-    % Nested function computes the objective for the patternsearch
+% Nested function computes the objective for the patternsearch
     function fval = objfun(x)
         % Assemble a candidate sceneGeometry structure
         candidateSceneGeometry = initialSceneGeometry;
@@ -559,11 +559,11 @@ width = 11;
 
 % the last two parameters of 'Position' define the figure size
 set(figHandle, 'Position',[25 5 width height],...
-       'PaperSize',[width height],...
-       'PaperPositionMode','auto',...
-       'Color','w',...
-       'Renderer','painters'...     %recommended if there are no alphamaps
-   );
+    'PaperSize',[width height],...
+    'PaperPositionMode','auto',...
+    'Color','w',...
+    'Renderer','painters'...     %recommended if there are no alphamaps
+    );
 
 %% Left panel -- distance error
 subplot(3,3,[1 4]);
@@ -630,7 +630,7 @@ else
     xPlotBounds = [(minX - (maxX-minX)/10) (maxX + (maxX-minX)/10) ];
     yPlotBounds = [(minY - (maxY-minY)/10) (maxY + (maxY-minY)/10) ];
 end
-    
+
 % label and clean up the plot
 axis equal
 set(gca,'Ydir','reverse')
