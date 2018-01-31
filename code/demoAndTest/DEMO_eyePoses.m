@@ -153,7 +153,7 @@ title('eyePoses [30 25 0 x]');
 drawnow
 fprintf('Figure 3 shows just the radius of the entrance pupil in the image\n');
 fprintf('as a function of the modeled radius of the physical pupil for an\n');
-fprintf('eye in two different poses.\n');
+fprintf('eye in two different poses.\n\n');
 fprintf('The black points are the values for a model in which the refractive \n');
 fprintf('effects of the cornea are not modeled, while the red points do include\n');
 fprintf('this component. Corneal refraction magnifies the image of the pupil\n');
