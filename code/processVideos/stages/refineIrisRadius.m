@@ -146,18 +146,18 @@ end
 
 %% Load pupil data
 if iscell(pupilFileName)
-    eyeParams = [];
+    eyePoses = [];
     ellipses = [];
     ellipseFitSEM = [];
     for cc = 1:length(pupilFileName)
         load(pupilFileName{cc})
-        eyeParams = [eyeParams; pupilData.(p.Results.ellipseFitLabel).eyeParams.values];
+        eyePoses = [eyePoses; pupilData.(p.Results.ellipseFitLabel).eyePoses.values];
         ellipses = [ellipses; pupilData.(p.Results.ellipseFitLabel).ellipse.values];
         ellipseFitSEM = [ellipseFitSEM; pupilData.(p.Results.ellipseFitLabel).ellipse.RMSE];
     end
 else
     load(pupilFileName)
-    eyeParams = pupilData.(p.Results.ellipseFitLabel).eyeParams.values;
+    eyePoses = pupilData.(p.Results.ellipseFitLabel).eyePoses.values;
     ellipses = pupilData.(p.Results.ellipseFitLabel).ellipse.values;
     ellipseFitSEM = pupilData.(p.Results.ellipseFitLabel).ellipse.RMSE;
 end
@@ -232,7 +232,7 @@ clear videoInObj
 sceneGeometry = performIrisRadiusSearch(...
     initialSceneGeometry, ...
     grayVideoFrames, ...
-    eyeParams(ellipseArrayList,:), ...
+    eyePoses(ellipseArrayList,:), ...
     errorWeights, ...
     p.Results.irisRadiusLB, ...
     p.Results.irisRadiusUB);
@@ -278,7 +278,7 @@ end % main function
 
 %% LOCAL FUNCTIONS
 
-function sceneGeometry = performIrisRadiusSearch(initialSceneGeometry, grayVideoFrames, eyeParams, errorWeights, irisRadiusLB, irisRadiusUB)
+function sceneGeometry = performIrisRadiusSearch(initialSceneGeometry, grayVideoFrames, eyePoses, errorWeights, irisRadiusLB, irisRadiusUB)
 % Search for best fitting irisRadius
 %
 % Description:
@@ -286,7 +286,7 @@ function sceneGeometry = performIrisRadiusSearch(initialSceneGeometry, grayVideo
 %
 
 ii=1;
-[~, ~, imagePoints, pointLabels] = pupilProjection_fwd(eyeParams(ii,:), initialSceneGeometry, true);
+[~, ~, imagePoints, pointLabels] = pupilProjection_fwd(eyePoses(ii,:), initialSceneGeometry, true);
 irisCenter = find(strcmp(pointLabels,'irisCenter'));
 irisPoints = find(strcmp(pointLabels,'irisPerimeter'));
 for pp=1:length(irisPoints)
@@ -307,12 +307,12 @@ sceneGeometry.eye.centerOfRotation(1) = -x(4);
 sceneGeometry.meta.refineIris.search.options = options;
 sceneGeometry.meta.refineIris.search.errorForm = errorForm;
 sceneGeometry.meta.refineIris.search.initialSceneGeometry = initialSceneGeometry;
-sceneGeometry.meta.refineIris.search.ellipses = eyeParams;
+sceneGeometry.meta.refineIris.search.ellipses = eyePoses;
 sceneGeometry.meta.refineIris.search.errorWeights = errorWeights;
 sceneGeometry.meta.refineIris.search.sceneParamsLB = sceneParamsLB;
 sceneGeometry.meta.refineIris.search.sceneParamsUB = sceneParamsUB;
-sceneGeometry.meta.refineIris.search.eyeParamsLB = eyeParamsLB;
-sceneGeometry.meta.refineIris.search.eyeParamsUB = eyeParamsUB;
+sceneGeometry.meta.refineIris.search.eyePosesLB = eyePosesLB;
+sceneGeometry.meta.refineIris.search.eyePosesUB = eyePosesUB;
 sceneGeometry.meta.refineIris.search.fVal = fVal;
 sceneGeometry.meta.refineIris.search.centerDistanceErrorByEllipse = centerDistanceErrorByEllipse;
 sceneGeometry.meta.refineIris.search.shapeErrorByEllipse = shapeErrorByEllipse;

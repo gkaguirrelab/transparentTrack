@@ -127,8 +127,8 @@ rayTraceFuncs.cornea = cornea(sceneGeometry);
 %   eyeAzimuthRads
 %   eyeElevationRads
 %   eyeTorsionRads        - Each is a scalar in units of radians. These
-%                           are the first three values of the eyeParams
-%                           vector. Note that the eyeParams vector
+%                           are the first three values of the eyePoses
+%                           vector. Note that the eyePoses vector
 %                           specifies rotations in degrees. These values
 %                           must be converted to radians before being
 %                           passed to this function. This is necessary as

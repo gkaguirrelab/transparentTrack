@@ -30,8 +30,8 @@ for cameraX = -5:5:5
             ellipseIdx=1;
             for azi=-15:15:15
                 for ele=-15:15:15
-                    eyeParams=[azi, ele, 0, pupilRadii(ellipseIdx)];
-                    pupilData.initial.ellipses.values(ellipseIdx,:) = pupilProjection_fwd(eyeParams, veridicalSceneGeometry, rayTraceFuncs);
+                    eyePoses=[azi, ele, 0, pupilRadii(ellipseIdx)];
+                    pupilData.initial.ellipses.values(ellipseIdx,:) = pupilProjection_fwd(eyePoses, veridicalSceneGeometry, rayTraceFuncs);
                     pupilData.initial.ellipses.RMSE(ellipseIdx,:) = 1;
                     ellipseIdx=ellipseIdx+1;
                 end

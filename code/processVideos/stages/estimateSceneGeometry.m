@@ -152,7 +152,7 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %                           the passed empirical axial length (in mm).
 %  'primaryPosition'      - 1x3 vector
 %  'constraintTolerance'  - Scalar. Range 0-1. Typical value 0.01 - 0.03
-%  'eyeParamsLB/UB'       - Upper and lower bounds on the eyeParams
+%  'eyePosesLB/UB'       - Upper and lower bounds on the eyePoses
 %                           [azimuth, elevation, torsion, pupil radius].
 %                           The torsion value is unusued and is bounded to
 %                           zero. Biological limits in eye rotation and
@@ -214,8 +214,8 @@ p.addParameter('axialLength',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('eyeLaterality','right',@ischar);
 p.addParameter('primaryPosition',[0 0 0],@isnumeric);
 p.addParameter('constraintTolerance',0.02,@isnumeric);
-p.addParameter('eyeParamsLB',[-35,-25,0,0.25],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('eyeParamsUB',[35,25,0,4],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('eyePosesLB',[-35,-25,0,0.25],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('eyePosesUB',[35,25,0,4],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('fitLabel','initial',@ischar);
 p.addParameter('ellipseArrayList',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nBinsPerDimension',10,@isnumeric);
@@ -375,8 +375,8 @@ sceneGeometry = ...
     errorWeights, ...
     p.Results.extrinsicTranslationVectorLB, ...
     p.Results.extrinsicTranslationVectorUB, ...
-    p.Results.eyeParamsLB, ...
-    p.Results.eyeParamsUB, ...
+    p.Results.eyePosesLB, ...
+    p.Results.eyePosesUB, ...
     nWorkers);
 
 % add additional search and meta field info to sceneGeometry
@@ -398,8 +398,8 @@ if ~isempty(p.Results.sceneDiagnosticPlotFileName)
     saveSceneDiagnosticPlot(...
         ellipses(ellipseArrayList,:),...
         Xedges, Yedges,...
-        p.Results.eyeParamsLB, ...
-        p.Results.eyeParamsUB, ...
+        p.Results.eyePosesLB, ...
+        p.Results.eyePosesUB, ...
         sceneGeometry,...
         rayTraceFuncs,...
         p.Results.sceneDiagnosticPlotFileName)
@@ -419,7 +419,7 @@ end % main function
 
 %% LOCAL FUNCTIONS
 
-function sceneGeometry = performSceneSearch(initialSceneGeometry, rayTraceFuncs, ellipses, errorWeights, translationVectorLB, translationVectorUB, eyeParamsLB, eyeParamsUB, nWorkers)
+function sceneGeometry = performSceneSearch(initialSceneGeometry, rayTraceFuncs, ellipses, errorWeights, translationVectorLB, translationVectorUB, eyePosesLB, eyePosesUB, nWorkers)
 % Pattern search for best fitting sceneGeometry parameters
 %
 % Description:
@@ -482,7 +482,7 @@ areaErrorByEllipse=zeros(size(ellipses,1),1);
         candidateSceneGeometry = initialSceneGeometry;
         candidateSceneGeometry.extrinsicTranslationVector = x;
         % For each ellipse, perform the inverse projection from the ellipse
-        % on the image plane to eyeParams. We retain the errors from the
+        % on the image plane to eyePoses. We retain the errors from the
         % inverse projection and use these to assemble the objective
         % function. We parallelize the computation across ellipses.
         parfor (ii = 1:size(ellipses,1), nWorkers)
@@ -490,8 +490,8 @@ areaErrorByEllipse=zeros(size(ellipses,1),1);
                 pupilProjection_inv(...
                 ellipses(ii,:),...
                 candidateSceneGeometry, rayTraceFuncs, ...
-                'eyeParamsLB',eyeParamsLB,...
-                'eyeParamsUB',eyeParamsUB...
+                'eyePosesLB',eyePosesLB,...
+                'eyePosesUB',eyePosesUB...
                 );
         end
         % Now compute objective function as the RMSE of the distance
@@ -523,8 +523,8 @@ sceneGeometry.meta.estimateGeometry.search.ellipses = ellipses;
 sceneGeometry.meta.estimateGeometry.search.errorWeights = errorWeights;
 sceneGeometry.meta.estimateGeometry.search.sceneParamsLB = translationVectorLB;
 sceneGeometry.meta.estimateGeometry.search.sceneParamsUB = translationVectorUB;
-sceneGeometry.meta.estimateGeometry.search.eyeParamsLB = eyeParamsLB;
-sceneGeometry.meta.estimateGeometry.search.eyeParamsUB = eyeParamsUB;
+sceneGeometry.meta.estimateGeometry.search.eyePosesLB = eyePosesLB;
+sceneGeometry.meta.estimateGeometry.search.eyePosesUB = eyePosesUB;
 sceneGeometry.meta.estimateGeometry.search.fVal = fVal;
 sceneGeometry.meta.estimateGeometry.search.centerDistanceErrorByEllipse = centerDistanceErrorByEllipse;
 sceneGeometry.meta.estimateGeometry.search.shapeErrorByEllipse = shapeErrorByEllipse;
@@ -533,7 +533,7 @@ sceneGeometry.meta.estimateGeometry.search.areaErrorByEllipse = areaErrorByEllip
 end % local search function
 
 
-function [] = saveSceneDiagnosticPlot(ellipses, Xedges, Yedges, eyeParamsLB, eyeParamsUB, sceneGeometry, rayTraceFuncs, sceneDiagnosticPlotFileName)
+function [] = saveSceneDiagnosticPlot(ellipses, Xedges, Yedges, eyePosesLB, eyePosesUB, sceneGeometry, rayTraceFuncs, sceneDiagnosticPlotFileName)
 % Creates and saves a plot that illustrates the sceneGeometry results
 %
 % Inputs:
@@ -543,7 +543,7 @@ function [] = saveSceneDiagnosticPlot(ellipses, Xedges, Yedges, eyeParamsLB, eye
 %                           divide and select ellipses across the image.
 %   Yedges                - The Y-dimension edges of the bins used to
 %                           divide and select ellipses across the image.
-%   eyeParamsLB, eyeParamsUB - Bounds for the eye params to be passed to
+%   eyePosesLB, eyePosesUB - Bounds for the eye params to be passed to
 %                           pupilProjection_inv.
 %   sceneGeometry         - The sceneGeometry structure
 %   sceneDiagnosticPlotFileName - The full path (including .pdf suffix)
@@ -598,7 +598,7 @@ hold on
     ellipses(x,:),...
     sceneGeometry,...
     rayTraceFuncs,...
-    'eyeParamsLB',eyeParamsLB,'eyeParamsUB',eyeParamsUB),...
+    'eyePosesLB',eyePosesLB,'eyePosesUB',eyePosesUB),...
     1:1:size(ellipses,1),'UniformOutput',false);
 projectedEllipses=vertcat(projectedEllipses{:});
 

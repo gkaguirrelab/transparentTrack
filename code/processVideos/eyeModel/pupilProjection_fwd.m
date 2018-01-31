@@ -1,8 +1,8 @@
-function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoints, pointLabels] = pupilProjection_fwd(eyeParams, sceneGeometry, rayTraceFuncs, varargin)
+function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoints, pointLabels] = pupilProjection_fwd(eyePoses, sceneGeometry, rayTraceFuncs, varargin)
 % Project the pupil circle to an ellipse on the image plane
 %
 % Syntax:
-%  [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoints, pointLabels] = pupilProjection_fwd(eyeParams, sceneGeometry, rayTraceFuncs)
+%  [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoints, pointLabels] = pupilProjection_fwd(eyePoses, sceneGeometry, rayTraceFuncs)
 %
 % Description:
 %   Given the sceneGeometry--and optionaly ray tracing functions through
@@ -32,7 +32,7 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
 %   part to help us keep the two units separate conceptually.
 %
 % Inputs:
-%   eyeParams             - A 1x4 vector provides values for [eyeAzimuth,
+%   eyePoses             - A 1x4 vector provides values for [eyeAzimuth,
 %                           eyeElevation, eyeTorsion, pupilRadius].
 %                           Azimuth, elevation, and torsion are in units of
 %                           head-centered (extrinsic) degrees, and pupil
@@ -89,10 +89,10 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     sceneGeometry=estimateSceneGeometry([],[]);
     % Define the ray tracing functions
     rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
-    % Define in eyeParams the azimuth, elevation, torsion, and pupil radius
-    eyeParams = [-10, 5, 0 3];
+    % Define in eyePoses the azimuth, elevation, torsion, and pupil radius
+    eyePoses = [-10, 5, 0 3];
     % Obtain the pupil ellipse parameters in transparent format
-    pupilEllipseOnImagePlane = pupilProjection_fwd(eyeParams,sceneGeometry,rayTraceFuncs);
+    pupilEllipseOnImagePlane = pupilProjection_fwd(eyePoses,sceneGeometry,rayTraceFuncs);
 %}
 %{
     %% Display a 2D image of a slightly myopic, left, model eye
@@ -100,10 +100,10 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     sceneGeometry=estimateSceneGeometry([],[],'eyeLaterality','left','spectacleRefractionDiopters',-2);
     % Define the ray tracing functions
     rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
-    % Define in eyeParams the azimuth, elevation, torsion, and pupil radius
-    eyeParams = [-10, 5, 0 3];
+    % Define in eyePoses the azimuth, elevation, torsion, and pupil radius
+    eyePoses = [-10, 5, 0 3];
     % Perform the projection and request the full eye model
-    [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyeParams,sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
+    [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses,sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
     % Define some settings for display
     eyePartLabels = {'rotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex'};
     plotColors = {'+r' '.w' '.b' '*g' '.y' '*y'};
@@ -128,10 +128,10 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     sceneGeometry=estimateSceneGeometry([],[]);
     % Define the ray tracing functions
     rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
-    % Define in eyeParams the azimuth, elevation, torsion, and pupil radius
-    eyeParams = [0, 0, 0 3];
+    % Define in eyePoses the azimuth, elevation, torsion, and pupil radius
+    eyePoses = [0, 0, 0 3];
     % Perform the projection and request the full eye model
-    [~, ~, ~, eyeWorldPoints, pointLabels] = pupilProjection_fwd(eyeParams,sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
+    [~, ~, ~, eyeWorldPoints, pointLabels] = pupilProjection_fwd(eyePoses,sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
     % Define some settings for display
     eyePartLabels = {'rotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex'};
     plotColors = {'+r' '.k' '*b' '*g' '.y' '*y'};
@@ -152,7 +152,7 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
 p = inputParser; p.KeepUnmatched = true;
 
 % Required
-p.addRequired('eyeParams',@isnumeric);
+p.addRequired('eyePoses',@isnumeric);
 p.addRequired('sceneGeometry',@(x)(isempty(x) || isstruct(x)));
 p.addRequired('rayTraceFuncs',@(x)(isempty(x) || isstruct(x)));
 
@@ -163,7 +163,7 @@ p.addParameter('posteriorChamberEllipsoidPoints',30,@isnumeric);
 p.addParameter('anteriorChamberEllipsoidPoints',30,@isnumeric);
 
 % parse
-p.parse(eyeParams, sceneGeometry, rayTraceFuncs, varargin{:})
+p.parse(eyePoses, sceneGeometry, rayTraceFuncs, varargin{:})
 
 
 %% Check the input
@@ -175,11 +175,11 @@ end
 
 
 %% Prepare variables
-% Separate the eyeParams into individual variables
-eyeAzimuth = eyeParams(1);
-eyeElevation = eyeParams(2);
-eyeTorsion = eyeParams(3);
-pupilRadius = eyeParams(4);
+% Separate the eyePoses into individual variables
+eyeAzimuth = eyePoses(1);
+eyeElevation = eyePoses(2);
+eyeTorsion = eyePoses(3);
+pupilRadius = eyePoses(4);
 nPupilPerimPoints = p.Results.nPupilPerimPoints;
 
 %% Define an eye in eyeWorld coordinates
@@ -515,7 +515,7 @@ imagePoints = (imagePointsNormalizedDistorted .* [sceneGeometry.intrinsicCameraM
 % circle on the image plane.
 pupilPerimIdx = find(strcmp(pointLabels,'pupilPerimeter'));
 
-if eyeParams(4)==0 || ~isreal(imagePoints(pupilPerimIdx,:)) || length(pupilPerimIdx)<5
+if eyePoses(4)==0 || ~isreal(imagePoints(pupilPerimIdx,:)) || length(pupilPerimIdx)<5
     pupilEllipseOnImagePlane=nan(1,5);
 else
     pupilEllipseOnImagePlane = ellipse_ex2transparent(...
