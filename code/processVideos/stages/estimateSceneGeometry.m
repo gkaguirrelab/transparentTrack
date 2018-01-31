@@ -299,6 +299,7 @@ else
     nWorkers=0;
 end
 
+
 %% Load pupil data
 if iscell(pupilFileName)
     ellipses = [];

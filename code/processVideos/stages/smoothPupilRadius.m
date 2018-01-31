@@ -152,39 +152,47 @@ if strcmp(p.Results.verbosity,'full')
 end
 [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
 
+
 %% Set up the parallel pool
 if p.Results.useParallel
-    if strcmp(p.Results.verbosity,'full')
-        tic
-        fprintf(['Opening parallel pool. Started ' char(datetime('now')) '\n']);
-    end
-    if isempty(p.Results.nWorkers)
-        parpool;
-    else
-        parpool(p.Results.nWorkers);
-    end
-    poolObj = gcp;
+    % If a parallel pool does not exist, attempt to create one
+    poolObj = gcp('nocreate');
     if isempty(poolObj)
-        nWorkers=0;
-    else
-        nWorkers = poolObj.NumWorkers;
-        % Use TbTb to configure the workers.
-        if ~isempty(p.Results.tbtbRepoName)
-            spmd
-                tbUse(p.Results.tbtbRepoName,'reset','full','verbose',false,'online',false);
-            end
-            if strcmp(p.Results.verbosity,'full')
-                fprintf('CAUTION: Any TbTb messages from the workers will not be shown.\n');
+        if strcmp(p.Results.verbosity,'full')
+            tic
+            fprintf(['Opening parallel pool. Started ' char(datetime('now')) '\n']);
+        end
+        if isempty(p.Results.nWorkers)
+            parpool;
+        else
+            parpool(p.Results.nWorkers);
+        end
+        poolObj = gcp;
+        if isempty(poolObj)
+            nWorkers=0;
+        else
+            nWorkers = poolObj.NumWorkers;
+            % Use TbTb to configure the workers.
+            if ~isempty(p.Results.tbtbRepoName)
+                spmd
+                    tbUse(p.Results.tbtbRepoName,'reset','full','verbose',false,'online',false);
+                end
+                if strcmp(p.Results.verbosity,'full')
+                    fprintf('CAUTION: Any TbTb messages from the workers will not be shown.\n');
+                end
             end
         end
-    end
-    if strcmp(p.Results.verbosity,'full')
-        toc
-        fprintf('\n');
+        if strcmp(p.Results.verbosity,'full')
+            toc
+            fprintf('\n');
+        end
+    else
+        nWorkers = poolObj.NumWorkers;
     end
 else
     nWorkers=0;
 end
+
 
 % Recast perimeter.data into a sliced cell array to reduce parfor
 % broadcast overhead
@@ -372,23 +380,5 @@ pupilData.radiusSmoothed.meta.smoothPupilArea = p.Results;
 
 % save the pupilData
 save(p.Results.pupilFileName,'pupilData')
-
-
-%% Delete the parallel pool
-if p.Results.useParallel
-    if strcmp(p.Results.verbosity,'full')
-        tic
-        fprintf(['Closing parallel pool. Started ' char(datetime('now')) '\n']);
-    end
-    poolObj = gcp;
-    if ~isempty(poolObj)
-        delete(poolObj);
-    end
-    if strcmp(p.Results.verbosity,'full')
-        toc
-        fprintf('\n');
-    end
-end
-
 
 end % function
