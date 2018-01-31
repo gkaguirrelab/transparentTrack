@@ -29,7 +29,7 @@ rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
 %% Define some variables
 pupilRadiusMM = 2;
 eyePoses = [];
-reconstructedeyePoses = [];
+reconstructedEyePoses = [];
 eyePoseErrors = [];
 
 %% Loop over aimuths and elevations
@@ -50,11 +50,11 @@ for thisAzimuth = -35:5:35
         % Inverse projection from image ellipse to eyePoses
         tic
         tmp = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePosesLB',[-40,-35,0,0.5],'eyePosesUB',[40,35,0,4]);
-        reconstructedeyePoses = [reconstructedeyePoses; tmp];
+        reconstructedEyePoses = [reconstructedEyePoses; tmp];
         toc
         
         % Calculate and save the error
-        eyePoseErrors = [eyePoseErrors; eyePoses(end,:)-reconstructedeyePoses(end,:)];
+        eyePoseErrors = [eyePoseErrors; eyePoses(end,:)-reconstructedEyePoses(end,:)];
     end
 end
 
