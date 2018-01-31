@@ -181,7 +181,7 @@ switch p.Results.species
         % increase by 0.5 mm. Thus, there is a 1:1 relationship of axial
         % radius and rotation length.
         %
-        eye.rotationCenter = [-13.3 - (0.163 * p.Results.spectacleRefractionDiopters) 0 0];
+        eye.rotationCenter = [(-3.152 - eye.posteriorChamberRadii(1)) 0 0];
         
         % Refractive index values from Atchison 2006.
         eye.corneaRefractiveIndex = 1.376;
