@@ -182,6 +182,7 @@ eyeTorsion = eyePoses(3);
 pupilRadius = eyePoses(4);
 nPupilPerimPoints = p.Results.nPupilPerimPoints;
 
+
 %% Define an eye in eyeWorld coordinates
 % This coordinate frame is in mm units and has the dimensions (p1,p2,p3).
 % The diagram is of a cartoon pupil, being viewed directly from the front.
@@ -314,7 +315,7 @@ if p.Results.fullEyeModelFlag
 end
 
 
-%% Project the pupil circle points to headWorld coordinates.
+%% Project the eyeWorld points to headWorld coordinates.
 % This coordinate frame is in mm units and has the dimensions (h1,h2,h3).
 % The diagram is of a cartoon eye, being viewed directly from the front.
 %
@@ -416,7 +417,7 @@ end
 headWorldPoints = (eyeRotation*(eyeWorldPoints-sceneGeometry.eye.rotationCenter)')'+sceneGeometry.eye.rotationCenter;
 
 
-%% Project the pupil circle points to sceneWorld coordinates.
+%% Project the headWorld points to sceneWorld coordinates.
 % This coordinate frame is in mm units and has the dimensions (X,Y,Z).
 % The diagram is of a cartoon head (borrowed from Leszek Swirski), being
 % viewed from above:
@@ -450,7 +451,7 @@ sceneWorldPoints = headWorldPoints(:,[2 3 1]);
 sceneWorldPoints(:,2) = sceneWorldPoints(:,2)*(-1);
 
 
-%% Project the pupil circle points to the image plane
+%% Project the sceneWorld points to the image plane
 % This coordinate frame is in units of pixels, and has the dimensions
 % [x, y]:
 %
@@ -510,7 +511,7 @@ imagePoints = (imagePointsNormalizedDistorted .* [sceneGeometry.intrinsicCameraM
     [sceneGeometry.intrinsicCameraMatrix(1,3) sceneGeometry.intrinsicCameraMatrix(2,3)];
 
 
-%% Fit the ellipse in the image plane and store values
+%% Fit an ellipse to the pupil points in the image plane
 % Obtain the transparent ellipse params of the projection of the pupil
 % circle on the image plane.
 pupilPerimIdx = find(strcmp(pointLabels,'pupilPerimeter'));
