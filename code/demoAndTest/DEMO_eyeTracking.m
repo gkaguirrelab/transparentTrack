@@ -109,12 +109,12 @@ ylabel('pupil area [pixels in plane]');
 hold off
 
 subplot(2,1,2)
-plot(temporalSupport,pupilData.sceneConstrained.eyeParams.values(:,4),'-k','LineWidth',2);
+plot(temporalSupport,pupilData.sceneConstrained.eyePoses.values(:,4),'-k','LineWidth',2);
 hold on
-plot(temporalSupport,pupilData.sceneConstrained.eyeParams.values(:,4),'-b');
-plot(temporalSupport,pupilData.sceneConstrained.eyeParams.values(:,4)-pupilData.sceneConstrained.eyeParams.splitsSD(:,4),'-','Color',[0 0 0.7])
-plot(temporalSupport,pupilData.sceneConstrained.eyeParams.values(:,4)+pupilData.sceneConstrained.eyeParams.splitsSD(:,4),'-','Color',[0 0 0.7])
-plot(temporalSupport,pupilData.radiusSmoothed.eyeParams.values(:,4),'-r','LineWidth',2)
+plot(temporalSupport,pupilData.sceneConstrained.eyePoses.values(:,4),'-b');
+plot(temporalSupport,pupilData.sceneConstrained.eyePoses.values(:,4)-pupilData.sceneConstrained.eyePoses.splitsSD(:,4),'-','Color',[0 0 0.7])
+plot(temporalSupport,pupilData.sceneConstrained.eyePoses.values(:,4)+pupilData.sceneConstrained.eyePoses.splitsSD(:,4),'-','Color',[0 0 0.7])
+plot(temporalSupport,pupilData.radiusSmoothed.eyePoses.values(:,4),'-r','LineWidth',2)
 xlim([0 max(temporalSupport)]);
 xlabel('time [mins]');
 ylabel('pupil radius [mm on eye]');

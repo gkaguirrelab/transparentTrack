@@ -8,7 +8,7 @@ function makeEyeModelVideo(videoOutFileName,pupilFileName, sceneGeometryFileName
 % Inputs:
 %   videoOutFileName      - Full path to the output .avi file
 %   pupilFileName         - Full path to a pupil data file. The file must
-%                           have an eyeParams field.
+%                           have an eyePoses field.
 %   sceneGeometryFileName - Full path to the sceneGeometry file
 %
 % Optional key/value pairs (display and I/O):
@@ -62,7 +62,7 @@ end
 dataLoad = load(p.Results.pupilFileName);
 pupilData = dataLoad.pupilData;
 clear dataLoad
-eyeParams = pupilData.(p.Results.fitLabel).eyeParams.values;
+eyePoses = pupilData.(p.Results.fitLabel).eyePoses.values;
 
 % Read in the sceneGeometry file
 dataLoad = load(p.Results.sceneGeometryFileName);
@@ -97,7 +97,7 @@ end
 blankFrame = zeros(480,640)+0.5;
 
 % Obtain the number of frames
-nFrames = size(eyeParams,1);
+nFrames = size(eyePoses,1);
 
 % Open a figure
 frameFig = figure( 'Visible', 'off');
@@ -118,10 +118,10 @@ for ii = 1:nFrames
     xlim([0 p.Results.videoSizeX]);
     ylim([0 p.Results.videoSizeY]);
     
-    if ~any(isnan(eyeParams(ii,:)))
+    if ~any(isnan(eyePoses(ii,:)))
         
         % Obtain the pupilProjection of the model eye to the image plane
-        [pupilEllipseParams, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyeParams(ii,:), sceneGeometry, rayTraceFuncs, 'fullEyeModelFlag', true);
+        [pupilEllipseParams, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses(ii,:), sceneGeometry, rayTraceFuncs, 'fullEyeModelFlag', true);
         
         % Loop through the point labels present in the eye model
         for pp = 1:length(p.Results.labelNames)

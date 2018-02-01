@@ -70,7 +70,7 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %                           by the scene geometry. A mild constraint (0.6)
 %                           is placed upon the eccentricity, corresponding
 %                           to an aspect ration of 4:5.
-%  'eyeParamsLB/UB'       - Upper and lower bounds on the eyeParams
+%  'eyePosesLB/UB'       - Upper and lower bounds on the eyePoses
 %                           [azimuth, elevation, pupil radius]. Biological
 %                           limits in eye rotation and pupil size would
 %                           suggest boundaries of [±35, ±25, 0.5-5]. Note,
@@ -121,8 +121,8 @@ p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@i
 % Optional analysis params
 p.addParameter('ellipseTransparentLB',[0,0,800,0,0],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('ellipseTransparentUB',[640,480,20000,0.6,pi],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('eyeParamsLB',[-35,-25,0,0.25],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('eyeParamsUB',[35,25,0,4],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('eyePosesLB',[-35,-25,0,0.25],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('eyePosesUB',[35,25,0,4],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nSplits',2,@isnumeric);
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('fitLabel',[],@(x)(isempty(x) | ischar(x)));
@@ -132,7 +132,7 @@ p.addParameter('fitLabel',[],@(x)(isempty(x) | ischar(x)));
 p.parse(perimeterFileName, pupilFileName, varargin{:});
 
 nEllipseParams=5; % 5 params in the transparent ellipse form
-nEyeParams=4; % 4 values (azimuth, elevation, torsion, pupil radius) for eyeParams
+neyePoses=4; % 4 values (azimuth, elevation, torsion, pupil radius) for eyePoses
 
 
 %% Load data
@@ -187,33 +187,39 @@ end
 
 %% Set up the parallel pool
 if p.Results.useParallel
-    if strcmp(p.Results.verbosity,'full')
-        tic
-        fprintf(['Opening parallel pool. Started ' char(datetime('now')) '\n']);
-    end
-    if isempty(p.Results.nWorkers)
-        parpool;
-    else
-        parpool(p.Results.nWorkers);
-    end
-    poolObj = gcp;
+    % If a parallel pool does not exist, attempt to create one
+    poolObj = gcp('nocreate');
     if isempty(poolObj)
-        nWorkers=0;
-    else
-        nWorkers = poolObj.NumWorkers;
-        % Use TbTb to configure the workers.
-        if ~isempty(p.Results.tbtbRepoName)
-            spmd
-                tbUse(p.Results.tbtbRepoName,'reset','full','verbose',false,'online',false);
-            end
-            if strcmp(p.Results.verbosity,'full')
-                fprintf('CAUTION: Any TbTb messages from the workers will not be shown.\n');
+        if strcmp(p.Results.verbosity,'full')
+            tic
+            fprintf(['Opening parallel pool. Started ' char(datetime('now')) '\n']);
+        end
+        if isempty(p.Results.nWorkers)
+            parpool;
+        else
+            parpool(p.Results.nWorkers);
+        end
+        poolObj = gcp;
+        if isempty(poolObj)
+            nWorkers=0;
+        else
+            nWorkers = poolObj.NumWorkers;
+            % Use TbTb to configure the workers.
+            if ~isempty(p.Results.tbtbRepoName)
+                spmd
+                    tbUse(p.Results.tbtbRepoName,'reset','full','verbose',false,'online',false);
+                end
+                if strcmp(p.Results.verbosity,'full')
+                    fprintf('CAUTION: Any TbTb messages from the workers will not be shown.\n');
+                end
             end
         end
-    end
-    if strcmp(p.Results.verbosity,'full')
-        toc
-        fprintf('\n');
+        if strcmp(p.Results.verbosity,'full')
+            toc
+            fprintf('\n');
+        end
+    else
+        nWorkers = poolObj.NumWorkers;
     end
 else
     nWorkers=0;
@@ -231,8 +237,8 @@ clear perimeter
 verbosity = p.Results.verbosity;
 ellipseTransparentLB = p.Results.ellipseTransparentLB;
 ellipseTransparentUB = p.Results.ellipseTransparentUB;
-eyeParamsLB = p.Results.eyeParamsLB;
-eyeParamsUB = p.Results.eyeParamsUB;
+eyePosesLB = p.Results.eyePosesLB;
+eyePosesUB = p.Results.eyePosesUB;
 nSplits = p.Results.nSplits;
 
 % Alert the user
@@ -257,11 +263,11 @@ parfor (ii = 1:nFrames, nWorkers)
     ellipseParamsTransparent=NaN(1,nEllipseParams);
     ellipseParamsSplitsSD=NaN(1,nEllipseParams);
     ellipseParamsObjectiveError=NaN(1);
-    eyeParams=NaN(1,nEyeParams);
-    eyeParamsSplitsSD=NaN(1,nEyeParams);
-    eyeParamsObjectiveError=NaN(1);
+    eyePoses=NaN(1,neyePoses);
+    eyePosesSplitsSD=NaN(1,neyePoses);
+    eyePosesObjectiveError=NaN(1);
     pFitTransparentSplit=NaN(1,nSplits,nEllipseParams);
-    pFitEyeParamSplit=NaN(1,nSplits,nEyeParams);
+    pFiteyePosesplit=NaN(1,nSplits,neyePoses);
     
     % get the boundary points
     Xp = frameCellArray{ii}.Xp;
@@ -281,12 +287,12 @@ parfor (ii = 1:nFrames, nWorkers)
             else
                 % Identify the best fitting eye parameters for the  the
                 % pupil perimeter
-                eyeParams_x0 = [0 0 0 2];
-                [eyeParams, eyeParamsObjectiveError] = ...
-                    eyeParamEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs, 'x0', eyeParams_x0, 'eyeParamsLB', eyeParamsLB, 'eyeParamsUB', eyeParamsUB);
+                eyePoses_x0 = [0 0 0 2];
+                [eyePoses, eyePosesObjectiveError] = ...
+                    eyePoseEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs, 'x0', eyePoses_x0, 'eyePosesLB', eyePosesLB, 'eyePosesUB', eyePosesUB);
                 % Obtain the parameters of the ellipse
                 ellipseParamsTransparent = ...
-                    pupilProjection_fwd(eyeParams, sceneGeometry, rayTraceFuncs);
+                    pupilProjection_fwd(eyePoses, sceneGeometry, rayTraceFuncs);
             end
             
             % Re-calculate fit for splits of data points, if requested
@@ -294,7 +300,7 @@ parfor (ii = 1:nFrames, nWorkers)
                 if isempty(sceneGeometry)
                     ellipseParamsSplitsSD=NaN(1,nEllipseParams);
                 else
-                    eyeParamsSplitsSD=NaN(1,nEyeParams);
+                    eyePosesSplitsSD=NaN(1,neyePoses);
                 end
             else
                 % Find the center of the pupil boundary points, place the boundary
@@ -307,7 +313,7 @@ parfor (ii = 1:nFrames, nWorkers)
                 if isempty(sceneGeometry)
                     pFitTransparentSplit=NaN(2,nSplits,nEllipseParams);
                 else
-                    pFitEyeParamSplit=NaN(2,nSplits,nEyeParams);
+                    pFiteyePosesplit=NaN(2,nSplits,neyePoses);
                 end
                 % Loop across the number of requested splits
                 for ss=1:nSplits
@@ -331,29 +337,29 @@ parfor (ii = 1:nFrames, nWorkers)
                             ellipseTransparentUB, ...
                             []);
                     else
-                        % We do have sceneGeometry, so search for eyeParams
+                        % We do have sceneGeometry, so search for eyePoses
                         % that best fit the splits of the pupil perimeter.
                         % To speed up the search, we do not use ray tracing
                         % here, as we are not interested in the absolute
                         % values of the fits, but instead just their
                         % variation.
-                        pFitEyeParamSplit(1,ss,:) = ...
-                            eyeParamEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry, [], 'x0', eyeParams, 'eyeParamsLB', eyeParamsLB, 'eyeParamsUB', eyeParamsUB);
-                        pFitEyeParamSplit(2,ss,:) = ...
-                            eyeParamEllipseFit(Xp(splitIdx2), Yp(splitIdx2), sceneGeometry, [], 'x0', eyeParams, 'eyeParamsLB', eyeParamsLB, 'eyeParamsUB', eyeParamsUB);
+                        pFiteyePosesplit(1,ss,:) = ...
+                            eyePoseEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry, [], 'x0', eyePoses, 'eyePosesLB', eyePosesLB, 'eyePosesUB', eyePosesUB);
+                        pFiteyePosesplit(2,ss,:) = ...
+                            eyePoseEllipseFit(Xp(splitIdx2), Yp(splitIdx2), sceneGeometry, [], 'x0', eyePoses, 'eyePosesLB', eyePosesLB, 'eyePosesUB', eyePosesUB);
                         % Obtain the ellipse parameeters that correspond
-                        % the eyeParams
+                        % the eyePoses
                         pFitTransparentSplit(1,ss,:) = ...
-                            pupilProjection_fwd(pFitEyeParamSplit(1,ss,:), sceneGeometry, []);
+                            pupilProjection_fwd(pFiteyePosesplit(1,ss,:), sceneGeometry, []);
                         pFitTransparentSplit(2,ss,:) = ...
-                            pupilProjection_fwd(pFitEyeParamSplit(2,ss,:), sceneGeometry, []);
+                            pupilProjection_fwd(pFiteyePosesplit(2,ss,:), sceneGeometry, []);
                     end
                 end % loop through splits
                 
                 % Calculate the SD of the parameters across splits
                 ellipseParamsSplitsSD=nanstd(reshape(pFitTransparentSplit,ss*2,nEllipseParams));
                 if ~isempty(sceneGeometry)
-                    eyeParamsSplitsSD=nanstd(reshape(pFitEyeParamSplit,ss*2,nEyeParams));
+                    eyePosesSplitsSD=nanstd(reshape(pFiteyePosesplit,ss*2,neyePoses));
                 end
             end % check if we want to do splits
             
@@ -367,9 +373,9 @@ parfor (ii = 1:nFrames, nWorkers)
     loopVar_ellipseParamsSplitsSD(ii,:) = ellipseParamsSplitsSD';
     loopVar_ellipseParamsObjectiveError(ii) = ellipseParamsObjectiveError;
     if ~isempty(sceneGeometry)
-        loopVar_eyeParams(ii,:) = eyeParams';
-        loopVar_eyeParamsSplitsSD(ii,:) = eyeParamsSplitsSD';
-        loopVar_eyeParamsObjectiveError(ii) = eyeParamsObjectiveError;
+        loopVar_eyePoses(ii,:) = eyePoses';
+        loopVar_eyePosesSplitsSD(ii,:) = eyePosesSplitsSD';
+        loopVar_eyePosesObjectiveError(ii) = eyePosesObjectiveError;
     end
     
 end % loop over frames
@@ -398,7 +404,7 @@ pupilData.(fitLabel).ellipses.values = loopVar_ellipseParamsTransparent;
 if isempty(sceneGeometry)
     pupilData.(fitLabel).ellipses.RMSE = loopVar_ellipseParamsObjectiveError';
 else
-    pupilData.(fitLabel).ellipses.RMSE = loopVar_eyeParamsObjectiveError';
+    pupilData.(fitLabel).ellipses.RMSE = loopVar_eyePosesObjectiveError';
 end
 if nSplits~=0
     pupilData.(fitLabel).ellipses.splitsSD = loopVar_ellipseParamsSplitsSD;
@@ -408,13 +414,13 @@ pupilData.(fitLabel).ellipses.meta.labels = {'x','y','area','eccentricity','thet
 pupilData.(fitLabel).ellipses.meta.units = {'pixels','pixels','squared pixels','non-linear eccentricity','rads'};
 pupilData.(fitLabel).ellipses.meta.coordinateSystem = 'intrinsic image';
 if ~isempty(sceneGeometry)
-    pupilData.(fitLabel).eyeParams.values = loopVar_eyeParams;
+    pupilData.(fitLabel).eyePoses.values = loopVar_eyePoses;
     if nSplits~=0
-        pupilData.(fitLabel).eyeParams.splitsSD = loopVar_eyeParamsSplitsSD;
+        pupilData.(fitLabel).eyePoses.splitsSD = loopVar_eyePosesSplitsSD;
     end
-    pupilData.(fitLabel).eyeParams.meta.labels = {'azimuth','elevation','torsion','pupil radius'};
-    pupilData.(fitLabel).eyeParams.meta.units = {'deg','deg','deg','mm'};
-    pupilData.(fitLabel).eyeParams.meta.coordinateSystem = 'head fixed (extrinsic)';
+    pupilData.(fitLabel).eyePoses.meta.labels = {'azimuth','elevation','torsion','pupil radius'};
+    pupilData.(fitLabel).eyePoses.meta.units = {'deg','deg','deg','mm'};
+    pupilData.(fitLabel).eyePoses.meta.coordinateSystem = 'head fixed (extrinsic)';
 end
 
 % add meta data
@@ -422,24 +428,6 @@ pupilData.(fitLabel).meta = p.Results;
 
 % save the ellipse fit results
 save(p.Results.pupilFileName,'pupilData')
-
-
-%% Delete the parallel pool
-if p.Results.useParallel
-    if strcmp(p.Results.verbosity,'full')
-        tic
-        fprintf(['Closing parallel pool. Started ' char(datetime('now')) '\n']);
-    end
-    poolObj = gcp;
-    if ~isempty(poolObj)
-        delete(poolObj);
-    end
-    if strcmp(p.Results.verbosity,'full')
-        toc
-        fprintf('\n');
-    end
-end
-
 
 end % function
 

@@ -1,8 +1,8 @@
-%% DEMO_eyeParams
-% Demonstrate the interpretation of the eyeParam values
+%% DEMO_eyePoses
+% Demonstrate the interpretation of the eyePose values
 %
 % Description:
-%   Our routines express the pose of the eye in a 1x4 vector of eyeParams
+%   Our routines express the pose of the eye in a 1x4 vector of eyePoses
 %   of the form [azimuth, elevation, torsion, pupilRadius]
 %
 % Here we demonstrate the interpretation of these parameters
@@ -31,11 +31,11 @@ blankFrame = zeros(480,640)+0.5;
 
 %% Present Figure 1
 figure(1)
-eyeParams=[-20 20 0 3; 0 20 0 3; 20 20 0 3; -20 0 0 3; 0 0 0 3; 20 0 0 3; -20 -20 0 3; 0 -20 0 3; 20 -20 0 3 ];
+eyePoses=[-20 20 0 3; 0 20 0 3; 20 20 0 3; -20 0 0 3; 0 0 0 3; 20 0 0 3; -20 -20 0 3; 0 -20 0 3; 20 -20 0 3 ];
 
-for pose = 1:size(eyeParams,1)
+for pose = 1:size(eyePoses,1)
     % Perform the projection and request the full eye model
-    [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyeParams(pose,:),sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
+    [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses(pose,:),sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
     % plot
     subplot(3,3,pose);
     imshow(blankFrame, 'Border', 'tight');
@@ -49,7 +49,7 @@ for pose = 1:size(eyeParams,1)
         idx = strcmp(pointLabels,eyePartLabels{pp});
         plot(imagePoints(idx,1), imagePoints(idx,2), plotColors{pp})
     end
-    title(num2str(eyeParams(pose,:)));
+    title(num2str(eyePoses(pose,:)));
 end
 drawnow
 fprintf('Figure 1 shows the pose of the eye across positive and negative values\n');
@@ -92,7 +92,7 @@ for laterality = 1:2
 end
 drawnow
 fprintf('Figure 2 shows just the perimeter of the pupil and the corneal apex\n');
-fprintf('for eyeParams [0 0 0 3] for the right and left eye. Here, the axis of\n');
+fprintf('for eyePoses [0 0 0 3] for the right and left eye. Here, the axis of\n');
 fprintf('the camera is aligned with the optical axis of the model eye. \n');
 fprintf('Note that the center of the pupil is displaced downwards and nasally\n');
 fprintf('with respect to the optical axis of each eye. This physiologic property\n');
@@ -125,7 +125,7 @@ ylim([0 100]);
 xlabel('pupil radius modeled [mm]');
 ylabel('entrance pupil radius in image [pixels]');
 legend({'No corneal refraction','With corneal refraction'},'Location','southeast');
-title('eyeParams [0 0 0 x]');
+title('eyePoses [0 0 0 x]');
 
 % Plot the values for eyePost [15 15 0 x]
 subplot(1,2,2);
@@ -147,13 +147,13 @@ ylim([0 100]);
 xlabel('pupil radius modeled [mm]');
 ylabel('entrance pupil radius in image [pixels]');
 legend({'No corneal refraction','With corneal refraction'},'Location','southeast');
-title('eyeParams [30 25 0 x]');
+title('eyePoses [30 25 0 x]');
 
 
 drawnow
 fprintf('Figure 3 shows just the radius of the entrance pupil in the image\n');
 fprintf('as a function of the modeled radius of the physical pupil for an\n');
-fprintf('eye in two different poses.\n');
+fprintf('eye in two different poses.\n\n');
 fprintf('The black points are the values for a model in which the refractive \n');
 fprintf('effects of the cornea are not modeled, while the red points do include\n');
 fprintf('this component. Corneal refraction magnifies the image of the pupil\n');

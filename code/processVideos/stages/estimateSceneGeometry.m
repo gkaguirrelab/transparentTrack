@@ -3,11 +3,10 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %
 % Description:
 %   This function searches over a set of ellipses from the passed pupil
-%   file(s) to estimate the sceneGeometry features that define a
-%   perspective projection. The search attempts to minimize the error
-%   associated with the prediction of the center of ellipses in the image
-%   plane while constraining the shape of these ellipses to match that
-%   predicted by the projection.
+%   file(s) to estimate the extrinsic camera translation vector. The search
+%   attempts to minimize the error associated with the prediction of the
+%   center of ellipses in the image plane while constraining the shape of
+%   these ellipses to match that predicted by the projection.
 %
 %   We are aware that the center of an ellipse on the image plane is not at
 %   the same location as the projection of the center of the pupil on the
@@ -47,17 +46,18 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %
 %   extrinsicTranslationVector - a vector of the form:
 %
-%       [x] 
-%       [y] 
+%       [x]
+%       [y]
 %       [z]
 %
 %   with the values specifying the location (horizontal, vertical, and
 %   depth, respectively) of the principle offset point of the camera in mm
 %   relative to the scene coordinate system. We define the origin of the
-%   scene coordinate system to be x=0, y=0 at the center of rotation of the
+%   scene coordinate system to be x=0, y=0 along the optical axis of the
 %   eye, and z=0 to be the apex of the corneal surface. The default values
-%   and params can be guided by knowledge of the physical arrangement of
-%   the subject and recording apparatus.
+%   and bounds can be guided by knowledge of the physical arrangement of
+%   the subject and recording apparatus. These values are the target of the
+%   search.
 %
 %   extrinsicRotationMatrix - A 3x3 matrix with the fixed values of:
 %
@@ -94,21 +94,20 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %   perspective effects. We find that a value in the range 0.01 - 0.03
 %   provides an acceptable compromise in empirical data.
 %
-%   eye -  This is itself a structure that is returned by the function 
+%   eye -  This is itself a structure that is returned by the function
 %   modelEyeParameters(). The parameters define the anatomical properties
 %   of the eye, including the size and shape of the anterior and posterior
 %   chamber. These parameters are adjusted for the measured spherical
-%   refractive error of the subject. The relevant value for the fitting of
-%   the pupil ellipse is establishing the center of rotation of the eye.
-%   The default value is 13.3 mm posterior to the corneal apex.
+%   refractive error of the subject and (optionally) measured axial length.
 %
 % Inputs:
-%	pupilFileName         - Full path to a pupilData file, or a cell array
-%                           of such paths. If a cell array is provided, the
-%                           ellipse data from each pupilData file will be
-%                           loaded and concatenated. If set to empty, a
-%                           sceneGeometry structure with default values
-%                           will be returned.
+%	pupilFileName         - Full path to a pupilData file, a cell array
+%                           of such paths, or a pupilData structure itself.
+%                           If a single path, the pupilData file is loaded.
+%                           If a cell array, the ellipse data from each
+%                           pupilData file is loaded and concatenated. If
+%                           set to empty, a sceneGeometry structure with
+%                           default values will be returned.
 %   sceneGeometryFileName - Full path to the file in which the
 %                           sceneGeometry data should be saved
 %
@@ -147,13 +146,13 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %  'extrinsicTranslationVectorUB' - 3x1 vector
 %  'spectacleRefractionDiopters' - Scalar. A negative value is appropriate
 %                           for a myopic subject.
-%  'rotationCenterDepth'  - Scalar. If undefined, the default value from
-%                           modelEyeParameters() is used.
-%  'rotationCenterDepthLB' - Scalar
-%  'rotationCenterDepthUB' - Scalar
+%  'axialLength'          - Scalar, defaults to empty. When set, this
+%                           causes the posterior chamber of the model eye
+%                           (and rotation center) to be adjusted to match
+%                           the passed empirical axial length (in mm).
 %  'primaryPosition'      - 1x3 vector
 %  'constraintTolerance'  - Scalar. Range 0-1. Typical value 0.01 - 0.03
-%  'eyeParamsLB/UB'       - Upper and lower bounds on the eyeParams
+%  'eyePosesLB/UB'       - Upper and lower bounds on the eyePoses
 %                           [azimuth, elevation, torsion, pupil radius].
 %                           The torsion value is unusued and is bounded to
 %                           zero. Biological limits in eye rotation and
@@ -165,7 +164,7 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 %                           camera is viewing the eye from an off-center
 %                           angle, the bounds will need to be shifted
 %                           accordingly.
-%  'fitLabel'      - Identifies the field in pupilData that contains
+%  'fitLabel'             - Identifies the field in pupilData that contains
 %                           the ellipse fit params for which the search
 %                           will be conducted.
 %  'ellipseArrayList'     - A vector of frame numbers (indexed from 1)
@@ -185,12 +184,12 @@ function sceneGeometry = estimateSceneGeometry(pupilFileName, sceneGeometryFileN
 p = inputParser; p.KeepUnmatched = true;
 
 % Required
-p.addRequired('pupilFileName',@(x)(isempty(x) | iscell(x) | ischar(x)));
+p.addRequired('pupilFileName',@(x)(isempty(x) | isstruct(x) | iscell(x) | ischar(x)));
 p.addRequired('sceneGeometryFileName',@(x)(isempty(x) | ischar(x)));
 
 % Optional display and I/O params
 p.addParameter('verbosity', 'none', @isstr);
-p.addParameter('sceneDiagnosticPlotFileName', 'ss',@(x)(isempty(x) | ischar(x)));
+p.addParameter('sceneDiagnosticPlotFileName', '', @(x)(isempty(x) | ischar(x)));
 
 % Optional flow control params
 p.addParameter('useParallel',false,@islogical);
@@ -211,14 +210,12 @@ p.addParameter('extrinsicTranslationVector',[0; 0; 120],@isnumeric);
 p.addParameter('extrinsicTranslationVectorLB',[-10; -10; 100],@isnumeric);
 p.addParameter('extrinsicTranslationVectorUB',[10; 10; 180],@isnumeric);
 p.addParameter('spectacleRefractionDiopters',0,@isnumeric);
+p.addParameter('axialLength',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('eyeLaterality','right',@ischar);
-p.addParameter('rotationCenterDepth',[],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('rotationCenterDepthLB',-15.0,@isnumeric);
-p.addParameter('rotationCenterDepthUB',-12.5,@isnumeric);
 p.addParameter('primaryPosition',[0 0 0],@isnumeric);
 p.addParameter('constraintTolerance',0.02,@isnumeric);
-p.addParameter('eyeParamsLB',[-35,-25,0,0.25],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('eyeParamsUB',[35,25,0,4],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('eyePosesLB',[-35,-25,0,0.25],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('eyePosesUB',[35,25,0,4],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('fitLabel','initial',@ischar);
 p.addParameter('ellipseArrayList',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nBinsPerDimension',10,@isnumeric);
@@ -244,14 +241,10 @@ initialSceneGeometry.extrinsicTranslationVector = p.Results.extrinsicTranslation
 initialSceneGeometry.extrinsicRotationMatrix = p.Results.extrinsicRotationMatrix;
 initialSceneGeometry.primaryPosition = p.Results.primaryPosition;
 initialSceneGeometry.constraintTolerance = p.Results.constraintTolerance;
-initialSceneGeometry.eye = modelEyeParameters(p.Results.spectacleRefractionDiopters, p.Results.eyeLaterality);
-if ~isempty(p.Results.rotationCenterDepth)
-    initialSceneGeometry.eye.rotationCenter(1) = p.Results.rotationCenterDepth;
-end
-
-% Bounds
-sceneParamsLB = [p.Results.extrinsicTranslationVectorLB; p.Results.rotationCenterDepthLB];
-sceneParamsUB = [p.Results.extrinsicTranslationVectorUB; p.Results.rotationCenterDepthUB];
+initialSceneGeometry.eye = modelEyeParameters(...
+    'spectacleRefractionDiopters',p.Results.spectacleRefractionDiopters,...
+    'axialLength',p.Results.axialLength,...
+    'eyeLaterality',p.Results.eyeLaterality);
 
 % Return the initialSceneGeometry if pupilFileName is empty
 if isempty(pupilFileName)
@@ -268,33 +261,39 @@ end
 
 %% Set up the parallel pool
 if p.Results.useParallel
-    if strcmp(p.Results.verbosity,'full')
-        tic
-        fprintf(['Opening parallel pool. Started ' char(datetime('now')) '\n']);
-    end
-    if isempty(p.Results.nWorkers)
-        parpool;
-    else
-        parpool(p.Results.nWorkers);
-    end
-    poolObj = gcp;
+    % If a parallel pool does not exist, attempt to create one
+    poolObj = gcp('nocreate');
     if isempty(poolObj)
-        nWorkers=0;
-    else
-        nWorkers = poolObj.NumWorkers;
-        % Use TbTb to configure the workers.
-        if ~isempty(p.Results.tbtbRepoName)
-            spmd
-                tbUse(p.Results.tbtbRepoName,'reset','full','verbose',false,'online',false);
-            end
-            if strcmp(p.Results.verbosity,'full')
-                fprintf('CAUTION: Any TbTb messages from the workers will not be shown.\n');
+        if strcmp(p.Results.verbosity,'full')
+            tic
+            fprintf(['Opening parallel pool. Started ' char(datetime('now')) '\n']);
+        end
+        if isempty(p.Results.nWorkers)
+            parpool;
+        else
+            parpool(p.Results.nWorkers);
+        end
+        poolObj = gcp;
+        if isempty(poolObj)
+            nWorkers=0;
+        else
+            nWorkers = poolObj.NumWorkers;
+            % Use TbTb to configure the workers.
+            if ~isempty(p.Results.tbtbRepoName)
+                spmd
+                    tbUse(p.Results.tbtbRepoName,'reset','full','verbose',false,'online',false);
+                end
+                if strcmp(p.Results.verbosity,'full')
+                    fprintf('CAUTION: Any TbTb messages from the workers will not be shown.\n');
+                end
             end
         end
-    end
-    if strcmp(p.Results.verbosity,'full')
-        toc
-        fprintf('\n');
+        if strcmp(p.Results.verbosity,'full')
+            toc
+            fprintf('\n');
+        end
+    else
+        nWorkers = poolObj.NumWorkers;
     end
 else
     nWorkers=0;
@@ -310,8 +309,14 @@ if iscell(pupilFileName)
         ellipses = [ellipses;pupilData.(p.Results.fitLabel).ellipses.values];
         ellipseFitSEM = [ellipseFitSEM; pupilData.(p.Results.fitLabel).ellipses.RMSE];
     end
-else
+end
+if ischar(pupilFileName)
     load(pupilFileName)
+    ellipses = pupilData.(p.Results.fitLabel).ellipses.values;
+    ellipseFitSEM = pupilData.(p.Results.fitLabel).ellipses.RMSE;
+end
+if isstruct(pupilFileName)
+    pupilData = pupilFileName;
     ellipses = pupilData.(p.Results.fitLabel).ellipses.values;
     ellipseFitSEM = pupilData.(p.Results.fitLabel).ellipses.RMSE;
 end
@@ -328,7 +333,7 @@ else
     if strcmp(p.Results.verbosity,'full')
         fprintf('Selecting ellipses to guide the search.\n');
     end
-
+    
     % First we divide the ellipse centers amongst a set of 2D bins across image
     % space. We will ultimately minimize the fitting error across bins
     [ellipseCenterCounts,Xedges,Yedges,binXidx,binYidx] = ...
@@ -368,10 +373,10 @@ sceneGeometry = ...
     performSceneSearch(initialSceneGeometry, rayTraceFuncs, ...
     ellipses(ellipseArrayList,:), ...
     errorWeights, ...
-    sceneParamsLB, ...
-    sceneParamsUB, ...
-    p.Results.eyeParamsLB, ...
-    p.Results.eyeParamsUB, ...
+    p.Results.extrinsicTranslationVectorLB, ...
+    p.Results.extrinsicTranslationVectorUB, ...
+    p.Results.eyePosesLB, ...
+    p.Results.eyePosesUB, ...
     nWorkers);
 
 % add additional search and meta field info to sceneGeometry
@@ -388,9 +393,16 @@ end
 %% Create a sceneGeometry plot
 if ~isempty(p.Results.sceneDiagnosticPlotFileName)
     if strcmp(p.Results.verbosity,'full')
-    fprintf('Creating a sceneGeometry diagnostic plot.\n');
+        fprintf('Creating a sceneGeometry diagnostic plot.\n');
     end
-    saveSceneDiagnosticPlot(ellipses(ellipseArrayList,:), Xedges, Yedges, sceneGeometry, rayTraceFuncs, p.Results.sceneDiagnosticPlotFileName)
+    saveSceneDiagnosticPlot(...
+        ellipses(ellipseArrayList,:),...
+        Xedges, Yedges,...
+        p.Results.eyePosesLB, ...
+        p.Results.eyePosesUB, ...
+        sceneGeometry,...
+        rayTraceFuncs,...
+        p.Results.sceneDiagnosticPlotFileName)
 end
 
 
@@ -401,52 +413,34 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 
-%% Delete the parallel pool
-if p.Results.useParallel
-    if strcmp(p.Results.verbosity,'full')
-        tic
-        fprintf(['Closing parallel pool. Started ' char(datetime('now')) '\n']);
-    end
-    poolObj = gcp;
-    if ~isempty(poolObj)
-        delete(poolObj);
-    end
-    if strcmp(p.Results.verbosity,'full')
-        toc
-        fprintf('\n');
-    end
-end
-
-
 end % main function
 
 
 
 %% LOCAL FUNCTIONS
 
-function sceneGeometry = performSceneSearch(initialSceneGeometry, rayTraceFuncs, ellipses, errorWeights, sceneParamsLB, sceneParamsUB, eyeParamsLB, eyeParamsUB, nWorkers)
+function sceneGeometry = performSceneSearch(initialSceneGeometry, rayTraceFuncs, ellipses, errorWeights, translationVectorLB, translationVectorUB, eyePosesLB, eyePosesUB, nWorkers)
 % Pattern search for best fitting sceneGeometry parameters
 %
 % Description:
-%   The routine searches for parameters of a forward projection that
-%   best model the locations of the centers of ellipses found on the image
-%   plane, given the constraint that the ellipse shape (and area) must also
-%   match the prediction of the forward model. The passed sceneGeometry
-%   structure is used as the starting point for the search. The
-%   extrinsicTranslationVector and the rotationCenterDepth parameters are
-%   optimized, limited by the passed bounds. Across each iteration of the
-%   search, a candidate sceneGeometry is assembled from the current values
-%   of the parameters. This sceneGeometry is then used in the inverse pupil
-%   projection model. The inverse projection searches for an eye azimuth,
-%   elevation, and pupil radius that, given the sceneGeometry, best
-%   accounts for the parameters of the target ellipse on the image plane.
-%   This inverse search attempts to minimize the distance bewteen the
-%   centers of the predicted and targeted ellipse on the image plane, while
-%   satisfying non-linear constraints upon matching the shape (eccentricity
-%   and theta) and area of the ellipses. Only when the sceneGeometry
-%   parameters are correctly specified will the inverse pupil projection
-%   model be able to simultaneouslty match the center and shape of the
-%   ellipse on the image plane.
+%   The routine searches for parameters of the extrinsic translation vector
+%   of the camera that best models the locations of the centers of ellipses
+%   found on the image plane, given the constraint that the ellipse shape
+%   (and area) must also match the prediction of the forward model. The
+%   passed sceneGeometry structure is used as the starting point for the
+%   search. Across each iteration of the search, a candidate sceneGeometry
+%   is assembled from the current values of the parameters. This
+%   sceneGeometry is then used in the inverse pupil projection model. The
+%   inverse projection searches for an eye azimuth, elevation, and pupil
+%   radius that, given the sceneGeometry, best accounts for the parameters
+%   of the target ellipse on the image plane. This inverse search attempts
+%   to minimize the distance bewteen the centers of the predicted and
+%   targeted ellipse on the image plane, while satisfying non-linear
+%   constraints upon matching the shape (eccentricity and theta) and area
+%   of the ellipses. Only when the translation vector is correctly
+%   specified will the inverse pupil projection model be able to
+%   simultaneouslty match the center and shape of the ellipse on the image
+%   plane.
 %
 %   The iterative search across sceneGeometry parameters attempts to
 %   minimize the L(norm) of the distances between the targeted and modeled
@@ -460,10 +454,10 @@ function sceneGeometry = performSceneSearch(initialSceneGeometry, rayTraceFuncs,
 %
 
 % Set the error form
-errorForm = 'SSE';
+errorForm = 'RMSE';
 
 % Extract the initial search point from initialSceneGeometry
-x0 = [initialSceneGeometry.extrinsicTranslationVector; initialSceneGeometry.eye.rotationCenter(1)];
+x0 = initialSceneGeometry.extrinsicTranslationVector;
 
 % Define search options
 options = optimoptions(@patternsearch, ...
@@ -481,16 +475,14 @@ centerDistanceErrorByEllipse=zeros(size(ellipses,1),1);
 shapeErrorByEllipse=zeros(size(ellipses,1),1);
 areaErrorByEllipse=zeros(size(ellipses,1),1);
 
-[reverseX, fVal] = patternsearch(objectiveFun, fliplr(x0),[],[],[],[],fliplr(sceneParamsLB),fliplr(sceneParamsUB),[],options);
-    % Nested function computes the objective for the patternsearch
+[x, fVal] = patternsearch(objectiveFun, x0,[],[],[],[],fliplr(translationVectorLB),fliplr(translationVectorUB),[],options);
+% Nested function computes the objective for the patternsearch
     function fval = objfun(x)
         % Assemble a candidate sceneGeometry structure
-        flipx=fliplr(x);
         candidateSceneGeometry = initialSceneGeometry;
-        candidateSceneGeometry.extrinsicTranslationVector = flipx(1:3);
-        candidateSceneGeometry.eye.rotationCenter(1) = flipx(4);
+        candidateSceneGeometry.extrinsicTranslationVector = x;
         % For each ellipse, perform the inverse projection from the ellipse
-        % on the image plane to eyeParams. We retain the errors from the
+        % on the image plane to eyePoses. We retain the errors from the
         % inverse projection and use these to assemble the objective
         % function. We parallelize the computation across ellipses.
         parfor (ii = 1:size(ellipses,1), nWorkers)
@@ -498,9 +490,8 @@ areaErrorByEllipse=zeros(size(ellipses,1),1);
                 pupilProjection_inv(...
                 ellipses(ii,:),...
                 candidateSceneGeometry, rayTraceFuncs, ...
-                'constraintTolerance', candidateSceneGeometry.constraintTolerance,...
-                'eyeParamsLB',eyeParamsLB,...
-                'eyeParamsUB',eyeParamsUB...
+                'eyePosesLB',eyePosesLB,...
+                'eyePosesUB',eyePosesUB...
                 );
         end
         % Now compute objective function as the RMSE of the distance
@@ -509,33 +500,31 @@ areaErrorByEllipse=zeros(size(ellipses,1),1);
             case 'SSE'
                 fval=sum((centerDistanceErrorByEllipse.*(shapeErrorByEllipse.*100+1).*(areaErrorByEllipse.*100+1).*errorWeights).^2);
             case 'RMSE'
-                fval = mean((centerDistanceErrorByEllipse.*(shapeErrorByEllipse.*100+1).*(areaErrorByEllipse.*100+1).*errorWeights).^2)^(1/2);
+                fval = mean((centerDistanceErrorByEllipse.*(shapeErrorByEllipse.*100+1).*(areaErrorByEllipse.*100+1).*errorWeights).^2).^(1/2);
             otherwise
                 error('I do not recognize that error form');
         end
         
     end
 
-x = fliplr(reverseX);
 
 % Assemble the sceneGeometry file to return
 sceneGeometry.radialDistortionVector = initialSceneGeometry.radialDistortionVector;
 sceneGeometry.intrinsicCameraMatrix = initialSceneGeometry.intrinsicCameraMatrix;
-sceneGeometry.extrinsicTranslationVector = x(1:3);
+sceneGeometry.extrinsicTranslationVector = x;
 sceneGeometry.extrinsicRotationMatrix = initialSceneGeometry.extrinsicRotationMatrix;
 sceneGeometry.primaryPosition = initialSceneGeometry.primaryPosition;
 sceneGeometry.constraintTolerance = initialSceneGeometry.constraintTolerance;
 sceneGeometry.eye = initialSceneGeometry.eye;
-sceneGeometry.eye.rotationCenter(1) = x(4);
 sceneGeometry.meta.estimateGeometry.search.options = options;
 sceneGeometry.meta.estimateGeometry.search.errorForm = errorForm;
 sceneGeometry.meta.estimateGeometry.search.initialSceneGeometry = initialSceneGeometry;
 sceneGeometry.meta.estimateGeometry.search.ellipses = ellipses;
 sceneGeometry.meta.estimateGeometry.search.errorWeights = errorWeights;
-sceneGeometry.meta.estimateGeometry.search.sceneParamsLB = sceneParamsLB;
-sceneGeometry.meta.estimateGeometry.search.sceneParamsUB = sceneParamsUB;
-sceneGeometry.meta.estimateGeometry.search.eyeParamsLB = eyeParamsLB;
-sceneGeometry.meta.estimateGeometry.search.eyeParamsUB = eyeParamsUB;
+sceneGeometry.meta.estimateGeometry.search.sceneParamsLB = translationVectorLB;
+sceneGeometry.meta.estimateGeometry.search.sceneParamsUB = translationVectorUB;
+sceneGeometry.meta.estimateGeometry.search.eyePosesLB = eyePosesLB;
+sceneGeometry.meta.estimateGeometry.search.eyePosesUB = eyePosesUB;
 sceneGeometry.meta.estimateGeometry.search.fVal = fVal;
 sceneGeometry.meta.estimateGeometry.search.centerDistanceErrorByEllipse = centerDistanceErrorByEllipse;
 sceneGeometry.meta.estimateGeometry.search.shapeErrorByEllipse = shapeErrorByEllipse;
@@ -544,7 +533,7 @@ sceneGeometry.meta.estimateGeometry.search.areaErrorByEllipse = areaErrorByEllip
 end % local search function
 
 
-function [] = saveSceneDiagnosticPlot(ellipses, Xedges, Yedges, sceneGeometry, rayTraceFuncs, sceneDiagnosticPlotFileName)
+function [] = saveSceneDiagnosticPlot(ellipses, Xedges, Yedges, eyePosesLB, eyePosesUB, sceneGeometry, rayTraceFuncs, sceneDiagnosticPlotFileName)
 % Creates and saves a plot that illustrates the sceneGeometry results
 %
 % Inputs:
@@ -554,6 +543,8 @@ function [] = saveSceneDiagnosticPlot(ellipses, Xedges, Yedges, sceneGeometry, r
 %                           divide and select ellipses across the image.
 %   Yedges                - The Y-dimension edges of the bins used to
 %                           divide and select ellipses across the image.
+%   eyePosesLB, eyePosesUB - Bounds for the eye params to be passed to
+%                           pupilProjection_inv.
 %   sceneGeometry         - The sceneGeometry structure
 %   sceneDiagnosticPlotFileName - The full path (including .pdf suffix)
 %                           to the location to save the diagnostic plot
@@ -571,11 +562,11 @@ width = 11;
 
 % the last two parameters of 'Position' define the figure size
 set(figHandle, 'Position',[25 5 width height],...
-       'PaperSize',[width height],...
-       'PaperPositionMode','auto',...
-       'Color','w',...
-       'Renderer','painters'...     %recommended if there are no alphamaps
-   );
+    'PaperSize',[width height],...
+    'PaperPositionMode','auto',...
+    'Color','w',...
+    'Renderer','painters'...     %recommended if there are no alphamaps
+    );
 
 %% Left panel -- distance error
 subplot(3,3,[1 4]);
@@ -607,8 +598,7 @@ hold on
     ellipses(x,:),...
     sceneGeometry,...
     rayTraceFuncs,...
-    'constraintTolerance', sceneGeometry.constraintTolerance...
-    ),...
+    'eyePosesLB',eyePosesLB,'eyePosesUB',eyePosesUB),...
     1:1:size(ellipses,1),'UniformOutput',false);
 projectedEllipses=vertcat(projectedEllipses{:});
 
@@ -643,7 +633,7 @@ else
     xPlotBounds = [(minX - (maxX-minX)/10) (maxX + (maxX-minX)/10) ];
     yPlotBounds = [(minY - (maxY-minY)/10) (maxY + (maxY-minY)/10) ];
 end
-    
+
 % label and clean up the plot
 axis equal
 set(gca,'Ydir','reverse')
