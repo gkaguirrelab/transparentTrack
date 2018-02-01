@@ -122,7 +122,7 @@ for axialErrorMultiplier = -2:1:2
                 end
                 
                 % Estimate the scene Geometry
-                estimatedSceneGeometry = estimateSceneGeometry(pupilData,'','useParallel',true,'ellipseArrayList',1:1:ellipseIdx-1);
+                estimatedSceneGeometry = estimateSceneGeometry(pupilData,'','useParallel',true,'nWorkers',8,'ellipseArrayList',1:1:ellipseIdx-1);
 
                 % Save the veridical and estimated results
                 outputFile = [outputFileStem '_vsg_' num2str(resultIdx) '.mat'];
