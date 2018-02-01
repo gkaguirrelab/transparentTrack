@@ -1,4 +1,4 @@
-%% TEST_EntrancePupilShape
+%% TEST_entrancePupilShape
 % Compare our model to results of Fedtke 2010 and Mathur 2013
 %
 % Description:
