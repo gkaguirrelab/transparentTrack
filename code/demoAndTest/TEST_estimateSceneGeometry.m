@@ -55,7 +55,7 @@ switch thisComputer
     case 'MACI64'
         outputFileStem = fullfile('~','Dropbox (Aguirre-Brainard Lab)','TOME_analysis','gka_simulationTests','TEST_estimateSceneGeometry');
     case 'GLNXA64'
-        outputFileStem = fullfule('~','TEST_estimateSceneGeometry');
+        outputFileStem = fullfile('~','TEST_estimateSceneGeometry');
 end
 
 %% Analyze data extracted from Olsen 2007
