@@ -50,7 +50,13 @@ close all
 % Set up a destination to save the files as they are generated one by one.
 % We save the data as they are generated because this can take a while and
 % we'd like to recover gracefully from an interuption of the process.
-outputFileStem = fullfile('~','Dropbox (Aguirre-Brainard Lab)','TOME_analysis','gka_simulationTests','TEST_estimateSceneGeometry');
+thisComputer = computer;
+switch thisComputer
+    case 'MACI64'
+        outputFileStem = fullfile('~','Dropbox (Aguirre-Brainard Lab)','TOME_analysis','gka_simulationTests','TEST_estimateSceneGeometry');
+    case 'GLNXA64'
+        outputFileStem = fullfule('~','TEST_estimateSceneGeometry');
+end
 
 %% Analyze data extracted from Olsen 2007
 % Histogram data from Figure 1 of Olsen 2007
