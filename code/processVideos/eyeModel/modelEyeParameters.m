@@ -34,14 +34,14 @@ function eye = modelEyeParameters( varargin )
 %                           spherical refractive correction for the
 %                           subject. A negative number is the correction
 %                           that would be used for a myopic person.
-%  'axialLength'          - When set, this forces the axial length of the 
-%                           eye to this value in millimeters. As the
+%  'axialLength'          - When set, this fixes the axial length of the 
+%                           eye to the passed value in millimeters. As the
 %                           modeled anterior chamber depth is not variable,
 %                           this change is enforced on the posterior
 %                           chamber. The remaining dimensions of the
 %                           posterior chamber are scaled to fit the
 %                           proportions predicted by the Atchison model for
-%                           the specified ametropia.
+%                           the specified degree of ametropia.
 %  'eyeLaterality'        - A text string that specifies which eye (left,
 %                           right) to model. Allowed values (in any case)
 %                           are {'left','right','L','R','OS','OD'}
@@ -81,7 +81,7 @@ p.parse(varargin{:})
 switch p.Results.species
     case {'human','Human','HUMAN'}
 
-        % These values taken from Achison 2006, Table 1. The center of the
+        % These values taken from Atchison 2006, Table 1. The center of the
         % cornea circle for the back surface is positioned so that there is
         % 0.55 between the front and back surface of the cornea at the
         % apex.
@@ -91,14 +91,13 @@ switch p.Results.species
         eye.corneaBackSurfaceCenter = [-7.22 0 0];
         
         % We position the pupil plane at the depth of the anterior point of
-        % the lens. We have calculated for the optical
-        % model of the eye the decentration values that produce an entrance
-        % pupil width / height ratio that best matches empirical
-        % measurements (see TEST_EntrancePupilShape). The values from that
-        % search are used here for the p2 and p3 position of the center of
-        % the pupil. In both eyes, the pupil center is shifted slightly
-        % nasally and downward. This is in keeping with empirical
-        % observations that:
+        % the lens. We have calculated for the optical model of the eye the
+        % decentration values that produce an entrance pupil width / height
+        % ratio that best matches empirical measurements (see
+        % TEST_EntrancePupilShape). The values from that search are used
+        % here for the p2 and p3 position of the center of the pupil. In
+        % both eyes, the pupil center is shifted slightly nasally and
+        % downward. This is in keeping with empirical observations that:
         %
         %   ...the typical entrance pupil is decentered
         %   approximately 0.15 mm nasally and 0.1 mm inferior to the
@@ -133,10 +132,10 @@ switch p.Results.species
         
         if ~isempty(p.Results.axialLength)
             % If a specific axial length is passed (perhaps obtained by
-            % measurement using the IOL Master device), set the model eye
-            % to have this length, and scale the other dimensions of the
-            % posterior chamber to maintain the specified ametropia.
-            % We adjust the axial length for the component of the anterior
+            % measurement using the IOL Master apparatus), set the model
+            % eye to have this length, and scale the other dimensions of
+            % the posterior chamber to maintain the specified ametropia. We
+            % adjust the axial length for the component of the anterior
             % chamber that contibutes to length, which is calculated below
             % to be 3.2964.
             scaleFactor = (p.Results.axialLength - 3.2964) / (eye.posteriorChamberRadii(1)*2);
@@ -180,7 +179,6 @@ switch p.Results.species
         % the axial length of an eye, the center of rotation tended to
         % increase by 0.5 mm. Thus, there is a 1:1 relationship of axial
         % radius and rotation length.
-        %
         eye.rotationCenter = [(-3.152 - eye.posteriorChamberRadii(1)) 0 0];
         
         % Refractive index values from Atchison 2006.
