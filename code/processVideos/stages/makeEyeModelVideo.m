@@ -22,7 +22,7 @@ function makeEyeModelVideo(videoOutFileName,pupilFileName, sceneGeometryFileName
 %                           to be displayed.
 %  'plotColors'           - The colors to be used for the plotting of each
 %                           of the label names.
-%  'fitLabel'      - The field of the pupilData file that contains
+%  'fitLabel'             - The field of the pupilData file to use
 %
 % Outputs:
 %   None
@@ -43,7 +43,7 @@ p.addParameter('saveCompressedVideo', true, @islogical);
 p.addParameter('videoSizeX', 640, @isnumeric);
 p.addParameter('videoSizeY', 480, @isnumeric);
 p.addParameter('labelNames', {'rotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex'}, @iscell);
-p.addParameter('plotColors', {'+r' '.w' '.b' '*g' '.y' '*y'}, @iscell);
+p.addParameter('plotColors', {'+m' '.w' '.b' '*g' '.y' '*y'}, @iscell);
 p.addParameter('fitLabel', 'radiusSmoothed', @ischar);
 
 % parse
@@ -94,7 +94,7 @@ else
 end
 
 % A blank frame to initialize each frame
-blankFrame = zeros(480,640)+0.5;
+blankFrame = zeros(p.Results.videoSizeY,p.Results.videoSizeX)+0.5;
 
 % Obtain the number of frames
 nFrames = size(eyePoses,1);
