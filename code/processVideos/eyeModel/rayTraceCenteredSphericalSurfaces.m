@@ -112,8 +112,8 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
     % the cornea (units in mm)
     clear coords
     clear theta
-    %  Obtain the eye parameters from the modeleyePoseeters() function
-    eye = modeleyePoseeters();
+    %  Obtain the eye parameters from the modelEyeParameters() function
+    eye = modelEyeParameters();
     pupilRadius = 2;
     theta = deg2rad(-45);
     coords = [eye.pupilCenter(1) pupilRadius];
@@ -127,7 +127,7 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
     %% Example 3 - Pupil through cornea, multiple points and rays
     clear coords
     clear theta
-    eye = modeleyePoseeters();
+    eye = modelEyeParameters();
     pupilRadius = 2;
     opticalSystem = [nan nan eye.aqueousRefractiveIndex; ...
                      eye.corneaBackSurfaceCenter(1) -eye.corneaBackSurfaceRadius eye.corneaRefractiveIndex; ...
@@ -156,7 +156,7 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
     % to the values for thetas returned by Example 2
     clear coords
     clear theta
-    eye = modeleyePoseeters();
+    eye = modelEyeParameters();
     syms theta
     syms pupilPointHeight
     coords = [eye.pupilCenter(1) pupilPointHeight];
@@ -182,7 +182,7 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
     % is then adjusted to share the same Z dimension point of origin.
     clear coords
     clear theta
-    eye = modeleyePoseeters();
+    eye = modelEyeParameters();
     syms theta
     syms pupilPointHeight
     coords = [eye.pupilCenter(1) pupilPointHeight];

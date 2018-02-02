@@ -124,8 +124,8 @@ xlim([0 5]);
 ylim([0 100]);
 xlabel('pupil radius modeled [mm]');
 ylabel('entrance pupil radius in image [pixels]');
-legend({'No corneal refraction','With corneal refraction'},'Location','southeast');
-title('eyePoses [0 0 0 x]');
+legend({'Without corneal refraction','With corneal refraction'},'Location','southeast');
+title('eyePose [0 0 0 x]');
 
 % Plot the values for eyePost [15 15 0 x]
 subplot(1,2,2);
@@ -146,12 +146,12 @@ xlim([0 5]);
 ylim([0 100]);
 xlabel('pupil radius modeled [mm]');
 ylabel('entrance pupil radius in image [pixels]');
-legend({'No corneal refraction','With corneal refraction'},'Location','southeast');
-title('eyePoses [30 25 0 x]');
+legend({'Without corneal refraction','With corneal refraction'},'Location','southeast');
+title('eyePose [30 25 0 x]');
 
 
 drawnow
-fprintf('Figure 3 shows just the radius of the entrance pupil in the image\n');
+fprintf('Figure 3 shows the radius of the entrance pupil in the image\n');
 fprintf('as a function of the modeled radius of the physical pupil for an\n');
 fprintf('eye in two different poses.\n\n');
 fprintf('The black points are the values for a model in which the refractive \n');

@@ -23,7 +23,7 @@ function runVideoPipeline( pathParams, varargin )
 %   to be correctly executed.
 %
 % Input:
-%   pathParams        - This structure has fields corresponding to the name
+%	pathParams        - This structure has fields corresponding to the name
 %                       and location of the files to be processed. Fields
 %                       include:
 %                           dataSourceDirFull: full path to the directory
@@ -69,6 +69,11 @@ function runVideoPipeline( pathParams, varargin )
 %                       that can be passed in lieu of hard-coding a
 %                       videoTypeChoice set here. This is used in concert
 %                       with passing 'custom' to videoTypeChoice.
+%   'customSceneGeometryFile' - When passed, this full path to a
+%                       sceneGeometry file is passed as input to stages
+%                       subsequent to estimateSceneGeometry. This allows
+%                       processing upon one acquisition to use the scene
+%                       Geometry derived from a different run.
 %   'catchErrors'     - Controls if the function calls take place within a
 %                       try-catch block. If set to true (the default) then
 %                       the routine will attempt to execute a function
@@ -110,6 +115,7 @@ p.addParameter('displayAvailableStages', false, @islogical)
 p.addParameter('rawVideoSuffix', {'_raw.mov' '.mov'}, @iscell);
 p.addParameter('videoTypeChoice', 'LiveTrackWithVTOP_eye', @ischar);
 p.addParameter('customFunCalls', {}, @iscell);
+p.addParameter('customSceneGeometryFile', [], @(x)(isempty(x) | ischar(x)));
 p.addParameter('catchErrors', true, @islogical);
 p.addParameter('maxAttempts',3,@isnueric);
 p.addParameter('makeFitVideoByName',{},@iscell);
@@ -162,7 +168,19 @@ perimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '
 controlFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_controlFile.csv']);
 correctedPerimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_correctedPerimeter.mat']);
 pupilFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_pupil.mat']);
-sceneGeometryFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sceneGeometry.mat']);
+
+% The sceneGeometryFileNameOutput is the name of the file created by the
+% estimateSceneGeometry routine
+sceneGeometryFileNameOutput = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sceneGeometry.mat']);
+
+% the sceneGeometryFileNameInput is the name of the file passed to the
+% fitPupilPerimeter, smoothPupilRadius, refineIrisRadius, and make fit
+% video routines. A custom value can be passed.
+if ~isempty(p.Results.customSceneGeometryFile)
+    sceneGeometryFileNameInput = p.Results.customSceneGeometryFile;
+else
+    sceneGeometryFileNameInput = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sceneGeometry.mat']);
+end
 sceneDiagnosticPlotFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sceneDiagnosticPlot.pdf']);
 finalFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_finalFit.avi']);
 eyeModelVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_eyeModel.avi']);
@@ -196,16 +214,16 @@ switch p.Results.videoTypeChoice
             'applyControlFile(perimeterFileName,controlFileName,correctedPerimeterFileName, varargin{:});' ...
             ['fitPupilPerimeter(correctedPerimeterFileName, pupilFileName,' ...
             '''nSplits'', 0, varargin{:});']...
-            ['estimateSceneGeometry(pupilFileName, sceneGeometryFileName,' ...
+            ['estimateSceneGeometry(pupilFileName, sceneGeometryFileNameOutput,' ...
             '''sceneDiagnosticPlotFileName'', sceneDiagnosticPlotFileName, varargin{:});']...
             ['fitPupilPerimeter(correctedPerimeterFileName, pupilFileName,' ...
-            '''sceneGeometryFileName'', sceneGeometryFileName, varargin{:});']...
-            'smoothPupilRadius(correctedPerimeterFileName, pupilFileName, sceneGeometryFileName, varargin{:});'...
+            '''sceneGeometryFileName'', sceneGeometryFileNameInput, varargin{:});']...
+            'smoothPupilRadius(correctedPerimeterFileName, pupilFileName, sceneGeometryFileNameInput, varargin{:});'...
             ['makeFitVideo(grayVideoName, finalFitVideoName,' ...
             '''glintFileName'', glintFileName, ''perimeterFileName'', correctedPerimeterFileName,'...
-            '''pupilFileName'', pupilFileName, ''sceneGeometryFileName'', sceneGeometryFileName,' ...
+            '''pupilFileName'', pupilFileName, ''sceneGeometryFileName'', sceneGeometryFileNameInput,' ...
             '''controlFileName'',controlFileName,varargin{:});']...
-            'makeEyeModelVideo(eyeModelVideoName, pupilFileName, sceneGeometryFileName, varargin{:});'...
+            'makeEyeModelVideo(eyeModelVideoName, pupilFileName, sceneGeometryFileNameInput, varargin{:});'...
             };
     case 'custom'
         funCalls = p.Results.customFunCalls;
