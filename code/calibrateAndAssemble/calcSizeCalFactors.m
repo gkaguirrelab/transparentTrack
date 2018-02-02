@@ -2,6 +2,9 @@ function sizeCalFactors = calcSizeCalFactors(sizeDataFilesNames, sizeCalFactorsF
 % Calculates the factors needed for size calibration and scene
 % geometry reconstruction.
 %
+%  >> DEV PLACEHOLDER: option to use scene geometry for size calibration
+%  instead of size Videos will be implemented in this function
+% 
 % Description:
 %   This routine computes the following calibration factors:
 %     pxPerMm - linear size conversion factor derived from the ground truth
@@ -20,19 +23,23 @@ function sizeCalFactors = calcSizeCalFactors(sizeDataFilesNames, sizeCalFactorsF
 %   arbitrary thresholds.
 % 
 % Inputs:
-%  sizeDataFilesNames      - cell array containing the names of the dot 
-%                            data files to be used.
-%  sizeFactorsFileName     - name of the mat file to save the size
+%  sizeDataFilesNames      - Cell array containing the names of the
+%                            calibration data files to be used. Based on
+%                            the selection of the size calibration type,
+%                            this can be either a set of calibration dots
+%                            video or a scene geometry file.
+%  sizeFactorsFileName     - Name of the mat file to save the size
 %                            conversion factor.
 % 
 % Optional key/value pairs:
-%  'sizeGroundTruthsInput' - array containing the ground truth for the dot 
+%  'sizeCalibrationType'   - Type of size calibraton to be performed.
+%  'sizeGroundTruthsInput' - Array containing the ground truth for the dot 
 %                            size in mm. If left empty (default option),
 %                            the routine will try to retrieve the ground
 %                            truth from the sizeData files names following
 %                            the instructions in the cell array
 %                            groundTruthFinder.
-%  'groundTruthFinder'     - cell array with instruction to retrieve the 
+%  'groundTruthFinder'     - Cell array with instruction to retrieve the 
 %                            ground truths from the file name. It is
 %                            composed as follows:
 %                             { numOfDigits position referenceString} 
@@ -50,15 +57,15 @@ function sizeCalFactors = calcSizeCalFactors(sizeDataFilesNames, sizeCalFactorsF
 %                             factor. If any of those values is exceeded,
 %                             a warning is returned and saved with the
 %                             output.
-%  'cameraFocalLengthMM'      - focal length of the camera in millimiters.
-%  'cameraSensorSizeMM'     - sensor size in mm in the format
+%  'cameraFocalLengthMM'    - Focal length of the camera in millimiters.
+%  'cameraSensorSizeMM'     - Sensor size in mm in the format
 %                             [HorizontalSizeMM VerticalSizeMM].
-%  'sceneResolutionPX       - resolution of the scene in pixels. Note that
+%  'sceneResolutionPX       - Resolution of the scene in pixels. Note that
 %                             this might be different from the physical
 %                             sensor resolution, and might be related to
 %                             the compression/digitalization strategy
 %                             applied to the video acquisition.
-%  'cameraModel'            - model to use to estimate the sceneDistance
+%  'cameraModel'            - Model to use to estimate the sceneDistance
 %                             from the camera properties (default:
 %                             'pinhole').
 %
@@ -93,6 +100,7 @@ p.addRequired('sizeDataFilesNames',@(x) (iscell(x) | ischar(x)));
 p.addRequired('sizeCalFactorsFileName',@ischar);
 
 % Optional analysis parameters
+p.addParameter('sizeCalibrationType','sizeVideos',@ischar) % alternative 'sceneGeometry'
 p.addParameter('sizeGroundTruthsInput',[], @isnumeric)
 p.addParameter('groundTruthFinder', {1 'before' 'mm'}, @iscell)
 p.addParameter('stdThreshold', [0.5 8], @isnumeric)
@@ -115,6 +123,8 @@ p.parse(sizeDataFilesNames, sizeCalFactorsFileName, varargin{:})
 
 %% Check input and get ground truths
 
+switch p.Results.sizeCalibrationType
+    case 'sizeVideos'
 % if the ground truths were input manually, check that they match the
 % number of calibration data files.
 if ~isempty (p.Results.sizeGroundTruthsInput)
@@ -248,6 +258,9 @@ if  sdPXperMM > p.Results.stdThreshold(1)
     warning(warningMessages{warningCounter})
 end
 
+    case 'sceneGeometry'
+        error ('This option is not available yet')
+end
 %% compose sizeFactor struct
 
 sizeCalFactors.PXperMM = meanPXperMM;
