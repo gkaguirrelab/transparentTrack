@@ -63,7 +63,7 @@ p.parse(pupilFileName, sizeCalFactorsFileName, varargin{:})
 
 tmpData = load(pupilFileName);
 % pull transparent raw pupil data
-rawPupilTransparent = tmpData.pupilData.(p.Results.whichFitToCalibrate).ellipse;
+rawPupilTransparent = tmpData.pupilData.(p.Results.whichFitToCalibrate).ellipses.values;
 % convert to explicit data
 for ii = 1 : size(rawPupilTransparent,1)
     rawPupilExplicit(ii,:) = ellipse_transparent2ex(rawPupilTransparent(ii,:));
@@ -102,7 +102,7 @@ if isfield(sizeCalFactors,'warnings')
     warning('There are some warnings for the size calibration factors, please check that the factors are legit');
 end
 % get the conversion factors
-conversionFactors = [sizeCalFactors.horizontalPxPerMm sizeCalFactors.verticalPxPerMm sizeCalFactors.areaSqPxPerSqMm];
+conversionFactors = [sizeCalFactors.PXperMM sizeCalFactors.PXperMM (sizeCalFactors.PXperMM).^2];
 
 clear tmpSizeCal
 
