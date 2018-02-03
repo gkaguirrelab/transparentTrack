@@ -116,6 +116,7 @@ p.addParameter('constraintTolerance',0.02,@isnumeric);
 % parse
 p.parse(varargin{:})
 
+%% assemble the sceneGeometry structure
 sceneGeometry.intrinsicCameraMatrix = p.Results.intrinsicCameraMatrix;
 sceneGeometry.radialDistortionVector = p.Results.radialDistortionVector;
 sceneGeometry.extrinsicTranslationVector = p.Results.extrinsicTranslationVector;
