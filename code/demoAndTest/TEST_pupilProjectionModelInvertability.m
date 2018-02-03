@@ -18,10 +18,8 @@
 
 
 %% Obtain a sceneGeometry structure
-% If called with empty variables for the pupilData input and sceneGeometry
-% output files, the estimateSceneGeometry routine returns a sceneGeometry
-% file that contains the default parameters.
-sceneGeometry = estimateSceneGeometry([],[]);
+% createSceneGeometry returns a default sceneGeometry structure
+sceneGeometry = createSceneGeometry();
 
 %% Obtain the ray tracing functions
 rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
@@ -47,7 +45,10 @@ for thisAzimuth = -35:5:35
         pupilEllipseOnImagePlane = pupilProjection_fwd(eyePoses(end,:), sceneGeometry, rayTraceFuncs);
         toc
         
-        % Inverse projection from image ellipse to eyePoses
+        % Inverse projection from image ellipse to eyePoses. Note that we
+        % must constrain at least one of the eye rotations, as the search
+        % is otherwise unconstrained. We constrain torsion to be zero,
+        % following Listing's Law.
         tic
         tmp = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePosesLB',[-40,-35,0,0.5],'eyePosesUB',[40,35,0,4]);
         reconstructedEyePoses = [reconstructedEyePoses; tmp];

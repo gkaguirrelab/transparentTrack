@@ -1,4 +1,4 @@
-%% TEST_estimateSceneGeometry
+%% TEST_estimateCameraTranslation
 % Examine the ability of the routines to estimate an unknown scene geometry
 %
 % Description:
@@ -53,10 +53,10 @@ close all
 thisComputer = computer;
 switch thisComputer
     case 'MACI64'
-        outputFileStem = fullfile('~','Dropbox (Aguirre-Brainard Lab)','TOME_analysis','gka_simulationTests','TEST_estimateSceneGeometry');
-        inputFileStem = fullfile('~','Dropbox (Aguirre-Brainard Lab)','Apps','CfNUploader','TEST_estimateSceneGeometry','TEST_estimateSceneGeometry');
+        outputFileStem = fullfile('~','Dropbox (Aguirre-Brainard Lab)','TOME_analysis','gka_simulationTests','TEST_estimateCameraTranslation');
+        inputFileStem = fullfile('~','Dropbox (Aguirre-Brainard Lab)','Apps','CfNUploader','TEST_estimateCameraTranslation','TEST_estimateCameraTranslation');
     case 'GLNXA64'
-        outputFileStem = fullfile('~','TEST_estimateSceneGeometry');
+        outputFileStem = fullfile('~','TEST_estimateCameraTranslation');
 end
 
 %% Analyze data extracted from Olsen 2007
@@ -84,7 +84,7 @@ conditionalSigmaLength = sqrt((1-p^2)*sigmaLengthMm);
 % Obtain the axial length of the default model eye. The axial length is
 % given by the depth of the center of the posterior chamber, plus the
 % radius of the axial dimension of the posterior chamber
-defaultSceneGeometry = estimateSceneGeometry([],[]);
+defaultSceneGeometry = createSceneGeometry([],[]);
 defaultAxialLength = -(defaultSceneGeometry.eye.posteriorChamberCenter(1)-defaultSceneGeometry.eye.posteriorChamberRadii(1));
 
 
@@ -105,7 +105,7 @@ pupilRadii = 2+(randn(9,1)./5);
 %                 % distribution of axial lengths given knowledge of the
 %                 % spherical refraction of the eye
 %                 axialLength = defaultAxialLength + (axialErrorMultiplier * conditionalSigmaLength);
-%                 veridicalSceneGeometry = estimateSceneGeometry([],[],'eyeLaterality','Right','axialLength',axialLength);
+%                 veridicalSceneGeometry = createSceneGeometry('eyeLaterality','Right','axialLength',axialLength);
 %                 veridicalSceneGeometry.extrinsicTranslationVector = [cameraX; cameraY; cameraZ];
 %                 
 %                 % Assemble the ray tracing functions
@@ -123,7 +123,7 @@ pupilRadii = 2+(randn(9,1)./5);
 %                 end
 %                 
 %                 % Estimate the scene Geometry
-%                 estimatedSceneGeometry = estimateSceneGeometry(pupilData,'','useParallel',false,'ellipseArrayList',1:1:ellipseIdx-1);
+%                 estimatedSceneGeometry = estimateCameraTranslation(pupilData,'','useParallel',false,'ellipseArrayList',1:1:ellipseIdx-1);
 % 
 %                 % Save the veridical and estimated results
 %                 outputFile = [outputFileStem '_vsg_' num2str(resultIdx) '.mat'];

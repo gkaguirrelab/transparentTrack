@@ -42,7 +42,7 @@ save(pupilFileName,'pupilData')
 
 
 %% Create and save the default sceneGeometry file
-sceneGeometry = estimateSceneGeometry('','');
+sceneGeometry = createSceneGeometry();
 save(sceneGeometryFileName,'sceneGeometry')
 
 %% Create the eyeModel video

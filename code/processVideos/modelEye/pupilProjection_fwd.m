@@ -32,12 +32,12 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
 %   part to help us keep the two units separate conceptually.
 %
 % Inputs:
-%   eyePoses             - A 1x4 vector provides values for [eyeAzimuth,
+%   eyePoses              - A 1x4 vector provides values for [eyeAzimuth,
 %                           eyeElevation, eyeTorsion, pupilRadius].
 %                           Azimuth, elevation, and torsion are in units of
 %                           head-centered (extrinsic) degrees, and pupil
-%                           radius is in mm.
-%   sceneGeometry         - A structure; described in estimateSceneGeometry
+%                           radius in mm.
+%   sceneGeometry         - A structure; described in createSceneGeometry
 %   rayTraceFuncs         - A structure that contains handles to the ray
 %                           tracing functions created by
 %                           assembleRayTraceFuncs()
@@ -86,7 +86,7 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
 %{
     %% Obtain the parameters of the pupil ellipse in the image
     % Obtain a default sceneGeometry structure
-    sceneGeometry=estimateSceneGeometry([],[]);
+    sceneGeometry=createSceneGeometry();
     % Define the ray tracing functions
     rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
     % Define in eyePoses the azimuth, elevation, torsion, and pupil radius
@@ -97,7 +97,7 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
 %{
     %% Display a 2D image of a slightly myopic, left, model eye
     % Obtain a default sceneGeometry structure
-    sceneGeometry=estimateSceneGeometry([],[],'eyeLaterality','left','spectacleRefractionDiopters',-2);
+    sceneGeometry=createSceneGeometry('eyeLaterality','left','spectacleRefractionDiopters',-2);
     % Define the ray tracing functions
     rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
     % Define in eyePoses the azimuth, elevation, torsion, and pupil radius
@@ -125,7 +125,7 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
 %{
     %% Display a 3D plot of a right eye
     % Obtain a default sceneGeometry structure
-    sceneGeometry=estimateSceneGeometry([],[]);
+    sceneGeometry=createSceneGeometry();
     % Define the ray tracing functions
     rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
     % Define in eyePoses the azimuth, elevation, torsion, and pupil radius

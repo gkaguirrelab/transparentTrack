@@ -21,7 +21,7 @@ fprintf('(i.e., rotating) coordinate frame.\n');
 fprintf('\n');
 
 % Obtain the sceneGeometry and ray tracing functions
-sceneGeometry = estimateSceneGeometry([],[],'eyeLaterality','Right');
+sceneGeometry = createSceneGeometry('eyeLaterality','Right');
 rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
 
 % Define some variables for plotting the model eye
@@ -63,7 +63,7 @@ figure(2)
 eyeSides = {'right','left'};
 for laterality = 1:2
     % prepare the model eye for this laterality
-    sceneGeometry = estimateSceneGeometry([],[],'eyeLaterality',eyeSides{laterality});
+    sceneGeometry = createSceneGeometry('eyeLaterality',eyeSides{laterality});
     rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
     [pupilEllipseOnImagePlane, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd([0 0 0 3],sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
     
@@ -102,7 +102,7 @@ fprintf('\n');
 
 %% Present Figure 3
 figure(3)
-sceneGeometry = estimateSceneGeometry([],[]);
+sceneGeometry = createSceneGeometry();
 rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
 
 % Plot the values for eyePost [0 0 0 x]
