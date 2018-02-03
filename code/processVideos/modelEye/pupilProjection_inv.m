@@ -45,11 +45,11 @@ function [eyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaEr
 %                           assembleRayTraceFuncs().
 %
 % Optional key/value pairs:
-%  'x0'                   - Starting point of the search for the eyePoses.
+%  'x0'                   - Starting point of the search for the eyePose.
 %                           If not defined, the starting point will be
 %                           estimated from the coordinates of the ellipse
 %                           center.
-%  'eyePoseLB/UB'         - Upper and lower bounds on the eyePoses
+%  'eyePoseLB/UB'         - Upper and lower bounds on the eyePose
 %                           [azimuth, elevation, torsion, pupil radius].
 %                           The default values here represent the physical
 %                           limits of the projection model.
@@ -70,7 +70,7 @@ function [eyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaEr
 %                           parameters of pupil ellipse on the image plane
 %                           cast in transparent form. This is the output of
 %                           the pupilProjection_fwd model for the
-%                           sceneGeometry and the eyePoses
+%                           sceneGeometry and the eyePose
 %   centerError           - Scalar. The Euclidean distance (in pixels)
 %                           between the [x, y] center of the
 %                           pupilEllipseOnImagePlane and the center of the
@@ -112,7 +112,7 @@ end
 % the three axis rotations that can bring an eye to a destination.
 % Typically, the torsion will be constrained with upper and lower bounds of
 % zero, reflecting Listing's Law.
-if sum((p.Results.eyePosesUB(1:3) - p.Results.eyePosesLB(1:3))==0) < 1
+if sum((p.Results.eyePoseUB(1:3) - p.Results.eyePoseLB(1:3))==0) < 1
     warning('The inverse search across possible eye rotations is underconstrained');
 end
 
@@ -136,7 +136,7 @@ CoP = projectionMatrix*[0 0 0 1]';
 CoP(1:2)=CoP(1:2)./CoP(3);
 CoP=CoP(1:2);
 
-% Set the bounds on the eyePoses based upon the quadrant of the ellipse
+% Set the bounds on the eyePose based upon the quadrant of the ellipse
 % center. We provide half a degree of wiggle in the fit around zero.
 if pupilEllipseOnImagePlane(1) < CoP(1)
     eyePoseUB(1) = .5;
