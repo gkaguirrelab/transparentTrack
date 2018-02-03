@@ -1,8 +1,8 @@
-function [eyePoses, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs, varargin)
+function [eyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs, varargin)
 % Project an ellipse on the image plane to a pupil circle in the scene
 %
 % Syntax:
-%  [eyePoses, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs)
+%  [eyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs)
 %
 % Description:
 %	Given the sceneGeometry and an ellipse on the image plane, this routine
@@ -49,7 +49,7 @@ function [eyePoses, bestMatchEllipseOnImagePlane, centerError, shapeError, areaE
 %                           If not defined, the starting point will be
 %                           estimated from the coordinates of the ellipse
 %                           center.
-%  'eyePosesLB/UB'       - Upper and lower bounds on the eyePoses
+%  'eyePoseLB/UB'         - Upper and lower bounds on the eyePoses
 %                           [azimuth, elevation, torsion, pupil radius].
 %                           The default values here represent the physical
 %                           limits of the projection model.
@@ -61,7 +61,7 @@ function [eyePoses, bestMatchEllipseOnImagePlane, centerError, shapeError, areaE
 %                           structure.
 %
 % Outputs:
-%   eyePoses             - A 1x4 vector provides values for [eyeAzimuth,
+%   eyePose               - A 1x4 vector provides values for [eyeAzimuth,
 %                           eyeElevation, eyeTorsion, pupilRadius].
 %                           Azimuth, elevation, and torsion are in units of
 %                           head-centered (extrinsic) degrees, and pupil
@@ -91,8 +91,8 @@ p.addRequired('rayTraceFuncs',@(x)(isempty(x) | isstruct(x)));
 
 % Optional params
 p.addParameter('x0',[],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('eyePosesLB',[-89,-89,-179,0.5],@isnumeric);
-p.addParameter('eyePosesUB',[89,89,179,4],@isnumeric);
+p.addParameter('eyePoseLB',[-89,-89,-179,0.5],@isnumeric);
+p.addParameter('eyePoseUB',[89,89,179,4],@isnumeric);
 p.addParameter('centerErrorThreshold',1e-4,@isnumeric);
 p.addParameter('constraintTolerance',[],@(x)(isempty(x) | isnumeric(x)));
 
@@ -123,8 +123,8 @@ end
 % elevation solutions depending upon the quadrant in which the center of
 % the ellipse falls, relative to the center of projection derived from the
 % scene geometry.
-eyePosesLB = p.Results.eyePosesLB;
-eyePosesUB = p.Results.eyePosesUB;
+eyePoseLB = p.Results.eyePoseLB;
+eyePoseUB = p.Results.eyePoseUB;
 
 % Identify the center of projection.
 projectionMatrix = ...
@@ -139,14 +139,14 @@ CoP=CoP(1:2);
 % Set the bounds on the eyePoses based upon the quadrant of the ellipse
 % center. We provide half a degree of wiggle in the fit around zero.
 if pupilEllipseOnImagePlane(1) < CoP(1)
-    eyePosesUB(1) = .5;
+    eyePoseUB(1) = .5;
 else
-    eyePosesLB(1) = -.5;
+    eyePoseLB(1) = -.5;
 end
 if pupilEllipseOnImagePlane(2) > CoP(2)
-    eyePosesUB(2) = .5;
+    eyePoseUB(2) = .5;
 else
-    eyePosesLB(2) = -.5;
+    eyePoseLB(2) = -.5;
 end
 
 % If x0 is undefined, we make a guess based upon the location and size of
@@ -180,9 +180,9 @@ if isempty(p.Results.x0)
     
     % Ensure that x0 lies within the bounds with a bit of headroom so that
     % the solver does not get stuck up against a bound.
-    boundHeadroom = (eyePosesUB - eyePosesLB)*0.05;
-    x0=min([eyePosesUB-boundHeadroom; x0]);
-    x0=max([eyePosesLB+boundHeadroom; x0]);
+    boundHeadroom = (eyePoseUB - eyePoseLB)*0.05;
+    x0=min([eyePoseUB-boundHeadroom; x0]);
+    x0=max([eyePoseLB+boundHeadroom; x0]);
 else
     x0 = p.Results.x0;
 end
@@ -222,8 +222,8 @@ objectiveFun = @objfun; % the objective function, nested below
 constraintFun = @constr; % the constraint function, nested below
 
 % Call fmincon
-[eyePoses, centerError] = ...
-    fmincon(objectiveFun, x0, [], [], [], [], eyePosesLB, eyePosesUB, constraintFun, options);
+[eyePose, centerError] = ...
+    fmincon(objectiveFun, x0, [], [], [], [], eyePoseLB, eyePoseUB, constraintFun, options);
 
     function fval = objfun(x)
         if ~isequal(x,xLast) % Check if computation is necessary

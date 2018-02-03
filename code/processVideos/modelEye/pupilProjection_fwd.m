@@ -1,4 +1,4 @@
-function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoints, pointLabels] = pupilProjection_fwd(eyePoses, sceneGeometry, rayTraceFuncs, varargin)
+function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoints, pointLabels] = pupilProjection_fwd(eyePose, sceneGeometry, rayTraceFuncs, varargin)
 % Project the pupil circle to an ellipse on the image plane
 %
 % Syntax:
@@ -32,15 +32,13 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
 %   part to help us keep the two units separate conceptually.
 %
 % Inputs:
-%   eyePoses              - A 1x4 vector provides values for [eyeAzimuth,
+%   eyePose               - A 1x4 vector provides values for [eyeAzimuth,
 %                           eyeElevation, eyeTorsion, pupilRadius].
 %                           Azimuth, elevation, and torsion are in units of
 %                           head-centered (extrinsic) degrees, and pupil
 %                           radius in mm.
 %   sceneGeometry         - A structure; described in createSceneGeometry
-%   rayTraceFuncs         - A structure that contains handles to the ray
-%                           tracing functions created by
-%                           assembleRayTraceFuncs()
+%   rayTraceFuncs         - A structure; described in assembleRayTraceFuncs
 %
 % Optional key/value pairs:
 %  'fullEyeModelFlag'     - Logical. Determines if the full posterior and
@@ -59,7 +57,7 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
 %                           ellipsoid. About 30 makes a nice image.
 %
 % Outputs:
-%   pupilEllipseOnImagePlane - A 1x5 vector that contains the parameters of
+%   pupilEllipseOnImagePlane - A 1x5 vector with the parameters of the
 %                           pupil ellipse on the image plane cast in
 %                           transparent form.
 %   imagePoints           - An nx2 matrix that specifies the x, y location
@@ -95,15 +93,15 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     pupilEllipseOnImagePlane = pupilProjection_fwd(eyePoses,sceneGeometry,rayTraceFuncs);
 %}
 %{
-    %% Display a 2D image of a slightly myopic, left, model eye
+    %% Display a 2D image of a slightly myopic left eye
     % Obtain a default sceneGeometry structure
     sceneGeometry=createSceneGeometry('eyeLaterality','left','spectacleRefractionDiopters',-2);
     % Define the ray tracing functions
     rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
-    % Define in eyePoses the azimuth, elevation, torsion, and pupil radius
-    eyePoses = [-10, 5, 0 3];
+    % Define an eyePose with azimuth, elevation, torsion, and pupil radius
+    eyePose = [-10, 5, 0 3];
     % Perform the projection and request the full eye model
-    [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses,sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
+    [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePose,sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
     % Define some settings for display
     eyePartLabels = {'rotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex'};
     plotColors = {'+r' '.w' '.b' '*g' '.y' '*y'};
@@ -128,10 +126,10 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     sceneGeometry=createSceneGeometry();
     % Define the ray tracing functions
     rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
-    % Define in eyePoses the azimuth, elevation, torsion, and pupil radius
-    eyePoses = [0, 0, 0 3];
+    % Define an eyePose with azimuth, elevation, torsion, and pupil radius
+    eyePose = [0, 0, 0 3];
     % Perform the projection and request the full eye model
-    [~, ~, ~, eyeWorldPoints, pointLabels] = pupilProjection_fwd(eyePoses,sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
+    [~, ~, ~, eyeWorldPoints, pointLabels] = pupilProjection_fwd(eyePose,sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
     % Define some settings for display
     eyePartLabels = {'rotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex'};
     plotColors = {'+r' '.k' '*b' '*g' '.y' '*y'};
@@ -152,7 +150,7 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
 p = inputParser; p.KeepUnmatched = true;
 
 % Required
-p.addRequired('eyePoses',@isnumeric);
+p.addRequired('eyePose',@isnumeric);
 p.addRequired('sceneGeometry',@(x)(isempty(x) || isstruct(x)));
 p.addRequired('rayTraceFuncs',@(x)(isempty(x) || isstruct(x)));
 
@@ -163,23 +161,23 @@ p.addParameter('posteriorChamberEllipsoidPoints',30,@isnumeric);
 p.addParameter('anteriorChamberEllipsoidPoints',30,@isnumeric);
 
 % parse
-p.parse(eyePoses, sceneGeometry, rayTraceFuncs, varargin{:})
+p.parse(eyePose, sceneGeometry, rayTraceFuncs, varargin{:})
 
 
 %% Check the input
 
 if isempty(sceneGeometry)
     % No sceneGeometry was provided. Use the default settings
-    sceneGeometry = estimateSceneGeometry('','');
+    sceneGeometry = createSceneGeometry();
 end
 
 
 %% Prepare variables
 % Separate the eyePoses into individual variables
-eyeAzimuth = eyePoses(1);
-eyeElevation = eyePoses(2);
-eyeTorsion = eyePoses(3);
-pupilRadius = eyePoses(4);
+eyeAzimuth = eyePose(1);
+eyeElevation = eyePose(2);
+eyeTorsion = eyePose(3);
+pupilRadius = eyePose(4);
 nPupilPerimPoints = p.Results.nPupilPerimPoints;
 
 
@@ -379,7 +377,7 @@ if ~isempty(rayTraceFuncs)
         % Grab this eyeWorld point
         eyeWorldPoint=eyeWorldPoints(refractPointsIdx(ii),:);
         % Define an error function which is the distance between the nodal
-        % point of the camera and a the point at which a ray impacts the
+        % point of the camera and the point at which a ray impacts the
         % plane that contains the camera, with the ray departing from the
         % eyeWorld point at angle theta in the p1p2 plane.
         errorFunc = @(theta) rayTraceFuncs.cameraNodeDistanceError2D.p1p2(...
@@ -516,7 +514,10 @@ imagePoints = (imagePointsNormalizedDistorted .* [sceneGeometry.intrinsicCameraM
 % circle on the image plane.
 pupilPerimIdx = find(strcmp(pointLabels,'pupilPerimeter'));
 
-if eyePoses(4)==0 || ~isreal(imagePoints(pupilPerimIdx,:)) || length(pupilPerimIdx)<5
+% Before we try to fit the ellipse, make sure that the radius is not zero,
+% that the image points are real (not imaginary points that did not pass
+% through corneal optics), and that there are at least 5 perimeter points.
+if eyePose(4)==0 || ~isreal(imagePoints(pupilPerimIdx,:)) || length(pupilPerimIdx)<5
     pupilEllipseOnImagePlane=nan(1,5);
 else
     pupilEllipseOnImagePlane = ellipse_ex2transparent(...
