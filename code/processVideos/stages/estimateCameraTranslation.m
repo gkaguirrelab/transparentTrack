@@ -247,7 +247,7 @@ errorWeights=errorWeights./mean(errorWeights);
 
 %% Perform the search
 if strcmp(p.Results.verbosity,'full')
-    fprintf('Searching over camera translation and eye rotation center.\n');
+    fprintf('Estimating the camera translation vector.\n');
 end
 % Call out to the local function that performs the serach
 sceneGeometry = ...
@@ -300,7 +300,7 @@ end % main function
 
 %% LOCAL FUNCTIONS
 
-function sceneGeometry = performSceneSearch(initialSceneGeometry, rayTraceFuncs, ellipses, errorWeights, translationVectorLB, translationVectorUB, eyePoseLB, eyePoseUB, nWorkers)
+function sceneGeometry = performSceneSearch(initialSceneGeometry, rayTraceFuncs, ellipses, errorWeights, extrinsicTranslationVectorLB, extrinsicTranslationVectorUB, eyePoseLB, eyePoseUB, nWorkers)
 % Pattern search for best fitting sceneGeometry parameters
 %
 % Description:
@@ -356,7 +356,7 @@ centerDistanceErrorByEllipse=zeros(size(ellipses,1),1);
 shapeErrorByEllipse=zeros(size(ellipses,1),1);
 areaErrorByEllipse=zeros(size(ellipses,1),1);
 
-[x, fVal] = patternsearch(objectiveFun, x0,[],[],[],[],translationVectorLB,translationVectorUB,[],options);
+[x, fVal] = patternsearch(objectiveFun, x0,[],[],[],[],extrinsicTranslationVectorLB,extrinsicTranslationVectorUB,[],options);
 % Nested function computes the objective for the patternsearch
     function fval = objfun(x)
         % Assemble a candidate sceneGeometry structure
@@ -402,8 +402,8 @@ sceneGeometry.meta.estimateGeometry.search.errorForm = errorForm;
 sceneGeometry.meta.estimateGeometry.search.initialSceneGeometry = initialSceneGeometry;
 sceneGeometry.meta.estimateGeometry.search.ellipses = ellipses;
 sceneGeometry.meta.estimateGeometry.search.errorWeights = errorWeights;
-sceneGeometry.meta.estimateGeometry.search.translationVectorLB = translationVectorLB;
-sceneGeometry.meta.estimateGeometry.search.translationVectorUB = translationVectorUB;
+sceneGeometry.meta.estimateGeometry.search.extrinsicTranslationVectorLB = extrinsicTranslationVectorLB;
+sceneGeometry.meta.estimateGeometry.search.extrinsicTranslationVectorUB = extrinsicTranslationVectorUB;
 sceneGeometry.meta.estimateGeometry.search.eyePoseLB = eyePoseLB;
 sceneGeometry.meta.estimateGeometry.search.eyePoseUB = eyePoseUB;
 sceneGeometry.meta.estimateGeometry.search.fVal = fVal;
@@ -424,7 +424,7 @@ function [] = saveSceneDiagnosticPlot(ellipses, Xedges, Yedges, eyePoseLB, eyePo
 %                           divide and select ellipses across the image.
 %   Yedges                - The Y-dimension edges of the bins used to
 %                           divide and select ellipses across the image.
-%   eyePoseLB, eyePoseUB - Bounds for the eye params to be passed to
+%   eyePoseLB, eyePoseUB  - Bounds for the eye pose to be passed to
 %                           pupilProjection_inv.
 %   sceneGeometry         - The sceneGeometry structure
 %   sceneDiagnosticPlotFileName - The full path (including .pdf suffix)
