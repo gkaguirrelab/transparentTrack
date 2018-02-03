@@ -164,7 +164,8 @@ for axialErrorMultiplier = -2:1:2
         end
     end
 end                
-xlim([-10 10]);
-ylim([-10 10]);
-zlim([90 150]);
+axis equal
+xlim([-6 6]);
+ylim([-6 6]);
+zlim([90 190]);
 
