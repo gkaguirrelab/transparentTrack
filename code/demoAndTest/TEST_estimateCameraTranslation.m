@@ -95,49 +95,49 @@ defaultAxialLength = -(defaultSceneGeometry.eye.posteriorChamberCenter(1)-defaul
 pupilRadii = 2+(randn(9,1)./5);
 
 % Loop over simulation conditions and estimate scene geometry
- resultIdx = 1;
- for axialErrorMultiplier = -2:1:2
-     for cameraX = -5:5:5
-         for cameraY = -5:5:5
-             for cameraZ = 125:25:175
-                 % We will create the ellipses using an axial length for the
-                 % eye that can is off by + and - 2SD of the conditional
-                 % distribution of axial lengths given knowledge of the
-                 % spherical refraction of the eye
-                 axialLength = defaultAxialLength + (axialErrorMultiplier * conditionalSigmaLength);
-                 veridicalSceneGeometry = createSceneGeometry('eyeLaterality','Right','axialLength',axialLength);
-                 veridicalSceneGeometry.extrinsicTranslationVector = [cameraX; cameraY; cameraZ];
-                 
-                 % Assemble the ray tracing functions
-                 rayTraceFuncs = assembleRayTraceFuncs( veridicalSceneGeometry );
-                 
-                 % Create a set of ellipses from the veridial geometry
-
-                 ellipseIdx=1;
-                 for azi=-15:15:15
-                     for ele=-15:15:15
-                         eyePoses=[azi, ele, 0, pupilRadii(ellipseIdx)];
-                         pupilData.initial.ellipses.values(ellipseIdx,:) = pupilProjection_fwd(eyePoses, veridicalSceneGeometry, rayTraceFuncs);
-                         pupilData.initial.ellipses.RMSE(ellipseIdx,:) = 1;
-                         ellipseIdx=ellipseIdx+1;
-                     end
-                 end
-                 
-                 % Estimate the scene Geometry
-                 estimatedSceneGeometry = estimateCameraTranslation(pupilData,'','useParallel',false,'ellipseArrayList',1:1:ellipseIdx-1,'extrinsicTranslationVectorUB',[10; 10; 225]);
- 
-                 % Save the veridical and estimated results
-                 outputFile = [outputFileStem '_vsg_' num2str(resultIdx) '.mat'];
-                 save(outputFile,'veridicalSceneGeometry');
-                 outputFile = [outputFileStem '_esg_' num2str(resultIdx) '.mat'];
-                 save(outputFile,'estimatedSceneGeometry');
- 
-                 % Iterate the result index
-                 resultIdx = resultIdx+1;
-             end
-         end
-     end
- end
+resultIdx = 1;
+for axialErrorMultiplier = -2:1:2
+    for cameraX = -5:5:5
+        for cameraY = -5:5:5
+            for cameraZ = 125:25:175
+                % We will create the ellipses using an axial length for the
+                % eye that can is off by + and - 2SD of the conditional
+                % distribution of axial lengths given knowledge of the
+                % spherical refraction of the eye
+                axialLength = defaultAxialLength + (axialErrorMultiplier * conditionalSigmaLength);
+                veridicalSceneGeometry = createSceneGeometry('eyeLaterality','Right','axialLength',axialLength);
+                veridicalSceneGeometry.extrinsicTranslationVector = [cameraX; cameraY; cameraZ];
+                
+                % Assemble the ray tracing functions
+                rayTraceFuncs = assembleRayTraceFuncs( veridicalSceneGeometry );
+                
+                % Create a set of ellipses from the veridial geometry
+                
+                ellipseIdx=1;
+                for azi=-15:15:15
+                    for ele=-15:15:15
+                        eyePoses=[azi, ele, 0, pupilRadii(ellipseIdx)];
+                        pupilData.initial.ellipses.values(ellipseIdx,:) = pupilProjection_fwd(eyePoses, veridicalSceneGeometry, rayTraceFuncs);
+                        pupilData.initial.ellipses.RMSE(ellipseIdx,:) = 1;
+                        ellipseIdx=ellipseIdx+1;
+                    end
+                end
+                
+                % Estimate the scene Geometry
+                estimatedSceneGeometry = estimateCameraTranslation(pupilData,'','useParallel',false,'ellipseArrayList',1:1:ellipseIdx-1,'extrinsicTranslationVectorUB',[10; 10; 225]);
+                
+                % Save the veridical and estimated results
+                outputFile = [outputFileStem '_vsg_' num2str(resultIdx) '.mat'];
+                save(outputFile,'veridicalSceneGeometry');
+                outputFile = [outputFileStem '_esg_' num2str(resultIdx) '.mat'];
+                save(outputFile,'estimatedSceneGeometry');
+                
+                % Iterate the result index
+                resultIdx = resultIdx+1;
+            end
+        end
+    end
+end
 
 
 %% Reload the data and plot
@@ -148,10 +148,10 @@ for axialErrorMultiplier = -2:1:2
     for cameraX = -5:5:5
         for cameraY = -5:5:5
             for cameraZ = 125:25:175
-
+                
                 inputFile = [inputFileStem '_esg_' num2str(resultIdx) '.mat']
                 load(inputFile);
-
+                
                 plot3(cameraX, cameraY, cameraZ, '+k')
                 hold on
                 
@@ -164,7 +164,7 @@ for axialErrorMultiplier = -2:1:2
             end
         end
     end
-end                
+end
 axis equal
 xlim([-6 6]);
 ylim([-6 6]);
