@@ -1,4 +1,4 @@
-%% TEST_estimateSceneGeometry
+%% TEST_estimateCameraTranslation
 % Examine the ability of the routines to estimate an unknown scene geometry
 %
 % Description:
@@ -31,8 +31,8 @@
 %       Reykjavik Eye Study." Acta Ophthalmologica 85.4 (2007): 361-366.
 %
 %   Figures 1 and 4 give the observed distribution of refractive error and
-%   axial lengths in their population of 723 adult, right eyes. I digitzed
-%   the values in the plots, fit the data with Gaussian distribution amnd
+%   axial lengths in their population of 723 adult, right eyes. I digitized
+%   the values in the plots, fit the data with Gaussian distribution and
 %   retained the sigma values. The paper reports that, across eyes, there
 %   was a correlation of -0.59 between axial length and spherical
 %   refractive error. Given this information, we can calculate the width of
@@ -49,14 +49,14 @@ close all
 
 % Set up a destination to save the files as they are generated one by one.
 % We save the data as they are generated because this can take a while and
-% we'd like to recover gracefully from an interuption of the process.
+% we'd like to recover gracefully from an interruption of the process.
 thisComputer = computer;
 switch thisComputer
     case 'MACI64'
-        outputFileStem = fullfile('~','Dropbox (Aguirre-Brainard Lab)','TOME_analysis','gka_simulationTests','TEST_estimateSceneGeometry');
-        inputFileStem = fullfile('~','Dropbox (Aguirre-Brainard Lab)','Apps','CfNUploader','TEST_estimateSceneGeometry','TEST_estimateSceneGeometry');
+        outputFileStem = fullfile('~','Dropbox (Aguirre-Brainard Lab)','TOME_analysis','gka_simulationTests','TEST_estimateCameraTranslation','TEST_estimateCameraTranslation');
+        inputFileStem = fullfile('~','Dropbox (Aguirre-Brainard Lab)','Apps','CfNUploader','TEST_estimateCameraTranslation','TEST_estimateCameraTranslation');
     case 'GLNXA64'
-        outputFileStem = fullfile('~','TEST_estimateSceneGeometry');
+        outputFileStem = fullfile('~','TEST_estimateCameraTranslation','TEST_estimateCameraTranslation');
 end
 
 %% Analyze data extracted from Olsen 2007
@@ -84,7 +84,7 @@ conditionalSigmaLength = sqrt((1-p^2)*sigmaLengthMm);
 % Obtain the axial length of the default model eye. The axial length is
 % given by the depth of the center of the posterior chamber, plus the
 % radius of the axial dimension of the posterior chamber
-defaultSceneGeometry = estimateSceneGeometry([],[]);
+defaultSceneGeometry = createSceneGeometry();
 defaultAxialLength = -(defaultSceneGeometry.eye.posteriorChamberCenter(1)-defaultSceneGeometry.eye.posteriorChamberRadii(1));
 
 
@@ -95,48 +95,49 @@ defaultAxialLength = -(defaultSceneGeometry.eye.posteriorChamberCenter(1)-defaul
 pupilRadii = 2+(randn(9,1)./5);
 
 % Loop over simulation conditions and estimate scene geometry
-% resultIdx = 1;
-% for axialErrorMultiplier = -2:1:2
-%     for cameraX = -5:5:5
-%         for cameraY = -5:5:5
-%             for cameraZ = 125:25:175
-%                 % We will create the ellipses using an axial length for the
-%                 % eye that can is off by + and - 2SD of the conditional
-%                 % distribution of axial lengths given knowledge of the
-%                 % spherical refraction of the eye
-%                 axialLength = defaultAxialLength + (axialErrorMultiplier * conditionalSigmaLength);
-%                 veridicalSceneGeometry = estimateSceneGeometry([],[],'eyeLaterality','Right','axialLength',axialLength);
-%                 veridicalSceneGeometry.extrinsicTranslationVector = [cameraX; cameraY; cameraZ];
-%                 
-%                 % Assemble the ray tracing functions
-%                 rayTraceFuncs = assembleRayTraceFuncs( veridicalSceneGeometry );
-%                 
-%                 % Create a set of ellipses from the veridial geometry
-%                 ellipseIdx=1;
-%                 for azi=-15:15:15
-%                     for ele=-15:15:15
-%                         eyePoses=[azi, ele, 0, pupilRadii(ellipseIdx)];
-%                         pupilData.initial.ellipses.values(ellipseIdx,:) = pupilProjection_fwd(eyePoses, veridicalSceneGeometry, rayTraceFuncs);
-%                         pupilData.initial.ellipses.RMSE(ellipseIdx,:) = 1;
-%                         ellipseIdx=ellipseIdx+1;
-%                     end
-%                 end
-%                 
-%                 % Estimate the scene Geometry
-%                 estimatedSceneGeometry = estimateSceneGeometry(pupilData,'','useParallel',false,'ellipseArrayList',1:1:ellipseIdx-1);
-% 
-%                 % Save the veridical and estimated results
-%                 outputFile = [outputFileStem '_vsg_' num2str(resultIdx) '.mat'];
-%                 save(outputFile,'veridicalSceneGeometry');
-%                 outputFile = [outputFileStem '_esg_' num2str(resultIdx) '.mat'];
-%                 save(outputFile,'estimatedSceneGeometry');
-% 
-%                 % Iterate the result index
-%                 resultIdx = resultIdx+1;
-%             end
-%         end
-%     end
-% end
+ resultIdx = 1;
+ for axialErrorMultiplier = -2:1:2
+     for cameraX = -5:5:5
+         for cameraY = -5:5:5
+             for cameraZ = 125:25:175
+                 % We will create the ellipses using an axial length for the
+                 % eye that can is off by + and - 2SD of the conditional
+                 % distribution of axial lengths given knowledge of the
+                 % spherical refraction of the eye
+                 axialLength = defaultAxialLength + (axialErrorMultiplier * conditionalSigmaLength);
+                 veridicalSceneGeometry = createSceneGeometry('eyeLaterality','Right','axialLength',axialLength);
+                 veridicalSceneGeometry.extrinsicTranslationVector = [cameraX; cameraY; cameraZ];
+                 
+                 % Assemble the ray tracing functions
+                 rayTraceFuncs = assembleRayTraceFuncs( veridicalSceneGeometry );
+                 
+                 % Create a set of ellipses from the veridial geometry
+
+                 ellipseIdx=1;
+                 for azi=-15:15:15
+                     for ele=-15:15:15
+                         eyePoses=[azi, ele, 0, pupilRadii(ellipseIdx)];
+                         pupilData.initial.ellipses.values(ellipseIdx,:) = pupilProjection_fwd(eyePoses, veridicalSceneGeometry, rayTraceFuncs);
+                         pupilData.initial.ellipses.RMSE(ellipseIdx,:) = 1;
+                         ellipseIdx=ellipseIdx+1;
+                     end
+                 end
+                 
+                 % Estimate the scene Geometry
+                 estimatedSceneGeometry = estimateCameraTranslation(pupilData,'','useParallel',false,'ellipseArrayList',1:1:ellipseIdx-1);
+ 
+                 % Save the veridical and estimated results
+                 outputFile = [outputFileStem '_vsg_' num2str(resultIdx) '.mat'];
+                 save(outputFile,'veridicalSceneGeometry');
+                 outputFile = [outputFileStem '_esg_' num2str(resultIdx) '.mat'];
+                 save(outputFile,'estimatedSceneGeometry');
+ 
+                 % Iterate the result index
+                 resultIdx = resultIdx+1;
+             end
+         end
+     end
+ end
 
 
 %% Reload the data and plot

@@ -9,7 +9,7 @@ function runVideoPipeline( pathParams, varargin )
 %       makeControlFile
 %       applyControlFile
 %       fitPupilPerimeter -- with minimal constraints
-%       estimateSceneGeometry
+%       estimateCameraTranslation
 %       fitPupilPerimeter -- fit again with scene geometry constraints
 %       smoothPupilRadius
 %       refineIrisRadius
@@ -71,7 +71,7 @@ function runVideoPipeline( pathParams, varargin )
 %                       with passing 'custom' to videoTypeChoice.
 %   'customSceneGeometryFile' - When passed, this full path to a
 %                       sceneGeometry file is passed as input to stages
-%                       subsequent to estimateSceneGeometry. This allows
+%                       subsequent to estimateCameraTranslation. This allows
 %                       processing upon one acquisition to use the scene
 %                       Geometry derived from a different run.
 %   'catchErrors'     - Controls if the function calls take place within a
@@ -170,7 +170,7 @@ correctedPerimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.
 pupilFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_pupil.mat']);
 
 % The sceneGeometryFileNameOutput is the name of the file created by the
-% estimateSceneGeometry routine
+% estimateCameraTranslation routine
 sceneGeometryFileNameOutput = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sceneGeometry.mat']);
 
 % the sceneGeometryFileNameInput is the name of the file passed to the
@@ -214,7 +214,7 @@ switch p.Results.videoTypeChoice
             'applyControlFile(perimeterFileName,controlFileName,correctedPerimeterFileName, varargin{:});' ...
             ['fitPupilPerimeter(correctedPerimeterFileName, pupilFileName,' ...
             '''nSplits'', 0, varargin{:});']...
-            ['estimateSceneGeometry(pupilFileName, sceneGeometryFileNameOutput,' ...
+            ['estimateCameraTranslation(pupilFileName, sceneGeometryFileNameOutput,' ...
             '''sceneDiagnosticPlotFileName'', sceneDiagnosticPlotFileName, varargin{:});']...
             ['fitPupilPerimeter(correctedPerimeterFileName, pupilFileName,' ...
             '''sceneGeometryFileName'', sceneGeometryFileNameInput, varargin{:});']...
@@ -372,13 +372,13 @@ switch funNames{ff}
         % plot the sceneConstrained ellipse fit, otherwise plot the
         % unconstrained
         varargin={varargin{:}, 'ellipseFitLabel', 'initial'};
-        sceneFunCallIdx=find(strcmp(funNames,'estimateSceneGeometry'));
+        sceneFunCallIdx=find(strcmp(funNames,'estimateCameraTranslation'));
         if ~isempty(sceneFunCallIdx)
             if sceneFunCallIdx < ff
                 varargin={varargin{:}, 'ellipseFitLabel', 'sceneConstrained'};
             end
         end
-    case 'estimateSceneGeometry'
+    case 'estimateCameraTranslation'
         if ~exist(glintFileName,'file')
             glintFileName = [];
         end
