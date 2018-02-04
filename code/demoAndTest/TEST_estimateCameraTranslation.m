@@ -124,7 +124,7 @@ pupilRadii = 2+(randn(9,1)./5);
                  end
                  
                  % Estimate the scene Geometry
-                 estimatedSceneGeometry = estimateCameraTranslation(pupilData,'','useParallel',false,'ellipseArrayList',1:1:ellipseIdx-1);
+                 estimatedSceneGeometry = estimateCameraTranslation(pupilData,'','useParallel',false,'ellipseArrayList',1:1:ellipseIdx-1,'extrinsicTranslationVectorUB',[10; 10; 225]);
  
                  % Save the veridical and estimated results
                  outputFile = [outputFileStem '_vsg_' num2str(resultIdx) '.mat'];
