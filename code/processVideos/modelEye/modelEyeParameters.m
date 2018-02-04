@@ -101,7 +101,7 @@ switch p.Results.species
         %
         %   ...the typical entrance pupil is decentered
         %   approximately 0.15 mm nasally and 0.1 mm inferior to the
-        %   geometric center of the visit iris circumference
+        %   geometric center of the visible iris circumference
         %
         % Bennett, Edward S., and Barry A. Weissman, eds. Clinical contact
         % lens practice. Lippincott Williams & Wilkins, 2005, p119
