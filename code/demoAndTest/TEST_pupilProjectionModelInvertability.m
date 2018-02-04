@@ -50,7 +50,7 @@ for thisAzimuth = -35:5:35
         % is otherwise unconstrained. We constrain torsion to be zero,
         % following Listing's Law.
         tic
-        tmp = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePosesLB',[-40,-35,0,0.5],'eyePosesUB',[40,35,0,4]);
+        tmp = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4]);
         reconstructedEyePoses = [reconstructedEyePoses; tmp];
         toc
         

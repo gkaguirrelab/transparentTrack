@@ -1,4 +1,4 @@
-%% DEMO_eyePoses
+%% DEMO_eyePoseParams
 % Demonstrate the interpretation of the eyePose values
 %
 % Description:
