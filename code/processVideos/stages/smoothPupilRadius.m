@@ -50,8 +50,8 @@ function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, scene
 %  'hostname'             - AUTOMATIC; The host
 %
 % Optional key/value pairs (fitting)
-%  'eyePosesLB'          - Lower bound on the eyePoses
-%  'eyePosesUB'          - Upper bound on the eyePoses
+%  'eyePoseLB'          - Lower bound on the eyePose
+%  'eyePoseUB'          - Upper bound on the eyePose
 %  'exponentialTauParam'  - The time constant (in video frames) of the
 %                           decaying exponential weighting function for
 %                           pupil radius.
@@ -97,8 +97,8 @@ p.addParameter('hostname',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional fitting params
-p.addParameter('eyePosesLB',[-35,-25,0,0.5],@isnumeric);
-p.addParameter('eyePosesUB',[35,25,0,4],@isnumeric);
+p.addParameter('eyePoseLB',[-35,-25,0,0.5],@isnumeric);
+p.addParameter('eyePoseUB',[35,25,0,4],@isnumeric);
 p.addParameter('exponentialTauParam',3,@isnumeric);
 p.addParameter('likelihoodErrorExponent',1.0,@isnumeric);
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
@@ -109,7 +109,7 @@ p.addParameter('fitLabel','sceneConstrained',@ischar);
 p.parse(perimeterFileName, pupilFileName, sceneGeometryFileName, varargin{:});
 
 nEllipseParams=5; % 5 params in the transparent ellipse form
-neyePoses=4; % 4 eyePoses values (azimuth, elevation, torsion, radius) 
+nEyePoseParams=4; % 4 eyePose values (azimuth, elevation, torsion, radius) 
 radiusIdx = 4; % The 4th eyePose entry holds the radius value
 
 % Load the pupil perimeter data. It will be a structure variable
@@ -202,8 +202,8 @@ clear perimeter
 % Set-up other variables to be non-broadcast
 verbosity = p.Results.verbosity;
 likelihoodErrorExponent = p.Results.likelihoodErrorExponent;
-eyePosesLB = p.Results.eyePosesLB;
-eyePosesUB = p.Results.eyePosesUB;
+eyePoseLB = p.Results.eyePoseLB;
+eyePoseUB = p.Results.eyePoseUB;
 badFrameErrorThreshold = p.Results.badFrameErrorThreshold;
 fitLabel = p.Results.fitLabel;
 
@@ -243,8 +243,8 @@ parfor (ii = 1:nFrames, nWorkers)
     % initialize some variables so that their use is transparent to the
     % parfor loop
     posteriorEllipseParams = NaN(1,nEllipseParams);
-    posterioreyePosesObjectiveError = NaN;
-    posterioreyePoses = NaN(1,neyePoses);
+    posteriorEyePoseObjectiveError = NaN;
+    posteriorEyePose = NaN(1,nEyePoseParams);
     posteriorPupilRadiusSD = NaN;
     
     % get the boundary points
@@ -333,22 +333,22 @@ parfor (ii = 1:nFrames, nWorkers)
                 
         % Re-fit the ellipse with the radius constrained to the posterior
         % value. Pass the prior azimuth and elevation as x0.
-        lb_pin = eyePosesLB;
-        ub_pin = eyePosesUB;
+        lb_pin = eyePoseLB;
+        ub_pin = eyePoseUB;
         lb_pin(radiusIdx)=posteriorPupilRadius;
         ub_pin(radiusIdx)=posteriorPupilRadius;
         x0 = pupilData.(fitLabel).eyePoses.values(ii,:);
         x0(radiusIdx)=posteriorPupilRadius;
-        [posterioreyePoses, posterioreyePosesObjectiveError] = ...
-            eyePoseEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs, 'eyePosesLB', lb_pin, 'eyePosesUB', ub_pin, 'x0', x0 );
-        posteriorEllipseParams = pupilProjection_fwd(posterioreyePoses, sceneGeometry, rayTraceFuncs);
+        [posteriorEyePose, posteriorEyePoseObjectiveError] = ...
+            eyePoseEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs, 'eyePoseLB', lb_pin, 'eyePoseUB', ub_pin, 'x0', x0 );
+        posteriorEllipseParams = pupilProjection_fwd(posteriorEyePose, sceneGeometry, rayTraceFuncs);
         
     end % check if there are any perimeter points to fit
     
     % store results
     loopVar_posteriorEllipseParams(ii,:) = posteriorEllipseParams';
-    loopVar_posterioreyePosesObjectiveError(ii) = posterioreyePosesObjectiveError;
-    loopVar_posterioreyePoses(ii,:) = posterioreyePoses;
+    loopVar_posterioreyePosesObjectiveError(ii) = posteriorEyePoseObjectiveError;
+    loopVar_posterioreyePoses(ii,:) = posteriorEyePose;
     loopVar_posteriorPupilRadiusSD(ii) = posteriorPupilRadiusSD;
     
 end % loop over frames to calculate the posterior

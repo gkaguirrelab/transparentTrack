@@ -70,7 +70,7 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %                           by the scene geometry. A mild constraint (0.6)
 %                           is placed upon the eccentricity, corresponding
 %                           to an aspect ration of 4:5.
-%  'eyePosesLB/UB'       - Upper and lower bounds on the eyePoses
+%  'eyePoseLB/UB'         - Upper and lower bounds on the eyePose
 %                           [azimuth, elevation, pupil radius]. Biological
 %                           limits in eye rotation and pupil size would
 %                           suggest boundaries of [±35, ±25, 0.5-5]. Note,
@@ -121,8 +121,8 @@ p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@i
 % Optional analysis params
 p.addParameter('ellipseTransparentLB',[0,0,800,0,0],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('ellipseTransparentUB',[640,480,20000,0.6,pi],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('eyePosesLB',[-35,-25,0,0.25],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('eyePosesUB',[35,25,0,4],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('eyePoseLB',[-35,-25,0,0.25],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('eyePoseUB',[35,25,0,4],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nSplits',2,@isnumeric);
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('fitLabel',[],@(x)(isempty(x) | ischar(x)));
@@ -132,7 +132,7 @@ p.addParameter('fitLabel',[],@(x)(isempty(x) | ischar(x)));
 p.parse(perimeterFileName, pupilFileName, varargin{:});
 
 nEllipseParams=5; % 5 params in the transparent ellipse form
-neyePoses=4; % 4 values (azimuth, elevation, torsion, pupil radius) for eyePoses
+nEyePoseParams=4; % 4 values (azimuth, elevation, torsion, pupil radius) for eyePoses
 
 
 %% Load data
@@ -237,8 +237,8 @@ clear perimeter
 verbosity = p.Results.verbosity;
 ellipseTransparentLB = p.Results.ellipseTransparentLB;
 ellipseTransparentUB = p.Results.ellipseTransparentUB;
-eyePosesLB = p.Results.eyePosesLB;
-eyePosesUB = p.Results.eyePosesUB;
+eyePoseLB = p.Results.eyePoseLB;
+eyePoseUB = p.Results.eyePoseUB;
 nSplits = p.Results.nSplits;
 
 % Alert the user
@@ -263,11 +263,11 @@ parfor (ii = 1:nFrames, nWorkers)
     ellipseParamsTransparent=NaN(1,nEllipseParams);
     ellipseParamsSplitsSD=NaN(1,nEllipseParams);
     ellipseParamsObjectiveError=NaN(1);
-    eyePoses=NaN(1,neyePoses);
-    eyePosesSplitsSD=NaN(1,neyePoses);
-    eyePosesObjectiveError=NaN(1);
+    eyePose=NaN(1,nEyePoseParams);
+    eyePoseSplitsSD=NaN(1,nEyePoseParams);
+    eyePoseObjectiveError=NaN(1);
     pFitTransparentSplit=NaN(1,nSplits,nEllipseParams);
-    pFiteyePosesplit=NaN(1,nSplits,neyePoses);
+    pFitEyePoseSplit=NaN(1,nSplits,nEyePoseParams);
     
     % get the boundary points
     Xp = frameCellArray{ii}.Xp;
@@ -287,12 +287,12 @@ parfor (ii = 1:nFrames, nWorkers)
             else
                 % Identify the best fitting eye parameters for the  the
                 % pupil perimeter
-                eyePoses_x0 = [0 0 0 2];
-                [eyePoses, eyePosesObjectiveError] = ...
-                    eyePoseEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs, 'x0', eyePoses_x0, 'eyePosesLB', eyePosesLB, 'eyePosesUB', eyePosesUB);
+                eyePose_x0 = [0 0 0 2];
+                [eyePose, eyePoseObjectiveError] = ...
+                    eyePoseEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs, 'x0', eyePose_x0, 'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB);
                 % Obtain the parameters of the ellipse
                 ellipseParamsTransparent = ...
-                    pupilProjection_fwd(eyePoses, sceneGeometry, rayTraceFuncs);
+                    pupilProjection_fwd(eyePose, sceneGeometry, rayTraceFuncs);
             end
             
             % Re-calculate fit for splits of data points, if requested
@@ -300,7 +300,7 @@ parfor (ii = 1:nFrames, nWorkers)
                 if isempty(sceneGeometry)
                     ellipseParamsSplitsSD=NaN(1,nEllipseParams);
                 else
-                    eyePosesSplitsSD=NaN(1,neyePoses);
+                    eyePoseSplitsSD=NaN(1,nEyePoseParams);
                 end
             else
                 % Find the center of the pupil boundary points, place the boundary
@@ -313,7 +313,7 @@ parfor (ii = 1:nFrames, nWorkers)
                 if isempty(sceneGeometry)
                     pFitTransparentSplit=NaN(2,nSplits,nEllipseParams);
                 else
-                    pFiteyePosesplit=NaN(2,nSplits,neyePoses);
+                    pFitEyePoseSplit=NaN(2,nSplits,nEyePoseParams);
                 end
                 % Loop across the number of requested splits
                 for ss=1:nSplits
@@ -337,29 +337,29 @@ parfor (ii = 1:nFrames, nWorkers)
                             ellipseTransparentUB, ...
                             []);
                     else
-                        % We do have sceneGeometry, so search for eyePoses
+                        % We do have sceneGeometry, so search for eyePose
                         % that best fit the splits of the pupil perimeter.
                         % To speed up the search, we do not use ray tracing
                         % here, as we are not interested in the absolute
                         % values of the fits, but instead just their
                         % variation.
-                        pFiteyePosesplit(1,ss,:) = ...
-                            eyePoseEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry, [], 'x0', eyePoses, 'eyePosesLB', eyePosesLB, 'eyePosesUB', eyePosesUB);
-                        pFiteyePosesplit(2,ss,:) = ...
-                            eyePoseEllipseFit(Xp(splitIdx2), Yp(splitIdx2), sceneGeometry, [], 'x0', eyePoses, 'eyePosesLB', eyePosesLB, 'eyePosesUB', eyePosesUB);
+                        pFitEyePoseSplit(1,ss,:) = ...
+                            eyePoseEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry, [], 'x0', eyePose, 'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB);
+                        pFitEyePoseSplit(2,ss,:) = ...
+                            eyePoseEllipseFit(Xp(splitIdx2), Yp(splitIdx2), sceneGeometry, [], 'x0', eyePose, 'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB);
                         % Obtain the ellipse parameeters that correspond
-                        % the eyePoses
+                        % the eyePose
                         pFitTransparentSplit(1,ss,:) = ...
-                            pupilProjection_fwd(pFiteyePosesplit(1,ss,:), sceneGeometry, []);
+                            pupilProjection_fwd(pFitEyePoseSplit(1,ss,:), sceneGeometry, []);
                         pFitTransparentSplit(2,ss,:) = ...
-                            pupilProjection_fwd(pFiteyePosesplit(2,ss,:), sceneGeometry, []);
+                            pupilProjection_fwd(pFitEyePoseSplit(2,ss,:), sceneGeometry, []);
                     end
                 end % loop through splits
                 
                 % Calculate the SD of the parameters across splits
                 ellipseParamsSplitsSD=nanstd(reshape(pFitTransparentSplit,ss*2,nEllipseParams));
                 if ~isempty(sceneGeometry)
-                    eyePosesSplitsSD=nanstd(reshape(pFiteyePosesplit,ss*2,neyePoses));
+                    eyePoseSplitsSD=nanstd(reshape(pFitEyePoseSplit,ss*2,nEyePoseParams));
                 end
             end % check if we want to do splits
             
@@ -373,9 +373,9 @@ parfor (ii = 1:nFrames, nWorkers)
     loopVar_ellipseParamsSplitsSD(ii,:) = ellipseParamsSplitsSD';
     loopVar_ellipseParamsObjectiveError(ii) = ellipseParamsObjectiveError;
     if ~isempty(sceneGeometry)
-        loopVar_eyePoses(ii,:) = eyePoses';
-        loopVar_eyePosesSplitsSD(ii,:) = eyePosesSplitsSD';
-        loopVar_eyePosesObjectiveError(ii) = eyePosesObjectiveError;
+        loopVar_eyePoses(ii,:) = eyePose';
+        loopVar_eyePosesSplitsSD(ii,:) = eyePoseSplitsSD';
+        loopVar_eyePosesObjectiveError(ii) = eyePoseObjectiveError;
     end
     
 end % loop over frames

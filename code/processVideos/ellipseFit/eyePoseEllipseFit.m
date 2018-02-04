@@ -1,8 +1,8 @@
-function [eyeParams, RMSE] = eyeParamEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs, varargin)
+function [eyePose, RMSE] = eyePoseEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs, varargin)
 % Fit an image plane ellipse by perspective projection of a pupil circle
 %
 % Syntax:
-%  [eyeParams, RMSE] = eyeParamEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs)
+%  [eyePose, RMSE] = eyePoseEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs)
 %
 % Description:
 %   The routine fits points on the image plane based upon the eye
@@ -10,7 +10,7 @@ function [eyeParams, RMSE] = eyeParamEllipseFit(Xp, Yp, sceneGeometry, rayTraceF
 %   best fitting ellipse projected according to sceneGeometry.
 %
 %   The search is constrained by the upper and lower bounds of the
-%   eyeParams. The default values specified here represent the physical
+%   eyePose. The default values specified here represent the physical
 %   boundaries of the rotation model. Tighter, biologically informed 
 %   constraints may be passed by the calling function.
 %
@@ -18,12 +18,12 @@ function [eyeParams, RMSE] = eyeParamEllipseFit(Xp, Yp, sceneGeometry, rayTraceF
 %   Xp, Yp                - Vector of points to be fit
 %
 % Optional key/value pairs:
-%  'x0'                   - Initial guess for the eyeParams
-%  'eyeParamsLB'          - Lower bound on the eyeParams
-%  'eyeParamsUB'          - Upper bound on the eyeParams
+%  'x0'                   - Initial guess for the eyePose
+%  'eyePoseLB'            - Lower bound on the eyePose
+%  'eyePoseUB'            - Upper bound on the eyePose
 %
 % Outputs:
-%   eyeParams             - A 1x4 matrix containing the best fitting eye
+%   eyePose             - A 1x4 matrix containing the best fitting eye
 %                           parameters (azimuth, elevation, torsion, pupil radius)
 %   RMSE                  - Root mean squared error of the distance of
 %                           boundary point in the image to the fitted
@@ -41,8 +41,8 @@ p.addRequired('sceneGeometry',@isstruct);
 p.addRequired('rayTraceFuncs',@(x)(isempty(x) | isstruct(x)));
 
 p.addParameter('x0',[0 0 0 2],@isnumeric);
-p.addParameter('eyeParamsLB',[-89,-89,0,0.1],@isnumeric);
-p.addParameter('eyeParamsUB',[89,89,0,4],@isnumeric);
+p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
+p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 
 % Parse and check the parameters
 p.parse(Xp, Yp, sceneGeometry, rayTraceFuncs, varargin{:});
@@ -70,8 +70,8 @@ options = optimoptions(@fmincon,...
     'Display','off');
 
 % Perform the non-linear search
-[eyeParams, RMSE] = ...
-    fmincon(myFun, p.Results.x0, [], [], [], [], p.Results.eyeParamsLB, p.Results.eyeParamsUB, [], options);
+[eyePose, RMSE] = ...
+    fmincon(myFun, p.Results.x0, [], [], [], [], p.Results.eyePoseLB, p.Results.eyePoseUB, [], options);
 
 end % eyeParamEllipseFit
 

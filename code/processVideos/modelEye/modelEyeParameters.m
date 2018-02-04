@@ -2,7 +2,7 @@ function eye = modelEyeParameters( varargin )
 % Return the parameters of a model eye
 %
 % Syntax:
-%  eye = modelEyeParameters( spectacleRefractionDiopters, eyeLaterality, species )
+%  eye = modelEyeParameters()
 %
 % Description:
 %   This routine returns the parameters that define the model eye that is
@@ -94,7 +94,7 @@ switch p.Results.species
         % the lens. We have calculated for the optical model of the eye the
         % decentration values that produce an entrance pupil width / height
         % ratio that best matches empirical measurements (see
-        % TEST_EntrancePupilShape). The values from that search are used
+        % TEST_entrancePupilShape). The values from that search are used
         % here for the p2 and p3 position of the center of the pupil. In
         % both eyes, the pupil center is shifted slightly nasally and
         % downward. This is in keeping with empirical observations that:

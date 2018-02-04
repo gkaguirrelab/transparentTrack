@@ -111,8 +111,8 @@ p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@i
 
 % Optional analysis params
 p.addParameter('extrinsicTranslationVector',[0; 0; 120],@isnumeric);
-p.addParameter('extrinsicTranslationVectorLB',[-10; -10; 100],@isnumeric);
-p.addParameter('extrinsicTranslationVectorUB',[10; 10; 180],@isnumeric);
+p.addParameter('extrinsicTranslationVectorLB',[-10; -10; 90],@isnumeric);
+p.addParameter('extrinsicTranslationVectorUB',[10; 10; 150],@isnumeric);
 p.addParameter('eyePoseLB',[-35,-25,0,0.25],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('eyePoseUB',[35,25,0,4],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('fitLabel','initial',@ischar);
