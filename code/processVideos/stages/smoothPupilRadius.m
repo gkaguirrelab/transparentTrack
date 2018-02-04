@@ -50,8 +50,8 @@ function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, scene
 %  'hostname'             - AUTOMATIC; The host
 %
 % Optional key/value pairs (fitting)
-%  'eyePoseLB'          - Lower bound on the eyePose
-%  'eyePoseUB'          - Upper bound on the eyePose
+%  'eyePoseLB'            - Lower bound on the eyePose
+%  'eyePoseUB'            - Upper bound on the eyePose
 %  'exponentialTauParam'  - The time constant (in video frames) of the
 %                           decaying exponential weighting function for
 %                           pupil radius.
@@ -273,8 +273,8 @@ parfor (ii = 1:nFrames, nWorkers)
         % each frame.
         precisionVector = squeeze(pupilData.(fitLabel).eyePoses.splitsSD(:,radiusIdx))';
         precisionVector = precisionVector+realmin;
-        precisionVector=precisionVector.^(-1);
-        precisionVector=precisionVector(rangeLowSignal:rangeHiSignal);
+        precisionVector = precisionVector.^(-1);
+        precisionVector = precisionVector(rangeLowSignal:rangeHiSignal);
         
         % Identify any time points within the window for which the fit RMSE
         % was greater than threshold. We set the precision vector for these
@@ -376,7 +376,7 @@ pupilData.radiusSmoothed.eyePoses.meta.units = {'deg','deg','deg','mm'};
 pupilData.radiusSmoothed.eyePoses.meta.coordinateSystem = 'head fixed (extrinsic)';
 
 % add a meta field with analysis details
-pupilData.radiusSmoothed.meta.smoothPupilArea = p.Results;
+pupilData.radiusSmoothed.meta.smoothPupilRadius = p.Results;
 
 % save the pupilData
 save(p.Results.pupilFileName,'pupilData')

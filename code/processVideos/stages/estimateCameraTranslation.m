@@ -261,8 +261,8 @@ sceneGeometry = ...
     nWorkers);
 
 % add additional search and meta field info to sceneGeometry
-sceneGeometry.meta.estimateGeometry.parameters = p.Results;
-sceneGeometry.meta.estimateGeometry.search.ellipseArrayList = ellipseArrayList';
+sceneGeometry.meta.estimateCameraTranslation.parameters = p.Results;
+sceneGeometry.meta.estimateCameraTranslation.search.ellipseArrayList = ellipseArrayList';
 
 
 %% Save the sceneGeometry file
@@ -397,19 +397,19 @@ sceneGeometry.extrinsicRotationMatrix = initialSceneGeometry.extrinsicRotationMa
 sceneGeometry.primaryPosition = initialSceneGeometry.primaryPosition;
 sceneGeometry.constraintTolerance = initialSceneGeometry.constraintTolerance;
 sceneGeometry.eye = initialSceneGeometry.eye;
-sceneGeometry.meta.estimateGeometry.search.options = options;
-sceneGeometry.meta.estimateGeometry.search.errorForm = errorForm;
-sceneGeometry.meta.estimateGeometry.search.initialSceneGeometry = initialSceneGeometry;
-sceneGeometry.meta.estimateGeometry.search.ellipses = ellipses;
-sceneGeometry.meta.estimateGeometry.search.errorWeights = errorWeights;
-sceneGeometry.meta.estimateGeometry.search.extrinsicTranslationVectorLB = extrinsicTranslationVectorLB;
-sceneGeometry.meta.estimateGeometry.search.extrinsicTranslationVectorUB = extrinsicTranslationVectorUB;
-sceneGeometry.meta.estimateGeometry.search.eyePoseLB = eyePoseLB;
-sceneGeometry.meta.estimateGeometry.search.eyePoseUB = eyePoseUB;
-sceneGeometry.meta.estimateGeometry.search.fVal = fVal;
-sceneGeometry.meta.estimateGeometry.search.centerDistanceErrorByEllipse = centerDistanceErrorByEllipse;
-sceneGeometry.meta.estimateGeometry.search.shapeErrorByEllipse = shapeErrorByEllipse;
-sceneGeometry.meta.estimateGeometry.search.areaErrorByEllipse = areaErrorByEllipse;
+sceneGeometry.meta.estimateCameraTranslation.search.options = options;
+sceneGeometry.meta.estimateCameraTranslation.search.errorForm = errorForm;
+sceneGeometry.meta.estimateCameraTranslation.search.initialSceneGeometry = initialSceneGeometry;
+sceneGeometry.meta.estimateCameraTranslation.search.ellipses = ellipses;
+sceneGeometry.meta.estimateCameraTranslation.search.errorWeights = errorWeights;
+sceneGeometry.meta.estimateCameraTranslation.search.extrinsicTranslationVectorLB = extrinsicTranslationVectorLB;
+sceneGeometry.meta.estimateCameraTranslation.search.extrinsicTranslationVectorUB = extrinsicTranslationVectorUB;
+sceneGeometry.meta.estimateCameraTranslation.search.eyePoseLB = eyePoseLB;
+sceneGeometry.meta.estimateCameraTranslation.search.eyePoseUB = eyePoseUB;
+sceneGeometry.meta.estimateCameraTranslation.search.fVal = fVal;
+sceneGeometry.meta.estimateCameraTranslation.search.centerDistanceErrorByEllipse = centerDistanceErrorByEllipse;
+sceneGeometry.meta.estimateCameraTranslation.search.shapeErrorByEllipse = shapeErrorByEllipse;
+sceneGeometry.meta.estimateCameraTranslation.search.areaErrorByEllipse = areaErrorByEllipse;
 
 end % local search function
 
