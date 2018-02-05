@@ -251,18 +251,40 @@ centroidsInEachFrame = sum(~isnan(centroidsByFrame_X),2);
 % first, save out data for the frames with the expected amount of glints
 framesWithExpectedCentroids = find (centroidsInEachFrame==p.Results.numberOfGlints);
 
-for ii = 1: length(framesWithExpectedCentroids)
-    switch p.Results.numberOfGlints
-        case 1 % this case is simple and does not require clustering of the centroids
+switch p.Results.numberOfGlints
+    case 1 % this case is simple and does not require clustering of the centroids
+            for ii = 1: length(framesWithExpectedCentroids)
             glintData_X(framesWithExpectedCentroids(ii)) = centroidsByFrame_X(framesWithExpectedCentroids(ii),1);
             glintData_Y(framesWithExpectedCentroids(ii)) = centroidsByFrame_Y(framesWithExpectedCentroids(ii),1);
+            end
+            
+    case 2
+            % initialize an array of unsorted glints
+            unsortedGlints = nan(length(framesWithExpectedCentroids)*2,2);
+            cc = 0; %index for unsorted glint
+            % create an array of unsorted glints
+            for ii = 1: length(framesWithExpectedCentroids)
+                cc = cc+1
+                unsortedGlints(cc,1) = centroidsByFrame_X(framesWithExpectedCentroids(ii),1);
+                unsortedGlints(cc,2) = centroidsByFrame_Y(framesWithExpectedCentroids(ii),1);
+                
+                cc = cc+1
+                unsortedGlints(cc,1) = centroidsByFrame_X(framesWithExpectedCentroids(ii),2);
+                unsortedGlints(cc,2) = centroidsByFrame_Y(framesWithExpectedCentroids(ii),2);
+                
+            end
+            % partition the glints in 2 clusters and return the centroid
+            % value for each of the clusters
+            
+            % loop again through the frames and sort the glints according
+            % to their proximity to the centroids
+            
             
         otherwise % MORE GLINTS CASE TO BE DEVELOPED
             % if more than 1 glint is expected, data needs to be
             % clustered so that Glint1, Glint2.. GlintN are correctly
             % identified.
             
-    end
 end
 
 % now, find frames with more centroids than expected
@@ -286,11 +308,35 @@ if ~isempty(framesWithMoreCentroids)
                 glintData_X(framesWithMoreCentroids(ii)) = centroidsByFrame_X(framesWithMoreCentroids(ii),glintIDX);
                 glintData_Y(framesWithMoreCentroids(ii)) = centroidsByFrame_Y(framesWithMoreCentroids(ii),glintIDX);
             end
+            
+        case 2
+            % get median position of the centroids
+            centroidMedian_X = nanmedian(nanmedian(centroidsByFrame_X));
+            centroidMedian_Y = nanmedian(nanmedian(centroidsByFrame_Y));
+            
+            for ii = 1:length(framesWithMoreCentroids)
+                            % make temp array of centroids
+            tmpX = centroidsByFrame_X(framesWithMoreCentroids(ii),:);
+            tmpY = centroidsByFrame_X(framesWithMoreCentroids(ii),:);
+                
+                % find the centroid closest to the median
+                [~,glintIDX] = min(sqrt((centroidsByFrame_X(framesWithMoreCentroids(ii),:) - centroidMedian_X).^2 + (centroidsByFrame_Y(framesWithMoreCentroids(ii),:)- centroidMedian_Y).^2));
+                % store values for that centroid as glint
+                glintData_X(framesWithMoreCentroids(ii)) = centroidsByFrame_X(framesWithMoreCentroids(ii),glintIDX);
+                glintData_Y(framesWithMoreCentroids(ii)) = centroidsByFrame_Y(framesWithMoreCentroids(ii),glintIDX);
+            end
+            
 
         otherwise % MORE GLINTS CASE TO BE DEVELOPED
             
     end
 end
+
+% finally, in the case there are fewer centroids than expected, we assume
+% that the real glints are not visible in the frame (e.g. it is a blink
+% frame) and the centroids are picked up randomly from bright spots on the
+% image. We therefore leave those frames with NaN values for the glint
+% locations.
 
 
 %% save out all data in glintData struct
