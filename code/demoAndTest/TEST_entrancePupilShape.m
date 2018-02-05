@@ -1,4 +1,4 @@
-%% TEST_EntrancePupilShape
+%% TEST_entrancePupilShape
 % Compare our model to results of Fedtke 2010 and Mathur 2013
 %
 % Description:
@@ -39,18 +39,16 @@
 close all
 
 % Obtain the default sceneGeometry with the following modifications:
-% - no lens distortion
 % - camera distance to 100 mm
 % - center of rotation at the corneal apex
 %
 % By having the eye rotate around the corneal apex, we match the conditions
-% of these prior papers in which the camera was maintained at a constant
+% of Mathur et al in which the camera was maintained at a constant
 % distance from the corneal apex.
-sceneGeometry = estimateSceneGeometry([],[], ...
-    'radialDistortionVector', [0 0], ...
+sceneGeometry = createSceneGeometry( ...
     'extrinsicTranslationVector',[0; 0; 100],...
-    'rotationCenterDepth',0, ...
     'eyeLaterality','Right');
+sceneGeometry.eye.rotationCenter(1)= 0;
 
 % Assemble the ray tracing functions
 rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
@@ -113,12 +111,12 @@ function diamRatio = calcPupilDiameterRatio(x,azimuthsDeg,pupilDiam,sceneGeometr
 horizDiam=[];
 vertDiam=[];
 % Update the sceneGeometry with the past center of rotation value
-sceneGeometry.eye.pupilCenter = [-3.7,x(1),x(2)];
+sceneGeometry.eye.pupilCenter(2:3) = x;
 for ii = 1:length(azimuthsDeg)
-    eyeParams=[azimuthsDeg(ii) 0 0 pupilDiam/2];
+    eyePose=[azimuthsDeg(ii) 0 0 pupilDiam/2];
     % First, perform the forward projection to determine where the center
     % of the pupil is located in the sceneWorld coordinates
-    [~, ~, sceneWorldPoints, ~, pointLabels] = pupilProjection_fwd(eyeParams, sceneGeometry, rayTraceFuncs, 'fullEyeModelFlag', true);
+    [~, ~, sceneWorldPoints, ~, pointLabels] = pupilProjection_fwd(eyePose, sceneGeometry, rayTraceFuncs, 'fullEyeModelFlag', true);
     % Adjust the sceneGeometry to translate the camera to be centered on
     % center of the pupil. This is not exactly right, as the center of the
     % pupil in the sceneWorld would not exactly correspond to the center of
@@ -128,7 +126,7 @@ for ii = 1:length(azimuthsDeg)
     sceneGeometry.extrinsicTranslationVector(1) = sceneGeometry.extrinsicTranslationVector(1)+sceneWorldPoints(pupilCenterIdx,1);
     % Now, measure the horizontal and vertical width of the image of the
     % pupil
-    [~, imagePoints] = pupilProjection_fwd(eyeParams, sceneGeometry, rayTraceFuncs, 'nPupilPerimPoints',50);
+    [~, imagePoints] = pupilProjection_fwd(eyePose, sceneGeometry, rayTraceFuncs, 'nPupilPerimPoints',50);
     horizDiam =[horizDiam max(imagePoints(:,1)')-min(imagePoints(:,1)')];
     vertDiam  =[vertDiam max(imagePoints(:,2)')-min(imagePoints(:,2)')];
 end

@@ -18,19 +18,17 @@
 
 
 %% Obtain a sceneGeometry structure
-% If called with empty variables for the pupilData input and sceneGeometry
-% output files, the estimateSceneGeometry routine returns a sceneGeometry
-% file that contains the default parameters.
-sceneGeometry = estimateSceneGeometry([],[]);
+% createSceneGeometry returns a default sceneGeometry structure
+sceneGeometry = createSceneGeometry();
 
 %% Obtain the ray tracing functions
 rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
 
 %% Define some variables
 pupilRadiusMM = 2;
-eyeParams = [];
-reconstructedEyeParams = [];
-eyeParamErrors = [];
+eyePoses = [];
+reconstructedEyePoses = [];
+eyePoseErrors = [];
 
 %% Loop over aimuths and elevations
 % The range of values used here corresponds to the biological limits of the
@@ -39,26 +37,29 @@ thisTorsion = 0;
 for thisAzimuth = -35:5:35
     for thisElevation = -25:5:25
         
-        % Assemble the eyeParams variable
-        eyeParams=[eyeParams; thisAzimuth,thisElevation,thisTorsion,pupilRadiusMM];
+        % Assemble the eyePoses variable
+        eyePoses=[eyePoses; thisAzimuth,thisElevation,thisTorsion,pupilRadiusMM];
         
-        % Forward projection from eyeParams to image ellipse
+        % Forward projection from eyePoses to image ellipse
         tic
-        pupilEllipseOnImagePlane = pupilProjection_fwd(eyeParams(end,:), sceneGeometry, rayTraceFuncs);
+        pupilEllipseOnImagePlane = pupilProjection_fwd(eyePoses(end,:), sceneGeometry, rayTraceFuncs);
         toc
         
-        % Inverse projection from image ellipse to eyeParams
+        % Inverse projection from image ellipse to eyePoses. Note that we
+        % must constrain at least one of the eye rotations, as the search
+        % is otherwise unconstrained. We constrain torsion to be zero,
+        % following Listing's Law.
         tic
-        tmp = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyeParamsLB',[-40,-35,0,0.5],'eyeParamsUB',[40,35,0,4]);
-        reconstructedEyeParams = [reconstructedEyeParams; tmp];
+        tmp = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4]);
+        reconstructedEyePoses = [reconstructedEyePoses; tmp];
         toc
         
         % Calculate and save the error
-        eyeParamErrors = [eyeParamErrors; eyeParams(end,:)-reconstructedEyeParams(end,:)];
+        eyePoseErrors = [eyePoseErrors; eyePoses(end,:)-reconstructedEyePoses(end,:)];
     end
 end
 
 %% Report the errors
-fprintf('The largest azimuth error is %f degrees.\n',max(eyeParamErrors(:,1)));
-fprintf('The largest elevation error is %f degrees.\n',max(eyeParamErrors(:,2)));
-fprintf('The largest radius error is %f millimeters.\n',max(eyeParamErrors(:,4)));
+fprintf('The largest azimuth error is %f degrees.\n',max(eyePoseErrors(:,1)));
+fprintf('The largest elevation error is %f degrees.\n',max(eyePoseErrors(:,2)));
+fprintf('The largest radius error is %f millimeters.\n',max(eyePoseErrors(:,4)));

@@ -63,9 +63,9 @@ switch instructionLine.type
         else
             varargout{1} = params(1); %Xc
             varargout{2} = params(2); %Yc
-            varargout{3} = params(3); %A
-            varargout{4} = params(4); %B
-            varargout{5} = params(5); %phi
+            varargout{3} = params(3); %area
+            varargout{4} = params(4); %eccentricity
+            varargout{5} = params(5); %theta
             clear params
         end
     case 'glintPatch'

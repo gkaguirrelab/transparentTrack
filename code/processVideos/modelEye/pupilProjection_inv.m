@@ -1,8 +1,8 @@
-function [eyeParams, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs, varargin)
+function [eyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs, varargin)
 % Project an ellipse on the image plane to a pupil circle in the scene
 %
 % Syntax:
-%  [eyeParams, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs)
+%  [eyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs)
 %
 % Description:
 %	Given the sceneGeometry and an ellipse on the image plane, this routine
@@ -45,11 +45,11 @@ function [eyeParams, bestMatchEllipseOnImagePlane, centerError, shapeError, area
 %                           assembleRayTraceFuncs().
 %
 % Optional key/value pairs:
-%  'x0'                   - Starting point of the search for the eyeParams.
+%  'x0'                   - Starting point of the search for the eyePose.
 %                           If not defined, the starting point will be
 %                           estimated from the coordinates of the ellipse
 %                           center.
-%  'eyeParamsLB/UB'       - Upper and lower bounds on the eyeParams
+%  'eyePoseLB/UB'         - Upper and lower bounds on the eyePose
 %                           [azimuth, elevation, torsion, pupil radius].
 %                           The default values here represent the physical
 %                           limits of the projection model.
@@ -61,7 +61,7 @@ function [eyeParams, bestMatchEllipseOnImagePlane, centerError, shapeError, area
 %                           structure.
 %
 % Outputs:
-%   eyeParams             - A 1x4 vector provides values for [eyeAzimuth,
+%   eyePose               - A 1x4 vector provides values for [eyeAzimuth,
 %                           eyeElevation, eyeTorsion, pupilRadius].
 %                           Azimuth, elevation, and torsion are in units of
 %                           head-centered (extrinsic) degrees, and pupil
@@ -70,7 +70,7 @@ function [eyeParams, bestMatchEllipseOnImagePlane, centerError, shapeError, area
 %                           parameters of pupil ellipse on the image plane
 %                           cast in transparent form. This is the output of
 %                           the pupilProjection_fwd model for the
-%                           sceneGeometry and the eyeParams
+%                           sceneGeometry and the eyePose
 %   centerError           - Scalar. The Euclidean distance (in pixels)
 %                           between the [x, y] center of the
 %                           pupilEllipseOnImagePlane and the center of the
@@ -91,8 +91,8 @@ p.addRequired('rayTraceFuncs',@(x)(isempty(x) | isstruct(x)));
 
 % Optional params
 p.addParameter('x0',[],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('eyeParamsLB',[-89,-89,-179,0.5],@isnumeric);
-p.addParameter('eyeParamsUB',[89,89,179,4],@isnumeric);
+p.addParameter('eyePoseLB',[-89,-89,-179,0.5],@isnumeric);
+p.addParameter('eyePoseUB',[89,89,179,4],@isnumeric);
 p.addParameter('centerErrorThreshold',1e-4,@isnumeric);
 p.addParameter('constraintTolerance',[],@(x)(isempty(x) | isnumeric(x)));
 
@@ -112,7 +112,7 @@ end
 % the three axis rotations that can bring an eye to a destination.
 % Typically, the torsion will be constrained with upper and lower bounds of
 % zero, reflecting Listing's Law.
-if sum((p.Results.eyeParamsUB(1:3) - p.Results.eyeParamsLB(1:3))==0) < 1
+if sum((p.Results.eyePoseUB(1:3) - p.Results.eyePoseLB(1:3))==0) < 1
     warning('The inverse search across possible eye rotations is underconstrained');
 end
 
@@ -123,8 +123,8 @@ end
 % elevation solutions depending upon the quadrant in which the center of
 % the ellipse falls, relative to the center of projection derived from the
 % scene geometry.
-eyeParamsLB = p.Results.eyeParamsLB;
-eyeParamsUB = p.Results.eyeParamsUB;
+eyePoseLB = p.Results.eyePoseLB;
+eyePoseUB = p.Results.eyePoseUB;
 
 % Identify the center of projection.
 projectionMatrix = ...
@@ -136,17 +136,17 @@ CoP = projectionMatrix*[0 0 0 1]';
 CoP(1:2)=CoP(1:2)./CoP(3);
 CoP=CoP(1:2);
 
-% Set the bounds on the eyeParams based upon the quadrant of the ellipse
+% Set the bounds on the eyePose based upon the quadrant of the ellipse
 % center. We provide half a degree of wiggle in the fit around zero.
 if pupilEllipseOnImagePlane(1) < CoP(1)
-    eyeParamsUB(1) = .5;
+    eyePoseUB(1) = .5;
 else
-    eyeParamsLB(1) = -.5;
+    eyePoseLB(1) = -.5;
 end
 if pupilEllipseOnImagePlane(2) > CoP(2)
-    eyeParamsUB(2) = .5;
+    eyePoseUB(2) = .5;
 else
-    eyeParamsLB(2) = -.5;
+    eyePoseLB(2) = -.5;
 end
 
 % If x0 is undefined, we make a guess based upon the location and size of
@@ -180,9 +180,9 @@ if isempty(p.Results.x0)
     
     % Ensure that x0 lies within the bounds with a bit of headroom so that
     % the solver does not get stuck up against a bound.
-    boundHeadroom = (eyeParamsUB - eyeParamsLB)*0.05;
-    x0=min([eyeParamsUB-boundHeadroom; x0]);
-    x0=max([eyeParamsLB+boundHeadroom; x0]);
+    boundHeadroom = (eyePoseUB - eyePoseLB)*0.05;
+    x0=min([eyePoseUB-boundHeadroom; x0]);
+    x0=max([eyePoseLB+boundHeadroom; x0]);
 else
     x0 = p.Results.x0;
 end
@@ -222,8 +222,8 @@ objectiveFun = @objfun; % the objective function, nested below
 constraintFun = @constr; % the constraint function, nested below
 
 % Call fmincon
-[eyeParams, centerError] = ...
-    fmincon(objectiveFun, x0, [], [], [], [], eyeParamsLB, eyeParamsUB, constraintFun, options);
+[eyePose, centerError] = ...
+    fmincon(objectiveFun, x0, [], [], [], [], eyePoseLB, eyePoseUB, constraintFun, options);
 
     function fval = objfun(x)
         if ~isequal(x,xLast) % Check if computation is necessary

@@ -222,35 +222,42 @@ if exist(controlFileName, 'file') == 2 && (p.Results.overwriteControlFile)
     delete (controlFileName)
 end
 
+
 %% Set up the parallel pool
 if p.Results.useParallel
-    if strcmp(p.Results.verbosity,'full')
-        tic
-        fprintf(['Opening parallel pool. Started ' char(datetime('now')) '\n']);
-    end
-    if isempty(p.Results.nWorkers)
-        parpool;
-    else
-        parpool(p.Results.nWorkers);
-    end
-    poolObj = gcp;
+    % If a parallel pool does not exist, attempt to create one
+    poolObj = gcp('nocreate');
     if isempty(poolObj)
-        nWorkers=0;
-    else
-        nWorkers = poolObj.NumWorkers;
-        % Use TbTb to configure the workers.
-        if ~isempty(p.Results.tbtbRepoName)
-            spmd
-                tbUse(p.Results.tbtbRepoName,'reset','full','verbose',false,'online',false);
-            end
-            if strcmp(p.Results.verbosity,'full')
-                fprintf('CAUTION: Any TbTb messages from the workers will not be shown.\n');
+        if strcmp(p.Results.verbosity,'full')
+            tic
+            fprintf(['Opening parallel pool. Started ' char(datetime('now')) '\n']);
+        end
+        if isempty(p.Results.nWorkers)
+            parpool;
+        else
+            parpool(p.Results.nWorkers);
+        end
+        poolObj = gcp;
+        if isempty(poolObj)
+            nWorkers=0;
+        else
+            nWorkers = poolObj.NumWorkers;
+            % Use TbTb to configure the workers.
+            if ~isempty(p.Results.tbtbRepoName)
+                spmd
+                    tbUse(p.Results.tbtbRepoName,'reset','full','verbose',false,'online',false);
+                end
+                if strcmp(p.Results.verbosity,'full')
+                    fprintf('CAUTION: Any TbTb messages from the workers will not be shown.\n');
+                end
             end
         end
-    end
-    if strcmp(p.Results.verbosity,'full')
-        toc
-        fprintf('\n');
+        if strcmp(p.Results.verbosity,'full')
+            toc
+            fprintf('\n');
+        end
+    else
+        nWorkers = poolObj.NumWorkers;
     end
 else
     nWorkers=0;
@@ -592,23 +599,6 @@ clear instruction
 instruction = ['%' ',' '%' ',' 'end of automatic instructions'];
 fprintf(fid,'%s\n',instruction);
 fclose(fid);
-
-
-%% Delete the parallel pool
-if p.Results.useParallel
-    if strcmp(p.Results.verbosity,'full')
-        tic
-        fprintf(['Closing parallel pool. Started ' char(datetime('now')) '\n']);
-    end
-    poolObj = gcp;
-    if ~isempty(poolObj)
-        delete(poolObj);
-    end
-    if strcmp(p.Results.verbosity,'full')
-        toc
-        fprintf('\n');
-    end
-end
 
 end % function
 

@@ -1,4 +1,4 @@
-% DEMO_transparentEllipse
+%% DEMO_transparentEllipseParams
 % Demonstrate the parameters of a transparent ellipse
 %
 % Description:
