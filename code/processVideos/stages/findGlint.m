@@ -13,27 +13,43 @@ function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 %   function "regionprops". The centroid location is weighted with the
 %   actual brightness value of each pixel in the gray gamma-corrected
 %   image.
-%
+% 
 %   After all centroid locations are extracted, data is refined according
 %   to the expected number of glints and average centroid location
-%   throughout the video. Firstly, we calculate the median location of the
-%   glints from those frames that return as many centroids as the desired
-%   glints. For those frames in which more than the expected number of
-%   glints is found, we use the median value of the "good centroids"
-%   location to assess which of the regions identified are indeed the
-%   desired glints. In frames where less than the desired number of glints
-%   is located, the missing centroids locations will be set as NaNs.
+%   throughout the video. At the moment, the routine is able to process
+%   videos in which either 1 or 2 glints need to be tracked. 
+% 
+%   In the single glint case, we calculate the median location of the glint
+%   from those frames that return as just a single centroid. For the
+%   frames in which more than the expected number of glints is found, we
+%   use the median value of the "good centroids" location to assess which
+%   of the bright regions identified is indeed the desired glint.
+% 
+%   In the double glint case, we assume that the couple of glints has a
+%   "main direction" that the user needs to declare. That is: if the 2
+%   light sources that produce the glint are vertically spaced in the real
+%   world, the main direction will be 'y' on the video. Conversely, if they
+%   are horizontally spaced, the main direction will be 'x'. As in the
+%   single glint case, we start by locating the frames that present the
+%   desired number of bright spot (2).Assuming that in most of those frames
+%   we are tracking the correct glints, we compute a positive "glint
+%   vector" using the tracked centroids coordinate. That is to derive both
+%   an orientation (that is used to sort the glint couples consistently
+%   from one frame to the other) and a median glint vector length. In the
+%   subsequent step, the median glint vector lenght is used to narrow down
+%   the most likely candidates glint in frames where more than the desired
+%   number of centroids was tracked. 
+%   
+%   Both for the single and double glint case, in frames where less than
+%   the desired number of glints is located, we assume that no reliable
+%   glint information was available (e.g. subject was blinking) and the
+%   corresponding glint information will be set as NaNs.
 %
 % Notes:
 %   Coordinate system - the function "regionprops" will save the centroids
 %   in world coordinates (origin top left corner of the frame, xlim = [0
 %   horizontalRes], ylim = [0 verticalRes], therefore, the glint data will
 %   also be expressed in world coordinates.
-% 
-%   Development placeholder - if the expected nuber of glints is greater
-%   than 1, the centroids will be sorted in the N more likely glints
-%   subgroups, where N = number of expected glints. This has not yet been
-%   implemented.
 %
 % Inputs:
 %	grayVideoName         - Full path to the video in which to track the
@@ -60,6 +76,9 @@ function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 %
 % Optional key/value pairs (analysis)
 %  'numberOfGlints'       - Desired number of glints to find
+%  'glintsMainDirection'  - In the two glints case, this is the main
+%                           direction in which the two glints are
+%                           consistently spaced.
 %  'glintGammaCorrection' - Gamma correction to be applied in current
 %                           frame. An extremely high value will make almost
 %                           all the frame black and only big bright spots
@@ -312,7 +331,7 @@ switch p.Results.numberOfGlints
         end
                    
     otherwise 
-        error('Sorry, unable to track this many glints at this moment.')   
+        error('Sorry, unable to track this many glints at the moment.')   
 end
 
 % now, find frames with more centroids than expected
@@ -352,7 +371,7 @@ if ~isempty(framesWithMoreCentroids)
                         theseCentroids = (centroidsByFrame_X(framesWithMoreCentroids(ii),:));
                         
                     otherwise
-                        error ('Main direction must be ''X'' or ''y'' for 2 glints case')
+                        error ('Main direction must be ''x'' or ''y'' for 2 glints case')
                 end
                 % compute all possible main lengths
                 mainLengths = pdist(theseCentroids',@(x,y) x-y);
@@ -391,7 +410,7 @@ if ~isempty(framesWithMoreCentroids)
                        glintsTemp = glintsTemp_X;
                         
                     otherwise
-                        error ('Main direction must be ''X'' or ''y'' for 2 glints case')
+                        error ('Main direction must be ''x'' or ''y'' for 2 glints case')
                 end
                 
                 if diff(glintsTemp) >0
@@ -412,7 +431,7 @@ if ~isempty(framesWithMoreCentroids)
             end
             
         otherwise
-            error('Sorry, unable to track this many glints at this moment.')
+            error('Sorry, unable to track this many glints at the moment.')
     end %switch number of glints
 end
 
