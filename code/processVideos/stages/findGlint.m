@@ -303,7 +303,7 @@ switch p.Results.numberOfGlints
                          
                     else
                         glintData_X(framesWithExpectedCentroids(ii),1) = centroidsByFrame_X(framesWithExpectedCentroids(ii),2);
-                         glintData_X(framesWithExpectedCentroids(ii),2) = centroidsByFrame_X(framesWithExpectedCentroids(ii),1);
+                        glintData_X(framesWithExpectedCentroids(ii),2) = centroidsByFrame_X(framesWithExpectedCentroids(ii),1);
                          
                          glintData_Y(framesWithExpectedCentroids(ii),1) = centroidsByFrame_Y(framesWithExpectedCentroids(ii),2);
                          glintData_Y(framesWithExpectedCentroids(ii),2) = centroidsByFrame_Y(framesWithExpectedCentroids(ii),1);
@@ -338,25 +338,82 @@ if ~isempty(framesWithMoreCentroids)
             end
             
         case 2
-            % get median position of the centroids
-            centroidMedian_X = nanmedian(nanmedian(centroidsByFrame_X));
-            centroidMedian_Y = nanmedian(nanmedian(centroidsByFrame_Y));
-            
+            % loop through frames
             for ii = 1:length(framesWithMoreCentroids)
-                            % make temp array of centroids
-            tmpX = centroidsByFrame_X(framesWithMoreCentroids(ii),:);
-            tmpY = centroidsByFrame_X(framesWithMoreCentroids(ii),:);
                 
-                % find the centroid closest to the median
-                [~,glintIDX] = min(sqrt((centroidsByFrame_X(framesWithMoreCentroids(ii),:) - centroidMedian_X).^2 + (centroidsByFrame_Y(framesWithMoreCentroids(ii),:)- centroidMedian_Y).^2));
-                % store values for that centroid as glint
-                glintData_X(framesWithMoreCentroids(ii)) = centroidsByFrame_X(framesWithMoreCentroids(ii),glintIDX);
-                glintData_Y(framesWithMoreCentroids(ii)) = centroidsByFrame_Y(framesWithMoreCentroids(ii),glintIDX);
+                % get all possible combinations of glint vector main lenght,
+                % and select the couple of glints that generate a vector main
+                % lenght closest to the average.
+                switch p.Results.glintsMainDirection
+                    case 'y'
+                        theseCentroids = (centroidsByFrame_Y(framesWithMoreCentroids(ii),:));
+                        
+                    case 'x'
+                        theseCentroids = (centroidsByFrame_X(framesWithMoreCentroids(ii),:));
+                        
+                    otherwise
+                        error ('Main direction must be ''X'' or ''y'' for 2 glints case')
+                end
+                % compute all possible main lengths
+                mainLengths = pdist(theseCentroids',@(x,y) x-y);
+                
+                % find main length closest to the average
+                candidateGlintVectorIdx = find(min(abs(abs(mainLengths) - medianGlintVector(2))));
+                
+                % get the indexes of the appropriate centroids
+                if candidateGlintVectorIdx < length(theseCentroids)
+                    glintsTemp_Y = [(centroidsByFrame_Y(framesWithMoreCentroids(ii),1)) (centroidsByFrame_Y(framesWithMoreCentroids(ii),(candidateGlintVectorIdx+1)))];
+                    glintsTemp_X = [(centroidsByFrame_X(framesWithMoreCentroids(ii),1)) (centroidsByFrame_X(framesWithMoreCentroids(ii),(candidateGlintVectorIdx+1)))];
+                    
+                elseif p.Results.centroidsAllocation == 5 && (ismember(candidateGlintVectorIdx,[5 6 7]))
+                    glintsTemp_Y = [(centroidsByFrame_Y(framesWithMoreCentroids(ii),2)) (centroidsByFrame_Y(framesWithMoreCentroids(ii),(candidateGlintVectorIdx -2)))];
+                    glintsTemp_X = [(centroidsByFrame_X(framesWithMoreCentroids(ii),2)) (centroidsByFrame_X(framesWithMoreCentroids(ii),(candidateGlintVectorIdx -2)))];
+                    
+                elseif p.Results.centroidsAllocation == 5 && (ismember(candidateGlintVectorIdx,[8 9]))
+                    glintsTemp_Y = [(centroidsByFrame_Y(framesWithMoreCentroids(ii),3)) (centroidsByFrame_Y(framesWithMoreCentroids(ii),(candidateGlintVectorIdx -4)))];
+                    glintsTemp_X = [(centroidsByFrame_X(framesWithMoreCentroids(ii),3)) (centroidsByFrame_X(framesWithMoreCentroids(ii),(candidateGlintVectorIdx -4)))];
+                    
+                elseif p.Results.centroidsAllocation == 5 && candidateGlintVectorIdx == 10
+                    glintsTemp_Y = [(centroidsByFrame_Y(framesWithMoreCentroids(ii),4)) (centroidsByFrame_Y(framesWithMoreCentroids(ii),5))];
+                    glintsTemp_X = [(centroidsByFrame_X(framesWithMoreCentroids(ii),4)) (centroidsByFrame_X(framesWithMoreCentroids(ii),5))];
+                    
+                else
+                    error ('Option currently unavailable, please set centroidsAllocation = 5 and run again')
+                end
+                
+                % sort the glints
+                
+                switch p.Results.glintsMainDirection
+                    case 'y'
+                        glintsTemp = glintsTemp_Y;
+                        
+                    case 'x'
+                       glintsTemp = glintsTemp_X;
+                        
+                    otherwise
+                        error ('Main direction must be ''X'' or ''y'' for 2 glints case')
+                end
+                
+                if diff(glintsTemp) >0
+                    glintData_X(framesWithMoreCentroids(ii),1) = glintsTemp_X(2);
+                    glintData_X(framesWithMoreCentroids(ii),2) = glintsTemp_X(1);
+                    
+                    glintData_Y(framesWithMoreCentroids(ii),1) = glintsTemp_Y(2);
+                    glintData_Y(framesWithMoreCentroids(ii),2) = glintsTemp_Y(1);
+                else
+                    glintData_X(framesWithMoreCentroids(ii),2) = glintsTemp_X(2);
+                    glintData_X(framesWithMoreCentroids(ii),1) = glintsTemp_X(1);
+                    
+                    glintData_Y(framesWithMoreCentroids(ii),2) = glintsTemp_Y(2);
+                    glintData_Y(framesWithMoreCentroids(ii),1) = glintsTemp_Y(1);
+                end
+                
+                clear glintsTemp glintsTemp_Y glintsTemp_X theseCentroids
             end
             
-        otherwise 
+        otherwise
             error('Sorry, unable to track this many glints at this moment.')
-    end
+    end %switch number of glints
 end
 
 % finally, in the case there are fewer centroids than expected, we assume
