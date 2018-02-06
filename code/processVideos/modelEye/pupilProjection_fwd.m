@@ -444,10 +444,6 @@ headWorldPoints = (eyeRotation*(eyeWorldPoints-sceneGeometry.eye.rotationCenter)
 % world coordinate frame
 sceneWorldPoints = headWorldPoints(:,[2 3 1]);
 
-% We reverse the direction of the Y axis so that positive elevation of the
-% eye corresponds to a movement of the pupil upward in the image
-sceneWorldPoints(:,2) = sceneWorldPoints(:,2)*(-1);
-
 
 %% Project the sceneWorld points to the image plane
 % This coordinate frame is in units of pixels, and has the dimensions
