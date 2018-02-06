@@ -298,25 +298,41 @@ end
 %% Perform blink detection
 dataLoad = load(glintFileName);
 glintData = dataLoad.glintData;
+if size (glintData.X,2) == 2
+    glintsMainDirection = dataLoad.glintData.meta.glintsMainDirection;
+end
 clear dataLoad
 
 % locate all nans
-blinkFrames = find(isnan(glintData.X));
+blinkFrames = find(isnan(glintData.X(:,1)));
 
-% locate candidate glints outside the user defined glint zone
-% define center of glint zone
-if isempty(p.Results.glintZoneCenter)
-    glintZoneCenter = [nanmedian(glintData.X) nanmedian(glintData.Y)];
-else
-    glintZoneCenter = p.Results.glintZoneCenter;
+switch size (glintData.X,2)
+    case 1
+        % locate candidate glints outside the user defined glint zone
+        % define center of glint zone
+        if isempty(p.Results.glintZoneCenter)
+            glintZoneCenter = [nanmedian(glintData.X) nanmedian(glintData.Y)];
+        else
+            glintZoneCenter = p.Results.glintZoneCenter;
+        end
+        
+        % get distance of each glint from the glintZone center
+        glintDistance = sqrt((glintData.X - glintZoneCenter(1)).^2 +(glintData.Y - glintZoneCenter(2)).^2);
+        
+        tooFarGlints = find(glintDistance>p.Results.glintZoneRadius);
+        
+        blinkFrames = sort([blinkFrames; tooFarGlints]);
+    case 2
+        % find outliers
+        switch glintsMainDirection
+            case 'y'
+                notGlintsIDX = find(isoutlier(diff(glintData.Y,1,2)));
+            case 'x'
+                notGlintsIDX = find(isoutlier(diff(glintData.X,1,2)));
+        end
+        blinkFrames = sort([blinkFrames; notGlintsIDX]);
 end
-
-% get distance of each glint from the glintZone center
-glintDistance = sqrt((glintData.X - glintZoneCenter(1)).^2 +(glintData.Y - glintZoneCenter(2)).^2);
-
-tooFarGlints = find(glintDistance>p.Results.glintZoneRadius);
-
-blinkFrames = sort([blinkFrames; tooFarGlints]);
+     
 
 % extend the frames identified as blinks to before and after blocks of
 % blink frames
