@@ -12,13 +12,12 @@ clear all
 close all
 clc
 
-fprintf('The pose of the eye is described by the parameters:\n\n')
-fprintf('\t[azimuth, elevation, torsion, pupilRadius]\n\n');
-fprintf('The three rotation variables are in units of degrees, and are in the\n');
-fprintf('head-fixed, extrinsic coordinate space. This means that the parameters\n');
-fprintf('are unlike "Fick" coordinates, which are with reference to an intrinsic\n');
-fprintf('(i.e., rotating) coordinate frame.\n');
-fprintf('\n');
+fprintf(['The pose of the eye is described by the parameters:\n\n' ...
+    '\t[azimuth, elevation, torsion, pupilRadius]\n\n' ...
+    'The three rotation variables are in units of degrees, and are in the\n' ...
+    'head-fixed, extrinsic coordinate space. This means that the parameters\n' ...
+    'are unlike "Fick" coordinates, which are with reference to an intrinsic\n' ...
+    '(i.e., rotating) coordinate frame.\n\n']);
 
 % Obtain the sceneGeometry and ray tracing functions
 sceneGeometry = createSceneGeometry('eyeLaterality','Right');
@@ -52,11 +51,10 @@ for pose = 1:size(eyePoses,1)
     title(num2str(eyePoses(pose,:)));
 end
 drawnow
-fprintf('Figure 1 shows the pose of the eye across positive and negative values\n');
-fprintf('of azimuth and elevation. Torsion is fixed at zero. For saccadic\n');
-fprintf('eye movements under head-fixed conditions, Listing`s Law holds that \n');
-fprintf('rotations of the eye keep torsion constant.\n');
-fprintf('\n');
+fprintf(['Figure 1 shows the pose of the eye across positive and negative values\n' ...
+    'of azimuth and elevation. Torsion is fixed at zero. For saccadic\n' ...
+    'eye movements under head-fixed conditions, Listing`s Law holds that \n' ...
+    'rotations of the eye keep torsion constant.\n\n']);
 
 %% Present Figure 2
 figure(2)
@@ -91,14 +89,13 @@ for laterality = 1:2
     hold off
 end
 drawnow
-fprintf('Figure 2 shows just the perimeter of the pupil and the corneal apex\n');
-fprintf('for eyePoses [0 0 0 3] for the right and left eye. Here, the axis of\n');
-fprintf('the camera is aligned with the optical axis of the model eye. \n');
-fprintf('Note that the center of the pupil is displaced downwards and nasally\n');
-fprintf('with respect to the optical axis of each eye. This physiologic property\n');
-fprintf('causes the entrance pupil to have a slightly different appearance\n');
-fprintf('when viewed from the nasal or temporal visual field (Atchison, 2013).\n');
-fprintf('\n');
+fprintf(['Figure 2 shows just the perimeter of the pupil and the corneal apex\n' ...
+    'for eyePoses [0 0 0 3] for the right and left eye. Here, the axis of\n' ...
+    'the camera is aligned with the optical axis of the model eye. \n' ...
+    'Note that the center of the pupil is displaced downwards and nasally\n' ...
+    'with respect to the optical axis of each eye. This physiologic property\n' ...
+    'causes the entrance pupil to have a slightly different appearance\n' ...
+    'when viewed from the nasal or temporal visual field (Atchison, 2013).\n\n']);
 
 %% Present Figure 3
 figure(3)
@@ -121,7 +118,7 @@ plot(0.5:0.5:4,entrancePupilRadiusRayTrace,'*r');
 lsline()
 hold off
 xlim([0 5]);
-ylim([0 100]);
+ylim([0 125]);
 xlabel('pupil radius modeled [mm]');
 ylabel('entrance pupil radius in image [pixels]');
 legend({'Without corneal refraction','With corneal refraction'},'Location','southeast');
@@ -143,20 +140,17 @@ plot(0.5:0.5:4,entrancePupilRadiusRayTrace,'*r');
 lsline()
 hold off
 xlim([0 5]);
-ylim([0 100]);
+ylim([0 125]);
 xlabel('pupil radius modeled [mm]');
 ylabel('entrance pupil radius in image [pixels]');
 legend({'Without corneal refraction','With corneal refraction'},'Location','southeast');
 title('eyePose [30 25 0 x]');
-
-
 drawnow
-fprintf('Figure 3 shows the radius of the entrance pupil in the image\n');
-fprintf('as a function of the modeled radius of the physical pupil for an\n');
-fprintf('eye in two different poses.\n\n');
-fprintf('The black points are the values for a model in which the refractive \n');
-fprintf('effects of the cornea are not modeled, while the red points do include\n');
-fprintf('this component. Corneal refraction magnifies the image of the pupil\n');
-fprintf('and, depending upon eye rotation, will also alter the elliptical shape\n');
-fprintf('of the pupil on the image plane.\n');
-fprintf('\n');
+
+fprintf(['Figure 3 shows the radius of the entrance pupil in the image\n' ...
+    'as a function of the modeled radius of the physical pupil for an\n' ...
+    'eye in two different poses. The black points are the values for \n' ...
+    'a model in which the refractive effects of the cornea are not modeled \n' ...
+    'while the red points do include this component. Corneal refraction \n' ...
+    'magnifies the image of the pupil and, depending upon eye rotation, \n' ...
+    'will also alter the elliptical shape of the pupil on the image plane.\n']);
