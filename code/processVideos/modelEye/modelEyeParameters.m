@@ -108,9 +108,9 @@ switch p.Results.species
         %
         switch p.Results.eyeLaterality
             case {'right','RIGHT','Right','R','r','od','OD'}
-                eye.pupilCenter = [-3.7 0.1445 0.3639];
+                eye.pupilCenter = [-3.7 0.15 0.1];
             case {'left','LEFT','Left','L','l','os','OS'}
-                eye.pupilCenter = [-3.7 -0.1445 0.3639];
+                eye.pupilCenter = [-3.7 -0.15 0.1];
             otherwise
                 error('Please specify a valid eye laterality for the model eye');
         end
