@@ -42,15 +42,13 @@ function sceneGeometry = createSceneGeometry(varargin)
 %   scene coordinate system to be x=0, y=0 along the optical axis of the
 %   eye, and z=0 to be the apex of the corneal surface.
 %
-%   extrinsicRotationMatrix - A 3x3 matrix with the fixed values of:
+%   extrinsicRotationMatrix - A 3x3 identity matrix:
 %
 %       [1  0  0]
-%       [0 -1  0]
-%       [0  0 -1]
+%       [0  1  0]
+%       [0  0  1]
 %
-%   These values invert the axes of the scene coordinate system to produce
-%   the direction conventions of the image coordinate system. The
-%   projection of pupil circles from scene to image is invariant to
+%   The projection of pupil circles from scene to image is invariant to
 %   rotations of the camera matrix, so these valyes should not require
 %   adjustment.
 %
@@ -109,7 +107,7 @@ p = inputParser; p.KeepUnmatched = true;
 p.addParameter('intrinsicCameraMatrix',[2600.0 0 320; 0 2600 240; 0 0 1],@isnumeric);
 p.addParameter('radialDistortionVector',[0 0],@isnumeric);
 p.addParameter('extrinsicTranslationVector',[0; 0; 120],@isnumeric);
-p.addParameter('extrinsicRotationMatrix',[1 0 0; 0 -1 0; 0 0 -1],@isnumeric);
+p.addParameter('extrinsicRotationMatrix',[1 0 0; 0 1 0; 0 0 1],@isnumeric);
 p.addParameter('primaryPosition',[0 0 0],@isnumeric);
 p.addParameter('constraintTolerance',0.02,@isnumeric);
 
