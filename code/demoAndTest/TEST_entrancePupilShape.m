@@ -60,39 +60,48 @@ pupilDiam = 6;
 
 % This is Eq 9 from Mathur 2013, which specifies the horizontal to vertical
 % ratio of the entrance pupil from different viewing angles.
-mathurEq = @(viewingAngle) 0.99.*cosd((viewingAngle+5.3)/1.121);
+mathurEq = @(viewingAngleDeg) 0.99.*cosd((viewingAngleDeg+5.3)/1.121);
 
 % Search over pupil center locations to find the best match to the Marthur
 % equation.
 
-% Define some of the parameters of the search.
-azimuthsDeg = -60:10:60;
-x0=sceneGeometry.eye.pupilCenter(2:3);
+% Define some of the parameters of the search. Positive azimuth values
+% correspond to viewing the right eye from a camera positioned within the
+% temporal visual field of the eye. This is the opposite of the convention
+% in the Malthur plots, in which positive angles are in the nasal field.
+azimuthDeg = -60:10:60;
+viewingAngleDeg = -azimuthDeg;
+
 % As the solution is symmetric for p3 values around zero, we make the lower
 % bound on the p3 value zero to place the resulting pupil center downward
 % from the corneal apex.
 lb = [-1 0];
 ub = [1 1];
+x0 = [0 0.001];
 
 % Create an objective function that is the difference
 % between the horizontal / vertical ratio from our model and Mathur's model
 % as a function of viewing angle.
 % NOTE: we sign reverse the azimuth here to produce viewing angle.
-myObjFunc = @(x) sum((mathurEq(-azimuthsDeg) - calcPupilDiameterRatio(x,azimuthsDeg,pupilDiam,sceneGeometry,rayTraceFuncs)).^2);
+myObjFunc = @(x) sum((mathurEq(viewingAngleDeg) - calcPupilDiameterRatio(x,azimuthDeg,pupilDiam,sceneGeometry,rayTraceFuncs)).^2);
 
 % Perform the search
-[x, fVal] = fmincon(myObjFunc,x0,[],[],[],[],lb,ub);
+problem = createOptimProblem('fmincon','objective',myObjFunc,'x0',x0,'lb',lb,'ub',ub);
+gs = GlobalSearch;
+[x, fVal] = run(gs,problem);
 
 % Calculate the diameter ratio for the best fitting rotation center values
-diamRatio = calcPupilDiameterRatio(x,azimuthsDeg,pupilDiam,sceneGeometry,rayTraceFuncs);
+diamRatio = calcPupilDiameterRatio(x,azimuthDeg,pupilDiam,sceneGeometry,rayTraceFuncs);
 
-% Plot Figure 10 of Mathur 2013 with our model output
+% Plot Figure 10 of Mathur 2013 with our model output. We do some sign
+% reversing to make the x axis correspond to viewing angle (as opposed to
+% eye rotation)
 figure
-plot(-azimuthsDeg,mathurEq(-azimuthsDeg),'-r');
+plot(viewingAngleDeg,mathurEq(viewingAngleDeg),'-r');
 hold on
-plot(-azimuthsDeg,cosd(-azimuthsDeg),'--k');
+plot(viewingAngleDeg,cosd(viewingAngleDeg),'--k');
 % NOTE: plot the diamRatio against viewingAngle
-plot(azimuthsDeg,diamRatio ,'xk');
+plot(viewingAngleDeg,diamRatio ,'xk');
 xlim([-90 90]);
 ylim([0 1.1]);
 xlabel('Viewing angle [deg]')
