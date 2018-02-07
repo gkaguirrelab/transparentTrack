@@ -42,7 +42,7 @@ for thisAzimuth = -35:5:35
         
         % Assemble the eyePoses variable
         eyePoses=[eyePoses; thisAzimuth,thisElevation,thisTorsion,pupilRadiusMM];
-
+        
         % Forward projection from eyePoses to image ellipse
         pupilEllipseOnImagePlane = pupilProjection_fwd(eyePoses(end,:), sceneGeometry, rayTraceFuncs);
         
@@ -52,12 +52,13 @@ for thisAzimuth = -35:5:35
         % following Listing's Law.
         tic
         [inverseEyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError, exitFlag] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4]);
-        % If the exitFlag is 2, we may be in a local minimum. Repeat the 
-        % search supplying the initial solution as x0.
+        % If the exitFlag is 2, we may be in a local minimum. Repeat the
+        % search, supplying the initial solution as x0.
         if exitFlag == 2
-        [inverseEyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError, exitFlag] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4],'x0',inverseEyePose);
+            [inverseEyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError, exitFlag] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4],'x0',inverseEyePose);
         end
         toc
+        
         reconstructedEyePoses = [reconstructedEyePoses; inverseEyePose];
         centerErrors=[centerErrors; centerError];
         shapeErrors=[shapeErrors; shapeError];
@@ -66,9 +67,6 @@ for thisAzimuth = -35:5:35
         % Calculate and save the error
         eyePoseErrors = [eyePoseErrors; eyePoses(end,:)-reconstructedEyePoses(end,:)];
         
-        if any(abs(eyePoseErrors(end,:))>0.05)
-            foo = 1;
-        end
     end
 end
 
