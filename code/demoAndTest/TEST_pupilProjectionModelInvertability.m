@@ -29,6 +29,10 @@ pupilRadiusMM = 2;
 eyePoses = [];
 reconstructedEyePoses = [];
 eyePoseErrors = [];
+centerErrors =[];
+shapeErrors=[];
+areaErrors=[];
+nodalPointIntersectErrors = [];
 
 %% Loop over aimuths and elevations
 % The range of values used here corresponds to the biological limits of the
@@ -39,27 +43,31 @@ for thisAzimuth = -35:5:35
         
         % Assemble the eyePoses variable
         eyePoses=[eyePoses; thisAzimuth,thisElevation,thisTorsion,pupilRadiusMM];
-        
+
         % Forward projection from eyePoses to image ellipse
-        tic
         pupilEllipseOnImagePlane = pupilProjection_fwd(eyePoses(end,:), sceneGeometry, rayTraceFuncs);
-        toc
+        nodalPointIntersectErrors = [nodalPointIntersectErrors; nodalPointIntersectError'];
         
         % Inverse projection from image ellipse to eyePoses. Note that we
         % must constrain at least one of the eye rotations, as the search
         % is otherwise unconstrained. We constrain torsion to be zero,
         % following Listing's Law.
-        tic
-        tmp = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4]);
-        reconstructedEyePoses = [reconstructedEyePoses; tmp];
-        toc
+        [inverseEyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4]);
+        reconstructedEyePoses = [reconstructedEyePoses; inverseEyePose];
+        centerErrors=[centerErrors; centerError];
+        shapeErrors=[shapeErrors; shapeError];
+        areaErrors=[areaError; areaError];
         
         % Calculate and save the error
         eyePoseErrors = [eyePoseErrors; eyePoses(end,:)-reconstructedEyePoses(end,:)];
+        
+        if abs(eyePoseErrors(end,1))>0.05
+            foo = 1;
+        end
     end
 end
 
 %% Report the errors
-fprintf('The largest azimuth error is %f degrees.\n',max(eyePoseErrors(:,1)));
-fprintf('The largest elevation error is %f degrees.\n',max(eyePoseErrors(:,2)));
-fprintf('The largest radius error is %f millimeters.\n',max(eyePoseErrors(:,4)));
+fprintf('The largest azimuth error is %f degrees.\n',max(abs(eyePoseErrors(:,1))));
+fprintf('The largest elevation error is %f degrees.\n',max(abs(eyePoseErrors(:,2))));
+fprintf('The largest radius error is %f millimeters.\n',max(abs(eyePoseErrors(:,4))));
