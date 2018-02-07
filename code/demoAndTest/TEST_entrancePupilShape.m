@@ -22,7 +22,7 @@
 %   Here, we search for values for the center of the pupil relative to the
 %   optical axis of the eye that best fits the empirical work of
 %   Mathur 2013.
-%   
+%
 %   Note that Mathur 2013 reports results by the visual field angle from
 %   which the right eye of the subject was observed. A negative angle
 %   corresponds to viewing the eye from the temporal visual field of the
@@ -36,6 +36,7 @@
 %   measurements made in the right eye to correspond to the Mathur results.
 %
 
+clear all
 close all
 
 % Obtain the default sceneGeometry with the following modifications:
@@ -72,6 +73,7 @@ mathurEq = @(viewingAngleDeg) 0.99.*cosd((viewingAngleDeg+5.3)/1.121);
 azimuthDeg = -60:10:60;
 viewingAngleDeg = -azimuthDeg;
 
+
 % As the solution is symmetric for p3 values around zero, we make the lower
 % bound on the p3 value zero to place the resulting pupil center downward
 % from the corneal apex.
@@ -85,10 +87,11 @@ x0 = [0 0.001];
 % NOTE: we sign reverse the azimuth here to produce viewing angle.
 myObjFunc = @(x) sum((mathurEq(viewingAngleDeg) - calcPupilDiameterRatio(x,azimuthDeg,pupilDiam,sceneGeometry,rayTraceFuncs)).^2);
 
+% Define some options
+options = optimoptions(@fmincon,'Algorithm','sqp','Display','iter');
+
 % Perform the search
-problem = createOptimProblem('fmincon','objective',myObjFunc,'x0',x0,'lb',lb,'ub',ub);
-gs = GlobalSearch;
-[x, fVal] = run(gs,problem);
+[x, fVal] = fmincon(myObjFunc,x0,[],[],[],[],lb,ub,[],options);
 
 % Calculate the diameter ratio for the best fitting rotation center values
 diamRatio = calcPupilDiameterRatio(x,azimuthDeg,pupilDiam,sceneGeometry,rayTraceFuncs);
@@ -113,13 +116,57 @@ fprintf('\tp2: %f \n',x(1));
 fprintf('\tp3: %f \n',x(2));
 
 
+% Plot the model eye from the two extreme positions (+-60 degrees)
+sceneGeometry.eye.pupilCenter(2:3) = x;
+eyePartLabels = {'rotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex' 'pupilCenter'};
+plotColors = {'+r' '.w' '.b' '*g' '.y' '*y' '+g'};
+blankFrame = zeros(480,640)+0.5;
+figure
+for ii = 1:2
+    subplot(1,2,ii);
+    imshow(blankFrame, 'Border', 'tight');
+    hold on
+    axis off
+    axis equal
+    xlim([0 640]);
+    ylim([0 480]);
+    if ii==1
+        azimuth = azimuthDeg(1);
+    else
+        azimuth = azimuthDeg(end);
+    end
+    eyePose=[azimuth 0 0 pupilDiam/2];
+    % First, perform the forward projection to determine where the center
+    % of the pupil is located in the sceneWorld coordinates
+    [~, ~, sceneWorldPoints, ~, pointLabels] = pupilProjection_fwd(eyePose, sceneGeometry, rayTraceFuncs, 'fullEyeModelFlag', true);
+    % Adjust the sceneGeometry to translate the camera to be centered on
+    % center of the pupil. This is not exactly right, as the center of the
+    % pupil in the sceneWorld would not exactly correspond to the center of
+    % the elliptical entrance pupil seen by the examiner who adjusted the
+    % camera, but it is the closest I can get to Atchison's arrangement.
+    pupilCenterIdx = find(strcmp(pointLabels,'pupilCenter'));
+    adjustedSceneGeometry = sceneGeometry;
+    adjustedSceneGeometry.extrinsicTranslationVector(1) = adjustedSceneGeometry.extrinsicTranslationVector(1)+sceneWorldPoints(pupilCenterIdx,1);
+    % Now, measure the horizontal and vertical width of the image of the
+    % pupil
+    [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePose, adjustedSceneGeometry, rayTraceFuncs, 'nPupilPerimPoints',50,'fullEyeModelFlag', true);    
+    % Plot each anatomical component
+    for pp = 1:length(eyePartLabels)-1
+        idx = strcmp(pointLabels,eyePartLabels{pp});
+        plot(imagePoints(idx,1), imagePoints(idx,2), plotColors{pp})
+    end
+    title(['azimuth = ' num2str(azimuth)]);
+    draw now
+end
+
+foo = 1;
 
 
 %% LOCAL FUNCTION
 function diamRatio = calcPupilDiameterRatio(x,azimuthsDeg,pupilDiam,sceneGeometry,rayTraceFuncs)
 horizDiam=[];
 vertDiam=[];
-% Update the sceneGeometry with the past center of rotation value
+% Update the sceneGeometry with the passed center of rotation value
 sceneGeometry.eye.pupilCenter(2:3) = x;
 for ii = 1:length(azimuthsDeg)
     eyePose=[azimuthsDeg(ii) 0 0 pupilDiam/2];
@@ -132,10 +179,11 @@ for ii = 1:length(azimuthsDeg)
     % the elliptical entrance pupil seen by the examiner who adjusted the
     % camera, but it is the closest I can get to Atchison's arrangement.
     pupilCenterIdx = find(strcmp(pointLabels,'pupilCenter'));
-    sceneGeometry.extrinsicTranslationVector(1) = sceneGeometry.extrinsicTranslationVector(1)+sceneWorldPoints(pupilCenterIdx,1);
+    adjustedSceneGeometry = sceneGeometry;
+    adjustedSceneGeometry.extrinsicTranslationVector(1) = adjustedSceneGeometry.extrinsicTranslationVector(1)+sceneWorldPoints(pupilCenterIdx,1);
     % Now, measure the horizontal and vertical width of the image of the
     % pupil
-    [~, imagePoints] = pupilProjection_fwd(eyePose, sceneGeometry, rayTraceFuncs, 'nPupilPerimPoints',50);
+    [~, imagePoints] = pupilProjection_fwd(eyePose, adjustedSceneGeometry, rayTraceFuncs, 'nPupilPerimPoints',50);
     horizDiam =[horizDiam max(imagePoints(:,1)')-min(imagePoints(:,1)')];
     vertDiam  =[vertDiam max(imagePoints(:,2)')-min(imagePoints(:,2)')];
 end
