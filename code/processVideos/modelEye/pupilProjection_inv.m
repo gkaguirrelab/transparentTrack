@@ -52,7 +52,10 @@ function [eyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaEr
 %  'eyePoseLB/UB'         - Upper and lower bounds on the eyePose
 %                           [azimuth, elevation, torsion, pupil radius].
 %                           The default values here represent the physical
-%                           limits of the projection model.
+%                           limits of the projection model for azimuth,
+%                           elevation, and pupil radius. Torsion is
+%                           constrained to zero by default as the ellipse
+%                           provides no torsion information.
 %  'centerErrorThreshold' - Scalar. Defines one of the two stopping point
 %                           criteria for the search.
 %  'constraintTolerance'  - Defines one of the two stopping point
@@ -88,7 +91,23 @@ function [eyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaEr
 %                           initial solution as x0. This tends to allow
 %                           the search to converge.
 %
-
+% Examples:
+%{
+    %% Test if we can find obtain eyePose from image ellipse
+    % Obtain a default sceneGeometry structure
+    sceneGeometry=createSceneGeometry();
+    % Define the ray tracing functions
+    rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
+    % Define in eyePoses the azimuth, elevation, torsion, and pupil radius
+    eyePose = [-10 5 0 2];
+    % Obtain the pupil ellipse parameters in transparent format
+    pupilEllipseOnImagePlane = pupilProjection_fwd(eyePose,sceneGeometry,rayTraceFuncs);
+    % Recover the eye pose from the ellipse
+    inverseEyePose = pupilProjection_inv(pupilEllipseOnImagePlane,sceneGeometry, rayTraceFuncs);
+    % Report the difference between the input and recovered eyePose
+    fprintf('Error in the recovered eye pose (deg azimuth, deg elevation, deg torsion, mm pupil radius) is: \n');
+    eyePose - inverseEyePose
+%}
 
 %% Parse input
 p = inputParser;
@@ -100,8 +119,8 @@ p.addRequired('rayTraceFuncs',@(x)(isempty(x) | isstruct(x)));
 
 % Optional params
 p.addParameter('x0',[],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('eyePoseLB',[-89,-89,-179,0.5],@isnumeric);
-p.addParameter('eyePoseUB',[89,89,179,4],@isnumeric);
+p.addParameter('eyePoseLB',[-89,-89,0,0.5],@isnumeric);
+p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 p.addParameter('centerErrorThreshold',1e-4,@isnumeric);
 p.addParameter('constraintTolerance',[],@(x)(isempty(x) | isnumeric(x)));
 
