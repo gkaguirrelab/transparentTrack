@@ -154,7 +154,8 @@ end
 if isempty(p.Results.x0)
     % Probe the forward model to determine how many pixels of change in the
     % location of the pupil ellipse correspond to one degree of rotation.
-    % Omit ray-tracing for speed.
+    % Omit ray-tracing to save time as it has minimal effect upon the 
+    % position of the center of the ellipse.
     probeEllipse=pupilProjection_fwd([1 0 0 2],sceneGeometry, []);
     pixelsPerDeg = probeEllipse(1)-CoP(1);
     
@@ -170,17 +171,23 @@ if isempty(p.Results.x0)
     ellipseAspectRatio = sqrt(1 - (pupilEllipseOnImagePlane(4)^2));
     pupilRadiusPixels = sqrt(pupilEllipseOnImagePlane(3) / (pi * ellipseAspectRatio));
     
-    % Probe the forward model at the estimated Azimuth and Elevation to
-    % estimate the pupil radius.
+    % Probe the forward model at the estimated pose angles to
+    % estimate the pupil radius. Here we do need ray tracing as it
+    % has a substantial influence upon the area of the ellipse.
     probeEllipse=pupilProjection_fwd([x0(1) x0(2) x0(3) 2], sceneGeometry, rayTraceFuncs);
     pixelsPerMM = sqrt(probeEllipse(3)/pi)/2;
     
     % Set the initial value for pupil radius in mm
     x0(4) = pupilRadiusPixels/pixelsPerMM;
     
+    % If the absolute value of an estimated angle is less than 2 degrees,
+    % set the value to zero. This is done as fmincon seems to avoid
+    % solutions exactly at zero, and this kludge fixes that behavior.
+    x0(abs(x0)<2) = 0;
+    
     % Ensure that x0 lies within the bounds with a bit of headroom so that
     % the solver does not get stuck up against a bound.
-    boundHeadroom = (eyePoseUB - eyePoseLB)*0.05;
+    boundHeadroom = (eyePoseUB - eyePoseLB)*0.001;
     x0=min([eyePoseUB-boundHeadroom; x0]);
     x0=max([eyePoseLB+boundHeadroom; x0]);
 else
@@ -194,13 +201,18 @@ end
 % rule that speeds the search.
 
 % Define variables used in the nested functions
-xLast = []; % Last place pupilProjection_fwd was called
-nestedTargetEllipse = pupilEllipseOnImagePlane; % the target ellipse params
-nestedCandidateEllipse = []; % holds pupilProjection_fwd result at xLast
-nestedSceneGeometry = sceneGeometry; % a copy of sceneGeometry
+targetEllipse = pupilEllipseOnImagePlane; % the target ellipse params
 centerErrorThreshold = p.Results.centerErrorThreshold; 
-nestedShapeError = 0;
-nestedAreaError = 0;
+bestFVal = realmax;
+xLast = []; % Last place pupilProjection_fwd was called
+xBest = []; % The x with the lowest objective function value that meets
+            % the constraint tolerance
+shapeErrorAtLast = 0;
+shapeErrorAtBest = 0;
+areaErrorAtLast = 0;
+areaErrorAtBest = 0;
+ellipseAtLast = []; % pupilProjection_fwd result at xLast
+ellipseAtBest = []; % pupilProjection_fwd result at xBest
 
 % Obtain the constraintTolerance
 if isempty(p.Results.constraintTolerance)
@@ -222,23 +234,22 @@ objectiveFun = @objfun; % the objective function, nested below
 constraintFun = @constr; % the constraint function, nested below
 
 % Call fmincon
-[eyePose, centerError] = ...
-    fmincon(objectiveFun, x0, [], [], [], [], eyePoseLB, eyePoseUB, constraintFun, options);
+[~,finalFVal]=fmincon(objectiveFun, x0, [], [], [], [], eyePoseLB, eyePoseUB, constraintFun, options);
 
     function fval = objfun(x)
         if ~isequal(x,xLast) % Check if computation is necessary
-            nestedCandidateEllipse = pupilProjection_fwd(x, nestedSceneGeometry, rayTraceFuncs);
+            ellipseAtLast = pupilProjection_fwd(x, sceneGeometry, rayTraceFuncs);
             xLast = x;
         end
         % Compute objective function as Euclidean distance in the target
         % and candidate ellipse centers
-        fval = sqrt((nestedTargetEllipse(1) - nestedCandidateEllipse(1))^2 + ...
-            (nestedTargetEllipse(2) - nestedCandidateEllipse(2))^2);
+        fval = sqrt((targetEllipse(1) - ellipseAtLast(1))^2 + ...
+            (targetEllipse(2) - ellipseAtLast(2))^2);
     end
 
     function [c,ceq] = constr(x)
         if ~isequal(x,xLast) % Check if computation is necessary
-            nestedCandidateEllipse = pupilProjection_fwd(x, nestedSceneGeometry, rayTraceFuncs);
+            ellipseAtLast = pupilProjection_fwd(x, sceneGeometry, rayTraceFuncs);
             xLast = x;
         end
         % c:
@@ -255,18 +266,18 @@ constraintFun = @constr; % the constraint function, nested below
         % value is divided by 2, so that the largest possible error is
         % unity.
         
-        thetaT = nestedTargetEllipse(5)*2;
-        thetaC = nestedCandidateEllipse(5)*2;
-        rhoT = 1-sqrt(1-nestedTargetEllipse(4)^2);
-        rhoC = 1-sqrt(1-nestedCandidateEllipse(4)^2);
+        thetaT = targetEllipse(5)*2;
+        thetaC = ellipseAtLast(5)*2;
+        rhoT = 1-sqrt(1-targetEllipse(4)^2);
+        rhoC = 1-sqrt(1-ellipseAtLast(4)^2);
         
         c = sqrt(rhoT^2 + rhoC^2 - 2*rhoT*rhoC*cos(thetaT-thetaC))/2;
-        nestedShapeError = c;
+        shapeErrorAtLast = c;
         
         % ceq:
         % Proportional difference in ellipse areas
-        ceq = abs(nestedTargetEllipse(3) - nestedCandidateEllipse(3))/nestedTargetEllipse(3);
-        nestedAreaError = ceq;
+        ceq = abs(targetEllipse(3) - ellipseAtLast(3))/targetEllipse(3);
+        areaErrorAtLast = ceq;
     end
 
     function stop = outfun(~,optimValues,state)
@@ -276,6 +287,20 @@ constraintFun = @constr; % the constraint function, nested below
             case 'init'
                 % Unused
             case 'iter'
+                % Store the current best value for x that satisfies the
+                % constraint. This is done as we observe that fmincon can
+                % move away from the best solution when azimuth and
+                % elevation are close to zero. This behavior has been seen
+                % by others:
+                %   https://groups.google.com/forum/#!topic/comp.soft-sys.matlab/SuNzbhEun1Y
+                if optimValues.constrviolation < constraintTolerance && ...
+                        optimValues.fval < bestFVal
+                    bestFVal = optimValues.fval;
+                    xBest = xLast;
+                    shapeErrorAtBest = shapeErrorAtLast;
+                    areaErrorAtBest = areaErrorAtLast;
+                    ellipseAtBest = ellipseAtLast;
+                end
                 % Test if we are done the search
                 if optimValues.fval < centerErrorThreshold && ...
                     optimValues.constrviolation < constraintTolerance
@@ -288,12 +313,22 @@ constraintFun = @constr; % the constraint function, nested below
     end
 
 
+% Use the best solution seen by fmincon
+eyePose = xBest;
+
 % Store the params of the best fitting ellipse 
-bestMatchEllipseOnImagePlane = nestedCandidateEllipse;
+bestMatchEllipseOnImagePlane = ellipseAtBest;
 
 % Store the errors
-shapeError = nestedShapeError;
-areaError = nestedAreaError;
+centerError = bestFVal;
+shapeError = shapeErrorAtBest;
+areaError = areaErrorAtBest;
+
+% If fmincon moved away from the best solution, issue a warning as this
+% behavior is considered by Alan Weiss of Mathworks to be undesirable.
+if bestFVal < finalFVal
+    warning('fmincon converged on a non-optimal solution; returning best observed value');
+end
 
 end % function -- pupilProjection_inv
 
