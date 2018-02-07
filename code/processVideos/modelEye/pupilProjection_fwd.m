@@ -309,7 +309,7 @@ if p.Results.fullEyeModelFlag
     % Add a point for the corneal apex
     cornealApex=[0 0 0];
     eyeWorldPoints = [eyeWorldPoints; cornealApex];
-    pointLabels = [pointLabels; 'cornealApex'];    
+    pointLabels = [pointLabels; 'cornealApex'];
 end
 
 
@@ -407,9 +407,27 @@ if ~isempty(rayTraceFuncs)
         % With both theta values calculated, now obtain the virtual image
         % ray arising from the pupil plane that reflects the corneal optics
         virtualImageRay = rayTraceFuncs.virtualImageRay(eyeWorldPoint(1), eyeWorldPoint(2), eyeWorldPoint(3), theta_p1p2, theta_p1p3);
-        % Replace the original eyeWorld point with the virtual image 
+        % Replace the original eyeWorld point with the virtual image
         % eyeWorld point
-        eyeWorldPoints(refractPointsIdx(ii),:) = virtualImageRay(1,:);
+        eyeWorldPoints(refractPointsIdx(ii),:) = virtualImageRay(1,:);        
+        % The code below may be used to calculate the total error (in mm)
+        % in both dimensions for intersecting the nodal point of the
+        % camera. Error values on the order of 0.1 - 5 are found across
+        % pupil points and for a range of eye rotations. The code is not
+        % normally executed as it lengthens the computation and the result
+        % is not otherwise used. It is preserved here in case it is needed
+        % for diagnostic purposes.
+%{        
+        nodalPointIntersectError(refractPointsIdx(ii)) = ...
+            rayTraceFuncs.cameraNodeDistanceError3D(...
+            sceneGeometry.extrinsicTranslationVector(1),...
+            sceneGeometry.extrinsicTranslationVector(2),...
+            sceneGeometry.extrinsicTranslationVector(3),...
+            deg2rad(eyeAzimuth), deg2rad(eyeElevation), deg2rad(eyeTorsion),...
+            eyeWorldPoint(1),eyeWorldPoint(2),eyeWorldPoint(3),...
+            sceneGeometry.eye.rotationCenter(1),...
+            theta_p1p2, theta_p1p3);
+%}
     end
 end
 
