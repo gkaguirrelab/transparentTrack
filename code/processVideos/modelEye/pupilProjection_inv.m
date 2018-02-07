@@ -161,8 +161,8 @@ if isempty(p.Results.x0)
     % Estimate the eye azimuth and elevation by the X and Y displacement of
     % the ellipse center from the center of projection. Torsion is set to
     % zero
-    x0(1) = (pupilEllipseOnImagePlane(1) - CoP(1))/pixelsPerDeg;
-    x0(2) = (CoP(2) - pupilEllipseOnImagePlane(2))/pixelsPerDeg;
+    x0(1) = 2*((pupilEllipseOnImagePlane(1) - CoP(1))/pixelsPerDeg);
+    x0(2) = 2*((CoP(2) - pupilEllipseOnImagePlane(2))/pixelsPerDeg);
     x0(3) = 0;
     
     % Estimate the pupil radius in pixels, accounting for the eccentricity
@@ -286,6 +286,7 @@ constraintFun = @constr; % the constraint function, nested below
             otherwise
         end
     end
+
 
 % Store the params of the best fitting ellipse 
 bestMatchEllipseOnImagePlane = nestedCandidateEllipse;
