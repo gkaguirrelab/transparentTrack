@@ -88,9 +88,9 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     % Define the ray tracing functions
     rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
     % Define in eyePoses the azimuth, elevation, torsion, and pupil radius
-    eyePoses = [-10, 5, 0 3];
+    eyePose = [-10 5 0 3];
     % Obtain the pupil ellipse parameters in transparent format
-    pupilEllipseOnImagePlane = pupilProjection_fwd(eyePoses,sceneGeometry,rayTraceFuncs);
+    pupilEllipseOnImagePlane = pupilProjection_fwd(eyePose,sceneGeometry,rayTraceFuncs);
 %}
 %{
     %% Display a 2D image of a slightly myopic left eye
@@ -99,7 +99,7 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     % Define the ray tracing functions
     rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
     % Define an eyePose with azimuth, elevation, torsion, and pupil radius
-    eyePose = [-10, 5, 0 3];
+    eyePose = [-10 5 0 3];
     % Perform the projection and request the full eye model
     [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePose,sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
     % Define some settings for display
@@ -127,7 +127,7 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     % Define the ray tracing functions
     rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
     % Define an eyePose with azimuth, elevation, torsion, and pupil radius
-    eyePose = [0, 0, 0 3];
+    eyePose = [0 0 0 3];
     % Perform the projection and request the full eye model
     [~, ~, ~, eyeWorldPoints, pointLabels] = pupilProjection_fwd(eyePose,sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
     % Define some settings for display
