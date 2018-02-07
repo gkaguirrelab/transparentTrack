@@ -389,8 +389,10 @@ if ~isempty(rayTraceFuncs)
             sceneGeometry.eye.rotationCenter(1),...
             theta);
         % Conduct an fminsearch to find the p1p2 theta that results in a
-        % ray that strikes as close as possible to the camera nodal point
-        theta_p1p2=fminsearch(errorFunc,0);
+        % ray that strikes as close as possible to the camera nodal point.
+        % Because the errorFunc returns nan for values very close to zero,
+        % we initialize the search with a value slightly away (1e-4)
+        theta_p1p2=fminsearch(errorFunc,1e-4);
         % Now repeat this process for a ray that varies in theta in the
         % p1p3 plane
         errorFunc = @(theta) rayTraceFuncs.cameraNodeDistanceError2D.p1p3(...
@@ -401,7 +403,7 @@ if ~isempty(rayTraceFuncs)
             eyeWorldPoint(1),eyeWorldPoint(2),eyeWorldPoint(3),...
             sceneGeometry.eye.rotationCenter(1),...
             theta);
-        theta_p1p3=fminsearch(errorFunc,0);
+        theta_p1p3=fminsearch(errorFunc,1e-4);
         % With both theta values calculated, now obtain the virtual image
         % ray arising from the pupil plane that reflects the corneal optics
         virtualImageRay = rayTraceFuncs.virtualImageRay(eyeWorldPoint(1), eyeWorldPoint(2), eyeWorldPoint(3), theta_p1p2, theta_p1p3);
@@ -459,10 +461,6 @@ sceneWorldPoints = headWorldPoints(:,[2 3 1]);
 % With x being left/right and y being down/up
 %
 
-% Add a column of ones to support the upcoming matrix multiplication with a
-% combined rotation and translation matrix
-nEyeWorldPoints = size(eyeWorldPoints,1);
-sceneWorldPoints=[sceneWorldPoints, ones(nEyeWorldPoints,1)];
 
 % Create the projectionMatrix
 projectionMatrix = ...
@@ -470,8 +468,13 @@ projectionMatrix = ...
     [sceneGeometry.extrinsicRotationMatrix, ...
     sceneGeometry.extrinsicTranslationVector];
 
-% Project the world points to the image plane and scale
-tmpImagePoints=(projectionMatrix*sceneWorldPoints')';
+% What is our total number of points to project?
+nEyeWorldPoints = size(eyeWorldPoints,1);
+
+% Project the sceneWorld points to the image plane and scale. The
+% sceneWorld points have a column of ones added support the multiplication
+% with a combined rotation and translation matrix
+tmpImagePoints=(projectionMatrix*[sceneWorldPoints, ones(nEyeWorldPoints,1)]')';
 imagePointsPreDistortion=zeros(nEyeWorldPoints,2);
 imagePointsPreDistortion(:,1) = ...
     tmpImagePoints(:,1)./tmpImagePoints(:,3);
