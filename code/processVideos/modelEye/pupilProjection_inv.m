@@ -1,4 +1,4 @@
-function [eyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs, varargin)
+function [eyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError, exitFlag] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs, varargin)
 % Project an ellipse on the image plane to a pupil circle in the scene
 %
 % Syntax:
@@ -79,6 +79,15 @@ function [eyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaEr
 %                           ellipse shape, range 0-1.
 %   areaError             - Scalar. The proportion of error in fitting
 %                           ellipse area; unbounded around zero.
+%   exitFlag              - The exitFlag from the fmincon search. Because
+%                           we are using custom stopping criteria, a value
+%                           of -1 indicates success. A value of 2 is
+%                           usually returned if the solution is suspected
+%                           to be a local minimum. The calling function
+%                           can re-call the inverse search, supplying the
+%                           initial solution as x0. This tends to allow
+%                           the search to converge.
+%
 
 
 %% Parse input
@@ -113,7 +122,7 @@ end
 % Typically, the torsion will be constrained with upper and lower bounds of
 % zero, reflecting Listing's Law.
 if sum((p.Results.eyePoseUB(1:3) - p.Results.eyePoseLB(1:3))==0) < 1
-    warning('The inverse search across possible eye rotations is underconstrained');
+    warning('pupilProjection_inv:underconstrainedSearch','The inverse search across possible eye rotations is underconstrained');
 end
 
 %% Assemble bounds and x0
@@ -234,7 +243,7 @@ objectiveFun = @objfun; % the objective function, nested below
 constraintFun = @constr; % the constraint function, nested below
 
 % Call fmincon
-[~,finalFVal]=fmincon(objectiveFun, x0, [], [], [], [], eyePoseLB, eyePoseUB, constraintFun, options);
+[~, ~, exitFlag]=fmincon(objectiveFun, x0, [], [], [], [], eyePoseLB, eyePoseUB, constraintFun, options);
 
     function fval = objfun(x)
         if ~isequal(x,xLast) % Check if computation is necessary
@@ -323,12 +332,6 @@ bestMatchEllipseOnImagePlane = ellipseAtBest;
 centerError = bestFVal;
 shapeError = shapeErrorAtBest;
 areaError = areaErrorAtBest;
-
-% If fmincon moved away from the best solution, issue a warning as this
-% behavior is considered by Alan Weiss of Mathworks to be undesirable.
-if bestFVal < finalFVal
-    warning('fmincon converged on a non-optimal solution; returning best observed value');
-end
 
 end % function -- pupilProjection_inv
 
