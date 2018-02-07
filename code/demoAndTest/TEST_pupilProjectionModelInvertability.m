@@ -32,7 +32,6 @@ eyePoseErrors = [];
 centerErrors =[];
 shapeErrors=[];
 areaErrors=[];
-nodalPointIntersectErrors = [];
 
 %% Loop over aimuths and elevations
 % The range of values used here corresponds to the biological limits of the
@@ -46,13 +45,14 @@ for thisAzimuth = -35:5:35
 
         % Forward projection from eyePoses to image ellipse
         pupilEllipseOnImagePlane = pupilProjection_fwd(eyePoses(end,:), sceneGeometry, rayTraceFuncs);
-        nodalPointIntersectErrors = [nodalPointIntersectErrors; nodalPointIntersectError'];
         
         % Inverse projection from image ellipse to eyePoses. Note that we
         % must constrain at least one of the eye rotations, as the search
         % is otherwise unconstrained. We constrain torsion to be zero,
         % following Listing's Law.
+        tic
         [inverseEyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4]);
+        toc
         reconstructedEyePoses = [reconstructedEyePoses; inverseEyePose];
         centerErrors=[centerErrors; centerError];
         shapeErrors=[shapeErrors; shapeError];
