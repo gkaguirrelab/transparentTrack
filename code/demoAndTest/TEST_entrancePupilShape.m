@@ -68,23 +68,22 @@ mathurEq = @(viewingAngleDeg) 0.99.*cosd((viewingAngleDeg+5.3)/1.121);
 
 % Define some of the parameters of the search. Positive azimuth values
 % correspond to viewing the right eye from a camera positioned within the
-% temporal visual field of the eye. This is the opposite of the convention
-% in the Malthur plots, in which positive angles are in the nasal field.
+% temporal visual field of the eye. Taking the negative of azimuth provides
+% the viewing angle, which is what Mathur uses.
 azimuthDeg = -60:10:60;
 viewingAngleDeg = -azimuthDeg;
-
 
 % As the solution is symmetric for p3 values around zero, we make the lower
 % bound on the p3 value zero to place the resulting pupil center downward
 % from the corneal apex.
-lb = [-1 0];
-ub = [1 1];
+lb = [-2 0];
+ub = [2 2];
 x0 = [0 0.001];
 
-% Create an objective function that is the difference
-% between the horizontal / vertical ratio from our model and Mathur's model
-% as a function of viewing angle.
-% NOTE: we sign reverse the azimuth here to produce viewing angle.
+% Create an objective function that is the difference between the
+% horizontal / vertical ratio from our model and Mathur's model as a
+% function of viewing angle. NOTE: we sign reverse the azimuth here to
+% produce viewing angle.
 myObjFunc = @(x) sum((mathurEq(viewingAngleDeg) - calcPupilDiameterRatio(x,azimuthDeg,pupilDiam,sceneGeometry,rayTraceFuncs)).^2);
 
 % Define some options
@@ -156,7 +155,7 @@ for ii = 1:2
         plot(imagePoints(idx,1), imagePoints(idx,2), plotColors{pp})
     end
     title(['azimuth = ' num2str(azimuth)]);
-    draw now
+    drawnow
 end
 
 foo = 1;
