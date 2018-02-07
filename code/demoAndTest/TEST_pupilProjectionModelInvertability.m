@@ -51,7 +51,12 @@ for thisAzimuth = -35:5:35
         % is otherwise unconstrained. We constrain torsion to be zero,
         % following Listing's Law.
         tic
-        [inverseEyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4]);
+        [inverseEyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError, exitFlag] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4]);
+        % If the exitFlag is 2, we may be in a local minimum. Repeat the 
+        % search supplying the initial solution as x0.
+        if exitFlag == 2
+        [inverseEyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError, exitFlag] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4],'x0',inverseEyePose);
+        end
         toc
         reconstructedEyePoses = [reconstructedEyePoses; inverseEyePose];
         centerErrors=[centerErrors; centerError];
@@ -61,7 +66,7 @@ for thisAzimuth = -35:5:35
         % Calculate and save the error
         eyePoseErrors = [eyePoseErrors; eyePoses(end,:)-reconstructedEyePoses(end,:)];
         
-        if abs(eyePoseErrors(end,1))>0.05
+        if any(abs(eyePoseErrors(end,:))>0.05)
             foo = 1;
         end
     end
