@@ -29,6 +29,9 @@ pupilRadiusMM = 2;
 eyePoses = [];
 reconstructedEyePoses = [];
 eyePoseErrors = [];
+centerErrors =[];
+shapeErrors=[];
+areaErrors=[];
 
 %% Loop over aimuths and elevations
 % The range of values used here corresponds to the biological limits of the
@@ -41,25 +44,33 @@ for thisAzimuth = -35:5:35
         eyePoses=[eyePoses; thisAzimuth,thisElevation,thisTorsion,pupilRadiusMM];
         
         % Forward projection from eyePoses to image ellipse
-        tic
         pupilEllipseOnImagePlane = pupilProjection_fwd(eyePoses(end,:), sceneGeometry, rayTraceFuncs);
-        toc
         
         % Inverse projection from image ellipse to eyePoses. Note that we
         % must constrain at least one of the eye rotations, as the search
         % is otherwise unconstrained. We constrain torsion to be zero,
         % following Listing's Law.
         tic
-        tmp = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4]);
-        reconstructedEyePoses = [reconstructedEyePoses; tmp];
+        [inverseEyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError, exitFlag] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4]);
+        % If the exitFlag is 2, we may be in a local minimum. Repeat the
+        % search, supplying the initial solution as x0.
+        if exitFlag == 2
+            [inverseEyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError, exitFlag] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4],'x0',inverseEyePose);
+        end
         toc
+        
+        reconstructedEyePoses = [reconstructedEyePoses; inverseEyePose];
+        centerErrors=[centerErrors; centerError];
+        shapeErrors=[shapeErrors; shapeError];
+        areaErrors=[areaError; areaError];
         
         % Calculate and save the error
         eyePoseErrors = [eyePoseErrors; eyePoses(end,:)-reconstructedEyePoses(end,:)];
+        
     end
 end
 
 %% Report the errors
-fprintf('The largest azimuth error is %f degrees.\n',max(eyePoseErrors(:,1)));
-fprintf('The largest elevation error is %f degrees.\n',max(eyePoseErrors(:,2)));
-fprintf('The largest radius error is %f millimeters.\n',max(eyePoseErrors(:,4)));
+fprintf('The largest azimuth error is %f degrees.\n',max(abs(eyePoseErrors(:,1))));
+fprintf('The largest elevation error is %f degrees.\n',max(abs(eyePoseErrors(:,2))));
+fprintf('The largest radius error is %f millimeters.\n',max(abs(eyePoseErrors(:,4))));

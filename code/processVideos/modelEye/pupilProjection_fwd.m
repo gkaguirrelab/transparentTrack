@@ -88,9 +88,9 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     % Define the ray tracing functions
     rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
     % Define in eyePoses the azimuth, elevation, torsion, and pupil radius
-    eyePoses = [-10, 5, 0 3];
+    eyePose = [-10 5 0 3];
     % Obtain the pupil ellipse parameters in transparent format
-    pupilEllipseOnImagePlane = pupilProjection_fwd(eyePoses,sceneGeometry,rayTraceFuncs);
+    pupilEllipseOnImagePlane = pupilProjection_fwd(eyePose,sceneGeometry,rayTraceFuncs);
 %}
 %{
     %% Display a 2D image of a slightly myopic left eye
@@ -99,7 +99,7 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     % Define the ray tracing functions
     rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
     % Define an eyePose with azimuth, elevation, torsion, and pupil radius
-    eyePose = [-10, 5, 0 3];
+    eyePose = [-10 5 0 3];
     % Perform the projection and request the full eye model
     [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePose,sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
     % Define some settings for display
@@ -127,7 +127,7 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     % Define the ray tracing functions
     rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
     % Define an eyePose with azimuth, elevation, torsion, and pupil radius
-    eyePose = [0, 0, 0 3];
+    eyePose = [0 0 0 3];
     % Perform the projection and request the full eye model
     [~, ~, ~, eyeWorldPoints, pointLabels] = pupilProjection_fwd(eyePose,sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
     % Define some settings for display
@@ -309,7 +309,7 @@ if p.Results.fullEyeModelFlag
     % Add a point for the corneal apex
     cornealApex=[0 0 0];
     eyeWorldPoints = [eyeWorldPoints; cornealApex];
-    pointLabels = [pointLabels; 'cornealApex'];    
+    pointLabels = [pointLabels; 'cornealApex'];
 end
 
 
@@ -389,8 +389,10 @@ if ~isempty(rayTraceFuncs)
             sceneGeometry.eye.rotationCenter(1),...
             theta);
         % Conduct an fminsearch to find the p1p2 theta that results in a
-        % ray that strikes as close as possible to the camera nodal point
-        theta_p1p2=fminsearch(errorFunc,0);
+        % ray that strikes as close as possible to the camera nodal point.
+        % Because the errorFunc returns nan for values very close to zero,
+        % we initialize the search with a value slightly away (1e-4)
+        theta_p1p2=fminsearch(errorFunc,1e-4);
         % Now repeat this process for a ray that varies in theta in the
         % p1p3 plane
         errorFunc = @(theta) rayTraceFuncs.cameraNodeDistanceError2D.p1p3(...
@@ -401,13 +403,31 @@ if ~isempty(rayTraceFuncs)
             eyeWorldPoint(1),eyeWorldPoint(2),eyeWorldPoint(3),...
             sceneGeometry.eye.rotationCenter(1),...
             theta);
-        theta_p1p3=fminsearch(errorFunc,0);
+        theta_p1p3=fminsearch(errorFunc,1e-4);
         % With both theta values calculated, now obtain the virtual image
         % ray arising from the pupil plane that reflects the corneal optics
         virtualImageRay = rayTraceFuncs.virtualImageRay(eyeWorldPoint(1), eyeWorldPoint(2), eyeWorldPoint(3), theta_p1p2, theta_p1p3);
-        % Replace the original eyeWorld point with the virtual image 
+        % Replace the original eyeWorld point with the virtual image
         % eyeWorld point
-        eyeWorldPoints(refractPointsIdx(ii),:) = virtualImageRay(1,:);
+        eyeWorldPoints(refractPointsIdx(ii),:) = virtualImageRay(1,:);        
+        % The code below may be used to calculate the total error (in mm)
+        % in both dimensions for intersecting the nodal point of the
+        % camera. Error values on the order of 0.1 - 5 are found across
+        % pupil points and for a range of eye rotations. The code is not
+        % normally executed as it lengthens the computation and the result
+        % is not otherwise used. It is preserved here in case it is needed
+        % for diagnostic purposes.
+%{        
+        nodalPointIntersectError(refractPointsIdx(ii)) = ...
+            rayTraceFuncs.cameraNodeDistanceError3D(...
+            sceneGeometry.extrinsicTranslationVector(1),...
+            sceneGeometry.extrinsicTranslationVector(2),...
+            sceneGeometry.extrinsicTranslationVector(3),...
+            deg2rad(eyeAzimuth), deg2rad(eyeElevation), deg2rad(eyeTorsion),...
+            eyeWorldPoint(1),eyeWorldPoint(2),eyeWorldPoint(3),...
+            sceneGeometry.eye.rotationCenter(1),...
+            theta_p1p2, theta_p1p3);
+%}
     end
 end
 
@@ -444,10 +464,6 @@ headWorldPoints = (eyeRotation*(eyeWorldPoints-sceneGeometry.eye.rotationCenter)
 % world coordinate frame
 sceneWorldPoints = headWorldPoints(:,[2 3 1]);
 
-% We reverse the direction of the Y axis so that positive elevation of the
-% eye corresponds to a movement of the pupil upward in the image
-sceneWorldPoints(:,2) = sceneWorldPoints(:,2)*(-1);
-
 
 %% Project the sceneWorld points to the image plane
 % This coordinate frame is in units of pixels, and has the dimensions
@@ -463,10 +479,6 @@ sceneWorldPoints(:,2) = sceneWorldPoints(:,2)*(-1);
 % With x being left/right and y being down/up
 %
 
-% Add a column of ones to support the upcoming matrix multiplication with a
-% combined rotation and translation matrix
-nEyeWorldPoints = size(eyeWorldPoints,1);
-sceneWorldPoints=[sceneWorldPoints, ones(nEyeWorldPoints,1)];
 
 % Create the projectionMatrix
 projectionMatrix = ...
@@ -474,8 +486,13 @@ projectionMatrix = ...
     [sceneGeometry.extrinsicRotationMatrix, ...
     sceneGeometry.extrinsicTranslationVector];
 
-% Project the world points to the image plane and scale
-tmpImagePoints=(projectionMatrix*sceneWorldPoints')';
+% What is our total number of points to project?
+nEyeWorldPoints = size(eyeWorldPoints,1);
+
+% Project the sceneWorld points to the image plane and scale. The
+% sceneWorld points have a column of ones added support the multiplication
+% with a combined rotation and translation matrix
+tmpImagePoints=(projectionMatrix*[sceneWorldPoints, ones(nEyeWorldPoints,1)]')';
 imagePointsPreDistortion=zeros(nEyeWorldPoints,2);
 imagePointsPreDistortion(:,1) = ...
     tmpImagePoints(:,1)./tmpImagePoints(:,3);
