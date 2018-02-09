@@ -146,10 +146,12 @@ if ~p.Results.displayMode
         grayVideo(:,:,ii) = rgb2gray (thisFrame);
     end
 else
+    cc = 0;
     for ii = p.Results.startFrame:p.Results.startFrame+nFrames
+        cc = cc+1;
         thisFrame = read(videoInObj,ii);
         thisFrame = imadjust(thisFrame,[],[],p.Results.glintGammaCorrection);
-        grayVideo(:,:,ii) = rgb2gray (thisFrame);
+        grayVideo(:,:,cc) = rgb2gray (thisFrame);
     end
 end
 % close the video object
