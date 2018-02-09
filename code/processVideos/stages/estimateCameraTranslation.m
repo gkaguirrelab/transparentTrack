@@ -75,7 +75,7 @@ function sceneGeometry = estimateCameraTranslation(pupilFileName, sceneGeometryF
 %                           the ellipse fit params for which the search
 %                           will be conducted.
 %  'ellipseArrayList'     - A vector of frame numbers (indexed from 1)
-%                           which identify the llipses to be used for the
+%                           which identify the ellipses to be used for the
 %                           estimation of scene geometry. If left empty,
 %                           a list of ellipses will be generated.
 %  'nBinsPerDimension'    - Scalar. Defines the number of divisions with
@@ -240,14 +240,14 @@ end
 
 
 %% Generate the errorWeights
-errorWeights= ellipseFitSEM(ellipseArrayList);
+errorWeights = ellipseFitSEM(ellipseArrayList);
 errorWeights = 1./errorWeights;
-errorWeights=errorWeights./mean(errorWeights);
+errorWeights = errorWeights./mean(errorWeights);
 
 
 %% Perform the search
 if strcmp(p.Results.verbosity,'full')
-    fprintf('Estimating the camera translation vector.\n');
+    fprintf('Performing the search.\n');
 end
 % Call out to the local function that performs the serach
 sceneGeometry = ...
@@ -263,7 +263,6 @@ sceneGeometry = ...
 % add additional search and meta field info to sceneGeometry
 sceneGeometry.meta.estimateCameraTranslation.parameters = p.Results;
 sceneGeometry.meta.estimateCameraTranslation.search.ellipseArrayList = ellipseArrayList';
-
 
 %% Save the sceneGeometry file
 if ~isempty(sceneGeometryFileName)
@@ -458,7 +457,7 @@ set(figHandle, 'Position',[25 5 width height],...
     'PaperSize',[width height],...
     'PaperPositionMode','auto',...
     'Color','w',...
-    'Renderer','painters'...     %recommended if there are no alphamaps
+    'Renderer','painters'...     % recommended if there are no alphamaps
     );
 
 %% Left panel -- distance error
@@ -625,7 +624,6 @@ set(gca,'Ydir','reverse')
 title('Area error')
 xlim (xPlotBounds);
 ylim (yPlotBounds);
-
 
 % Create a legend
 hSub = subplot(3,3,9);
