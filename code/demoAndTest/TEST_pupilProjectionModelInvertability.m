@@ -55,7 +55,8 @@ for thisAzimuth = -35:5:35
         % If the exitFlag is 2, we may be in a local minimum. Repeat the
         % search, supplying the initial solution as x0.
         if exitFlag == 2
-            [inverseEyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError, exitFlag] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4],'x0',inverseEyePose);
+            x0 = inverseEyePose + [1e-3 1e-3 0 1e-3];
+            [inverseEyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError, exitFlag] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4],'x0',x0);
         end
         toc
         
