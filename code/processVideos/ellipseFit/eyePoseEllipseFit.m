@@ -9,22 +9,27 @@ function [eyePose, RMSE] = eyePoseEllipseFit(Xp, Yp, sceneGeometry, rayTraceFunc
 %   parameters (azimuth, elevation, pupil radius) that would produce the
 %   best fitting ellipse projected according to sceneGeometry.
 %
-%   The search is constrained by the upper and lower bounds of the
-%   eyePose. The default values specified here represent the physical
-%   boundaries of the rotation model. Tighter, biologically informed 
-%   constraints may be passed by the calling function.
+%   The search is constrained by the upper and lower bounds of the eyePose.
+%   The default values specified here represent the physical boundaries of
+%   the rotation model. Tighter, biologically informed constraints may be
+%   passed by the calling function.
 %
 % Inputs:
 %   Xp, Yp                - Vector of points to be fit
 %
 % Optional key/value pairs:
-%  'x0'                   - Initial guess for the eyePose
+%  'x0'                   - Initial guess for the eyePose. The initial
+%                           azimuth and elevation is slightly different
+%                           from zero, as the routines can become stuck in
+%                           local minima for rotation values exactly at
+%                           zdero.
 %  'eyePoseLB'            - Lower bound on the eyePose
 %  'eyePoseUB'            - Upper bound on the eyePose
 %
 % Outputs:
-%   eyePose             - A 1x4 matrix containing the best fitting eye
-%                           parameters (azimuth, elevation, torsion, pupil radius)
+%   eyePose               - A 1x4 matrix containing the best fitting eye
+%                           parameters (azimuth, elevation, torsion, pupil 
+%                           radius)
 %   RMSE                  - Root mean squared error of the distance of
 %                           boundary point in the image to the fitted
 %                           ellipse
@@ -40,7 +45,7 @@ p.addRequired('Yp',@isnumeric);
 p.addRequired('sceneGeometry',@isstruct);
 p.addRequired('rayTraceFuncs',@(x)(isempty(x) | isstruct(x)));
 
-p.addParameter('x0',[0 0 0 2],@isnumeric);
+p.addParameter('x0',[1e-3 1e-3 0 2],@isnumeric);
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 
