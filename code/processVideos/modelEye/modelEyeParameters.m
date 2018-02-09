@@ -117,6 +117,7 @@ switch p.Results.species
         
         % Define the properties of the iris. Geoff needs to do some work to
         % find and justify values here.
+        % https://www.clspectrum.com/issues/2002/april-2002/contact-lens-case-reports        
         eye.irisRadius = 5;
         eye.irisCenter = [-4.5 0 0];
         
@@ -184,6 +185,13 @@ switch p.Results.species
         % Refractive index values from Atchison 2006.
         eye.corneaRefractiveIndex = 1.376;
         eye.aqueousRefractiveIndex = 1.3374;
+        
+        % Calculate and store the axial length, and use the axial length
+        % to calculate kappa, the angle (in degrees) between the optical
+        % and visual axes of the eye. Positive values of kappa displaces
+        % the visual axis towards the nasal field of the eye
+        % Tabernero, Juan, et al. "Mechanism of compensation of aberrations in the human eye." JOSA A 24.10 (2007): 3274-3283.
+        
         
     otherwise
         error('Please specify a valid species for the eye model');
