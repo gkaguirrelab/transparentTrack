@@ -48,6 +48,7 @@ function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 %
 % Optional key/value pairs (flow control)
 %  'nFrames'              - Analyze fewer than the total number of frames.
+%  'startFrame'           - First frame from which to start the analysis.
 %
 % Optional key/value pairs (environment)
 %  'tbSnapshot'           - This should contain the output of the
@@ -102,6 +103,7 @@ p.addParameter('displayMode',false,@islogical);
 
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
+p.addParameter('startFrame',1,@isnumeric);
 
 % Optional environment params
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
@@ -137,10 +139,18 @@ videoSizeY = videoInObj.Height;
 grayVideo = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
 
 % read the video into memory, adjust gamma
-for ii = 1:nFrames
-    thisFrame = readFrame(videoInObj);
-    thisFrame = imadjust(thisFrame,[],[],p.Results.glintGammaCorrection);
-    grayVideo(:,:,ii) = rgb2gray (thisFrame);
+if ~p.Results.displayMode
+    for ii = 1:nFrames
+        thisFrame = readFrame(videoInObj);
+        thisFrame = imadjust(thisFrame,[],[],p.Results.glintGammaCorrection);
+        grayVideo(:,:,ii) = rgb2gray (thisFrame);
+    end
+else
+    for ii = p.Results.startFrame:p.Results.startFrame+nFrames
+        thisFrame = read(videoInObj,ii);
+        thisFrame = imadjust(thisFrame,[],[],p.Results.glintGammaCorrection);
+        grayVideo(:,:,ii) = rgb2gray (thisFrame);
+    end
 end
 % close the video object
 clear videoInObj
