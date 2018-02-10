@@ -49,7 +49,7 @@ function [eyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaEr
 %                           If not defined, the starting point will be
 %                           estimated from the coordinates of the ellipse
 %                           center.
-%  'eyePoseLB/UB'         - A 1x4 vector that provides the lower (upper) 
+%  'eyePoseLB/UB'         - A 1x4 vector that provides the lower (upper)
 %                           bounds on the eyePose [azimuth, elevation,
 %                           torsion, pupil radius]. The default values here
 %                           represent the physical limits of the projection
@@ -135,7 +135,7 @@ if isempty(pupilEllipseOnImagePlane)
     return
 end
 
-% Issue a warning if the bounds do not fully constrain at least one eye 
+% Issue a warning if the bounds do not fully constrain at least one eye
 % rotation parameter. This is because there are multiple combinations of
 % the three axis rotations that can bring an eye to a destination.
 % Typically, the torsion will be constrained with upper and lower bounds of
@@ -182,7 +182,7 @@ end
 if isempty(p.Results.x0)
     % Probe the forward model to determine how many pixels of change in the
     % location of the pupil ellipse correspond to one degree of rotation.
-    % Omit ray-tracing to save time as it has minimal effect upon the 
+    % Omit ray-tracing to save time as it has minimal effect upon the
     % position of the center of the ellipse.
     probeEllipse=pupilProjection_fwd([1 0 0 2],sceneGeometry, []);
     pixelsPerDeg = probeEllipse(1)-CoP(1);
@@ -230,11 +230,12 @@ end
 
 % Define variables used in the nested functions
 targetEllipse = pupilEllipseOnImagePlane; % the target ellipse params
-centerErrorThreshold = p.Results.centerErrorThreshold; 
+centerErrorThreshold = p.Results.centerErrorThreshold;
+lastFVal = realmax;
 bestFVal = realmax;
 xLast = []; % Last place pupilProjection_fwd was called
 xBest = []; % The x with the lowest objective function value that meets
-            % the constraint tolerance
+% the constraint tolerance
 shapeErrorAtLast = 0;
 shapeErrorAtBest = 0;
 areaErrorAtLast = 0;
@@ -315,6 +316,7 @@ constraintFun = @constr; % the constraint function, nested below
             case 'init'
                 % Unused
             case 'iter'
+                lastFVal = optimValues.fval;
                 % Store the current best value for x that satisfies the
                 % constraint. This is done as we observe that fmincon can
                 % move away from the best solution when azimuth and
@@ -322,16 +324,16 @@ constraintFun = @constr; % the constraint function, nested below
                 % by others:
                 %   https://groups.google.com/forum/#!topic/comp.soft-sys.matlab/SuNzbhEun1Y
                 if optimValues.constrviolation < constraintTolerance && ...
-                        optimValues.fval < bestFVal
-                    bestFVal = optimValues.fval;
+                        lastFVal < bestFVal
+                    bestFVal = lastFVal;
                     xBest = xLast;
                     shapeErrorAtBest = shapeErrorAtLast;
                     areaErrorAtBest = areaErrorAtLast;
                     ellipseAtBest = ellipseAtLast;
                 end
                 % Test if we are done the search
-                if optimValues.fval < centerErrorThreshold && ...
-                    optimValues.constrviolation < constraintTolerance
+                if lastFVal < centerErrorThreshold && ...
+                        optimValues.constrviolation < constraintTolerance
                     stop = true;
                 end
             case 'done'
@@ -341,16 +343,22 @@ constraintFun = @constr; % the constraint function, nested below
     end
 
 
-% Use the best solution seen by fmincon
-eyePose = xBest;
-
-% Store the params of the best fitting ellipse 
-bestMatchEllipseOnImagePlane = ellipseAtBest;
-
-% Store the errors
-centerError = bestFVal;
-shapeError = shapeErrorAtBest;
-areaError = areaErrorAtBest;
+% Use the best solution seen by fmincon. This includes the eyePose, the
+% parameters of the best fitting ellipse on the image plane, and the
+% errors.
+if isempty(xBest)
+    eyePose = xLast;
+    bestMatchEllipseOnImagePlane = ellipseAtLast;
+    centerError = bestFVal;
+    shapeError = shapeErrorAtLast;
+    areaError = areaErrorAtLast;
+else
+    eyePose = xBest;
+    bestMatchEllipseOnImagePlane = ellipseAtBest;
+    centerError = bestFVal;
+    shapeError = shapeErrorAtBest;
+    areaError = areaErrorAtBest;
+end
 
 end % function -- pupilProjection_inv
 

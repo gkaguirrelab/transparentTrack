@@ -366,7 +366,7 @@ areaErrorByEllipse=zeros(size(ellipses,1),1);
         % inverse projection and use these to assemble the objective
         % function. We parallelize the computation across ellipses.
         parfor (ii = 1:size(ellipses,1), nWorkers)
-            exitFlgag = [];
+            exitFlag = [];
             eyePose = [];
             [eyePose, ~, centerDistanceErrorByEllipse(ii), shapeErrorByEllipse(ii), areaErrorByEllipse(ii), exitFlag] = ...
                 pupilProjection_inv(...
