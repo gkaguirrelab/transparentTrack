@@ -185,9 +185,10 @@ nPupilPerimPoints = p.Results.nPupilPerimPoints;
 % This coordinate frame is in mm units and has the dimensions (p1,p2,p3).
 % The diagram is of a cartoon pupil, being viewed directly from the front.
 %
-% Coordinate [0,0,0] corresponds to the apex (front surface) of the cornea.
-% The first dimension is depth, and has a negative value towards the
-% back of the eye.
+% Coordinate [0,0,0] corresponds to the apex (front surface) of the cornea,
+% with the model eye having the property of the optical and pupil axes of
+% the eye being aligned. The first dimension is depth, and has a negative
+% value towards the back of the eye.
 %
 %                 |
 %     ^         __|__
@@ -341,7 +342,7 @@ end
 %
 %
 % Position [0,-,-] indicates the front surface of the eye.
-% Position [-,0,0] indicates the h2 / h3 position of the optical axis of
+% Position [-,0,0] indicates the h2 / h3 position of the pupil axis of
 % the eye when it is normal to the image plane.
 %
 % We will convert from this coordinate frame to that of the camera scene
@@ -456,9 +457,8 @@ headWorldPoints = (eyeRotation*(eyeWorldPoints-sceneGeometry.eye.rotationCenter)
 % +Z = front (towards the camera)
 %
 % The origin [0,0,0] corresponds to the front surface of the eye and the
-% optical center of the eye when the line that connects the center of
-% rotation of the eye and the optical axis of the eye are normal to the
-% image plane.
+% pupil center when the line that connects the center of rotation of the
+% eye and the pupil center are normal to the image plane.
 
 % Re-arrange the head world coordinate frame to transform to the scene
 % world coordinate frame
@@ -503,10 +503,10 @@ imagePointsPreDistortion(:,2) = ...
 %% Apply radial lens distortion
 % This step introduces "pincushion" (or "barrel") distortion produced by
 % the lens. The x and y distortion equations are in the normalized image
-% coordinates. Thus, the origin is at the optical center (aka principal
-% point), and the coordinates are in world units. To apply this distortion
-% to our image coordinate points, we subtract the optical center, and then
-% divide by fx and fy from the intrinsic matrix.
+% coordinates. Thus, the origin is at the sensor optical center (aka
+% principal point), and the coordinates are in world units. To apply this
+% distortion to our image coordinate points, we subtract the optical
+% center, and then divide by fx and fy from the intrinsic matrix.
 imagePointsNormalized = (imagePointsPreDistortion - [sceneGeometry.intrinsicCameraMatrix(1,3) sceneGeometry.intrinsicCameraMatrix(2,3)]) ./ ...
     [sceneGeometry.intrinsicCameraMatrix(1,1) sceneGeometry.intrinsicCameraMatrix(2,2)];
 
