@@ -49,13 +49,13 @@ function [eyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaEr
 %                           If not defined, the starting point will be
 %                           estimated from the coordinates of the ellipse
 %                           center.
-%  'eyePoseLB/UB'         - Upper and lower bounds on the eyePose
-%                           [azimuth, elevation, torsion, pupil radius].
-%                           The default values here represent the physical
-%                           limits of the projection model for azimuth,
-%                           elevation, and pupil radius. Torsion is
-%                           constrained to zero by default as the ellipse
-%                           provides no torsion information.
+%  'eyePoseLB/UB'         - A 1x4 vector that provides the lower (upper) 
+%                           bounds on the eyePose [azimuth, elevation,
+%                           torsion, pupil radius]. The default values here
+%                           represent the physical limits of the projection
+%                           model for azimuth, elevation, and pupil radius.
+%                           Torsion is constrained to zero by default as
+%                           the ellipse provides no torsion information.
 %  'centerErrorThreshold' - Scalar. Defines one of the two stopping point
 %                           criteria for the search.
 %  'constraintTolerance'  - Defines one of the two stopping point
