@@ -298,11 +298,6 @@ outputRayHeadWorld_p1p3(2,:)=outputRayHeadWorld_p1p3(2,:)+rotationCenterDepth;
 outputRaySceneWorld_p1p2 = outputRayHeadWorld_p1p2(:,[2 3 1]);
 outputRaySceneWorld_p1p3 = outputRayHeadWorld_p1p3(:,[2 3 1]);
 
-% We reverse the direction of the Y axis so that positive elevation of the
-% eye corresponds to a movement of the pupil upward in the image
-outputRaySceneWorld_p1p2(:,2) = outputRaySceneWorld_p1p2(:,2)*(-1);
-outputRaySceneWorld_p1p3(:,2) = outputRaySceneWorld_p1p3(:,2)*(-1);
-
 % Obtain an expression for X and Y distances between the nodal point of the camera in the sceneWorld plane and the
 % point at which the ray will strike the plane that contains the camera
 slope_xZ =(outputRaySceneWorld_p1p2(2,1)-outputRaySceneWorld_p1p2(1,1))/(outputRaySceneWorld_p1p2(2,3)-outputRaySceneWorld_p1p2(1,3));
