@@ -1,4 +1,4 @@
-function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoints, pointLabels] = pupilProjection_fwd(eyePose, sceneGeometry, rayTraceFuncs, varargin)
+function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoints, pointLabels, nodalPointIntersectError] = pupilProjection_fwd(eyePose, sceneGeometry, rayTraceFuncs, varargin)
 % Project the pupil circle to an ellipse on the image plane
 %
 % Syntax:
@@ -374,6 +374,7 @@ if ~isempty(rayTraceFuncs)
         strcmp(pointLabels,'pupilCenter')+...
         strcmp(pointLabels,'irisCenter'));
     % Loop through the eyeWorldPoints that are to be refracted
+    nodalPointIntersectError = nan(length(pointLabels),1);
     for ii=1:length(refractPointsIdx)
         % Grab this eyeWorld point
         eyeWorldPoint=eyeWorldPoints(refractPointsIdx(ii),:);
