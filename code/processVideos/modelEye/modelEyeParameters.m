@@ -154,7 +154,7 @@ switch p.Results.species
         % behind the corneal apex.
         posteriorChamberApexDepth = 3.2964;
         
-        % Compure and store axial length
+        % Compute and store axial length
         if isempty(p.Results.axialLength)
             eye.axialLength = posteriorChamberApexDepth + eye.posteriorChamberRadii(1)*2;
         else
@@ -214,7 +214,7 @@ switch p.Results.species
         % the pupil and visual axes of the eye. The visual axis is
         % displaced nasally and superiorly within the visual field relative
         % to the pupil axis. We will define positive kappa values to be
-        % displacement nasally and upward This angle has been found to
+        % displacement nasally and upward. This angle has been found to
         % depend upon axial length:
         %
         %   Tabernero, Juan, et al. "Mechanism of compensation of
@@ -238,25 +238,42 @@ switch p.Results.species
         % includes both horizontal and vertical components. Hashemi 2010
         % provides the "kappa intercept angle" of the kappa vector distance
         % with the pupil center. Oddly, the reported interecept angle
-        % varies substantially between eyes. Gharee 2015 notes that the
+        % varies substantially between eyes. Hashemi 2010 notes that the
         % great majority of studied eyes had their visual axis displaced
-        % superiorly w.r.t. the pupil axis. We take the mean intercept
+        % inferiorly w.r.t. the pupil axis. We take the mean intercept
         % angle from the right eye of Hashemi 2010, which implies a 12
         % degree angle with respect to the horizontal meridian. We assume a
         % mean horizontal kappa of 5 degrees. We then calculate, based upon
-        % the Hashemi intercept angle, a vertical kappa of 1.0628 degrees.
+        % the Hashemi intercept angle, a vertical kappa of -1.0628 degrees.
+        %
+        % Another source for an estimate for vertical kappa comes from
+        % Mathur 2013:
+        %
+        %	Mathur, Ankit, Julia Gehrmann, and David A. Atchison. "Pupil shape
+        %	as viewed along the horizontal visual field." Journal of vision
+        %	13.6 (2013): 3-3.
+        %
+        % They measured the shape of the entrance pupil as a function of
+        % viewing angle relative to the fixation point of the eye. We can
+        % replicate their "oblique component of the pupil ellipticity" by
+        % using a vertical kappa of -2 degrees. We note that there is
+        % evidence that the vertical kappa value can vary based upon the
+        % subject being in a sittng or supine position. Until better
+        % evidene is available, we adopt a vertical kappa of -2 degrees for
+        % the emmetropic model eye.
         %
         % Tabernero 2007 Equation 6 expresses kappa (technically alpha, the
         % angle w.r.t. the optical axis) as a function of axial length.
         % Their formula assumes an emmetropic model eye of 24 mm, while the
         % model eye used here has an emmetropic axial length of 23.592. The
         % equation implemented below is adjusted so that an emmetropic eye
-        % of 23.5924 mm has a horizontal kappa = 5 degrees and a vertical
-        % kappa of 1.0628 degrees.
+        % of 23.5924 mm has a horizontal (nasal directed) kappa of 5
+        % degrees and a vertical (inferiorly directed) kappa of -2
+        % degrees.
         %
         if isempty(p.Results.kappaAngle)
             eye.kappaAngle(1) = atand((15.0924/(eye.axialLength-8.5000))*tand(5));
-            eye.kappaAngle(2) = atand((15.0924/(eye.axialLength-8.5000))*tand(1.0628));
+            eye.kappaAngle(2) = -atand((15.0924/(eye.axialLength-8.5000))*tand(2));
         else
             eye.kappaAngle = p.Results.kappaAngle;
         end
