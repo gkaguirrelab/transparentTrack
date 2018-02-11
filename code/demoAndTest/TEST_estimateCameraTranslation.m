@@ -81,11 +81,9 @@ p = -0.59;
 % X given Y in a bivariate normal distribution
 conditionalSigmaLength = sqrt((1-p^2)*sigmaLengthMm);
 
-% Obtain the axial length of the default model eye. The axial length is
-% given by the depth of the center of the posterior chamber, plus the
-% radius of the axial dimension of the posterior chamber
+% Obtain the axial length of the default model eye.
 defaultSceneGeometry = createSceneGeometry();
-defaultAxialLength = -(defaultSceneGeometry.eye.posteriorChamberCenter(1)-defaultSceneGeometry.eye.posteriorChamberRadii(1));
+defaultAxialLength = defaultSceneGeometry.eye.axialLength;
 
 
 %% Run the simulation
@@ -105,13 +103,13 @@ for axialErrorMultiplier = -2:1:2
                 % distribution of axial lengths given knowledge of the
                 % spherical refraction of the eye
                 axialLength = defaultAxialLength + (axialErrorMultiplier * conditionalSigmaLength);
-                veridicalSceneGeometry = createSceneGeometry('eyeLaterality','Right','axialLength',axialLength);
+                veridicalSceneGeometry = createSceneGeometry('axialLength',axialLength);
                 veridicalSceneGeometry.extrinsicTranslationVector = [cameraX; cameraY; cameraZ];
                 
                 % Assemble the ray tracing functions
                 rayTraceFuncs = assembleRayTraceFuncs( veridicalSceneGeometry );
                 
-                % Create a set of ellipses from the veridial geometry
+                % Create a set of ellipses from the veridical geometry
                 
                 ellipseIdx=1;
                 for azi=-15:15:15
@@ -124,7 +122,7 @@ for axialErrorMultiplier = -2:1:2
                 end
                 
                 % Estimate the scene Geometry
-                estimatedSceneGeometry = estimateCameraTranslation(pupilData,'','useParallel',false,'ellipseArrayList',1:1:ellipseIdx-1,'extrinsicTranslationVectorUB',[10; 10; 225]);
+                estimatedSceneGeometry = estimateCameraTranslation(pupilData,'','useParallel',true,'ellipseArrayList',1:1:ellipseIdx-1,'extrinsicTranslationVectorUB',[10; 10; 225]);
                 
                 % Save the veridical and estimated results
                 outputFile = [outputFileStem '_vsg_' num2str(resultIdx) '.mat'];
