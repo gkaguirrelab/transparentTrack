@@ -47,7 +47,6 @@ function eye = modelEyeParameters( varargin )
 %  'kappaAngle'           - 1x2 matrix. This is the angle of the visual
 %                           in degrees w.r.t. to pupil axis. The values are
 %                           [azimuth, elevation].
-%                           the 
 %  'eyeLaterality'        - A text string that specifies which eye (left,
 %                           right) to model. Allowed values (in any case)
 %                           are {'left','right','L','R','OS','OD'}
