@@ -85,7 +85,30 @@ function sceneGeometry = estimateCameraTranslation(pupilFileName, sceneGeometryF
 %	sceneGeometry         - A structure that contains the components of the
 %                           projection model.
 %
-
+% Examples:
+%{
+    %% Recover a veridical camera translation
+    % Create the veridical sceneGeometry
+    verdicalSceneGeometry = createSceneGeometry();
+    verdicalSceneGeometry.extrinsicTranslationVector = [-1.2 2.3 115];
+    % Assemble the ray tracing functions
+    rayTraceFuncs = assembleRayTraceFuncs( veridicalSceneGeometry );
+    % Create a set of ellipses
+    ellipseIdx=1;
+    for azi=-15:15:15
+    	for ele=-15:15:15
+            eyePose=[azi, ele, 0, 2+(randn()./5)];
+            pupilData.initial.ellipses.values(ellipseIdx,:) = pupilProjection_fwd(eyePose, veridicalSceneGeometry, rayTraceFuncs);
+            pupilData.initial.ellipses.RMSE(ellipseIdx,:) = 1;
+            ellipseIdx=ellipseIdx+1;
+        end
+    end
+    % Estimate the scene Geometry using the ellipses
+    estimatedSceneGeometry = estimateCameraTranslation(pupilData,'','useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1);
+    % Report how well we did
+    fprintf('Error in the recovered camera translation vector (x, y, depth] in mm: \n');
+    verdicalSceneGeometry.extrinsicTranslationVector - estimatedSceneGeometry.extrinsicTranslationVector
+%}
 
 %% input parser
 p = inputParser; p.KeepUnmatched = true;
