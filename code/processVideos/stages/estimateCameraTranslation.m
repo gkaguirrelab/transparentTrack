@@ -89,8 +89,8 @@ function sceneGeometry = estimateCameraTranslation(pupilFileName, sceneGeometryF
 %{
     %% Recover a veridical camera translation
     % Create the veridical sceneGeometry
-    verdicalSceneGeometry = createSceneGeometry();
-    verdicalSceneGeometry.extrinsicTranslationVector = [-1.2 2.3 115];
+    veridicalSceneGeometry = createSceneGeometry();
+    veridicalSceneGeometry.extrinsicTranslationVector = [-1.2; 0.9; 127];
     % Assemble the ray tracing functions
     rayTraceFuncs = assembleRayTraceFuncs( veridicalSceneGeometry );
     % Create a set of ellipses
@@ -107,7 +107,7 @@ function sceneGeometry = estimateCameraTranslation(pupilFileName, sceneGeometryF
     estimatedSceneGeometry = estimateCameraTranslation(pupilData,'','useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1);
     % Report how well we did
     fprintf('Error in the recovered camera translation vector (x, y, depth] in mm: \n');
-    verdicalSceneGeometry.extrinsicTranslationVector - estimatedSceneGeometry.extrinsicTranslationVector
+    veridicalSceneGeometry.extrinsicTranslationVector - estimatedSceneGeometry.extrinsicTranslationVector
 %}
 
 %% input parser
