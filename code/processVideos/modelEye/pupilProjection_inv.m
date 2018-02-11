@@ -99,12 +99,12 @@ function [eyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaEr
     % Define the ray tracing functions
     rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
     % Define in eyePoses the azimuth, elevation, torsion, and pupil radius
-    eyePose = [-10 5 0 2];
+    eyePose = [10 10 0 2];
     % Obtain the pupil ellipse parameters in transparent format
     pupilEllipseOnImagePlane = pupilProjection_fwd(eyePose,sceneGeometry,rayTraceFuncs);
     % Recover the eye pose from the ellipse
     tic
-    inverseEyePose = pupilProjection_inv(pupilEllipseOnImagePlane,sceneGeometry, rayTraceFuncs);
+    inverseEyePose = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs);
     toc
     % Report the difference between the input and recovered eyePose
     fprintf('Error in the recovered eye pose (deg azimuth, deg elevation, deg torsion, mm pupil radius) is: \n');
@@ -194,8 +194,8 @@ if isempty(p.Results.x0)
     % Estimate the eye azimuth and elevation by the X and Y displacement of
     % the ellipse center from the center of projection. Torsion is set to
     % zero
-    x0(1) = 2*((pupilEllipseOnImagePlane(1) - CoP(1))/pixelsPerDeg);
-    x0(2) = 2*((CoP(2) - pupilEllipseOnImagePlane(2))/pixelsPerDeg);
+    x0(1) = ((pupilEllipseOnImagePlane(1) - CoP(1))/pixelsPerDeg);
+    x0(2) = ((CoP(2) - pupilEllipseOnImagePlane(2))/pixelsPerDeg);
     x0(3) = 0;
     
     % Estimate the pupil radius in pixels, accounting for the eccentricity
