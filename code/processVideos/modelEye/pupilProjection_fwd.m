@@ -418,7 +418,7 @@ if ~isempty(rayTraceFuncs)
         % normally executed as it lengthens the computation and the result
         % is not otherwise used. It is preserved here in case it is needed
         % for diagnostic purposes.
-%{        
+        %{        
         nodalPointIntersectError(refractPointsIdx(ii)) = ...
             rayTraceFuncs.cameraNodeDistanceError3D(...
             sceneGeometry.extrinsicTranslationVector(1),...
@@ -428,7 +428,7 @@ if ~isempty(rayTraceFuncs)
             eyeWorldPoint(1),eyeWorldPoint(2),eyeWorldPoint(3),...
             sceneGeometry.eye.rotationCenter(1),...
             theta_p1p2, theta_p1p3);
-%}
+        %}
     end
 end
 
