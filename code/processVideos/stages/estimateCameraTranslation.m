@@ -215,8 +215,8 @@ else
         fprintf('Selecting ellipses to guide the search.\n');
     end
     
-    % First we divide the ellipse centers amongst a set of 2D bins across image
-    % space. We will ultimately minimize the fitting error across bins
+    % First we divide the ellipse centers amongst a set of 2D bins across
+    % image space.
     [ellipseCenterCounts,Xedges,Yedges,binXidx,binYidx] = ...
         histcounts2(ellipses(:,1),ellipses(:,2),p.Results.nBinsPerDimension);
     
@@ -224,15 +224,15 @@ else
     rowIdx = @(b) fix( (b-1) ./ (size(ellipseCenterCounts,2)) ) +1;
     colIdx = @(b) 1+mod(b-1,size(ellipseCenterCounts,2));
     
-    % Create a cell array of index positions corresponding to each of the 2D
-    % bins
+    % Create a cell array of index positions corresponding to each of the
+    % 2D bins
     idxByBinPosition = ...
         arrayfun(@(b) find( (binXidx==rowIdx(b)) .* (binYidx==colIdx(b)) ),1:1:numel(ellipseCenterCounts),'UniformOutput',false);
     
     % Identify which bins are not empty
     filledBinIdx = find(~cellfun(@isempty, idxByBinPosition));
     
-    % Identify the ellipses in each filled bin with the lowest fit SEM
+    % Identify the ellipse in each bin with the lowest fit SEM
     [~, idxMinErrorEllipseWithinBin] = arrayfun(@(x) nanmin(ellipseFitSEM(idxByBinPosition{x})), filledBinIdx, 'UniformOutput', false);
     returnTheMin = @(binContents, x)  binContents(idxMinErrorEllipseWithinBin{x});
     ellipseArrayList = cellfun(@(x) returnTheMin(idxByBinPosition{filledBinIdx(x)},x),num2cell(1:1:length(filledBinIdx)));
