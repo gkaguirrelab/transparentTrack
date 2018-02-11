@@ -63,7 +63,8 @@ for laterality = 1:2
     % prepare the model eye for this laterality
     sceneGeometry = createSceneGeometry('eyeLaterality',eyeSides{laterality});
     rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
-    [pupilEllipseOnImagePlane, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd([0 0 0 3],sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
+    [pupilEllipseOnImagePlane, imagePoints, ~, ~, pointLabels] = ...
+        pupilProjection_fwd([0 0 0 3],sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true,'nIrisPerimPoints',50);
     
     % setup the figure
     subplot(1,2,laterality);
@@ -80,6 +81,8 @@ for laterality = 1:2
     fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
     fimplicit(fh,[1, 640, 1, 480],'Color', 'g','LineWidth',1);
     axis off;
+    idx = strcmp(pointLabels,eyePartLabels{3});
+    plot(imagePoints(idx,1), imagePoints(idx,2), plotColors{3})
     idx = strcmp(pointLabels,eyePartLabels{4});
     plot(imagePoints(idx,1), imagePoints(idx,2), plotColors{4})
     idx = strcmp(pointLabels,eyePartLabels{6});
@@ -90,12 +93,11 @@ for laterality = 1:2
 end
 drawnow
 fprintf(['Figure 2 shows just the perimeter of the pupil and the corneal apex\n' ...
-    'for eyePoses [0 0 0 3] for the right and left eye. Here, the axis of\n' ...
-    'the camera is aligned with the optical axis of the model eye. \n' ...
-    'Note that the center of the pupil is displaced downwards and nasally\n' ...
-    'with respect to the optical axis of each eye. This physiologic property\n' ...
-    'causes the entrance pupil to have a slightly different appearance\n' ...
-    'when viewed from the nasal or temporal visual field (Atchison, 2013).\n\n']);
+    'for eyePoses [0 0 0 3] for the right and left eye. The axis of\n' ...
+    'the camera is aligned with the pupil axis of the model eye. \n' ...
+    'Note that the center of the iris is displaced upwards and temporally\n' ...
+    'with respect to the pupul axis of each eye [ES Bennett (2005) Clinical\n'...
+    'contact lens practice].\n\n']);
 
 %% Present Figure 3
 figure(3)
