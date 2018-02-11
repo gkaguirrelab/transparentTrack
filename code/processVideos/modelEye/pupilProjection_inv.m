@@ -110,22 +110,7 @@ function [eyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaEr
     fprintf('Error in the recovered eye pose (deg azimuth, deg elevation, deg torsion, mm pupil radius) is: \n');
     eyePose - inverseEyePose
 %}
-%{
-    %% An example with no ray tracing
-    % Obtain a default sceneGeometry structure
-    sceneGeometry=createSceneGeometry();
-    % Define in eyePoses the azimuth, elevation, torsion, and pupil radius
-    eyePose = [-10 5 0 3];
-    % Obtain the pupil ellipse parameters in transparent format
-    pupilEllipseOnImagePlane = pupilProjection_fwd(eyePose,sceneGeometry,[]);
-    % Recover the eye pose from the ellipse
-    tic
-    inverseEyePose = pupilProjection_inv(pupilEllipseOnImagePlane,sceneGeometry, []);
-    toc
-    % Report the difference between the input and recovered eyePose
-    fprintf('Error in the recovered eye pose (deg azimuth, deg elevation, deg torsion, mm pupil radius) is: \n');
-    eyePose - inverseEyePose
-%}
+
 
 
 %% Parse input
