@@ -45,15 +45,17 @@ function eye = modelEyeParameters( varargin )
 %                           proportions predicted by the Atchison model for
 %                           the specified degree of ametropia.
 %  'kappaAngle'           - 1x2 matrix. This is the angle of the visual
-%                           in degrees w.r.t. to pupil axis. The values are
-%                           [azimuth, elevation].
+%                           axis in degrees w.r.t. to pupil axis. The
+%                           values are [azimuth, elevation]. An eyePose of:
+%                               [-kappa(1), -kappa(2), 0, radius]
+%                           aligns the visual axis of the eye with the
+%                           optical axis of the camera
 %  'eyeLaterality'        - A text string that specifies which eye (left,
 %                           right) to model. Allowed values (in any case)
 %                           are {'left','right','L','R','OS','OD'}
 %  'species'              - A text string that specifies the species to be
 %                           modeled. Supported values (in any case) are
 %                           {'human'}
-%                       
 %
 % Outputs:
 %   eye                   - A structure with fields that contain the values
@@ -82,6 +84,16 @@ p.addParameter('species','Human',@ischar);
 
 % parse
 p.parse(varargin{:})
+
+% Interpret the passed laterality
+switch p.Results.eyeLaterality
+    case {'right','RIGHT','Right','R','r','od','OD'}
+        eyeLaterality = 'Right';
+    case {'left','LEFT','Left','L','l','os','OS'}
+        eyeLaterality = 'Left';
+    otherwise
+        error('Please specify a valid eye laterality for the model eye');
+end
 
 % Switch parameters at the top level by species
 switch p.Results.species
@@ -116,13 +128,11 @@ switch p.Results.species
         %
         % Bennett, Edward S., and Barry A. Weissman, eds. Clinical contact
         % lens practice. Lippincott Williams & Wilkins, 2005, p119
-        switch p.Results.eyeLaterality
-            case {'right','RIGHT','Right','R','r','od','OD'}
+        switch eyeLaterality
+            case 'Right'
                 eye.irisCenter = [-4.5 -0.15 -0.1];
-            case {'left','LEFT','Left','L','l','os','OS'}
+            case 'Left'
                 eye.irisCenter = [-4.5 0.15 -0.1];
-            otherwise
-                error('Please specify a valid eye laterality for the model eye');
         end
         
         % The posterior chamber of the eye is modeled as an ellipsoid. The
@@ -213,18 +223,41 @@ switch p.Results.species
         % We now calculate kappa, which is the angle (in degrees) between
         % the pupil and visual axes of the eye. The visual axis is
         % displaced nasally and superiorly within the visual field relative
-        % to the pupil axis. We will define positive kappa values to be
-        % displacement nasally and upward. This angle has been found to
-        % depend upon axial length:
+        % to the pupil axis. Horizontal kappa is usually defined with
+        % positive values being more nasal. We adopt a different convention
+        % in which kappa is defined in head-fixed coordinates. Thus,
+        % positive values for the right eye, and negative values for the
+        % left eye, are more nasal. Positive values for vertical kappa are
+        % upward.
+        %
+        % A source for an estimate of kappa comes from Mathur 2013:
+        %
+        %	Mathur, Ankit, Julia Gehrmann, and David A. Atchison. "Pupil shape
+        %	as viewed along the horizontal visual field." Journal of vision
+        %	13.6 (2013): 3-3.
+        %
+        % They measured the shape of the entrance pupil as a function of
+        % viewing angle relative to the fixation point of the eye. Their
+        % data is well fit by a kappa of [5, -2] degrees (see
+        % TEST_entrancePupilShape.m). 
+        %
+        % Measured kappa has been found to depend upon axial length:
         %
         %   Tabernero, Juan, et al. "Mechanism of compensation of
         %   aberrations in the human eye." JOSA A 24.10 (2007): 3274-3283.
         %
-        % Taberno and colleagues find a mean horizontal kappa of 5 degrees
-        % in emmetropes.
+        % Tabernero 2007 reports a mean horizontal kappa of 5 degrees in
+        % emmetropes, and their Equation 6 expresses kappa (technically
+        % alpha, the angle w.r.t. the optical axis) as a function of axial
+        % length. Their formula assumes an emmetropic model eye of 24 mm,
+        % while the model eye used here has an emmetropic axial length of
+        % 23.592. The equation implemented below is adjusted so that an
+        % emmetropic eye of 23.5924 mm has a horizontal (nasal directed)
+        % kappa of 5 degrees and a vertical (inferiorly directed) kappa of
+        % -2 degrees.
         %
-        % The mean kappa value in emmetropes has been reported in several
-        % places:
+        % While a horizontal kappa of ~5 degrees is a consistent finding,
+        % measurements of vertical kappa differ: 
         %
         %   Hashemi, Hassan, et al. "Distribution of angle kappa
         %   measurements with Orbscan II in a population-based survey."
@@ -234,50 +267,23 @@ switch p.Results.species
         %   in healthy iranian population obtained with the Orbscan II."
         %   Iranian Red Crescent Medical Journal 17.1 (2015).
         %
-        % The Hashemi and Gharaee papers measure a total kappa angle that
-        % includes both horizontal and vertical components. Hashemi 2010
-        % provides the "kappa intercept angle" of the kappa vector distance
-        % with the pupil center. Oddly, the reported interecept angle
-        % varies substantially between eyes. Hashemi 2010 notes that the
-        % great majority of studied eyes had their visual axis displaced
-        % inferiorly w.r.t. the pupil axis. We take the mean intercept
-        % angle from the right eye of Hashemi 2010, which implies a 12
-        % degree angle with respect to the horizontal meridian. We assume a
-        % mean horizontal kappa of 5 degrees. We then calculate, based upon
-        % the Hashemi intercept angle, a vertical kappa of -1.0628 degrees.
-        %
-        % Another source for an estimate for vertical kappa comes from
-        % Mathur 2013:
-        %
-        %	Mathur, Ankit, Julia Gehrmann, and David A. Atchison. "Pupil shape
-        %	as viewed along the horizontal visual field." Journal of vision
-        %	13.6 (2013): 3-3.
-        %
-        % They measured the shape of the entrance pupil as a function of
-        % viewing angle relative to the fixation point of the eye. We can
-        % replicate their "oblique component of the pupil ellipticity" by
-        % using a vertical kappa of -2 degrees. We note that there is
-        % evidence that the vertical kappa value can vary based upon the
-        % subject being in a sittng or supine position. Until better
-        % evidene is available, we adopt a vertical kappa of -2 degrees for
-        % the emmetropic model eye.
-        %
-        % Tabernero 2007 Equation 6 expresses kappa (technically alpha, the
-        % angle w.r.t. the optical axis) as a function of axial length.
-        % Their formula assumes an emmetropic model eye of 24 mm, while the
-        % model eye used here has an emmetropic axial length of 23.592. The
-        % equation implemented below is adjusted so that an emmetropic eye
-        % of 23.5924 mm has a horizontal (nasal directed) kappa of 5
-        % degrees and a vertical (inferiorly directed) kappa of -2
-        % degrees.
-        %
+        % We note that there is evidence that the vertical kappa value can
+        % vary based upon the subject being in a sittng or supine position.
+        % Until better evidene is available, we adopt a vertical kappa of
+        % -2 degrees for the emmetropic model eye.
+
         if isempty(p.Results.kappaAngle)
-            eye.kappaAngle(1) = atand((15.0924/(eye.axialLength-8.5000))*tand(5));
+            switch eyeLaterality
+                case 'Right'
+                    eye.kappaAngle(1) = atand((15.0924/(eye.axialLength-8.5000))*tand(5));
+                case 'Left'
+                    eye.kappaAngle(1) = -atand((15.0924/(eye.axialLength-8.5000))*tand(5));
+            end
             eye.kappaAngle(2) = -atand((15.0924/(eye.axialLength-8.5000))*tand(2));
         else
             eye.kappaAngle = p.Results.kappaAngle;
         end
-            
+        
     otherwise
         error('Please specify a valid species for the eye model');
 end
@@ -285,12 +291,12 @@ end
 % Meta data regarding the units of the model
 eye.meta.spectacleRefractionDiopters = p.Results.spectacleRefractionDiopters;
 eye.meta.axialLength = p.Results.axialLength;
-eye.meta.laterality = p.Results.eyeLaterality;
+eye.meta.laterality = eyeLaterality;
 eye.meta.species = p.Results.species;
 eye.meta.units = 'mm';
 eye.meta.coordinates = 'eyeWorld';
 eye.meta.dimensions = {'depth (axial)' 'horizontal' 'vertical'};
-eye.meta.kappa = 'Degrees angle of visual axis w.r.t. pupil axis. Positive values nasal.';
+eye.meta.kappa = 'Degrees angle of visual axis w.r.t. pupil axis.';
 
 end % function
 
