@@ -279,7 +279,7 @@ switch p.Results.species
                 case 'Left'
                     eye.kappaAngle(1) = -atand((15.0924/(eye.axialLength-8.5000))*tand(5));
             end
-            eye.kappaAngle(2) = -atand((15.0924/(eye.axialLength-8.5000))*tand(2));
+            eye.kappaAngle(2) = atand((15.0924/(eye.axialLength-8.5000))*tand(2));
         else
             eye.kappaAngle = p.Results.kappaAngle;
         end
