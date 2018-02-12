@@ -288,7 +288,7 @@ errorWeights = errorWeights./mean(errorWeights);
 if strcmp(p.Results.verbosity,'full')
     fprintf(['Searching over camera translations.\n']);
     fprintf('| 0                      50                   100%% |\n');
-    fprintf('.');
+    fprintf('.\n');
 end
 
 searchResults = {};
@@ -308,7 +308,7 @@ parfor (ss = 1:p.Results.nBADSsearches,nWorkers)
     % update progress
     if strcmp(p.Results.verbosity,'full')
         for pp=1:floor(50/p.Results.nBADSsearches)
-            fprintf('.');
+            fprintf('\b.\n');
         end
     end
     
