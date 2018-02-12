@@ -7,9 +7,9 @@
 %   to appear magnified and (depending upon viewing angle) shifted. The
 %   appearance of the pupil in the image plane is referred to as the
 %   "entrance pupil". The shape and size of the entrance pupil will vary as
-%   a function of angle with with the eye is viewed. This function has been
-%   measured by Spring & Stiles (1948) and Jay (1962), and more recently by
-%   Mathur and colleagues:
+%   a function of angle with which the eye is viewed. This function has
+%   been measured by Spring & Stiles (1948) and Jay (1962), and more
+%   recently by Mathur and colleagues:
 %
 %       Mathur, Ankit, Julia Gehrmann, and David A. Atchison. "Pupil shape
 %       as viewed along the horizontal visual field." Journal of vision
@@ -52,6 +52,8 @@ pupilDiam = 6;
 % ratio of the entrance pupil from different viewing angles relative to
 % fixation
 mathurEq9 = @(viewingAngleDeg) 0.99.*cosd((viewingAngleDeg+5.3)/1.121);
+
+% This is Eq 11, which specifies the oblique component of pupil ellipticity
 mathurEq11 = @(viewingAngleDeg) 0.00072.*viewingAngleDeg-0.0008;
 
 % Mathur 2013 reports results by the visual field angle from which the
@@ -75,12 +77,13 @@ elevationsDeg = zeros(size(viewingAngleDeg))-sceneGeometry.eye.kappaAngle(2);
 % Calculate the diameter ratio for the best fitting rotation center values
 [diamRatios, thetas] = calcPupilDiameterRatio(azimuthsDeg,elevationsDeg,pupilDiam,sceneGeometry,rayTraceFuncs);
 
-% Reverse the thetas to match the Mathur convention 
+% Reverse the thetas to match the Mathur convention, in which a theta of
+% zero corresponds to a pupil ellipse with the major axis aligned with the
+% horizontal meridian, and positive values of theta are in the
+% counter-clockwise direction.
 thetas = pi - thetas;
 
-% Plot Figure 10 of Mathur 2013 with our model output. We do some sign
-% reversing to make the x axis correspond to viewing angle (as opposed to
-% eye rotation)
+% Plot Figure 10 of Mathur 2013 with our model output.
 figure
 subplot(1,2,1);
 plot(viewingAngleDeg,diamRatios ,'.k');
@@ -103,7 +106,6 @@ xlabel('Viewing angle [deg]')
 ylabel('Oblique component of the pupil ellipticity')
 title('Mathur 2013 Figure 6, component C')
 
-foo = 1;
 
 
 %% LOCAL FUNCTION
