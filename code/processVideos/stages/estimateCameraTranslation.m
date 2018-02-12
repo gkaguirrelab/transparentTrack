@@ -154,7 +154,7 @@ p.addParameter('fitLabel','initial',@ischar);
 p.addParameter('ellipseArrayList',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nBinsPerDimension',4,@isnumeric);
 p.addParameter('useRayTracing',false,@islogical);
-p.addParameter('nBADSsearches',2,@isnumeric);
+p.addParameter('nBADSsearches',10,@isnumeric);
 
 % parse
 p.parse(pupilFileName, sceneGeometryFileName, varargin{:})
