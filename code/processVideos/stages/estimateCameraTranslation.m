@@ -154,7 +154,7 @@ p.addParameter('fitLabel','initial',@ischar);
 p.addParameter('ellipseArrayList',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nBinsPerDimension',4,@isnumeric);
 p.addParameter('useRayTracing',false,@islogical);
-p.addParameter('nBADSsearches',10,@isnumeric);
+p.addParameter('nBADSsearches',2,@isnumeric);
 
 % parse
 p.parse(pupilFileName, sceneGeometryFileName, varargin{:})
@@ -286,28 +286,44 @@ errorWeights = errorWeights./mean(errorWeights);
 
 %% Perform the search
 if strcmp(p.Results.verbosity,'full')
-    fprintf('Performing the search.\n');
+    fprintf(['Searching over camera translations.\n']);
+    fprintf('| 0                      50                   100%% |\n');
+    fprintf('.');
 end
+
 for ss = 1:p.Results.nBADSsearches
-tmpSceneGeometry = ...
-    performSceneSearch(initialSceneGeometry, rayTraceFuncs, ...
-    ellipses(ellipseArrayList,:), ...
-    errorWeights, ...
-    p.Results.translationLB, ...
-    p.Results.translationUB, ...
-    p.Results.translationLBp, ...
-    p.Results.translationUBp, ...
-    p.Results.eyePoseLB, ...
-    p.Results.eyePoseUB, ...
-    nWorkers);
-if ss==1
-    sceneGeometry = tmpSceneGeometry;
-else
-    if tmpSceneGeometry.meta.estimateCameraTranslation.search.fVal < ...
-            sceneGeometry.meta.estimateCameraTranslation.search.fVal
+    
+    tmpSceneGeometry = ...
+        performSceneSearch(initialSceneGeometry, rayTraceFuncs, ...
+        ellipses(ellipseArrayList,:), ...
+        errorWeights, ...
+        p.Results.translationLB, ...
+        p.Results.translationUB, ...
+        p.Results.translationLBp, ...
+        p.Results.translationUBp, ...
+        p.Results.eyePoseLB, ...
+        p.Results.eyePoseUB, ...
+        nWorkers);
+    if ss==1
         sceneGeometry = tmpSceneGeometry;
+    else
+        if tmpSceneGeometry.meta.estimateCameraTranslation.search.fVal < ...
+                sceneGeometry.meta.estimateCameraTranslation.search.fVal
+            sceneGeometry = tmpSceneGeometry;
+        end
     end
+    
+    % update progress
+    if strcmp(p.Results.verbosity,'full')
+        for pp=1:floor(50/p.Results.nBADSsearches)
+            fprintf('.');
+        end
+    end
+    
 end
+
+if strcmp(p.Results.verbosity,'full')
+    fprintf('\n');
 end
 
 % add additional search and meta field info to sceneGeometry
@@ -392,7 +408,7 @@ x0 = LBp + (UBp-LBp).*rand(numel(LBp),1);
 
 % Define search options
 options = bads('defaults');             % Get a default OPTIONS struct
-options.Display = 'iter';               % Print only basic output ('off' turns off)
+options.Display = 'off';               % Print only basic output ('off' turns off)
 options.UncertaintyHandling = 0;        % We tell BADS that the objective is deterministic
 
 % Define nested variables for within the search
