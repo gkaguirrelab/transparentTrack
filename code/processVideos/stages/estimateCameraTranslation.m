@@ -15,8 +15,7 @@ function sceneGeometry = estimateCameraTranslation(pupilFileName, sceneGeometryF
 %   circular object targets: Mathematical formulation and correction." The
 %   Photogrammetric Record 16.93 (1999): 485-502.). The modeling solution
 %   implemented here accounts for this property, as we implement a full,
-%   numeric forward projection of the pupil circle to the image plane,
-%   including accounting for refraction at the cornea.
+%   forward projection of the pupil circle to the image plane.
 %
 % Inputs:
 %	pupilFileName         - Full path to a pupilData file, a cell array
@@ -56,13 +55,12 @@ function sceneGeometry = estimateCameraTranslation(pupilFileName, sceneGeometryF
 %  'hostname'             - AUTOMATIC; The host
 %
 % Optional key/value pairs (analysis)
-%  'translationX0'        - 3x1 vector. Starting point for the search.
 %  'translationLB/UB'     - 3x1 vector. Hard upper and lower bounds. Should
 %                           reflect the physical limits of the measurement.
 %  'translationLBp/UBp'   - 3x1 vector. Plausible upper and lower bounds.
 %                           Where you think the translation vector solution
 %                           is likely to be.
-%  'eyePoseLB/UB'         - Upper and lower bounds on the eyePose
+%  'eyePoseLB/UB'         - 1x4 vector. Upper / lower bounds on the eyePose
 %                           [azimuth, elevation, torsion, pupil radius].
 %                           The torsion value is unusued and is bounded to
 %                           zero. Biological limits in eye rotation and
@@ -83,6 +81,15 @@ function sceneGeometry = estimateCameraTranslation(pupilFileName, sceneGeometryF
 %                           a list of ellipses will be generated.
 %  'nBinsPerDimension'    - Scalar. Defines the number of divisions with
 %                           which the ellipse centers are binned.
+%  'useRayTracing'        - Logical; default false. Using ray tracing in
+%                           the camera translation search dramatically
+%                           increases the duration of the search, but with
+%                           only a small improvement in accuracy.
+%  'nBADSsearches'        - Scalar. We perform the search for camera 
+%                           translation from a randomly selected starting
+%                           point within the plausible bounds. This
+%                           parameter sets how many random starting points
+%                           to try; the best result is retained.
 %
 % Outputs
 %	sceneGeometry         - A structure that contains the components of the
@@ -137,16 +144,17 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional analysis params
-p.addParameter('translationX0',[0; 0; 120],@isnumeric);
-p.addParameter('translationLB',[-10; -10; 90],@isnumeric);
-p.addParameter('translationUB',[10; 10; 150],@isnumeric);
-p.addParameter('translationLBp',[-5; -5; 100],@isnumeric);
+p.addParameter('translationLB',[-20; -20; 90],@isnumeric);
+p.addParameter('translationUB',[20; 20; 200],@isnumeric);
+p.addParameter('translationLBp',[-10; -10; 100],@isnumeric);
 p.addParameter('translationUBp',[5; 5; 140],@isnumeric);
 p.addParameter('eyePoseLB',[-35,-25,0,0.25],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('eyePoseUB',[35,25,0,4],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('fitLabel','initial',@ischar);
 p.addParameter('ellipseArrayList',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nBinsPerDimension',4,@isnumeric);
+p.addParameter('useRayTracing',false,@islogical);
+p.addParameter('nBADSsearches',10,@isnumeric);
 
 % parse
 p.parse(pupilFileName, sceneGeometryFileName, varargin{:})
@@ -160,14 +168,16 @@ end
 
 %% Create initial sceneGeometry structure and ray tracing functions
 initialSceneGeometry = createSceneGeometry(varargin{:});
-initialSceneGeometry.extrinsicTranslationVector = p.Results.translationX0;
 
 % Assemble the ray tracing functions
-if strcmp(p.Results.verbosity,'full')
-    fprintf('Assembling ray tracing functions.\n');
+if p.Results.useRayTracing
+    if strcmp(p.Results.verbosity,'full')
+        fprintf('Assembling ray tracing functions.\n');
+    end
+    [rayTraceFuncs] = assembleRayTraceFuncs( initialSceneGeometry );
+else
+    rayTraceFuncs = [];
 end
-[rayTraceFuncs] = assembleRayTraceFuncs( initialSceneGeometry );
-
 
 %% Set up the parallel pool
 if p.Results.useParallel
@@ -216,7 +226,7 @@ if iscell(pupilFileName)
     ellipseFitSEM = [];
     for cc = 1:length(pupilFileName)
         load(pupilFileName{cc})
-        ellipses = [ellipses;pupilData.(p.Results.fitLabel).ellipses.values];
+        ellipses = [ellipses; pupilData.(p.Results.fitLabel).ellipses.values];
         ellipseFitSEM = [ellipseFitSEM; pupilData.(p.Results.fitLabel).ellipses.RMSE];
     end
 end
@@ -275,12 +285,12 @@ errorWeights = errorWeights./mean(errorWeights);
 
 
 %% Perform the search
-% Initial search with broad bounds and no ray tracing
 if strcmp(p.Results.verbosity,'full')
-    fprintf('Performing coarse search.\n');
+    fprintf('Performing the search.\n');
 end
-coarseSceneGeometry = ...
-    performSceneSearch(initialSceneGeometry, [], ...
+for ss = 1:p.Results.nBADSsearches
+tmpSceneGeometry = ...
+    performSceneSearch(initialSceneGeometry, rayTraceFuncs, ...
     ellipses(ellipseArrayList,:), ...
     errorWeights, ...
     p.Results.translationLB, ...
@@ -290,22 +300,15 @@ coarseSceneGeometry = ...
     p.Results.eyePoseLB, ...
     p.Results.eyePoseUB, ...
     nWorkers);
-
-% Fine search initialized with the coarse search result
-if strcmp(p.Results.verbosity,'full')
-    fprintf('Performing fine search.\n');
+if ss==1
+    sceneGeometry = tmpSceneGeometry;
+else
+    if tmpSceneGeometry.meta.estimateCameraTranslation.search.fVal < ...
+            sceneGeometry.meta.estimateCameraTranslation.search.fVal
+        sceneGeometry = tmpSceneGeometry;
+    end
 end
-sceneGeometry = ...
-    performSceneSearch(coarseSceneGeometry, rayTraceFuncs, ...
-    ellipses(ellipseArrayList,:), ...
-    errorWeights, ...
-    p.Results.translationLB, ...
-    p.Results.translationUB, ...
-    p.Results.translationLBp, ...
-    p.Results.translationUBp, ...
-    p.Results.eyePoseLB, ...
-    p.Results.eyePoseUB, ...
-    nWorkers);
+end
 
 % add additional search and meta field info to sceneGeometry
 sceneGeometry.meta.estimateCameraTranslation.parameters = p.Results;
@@ -377,14 +380,15 @@ function sceneGeometry = performSceneSearch(initialSceneGeometry, rayTraceFuncs,
 %   are fit by an unconstrained ellipse.
 %
 %   The search is performed using Bayesian Adaptive Direct Search (bads),
-%   as we find that it performs better than (e.g.) patternsearch.
+%   as we find that it performs better than (e.g.) patternsearch. BADS only
+%   accepts row vectors, so there is much transposing ahead.
 %
 
 % Set the error form
 errorForm = 'RMSE';
 
-% Extract the initial search point from initialSceneGeometry
-x0 = initialSceneGeometry.extrinsicTranslationVector;
+% Pick a random x0 from within the plausible bounds
+x0 = LBp + (UBp-LBp).*rand(numel(LBp),1);
 
 % Define search options
 options = bads('defaults');             % Get a default OPTIONS struct
@@ -461,10 +465,11 @@ sceneGeometry.meta.estimateCameraTranslation.search.errorForm = errorForm;
 sceneGeometry.meta.estimateCameraTranslation.search.initialSceneGeometry = initialSceneGeometry;
 sceneGeometry.meta.estimateCameraTranslation.search.ellipses = ellipses;
 sceneGeometry.meta.estimateCameraTranslation.search.errorWeights = errorWeights;
-sceneGeometry.meta.estimateCameraTranslation.search.extrinsicTranslationVectorLB = LB;
-sceneGeometry.meta.estimateCameraTranslation.search.extrinsicTranslationVectorUB = UB;
-sceneGeometry.meta.estimateCameraTranslation.search.extrinsicTranslationVectorLBp = LBp;
-sceneGeometry.meta.estimateCameraTranslation.search.extrinsicTranslationVectorUBp = UBp;
+sceneGeometry.meta.estimateCameraTranslation.search.x0 = x0;
+sceneGeometry.meta.estimateCameraTranslation.search.LB = LB;
+sceneGeometry.meta.estimateCameraTranslation.search.UB = UB;
+sceneGeometry.meta.estimateCameraTranslation.search.LBp = LBp;
+sceneGeometry.meta.estimateCameraTranslation.search.UBp = UBp;
 sceneGeometry.meta.estimateCameraTranslation.search.eyePoseLB = eyePoseLB;
 sceneGeometry.meta.estimateCameraTranslation.search.eyePoseUB = eyePoseUB;
 sceneGeometry.meta.estimateCameraTranslation.search.fVal = fVal;
