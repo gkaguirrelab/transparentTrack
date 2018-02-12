@@ -74,7 +74,7 @@ viewingAngleDeg = -60:1:60;
 azimuthsDeg = (-viewingAngleDeg)-sceneGeometry.eye.kappaAngle(1);
 elevationsDeg = zeros(size(viewingAngleDeg))-sceneGeometry.eye.kappaAngle(2);
 
-% Calculate the diameter ratio for the best fitting rotation center values
+% Calculate the diameter ratios and thetas
 [diamRatios, thetas] = calcPupilDiameterRatio(azimuthsDeg,elevationsDeg,pupilDiam,sceneGeometry,rayTraceFuncs);
 
 % Reverse the thetas to match the Mathur convention, in which a theta of
@@ -82,6 +82,9 @@ elevationsDeg = zeros(size(viewingAngleDeg))-sceneGeometry.eye.kappaAngle(2);
 % horizontal meridian, and positive values of theta are in the
 % counter-clockwise direction.
 thetas = pi - thetas;
+
+% Calculate the Mathur value C from Equation 6
+C = (1-diamRatios).*sin(2.*(thetas-pi/2));
 
 % Plot Figure 10 of Mathur 2013 with our model output.
 figure
@@ -97,7 +100,7 @@ ylabel('Pupil Diameter Ratio')
 title('Mathur 2013 Figure 6, component A')
 
 subplot(1,2,2)
-plot(viewingAngleDeg,(1-diamRatios).*sin(2.*(pi-thetas-pi/2)) ,'.k');
+plot(viewingAngleDeg,C ,'.k');
 hold on
 plot(viewingAngleDeg,mathurEq11(viewingAngleDeg),'-r');
 xlim([-90 90]);
