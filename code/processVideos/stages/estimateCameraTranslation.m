@@ -147,7 +147,7 @@ p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@i
 p.addParameter('translationLB',[-20; -20; 90],@isnumeric);
 p.addParameter('translationUB',[20; 20; 200],@isnumeric);
 p.addParameter('translationLBp',[-10; -10; 100],@isnumeric);
-p.addParameter('translationUBp',[5; 5; 140],@isnumeric);
+p.addParameter('translationUBp',[5; 5; 150],@isnumeric);
 p.addParameter('eyePoseLB',[-35,-25,0,0.25],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('eyePoseUB',[35,25,0,4],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('fitLabel','initial',@ischar);
