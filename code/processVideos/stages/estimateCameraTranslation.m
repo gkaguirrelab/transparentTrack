@@ -115,7 +115,7 @@ function sceneGeometry = estimateCameraTranslation(pupilFileName, sceneGeometryF
         end
     end
     % Estimate the scene Geometry using the ellipses
-    estimatedSceneGeometry = estimateCameraTranslation(pupilData,'','useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1);
+    estimatedSceneGeometry = estimateCameraTranslation(pupilData,'','useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1,'nBADSsearches',2);
     % Report how well we did
     fprintf('Error in the recovered camera translation vector (x, y, depth] in mm: \n');
     veridicalSceneGeometry.extrinsicTranslationVector - estimatedSceneGeometry.extrinsicTranslationVector
@@ -291,9 +291,10 @@ if strcmp(p.Results.verbosity,'full')
     fprintf('.');
 end
 
-for ss = 1:p.Results.nBADSsearches
+searchResults = {};
+parfor (ss = 1:p.Results.nBADSsearches,nWorkers)
     
-    tmpSceneGeometry = ...
+    searchResults{ss} = ...
         performSceneSearch(initialSceneGeometry, rayTraceFuncs, ...
         ellipses(ellipseArrayList,:), ...
         errorWeights, ...
@@ -302,16 +303,7 @@ for ss = 1:p.Results.nBADSsearches
         p.Results.translationLBp, ...
         p.Results.translationUBp, ...
         p.Results.eyePoseLB, ...
-        p.Results.eyePoseUB, ...
-        nWorkers);
-    if ss==1
-        sceneGeometry = tmpSceneGeometry;
-    else
-        if tmpSceneGeometry.meta.estimateCameraTranslation.search.fVal < ...
-                sceneGeometry.meta.estimateCameraTranslation.search.fVal
-            sceneGeometry = tmpSceneGeometry;
-        end
-    end
+        p.Results.eyePoseUB);
     
     % update progress
     if strcmp(p.Results.verbosity,'full')
@@ -321,14 +313,20 @@ for ss = 1:p.Results.nBADSsearches
     end
     
 end
-
 if strcmp(p.Results.verbosity,'full')
     fprintf('\n');
 end
 
+% Keep the best result
+fVals = cellfun(@(x) x.meta.estimateCameraTranslation.search.fVal,searchResults);
+[~,idx]=min(fVals);
+sceneGeometry = searchResults{idx};
+    
 % add additional search and meta field info to sceneGeometry
 sceneGeometry.meta.estimateCameraTranslation.parameters = p.Results;
 sceneGeometry.meta.estimateCameraTranslation.search.ellipseArrayList = ellipseArrayList';
+sceneGeometry.meta.estimateCameraTranslation.search.fVals = fVals;
+
 
 %% Save the sceneGeometry file
 if ~isempty(sceneGeometryFileName)
@@ -365,7 +363,7 @@ end % main function
 
 %% LOCAL FUNCTIONS
 
-function sceneGeometry = performSceneSearch(initialSceneGeometry, rayTraceFuncs, ellipses, errorWeights, LB, UB, LBp, UBp, eyePoseLB, eyePoseUB, nWorkers)
+function sceneGeometry = performSceneSearch(initialSceneGeometry, rayTraceFuncs, ellipses, errorWeights, LB, UB, LBp, UBp, eyePoseLB, eyePoseUB)
 % Pattern search for best fitting sceneGeometry parameters
 %
 % Description:
@@ -427,7 +425,7 @@ areaErrorByEllipse=zeros(size(ellipses,1),1);
         % on the image plane to eyePose. We retain the errors from the
         % inverse projection and use these to assemble the objective
         % function. We parallelize the computation across ellipses.
-        parfor (ii = 1:size(ellipses,1), nWorkers)
+        for ii = 1:size(ellipses,1)
             exitFlag = [];
             eyePose = [];
             [eyePose, ~, centerDistanceErrorByEllipse(ii), shapeErrorByEllipse(ii), areaErrorByEllipse(ii), exitFlag] = ...
