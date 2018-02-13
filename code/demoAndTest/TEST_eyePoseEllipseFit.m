@@ -38,7 +38,7 @@ for thisAzimuth = -35:5:35
         
         % Inverse projection from image ellipse to eyePoses. Note that we
         % must constrain at least one of the eye rotations, as the search
-        % is otherwise unconstrained. We constrain torsion to be zero,
+        % is otherwise underdetermined. We constrain torsion to be zero,
         % following Listing's Law.
         tic
         [inverseEyePose, RMSE] = eyePoseEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4]);
