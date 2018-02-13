@@ -82,14 +82,17 @@ function sceneGeometry = estimateCameraTranslation(pupilFileName, sceneGeometryF
 %  'nBinsPerDimension'    - Scalar. Defines the number of divisions with
 %                           which the ellipse centers are binned.
 %  'useRayTracing'        - Logical; default false. Using ray tracing in
-%                           the camera translation search dramatically
-%                           increases the duration of the search, but with
-%                           only a small improvement in accuracy.
+%                           the camera translation search improves
+%                           accuracy, but increases search time by about
+%                           10x.
 %  'nBADSsearches'        - Scalar. We perform the search for camera 
 %                           translation from a randomly selected starting
 %                           point within the plausible bounds. This
 %                           parameter sets how many random starting points
-%                           to try; the best result is retained.
+%                           to try; the best result is retained. Each
+%                           search is run on a separate worker if the
+%                           parpool is available.
+%                           
 %
 % Outputs
 %	sceneGeometry         - A structure that contains the components of the
@@ -147,7 +150,7 @@ p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@i
 p.addParameter('translationLB',[-20; -20; 90],@isnumeric);
 p.addParameter('translationUB',[20; 20; 200],@isnumeric);
 p.addParameter('translationLBp',[-10; -10; 100],@isnumeric);
-p.addParameter('translationUBp',[5; 5; 150],@isnumeric);
+p.addParameter('translationUBp',[5; 5; 160],@isnumeric);
 p.addParameter('eyePoseLB',[-35,-25,0,0.25],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('eyePoseUB',[35,25,0,4],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('fitLabel','initial',@ischar);
@@ -405,9 +408,10 @@ errorForm = 'RMSE';
 x0 = LBp + (UBp-LBp).*rand(numel(LBp),1);
 
 % Define search options
-options = bads('defaults');             % Get a default OPTIONS struct
-options.Display = 'off';               % Print only basic output ('off' turns off)
-options.UncertaintyHandling = 0;        % We tell BADS that the objective is deterministic
+options = bads('defaults');          % Get a default OPTIONS struct
+options.Display = 'off';             % Silence display output
+options.UncertaintyHandling = 0;     % The objective is deterministic
+options.MeshOverflowsWarning = Inf;  % Silences the mesh overflow warning
 
 % Define nested variables for within the search
 centerDistanceErrorByEllipse=zeros(size(ellipses,1),1);
@@ -526,7 +530,7 @@ set(figHandle, 'Position',[25 5 width height],...
     'PaperSize',[width height],...
     'PaperPositionMode','auto',...
     'Color','w',...
-    'Renderer','painters'...     % recommended if there are no alphamaps
+    'Renderer','painters'...
     );
 
 %% Left panel -- distance error
@@ -604,7 +608,6 @@ ylim (yPlotBounds);
 
 % Create a legend
 hSub = subplot(3,3,7);
-
 scatter(nan, nan,2,'filled', ...
     'MarkerFaceAlpha',2/8,'MarkerFaceColor',[0 0 0]);
 hold on
@@ -649,7 +652,6 @@ ylim (yPlotBounds);
 
 % Create a legend
 hSub = subplot(3,3,8);
-
 scatter(nan, nan,2,'filled', ...
     'MarkerFaceAlpha',6/8,'MarkerFaceColor',[1 0 0]);
 hold on
@@ -696,7 +698,6 @@ ylim (yPlotBounds);
 
 % Create a legend
 hSub = subplot(3,3,9);
-
 scatter(nan, nan,2,'filled', ...
     'MarkerFaceAlpha',6/8,'MarkerFaceColor',[1 0 0]);
 hold on
@@ -706,6 +707,7 @@ scatter(nan, nan,2,'filled', ...
     'MarkerFaceAlpha',6/8,'MarkerFaceColor',[1 1 0]);
 set(hSub, 'Visible', 'off');
 legend({'0',num2str(sceneGeometry.constraintTolerance/2), ['=> ' num2str(sceneGeometry.constraintTolerance)]},'Location','north', 'Orientation','vertical');
+
 
 %% Save the plot
 saveas(figHandle,sceneDiagnosticPlotFileName)
