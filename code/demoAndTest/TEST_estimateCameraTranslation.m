@@ -56,7 +56,6 @@ thisComputer = computer;
 switch thisComputer
     case 'MACI64'
         outputFileStem = fullfile('~','Dropbox (Aguirre-Brainard Lab)','TOME_analysis','gka_simulationTests','TEST_estimateCameraTranslation','sceneGeometry');
-        inputFileStem = fullfile('~','Dropbox (Aguirre-Brainard Lab)','Apps','CfNUploader','TEST_estimateCameraTranslation','sceneGeometry');
     case 'GLNXA64'
         outputFileStem = fullfile('~','TEST_estimateCameraTranslation','sceneGeometry');
 end
@@ -92,10 +91,14 @@ defaultAxialLength = defaultSceneGeometry.eye.axialLength;
 %% Recover veridical position with and without ray tracing
 % Create a veridical sceneGeometry with some arbitrary translation
 veridicalSceneGeometry = createSceneGeometry();
+outputFile = [outputFileStem '_veridical.mat'];
+save(outputFile,'veridicalSceneGeometry');
+
 % Assemble the ray tracing functions
 rayTraceFuncs = assembleRayTraceFuncs( veridicalSceneGeometry );
-% Create a set of ellipses using the veridical geometry and
-% randomly varying pupil radii.
+
+% Create a set of ellipses using the veridical geometry and randomly
+% varying pupil radii.
 ellipseIdx=1;
 for azi=-15:15:15
     for ele=-15:15:15
@@ -112,20 +115,11 @@ save(outputFile,'pupilData');
 
 % Estimate camera translation without ray tracing
 startTime=datetime('now');
-result = estimateCameraTranslation(pupilData,'','useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1,'nBADSsearches',2,'useRayTracing',false);
+result = estimateCameraTranslation(pupilData,'','useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1,'nBADSsearches',100,'useRayTracing',false);
 endTime=datetime('now');
 result.startTime = startTime;
 result.endTime = endTime;
 outputFile = [outputFileStem '_withoutRayTrace.mat'];
-save(outputFile,'result');
-
-% Estimate camera translation with ray tracing
-startTime=datetime('now');
-result = estimateCameraTranslation(pupilData,'','useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1,'nBADSsearches',2,'useRayTracing',true);
-endTime=datetime('now');
-result.startTime = startTime;
-result.endTime = endTime;
-outputFile = [outputFileStem '_withRayTrace.mat'];
 save(outputFile,'result');
 
 % Estimate camera translation with incorrect axial length
@@ -133,7 +127,7 @@ resultIdx = 1;
 for axialErrorMultiplier = -2:1:2
     axialLength = defaultAxialLength + (axialErrorMultiplier * conditionalSigmaLength);
     startTime=datetime('now');
-    result = estimateCameraTranslation(pupilData,'','axialLength',axialLength,'useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1,'nBADSsearches',2,'useRayTracing',false);
+    result = estimateCameraTranslation(pupilData,'','axialLength',axialLength,'useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1,'nBADSsearches',10,'useRayTracing',false);
     endTime=datetime('now');
     result.startTime = startTime;
     result.endTime = endTime;
@@ -142,4 +136,12 @@ for axialErrorMultiplier = -2:1:2
     
 end
 
+% Estimate camera translation with ray tracing
+startTime=datetime('now');
+result = estimateCameraTranslation(pupilData,'','useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1,'nBADSsearches',10,'useRayTracing',true);
+endTime=datetime('now');
+result.startTime = startTime;
+result.endTime = endTime;
+outputFile = [outputFileStem '_withRayTrace.mat'];
+save(outputFile,'result');
 
