@@ -262,12 +262,8 @@ options = optimoptions(@fmincon,...
     'OutputFcn',@outfun, ...
     'ConstraintTolerance',constraintTolerance);
 
-% Define anonymous functions for the objective and constraint
-objectiveFun = @objfun; % the objective function, nested below
-constraintFun = @constr; % the constraint function, nested below
-
 % Call fmincon
-[~, ~, exitFlag]=fmincon(objectiveFun, x0, [], [], [], [], eyePoseLB, eyePoseUB, constraintFun, options);
+[~, ~, exitFlag]=fmincon(@objfun, x0, [], [], [], [], eyePoseLB, eyePoseUB, @constr, options);
 
     function fval = objfun(x)
         if ~isequal(x,xLast) % Check if computation is necessary
