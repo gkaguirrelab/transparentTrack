@@ -322,6 +322,7 @@ end
 
 % Keep the best result
 fVals = cellfun(@(x) x.meta.estimateCameraTranslation.search.fVal,searchResults);
+translationVecs = cellfun(@(x) x.extrinsicTranslationVector,searchResults,'UniformOutput',false);
 [~,idx]=min(fVals);
 sceneGeometry = searchResults{idx};
     
@@ -329,6 +330,7 @@ sceneGeometry = searchResults{idx};
 sceneGeometry.meta.estimateCameraTranslation.parameters = p.Results;
 sceneGeometry.meta.estimateCameraTranslation.search.ellipseArrayList = ellipseArrayList';
 sceneGeometry.meta.estimateCameraTranslation.search.fVals = fVals;
+sceneGeometry.meta.estimateCameraTranslation.search.translationVecs = translationVecs;
 
 
 %% Save the sceneGeometry file
