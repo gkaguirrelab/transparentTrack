@@ -22,7 +22,7 @@ function [eyePose, RMSE] = eyePoseEllipseFit(Xp, Yp, sceneGeometry, rayTraceFunc
 %                           azimuth and elevation is slightly different
 %                           from zero, as the routines can become stuck in
 %                           local minima for rotation values exactly at
-%                           zdero.
+%                           zero.
 %  'eyePoseLB'            - Lower bound on the eyePose
 %  'eyePoseUB'            - Upper bound on the eyePose
 %
@@ -68,7 +68,6 @@ myFun = @(p) ...
         	).^2 ...
     	)...
     );
-
 
 % define some search options
 options = optimoptions(@fmincon,...
