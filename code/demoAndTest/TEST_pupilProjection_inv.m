@@ -1,4 +1,4 @@
-%% TEST_pupilProjectionModelInvertability
+%% TEST_pupilProjection_inv
 % Test if we can recover pupil azimuth, elevation, and radius from model
 %
 % Description:
