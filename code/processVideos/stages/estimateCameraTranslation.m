@@ -82,9 +82,9 @@ function sceneGeometry = estimateCameraTranslation(pupilFileName, sceneGeometryF
 %  'nBinsPerDimension'    - Scalar. Defines the number of divisions with
 %                           which the ellipse centers are binned.
 %  'useRayTracing'        - Logical; default false. Using ray tracing in
-%                           the camera translation search improves
-%                           accuracy, but increases search time by about
-%                           10x.
+%                           the camera translation search improves accuracy
+%                           slightly, but increases search time by about
+%                           25x.
 %  'nBADSsearches'        - Scalar. We perform the search for camera 
 %                           translation from a randomly selected starting
 %                           point within the plausible bounds. This
@@ -103,7 +103,7 @@ function sceneGeometry = estimateCameraTranslation(pupilFileName, sceneGeometryF
     %% Recover a veridical camera translation
     % Create a veridical sceneGeometry with some arbitrary translation
     veridicalSceneGeometry = createSceneGeometry();
-    veridicalSceneGeometry.extrinsicTranslationVector = [-1.2; 0.9; 127];
+    veridicalSceneGeometry.extrinsicTranslationVector = [-1.2; 0.9; 108];
     % Assemble the ray tracing functions
     rayTraceFuncs = assembleRayTraceFuncs( veridicalSceneGeometry );
     % Create a set of ellipses using the veridical geometry and 
@@ -321,16 +321,16 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 % Keep the best result
-fVals = cellfun(@(x) x.meta.estimateCameraTranslation.search.fVal,searchResults);
-translationVecs = cellfun(@(x) x.extrinsicTranslationVector,searchResults,'UniformOutput',false);
-[~,idx]=min(fVals);
+allFvals = cellfun(@(x) x.meta.estimateCameraTranslation.search.fVal,searchResults);
+allTranslationVecs = cellfun(@(x) x.extrinsicTranslationVector,searchResults,'UniformOutput',false);
+[~,idx]=min(allFvals);
 sceneGeometry = searchResults{idx};
     
 % add additional search and meta field info to sceneGeometry
 sceneGeometry.meta.estimateCameraTranslation.parameters = p.Results;
 sceneGeometry.meta.estimateCameraTranslation.search.ellipseArrayList = ellipseArrayList';
-sceneGeometry.meta.estimateCameraTranslation.search.fVals = fVals;
-sceneGeometry.meta.estimateCameraTranslation.search.translationVecs = translationVecs;
+sceneGeometry.meta.estimateCameraTranslation.search.allFvals = allFvals;
+sceneGeometry.meta.estimateCameraTranslation.search.allTranslationVecs = allTranslationVecs;
 
 
 %% Save the sceneGeometry file
@@ -413,7 +413,10 @@ x0 = LBp + (UBp-LBp).*rand(numel(LBp),1);
 options = bads('defaults');          % Get a default OPTIONS struct
 options.Display = 'off';             % Silence display output
 options.UncertaintyHandling = 0;     % The objective is deterministic
-options.MeshOverflowsWarning = Inf;  % Silences the mesh overflow warning
+
+% Silence the mesh overflow warning from BADS
+warningState = warning;
+warning('off','bads:meshOverflow');
 
 % Define nested variables for within the search
 centerDistanceErrorByEllipse=zeros(size(ellipses,1),1);
@@ -471,6 +474,9 @@ areaErrorByEllipse=zeros(size(ellipses,1),1);
         end
         
     end
+
+% Restore the warning state
+warning(warningState);
 
 % Assemble the sceneGeometry file to return
 sceneGeometry.radialDistortionVector = initialSceneGeometry.radialDistortionVector;
