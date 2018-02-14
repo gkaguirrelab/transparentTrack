@@ -14,7 +14,8 @@
 %
 %   Here we test, for a range of eye azimuths and elevations, how closely
 %   we can recover the these values after passing through the forward and
-%   inverse models.
+%   inverse models. We also examine the effect of not performing ray
+%   tracing in the inverse projection.
 
 
 %% Obtain a sceneGeometry structure
@@ -27,52 +28,120 @@ rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
 %% Define some variables
 pupilRadiusMM = 2;
 eyePoses = [];
-reconstructedEyePoses = [];
-eyePoseErrors = [];
-centerErrors =[];
-shapeErrors=[];
-areaErrors=[];
+pupilEllipseAreas = zeros(15,11);
+eyePoseErrorsWithRayTrace = zeros(15,11,4);
+eyePoseErrorsWithoutRayTrace = zeros(15,11,4);
+
 
 %% Loop over aimuths and elevations
 % The range of values used here corresponds to the biological limits of the
 % rotation of the eye horizontally and vertically.
-thisTorsion = 0;
-for thisAzimuth = -35:5:35
-    for thisElevation = -25:5:25
+for aziIdx = 1:15
+    for eleIdx = 1:11
+        
+        thisAzimuth = (aziIdx-8)*5;
+        thisElevation = (eleIdx-6)*5;
+        thisTorsion = 0;
         
         % Assemble the eyePoses variable
-        eyePoses=[eyePoses; thisAzimuth,thisElevation,thisTorsion,pupilRadiusMM];
+        eyePose=[eyePoses; thisAzimuth,thisElevation,thisTorsion,pupilRadiusMM];
         
         % Forward projection from eyePoses to image ellipse
-        pupilEllipseOnImagePlane = pupilProjection_fwd(eyePoses(end,:), sceneGeometry, rayTraceFuncs);
+        pupilEllipseOnImagePlane = pupilProjection_fwd(eyePose, sceneGeometry, rayTraceFuncs);
+        pupilEllipseAreas(aziIdx,eleIdx) = pupilEllipseOnImagePlane(3);
         
         % Inverse projection from image ellipse to eyePoses. Note that we
         % must constrain at least one of the eye rotations, as the search
         % is otherwise underdetermined. We constrain torsion to be zero,
         % following Listing's Law.
+        %         tic
+        %         [inverseEyePose, ~, ~, ~, ~, exitFlag] = ...
+        %             pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4]);
+        %         % If the exitFlag is 2, we may be in a local minimum. Repeat the
+        %         % search, supplying the initial solution as x0.
+        %         if exitFlag == 2
+        %             x0 = inverseEyePose + [1e-3 1e-3 0 1e-3];
+        %             [inverseEyePose] = ...
+        %                 pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4],'x0',x0);
+        %         end
+        %         toc
+        %         % Save the error
+        %         eyePoseErrorsWithRayTrace(aziIdx,eleIdx,:) = eyePose-inverseEyePose;
+        
+        
+        % Perform the search again, this time without ray tracing.
         tic
-        [inverseEyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError, exitFlag] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4]);
-
+        [inverseEyePose, ~, ~, ~, ~, exitFlag] = ...
+            pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, [],'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4]);
         % If the exitFlag is 2, we may be in a local minimum. Repeat the
         % search, supplying the initial solution as x0.
         if exitFlag == 2
             x0 = inverseEyePose + [1e-3 1e-3 0 1e-3];
-            [inverseEyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaError, exitFlag] = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4],'x0',x0);
+            [inverseEyePose] = ...
+                pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, [],'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4],'x0',x0);
         end
         toc
-        
-        reconstructedEyePoses = [reconstructedEyePoses; inverseEyePose];
-        centerErrors=[centerErrors; centerError];
-        shapeErrors=[shapeErrors; shapeError];
-        areaErrors=[areaError; areaError];
-        
-        % Calculate and save the error
-        eyePoseErrors = [eyePoseErrors; eyePoses(end,:)-reconstructedEyePoses(end,:)];
-        
+        % Save the error
+        eyePoseErrorsWithoutRayTrace(aziIdx,eleIdx,:) = eyePose-inverseEyePose;
     end
 end
 
 %% Report the errors
-fprintf('The largest azimuth error is %f degrees.\n',max(abs(eyePoseErrors(:,1))));
-fprintf('The largest elevation error is %f degrees.\n',max(abs(eyePoseErrors(:,2))));
-fprintf('The largest radius error is %f millimeters.\n',max(abs(eyePoseErrors(:,4))));
+% fprintf('The largest azimuth error is %f degrees.\n',max(max(abs(eyePoseErrorsWithRayTrace(:,:,1)))));
+% fprintf('The largest elevation error is %f degrees.\n',max(max(abs(eyePoseErrorsWithRayTrace(:,:,2)))));
+% fprintf('The largest radius error is %f millimeters.\n',max(max(abs(eyePoseErrorsWithRayTrace(:,:,4)))));
+
+%% Create some figures
+idxToPlot = [1,2,4];
+plotRange = [-3 3; -3 3; 0 0.05];
+titleStrings = {'azimuth error','elevation error','proportion pupil radius error'};
+
+figure
+for panel = 1:3
+    subplot(3,1,panel)
+    if panel == 3
+        image = squeeze(eyePoseErrorsWithoutRayTrace(:,:,idxToPlot(panel)))';
+        image = 1-(image ./ image(8,6));
+    else
+        image = squeeze(eyePoseErrorsWithoutRayTrace(:,:,idxToPlot(panel)))';
+    end
+    [nr,nc] = size(image);
+    pcolor([image nan(nr,1); nan(1,nc+1)]);
+    caxis(plotRange(panel,:));
+    shading flat;
+    axis equal
+    % Set the axis backgroud to dark gray
+    set(gcf,'Color',[1 1 1]); set(gca,'Color',[.75 .75 .75]); set(gcf,'InvertHardCopy','off');
+    colorbar;
+    title(titleStrings{panel});
+    xlabel('veridical azimuth [deg]')
+    ylabel('veridical elevation [deg]')
+    xticks((1:1:size(image,2))+.5);
+    xticklabels(-35:5:35);
+    xtickangle(90);
+    yticks((1:1:size(image,1))+.5);
+    yticklabels(-25:5:25);
+    xlim([1 size(image,2)+1]);
+    ylim([1 size(image,1)+1]);
+end
+
+figure
+image = 1-(pupilEllipseAreas./pupilEllipseAreas(8,6))';
+[nr,nc] = size(image);
+pcolor([image nan(nr,1); nan(1,nc+1)]);
+caxis([0 0.125]);
+shading flat;
+axis equal
+% Set the axis backgroud to dark gray
+set(gcf,'Color',[1 1 1]); set(gca,'Color',[.75 .75 .75]); set(gcf,'InvertHardCopy','off');
+colorbar;
+title('proportion pupil area error');
+xlabel('veridical azimuth [deg]')
+ylabel('veridical elevation [deg]')
+xticks((1:1:size(image,2))+.5);
+xticklabels(-35:5:35);
+xtickangle(90);
+yticks((1:1:size(image,1))+.5);
+yticklabels(-25:5:25);
+xlim([1 size(image,2)+1]);
+ylim([1 size(image,1)+1]);
