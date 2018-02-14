@@ -157,10 +157,20 @@ videoSizeY = videoInObj.Height;
 grayVideo = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
 
 % read the video into memory, adjust gamma
-for ii = 1:nFrames
-    thisFrame = readFrame(videoInObj);
-    thisFrame = imadjust(thisFrame,[],[],p.Results.glintGammaCorrection);
-    grayVideo(:,:,ii) = rgb2gray (thisFrame);
+if ~p.Results.displayMode
+    for ii = 1:nFrames
+        thisFrame = readFrame(videoInObj);
+        thisFrame = imadjust(thisFrame,[],[],p.Results.glintGammaCorrection);
+        grayVideo(:,:,ii) = rgb2gray (thisFrame);
+    end
+else
+    cc = 0;
+    for ii = p.Results.startFrame:p.Results.startFrame+nFrames
+        cc = cc+1;
+        thisFrame = read(videoInObj,ii);
+        thisFrame = imadjust(thisFrame,[],[],p.Results.glintGammaCorrection);
+        grayVideo(:,:,cc) = rgb2gray (thisFrame);
+    end
 end
 % close the video object
 clear videoInObj
