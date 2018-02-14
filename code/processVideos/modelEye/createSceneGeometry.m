@@ -82,11 +82,14 @@ function sceneGeometry = createSceneGeometry(varargin)
 %   of the eye, including the size and shape of the anterior and posterior
 %   chamber. These parameters are adjusted for the measured spherical
 %   refractive error of the subject and (optionally) measured axial length.
+%   Unmatched key-value pairs passed to createSceneGeometry are passed to
+%   modelEyeParameters.  
 %
 % Inputs:
 %   none
 %
 % Optional key/value pairs
+%  'sceneGeometryFileName' - Full path to file 
 %  'intrinsicCameraMatrix' - 3x3 matrix
 %  'radialDistortionVector' - 1x2 vector of radial distortion parameters
 %  'extrinsicRotationMatrix' - 3x3 matrix
@@ -104,7 +107,8 @@ function sceneGeometry = createSceneGeometry(varargin)
 p = inputParser; p.KeepUnmatched = true;
 
 % Optional analysis params
-p.addParameter('intrinsicCameraMatrix',[2600.0 0 320; 0 2600 240; 0 0 1],@isnumeric);
+p.addParameter('sceneGeometryFileName','', @(x)(isempty(x) | ischar(x)));
+p.addParameter('intrinsicCameraMatrix',[2600 0 320; 0 2600 240; 0 0 1],@isnumeric);
 p.addParameter('radialDistortionVector',[0 0],@isnumeric);
 p.addParameter('extrinsicTranslationVector',[0; 0; 120],@isnumeric);
 p.addParameter('extrinsicRotationMatrix',[1 0 0; 0 1 0; 0 0 1],@isnumeric);
@@ -114,6 +118,7 @@ p.addParameter('constraintTolerance',0.02,@isnumeric);
 % parse
 p.parse(varargin{:})
 
+
 %% assemble the sceneGeometry structure
 sceneGeometry.intrinsicCameraMatrix = p.Results.intrinsicCameraMatrix;
 sceneGeometry.radialDistortionVector = p.Results.radialDistortionVector;
@@ -122,6 +127,12 @@ sceneGeometry.extrinsicRotationMatrix = p.Results.extrinsicRotationMatrix;
 sceneGeometry.primaryPosition = p.Results.primaryPosition;
 sceneGeometry.eye = modelEyeParameters(varargin{:});
 sceneGeometry.constraintTolerance = p.Results.constraintTolerance;
+
+
+%% Save the sceneGeometry file
+if ~isempty(p.Results.sceneGeometryFileName)
+    save(p.Results.sceneGeometryFileName,'sceneGeometry');
+end
 
 end % createSceneGeometry
 
