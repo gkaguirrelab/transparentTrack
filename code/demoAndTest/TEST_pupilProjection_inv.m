@@ -89,12 +89,12 @@ end
 %% Report the errors
 fprintf('The largest azimuth error is %f degrees.\n',max(max(abs(eyePoseErrorsWithRayTrace(:,:,1)))));
 fprintf('The largest elevation error is %f degrees.\n',max(max(abs(eyePoseErrorsWithRayTrace(:,:,2)))));
-fprintf('The largest proportion radius error is %f.\n',max(max(abs(eyePoseErrorsWithRayTrace(:,:,4)-pupilRadiusMM)./pupilRadiusMM)));
+fprintf('The largest proportion radius error is %f.\n',1-max(max(abs(eyePoseErrorsWithRayTrace(:,:,4)-pupilRadiusMM)./pupilRadiusMM)));
 
 %% Create some figures
 idxToPlot = [1,2,4];
-plotRange = [-3 3; -3 3; -0.07 0.07];
-titleStrings = {'azimuth error','elevation error','proportion pupil radius error'};
+plotRange = [-5 5; -5 5; -0.05 0.05];
+titleStrings = {'azimuth error','elevation error','-proportion pupil radius error'};
 
 figure
 for panel = 1:3
@@ -102,7 +102,7 @@ for panel = 1:3
     if panel == 3
         image = squeeze(eyePoseErrorsWithoutRayTrace(:,:,idxToPlot(panel)))+pupilRadiusMM;
         % Assert that the pupil size at
-        image = ((image - image(8,6))./image(8,6))';
+        image = -((image - image(8,6))./image(8,6))';
     else
         image = squeeze(eyePoseErrorsWithoutRayTrace(:,:,idxToPlot(panel)))';
     end
@@ -127,7 +127,7 @@ for panel = 1:3
 end
 
 figure
-image = ((pupilEllipseAreas-pupilEllipseAreas(8,6))./pupilEllipseAreas(8,6))';
+image = -((pupilEllipseAreas-pupilEllipseAreas(8,6))./pupilEllipseAreas(8,6))';
 [nr,nc] = size(image);
 pcolor([image nan(nr,1); nan(1,nc+1)]);
 caxis([-0.125 0.125]);
@@ -136,7 +136,7 @@ axis equal
 % Set the axis backgroud to dark gray
 set(gcf,'Color',[1 1 1]); set(gca,'Color',[.75 .75 .75]); set(gcf,'InvertHardCopy','off');
 colorbar;
-title('proportion pupil area error');
+title('-proportion pupil area error');
 xlabel('veridical azimuth [deg]')
 ylabel('veridical elevation [deg]')
 xticks((1:1:size(image,2))+.5);
