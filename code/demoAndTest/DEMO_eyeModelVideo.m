@@ -1,6 +1,6 @@
-% DEMO_eyeModel
+% DEMO_eyeModelVideo
 %
-% Demonstrate the forward model of the eye
+% Demonstrate the forward model of the eye by creating a video
 
 clear all
 
