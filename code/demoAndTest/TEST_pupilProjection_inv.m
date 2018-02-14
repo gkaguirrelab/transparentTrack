@@ -54,19 +54,19 @@ for aziIdx = 1:15
         % must constrain at least one of the eye rotations, as the search
         % is otherwise underdetermined. We constrain torsion to be zero,
         % following Listing's Law.
-        %         tic
-        %         [inverseEyePose, ~, ~, ~, ~, exitFlag] = ...
-        %             pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4]);
-        %         % If the exitFlag is 2, we may be in a local minimum. Repeat the
-        %         % search, supplying the initial solution as x0.
-        %         if exitFlag == 2
-        %             x0 = inverseEyePose + [1e-3 1e-3 0 1e-3];
-        %             [inverseEyePose] = ...
-        %                 pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4],'x0',x0);
-        %         end
-        %         toc
-        %         % Save the error
-        %         eyePoseErrorsWithRayTrace(aziIdx,eleIdx,:) = eyePose-inverseEyePose;
+        tic
+        [inverseEyePose, ~, ~, ~, ~, exitFlag] = ...
+            pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4]);
+        % If the exitFlag is 2, we may be in a local minimum. Repeat the
+        % search, supplying the initial solution as x0.
+        if exitFlag == 2
+            x0 = inverseEyePose + [1e-3 1e-3 0 1e-3];
+            [inverseEyePose] = ...
+                pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4],'x0',x0);
+        end
+        toc
+        % Save the error
+        eyePoseErrorsWithRayTrace(aziIdx,eleIdx,:) = eyePose-inverseEyePose;
         
         
         % Perform the search again, this time without ray tracing.
@@ -87,21 +87,22 @@ for aziIdx = 1:15
 end
 
 %% Report the errors
-% fprintf('The largest azimuth error is %f degrees.\n',max(max(abs(eyePoseErrorsWithRayTrace(:,:,1)))));
-% fprintf('The largest elevation error is %f degrees.\n',max(max(abs(eyePoseErrorsWithRayTrace(:,:,2)))));
-% fprintf('The largest radius error is %f millimeters.\n',max(max(abs(eyePoseErrorsWithRayTrace(:,:,4)))));
+fprintf('The largest azimuth error is %f degrees.\n',max(max(abs(eyePoseErrorsWithRayTrace(:,:,1)))));
+fprintf('The largest elevation error is %f degrees.\n',max(max(abs(eyePoseErrorsWithRayTrace(:,:,2)))));
+fprintf('The largest proportion radius error is %f.\n',max(max(abs(eyePoseErrorsWithRayTrace(:,:,4)-pupilRadiusMM)./pupilRadiusMM)));
 
 %% Create some figures
 idxToPlot = [1,2,4];
-plotRange = [-3 3; -3 3; 0 0.05];
+plotRange = [-3 3; -3 3; -0.07 0.07];
 titleStrings = {'azimuth error','elevation error','proportion pupil radius error'};
 
 figure
 for panel = 1:3
     subplot(3,1,panel)
     if panel == 3
-        image = squeeze(eyePoseErrorsWithoutRayTrace(:,:,idxToPlot(panel)))';
-        image = 1-(image ./ image(8,6));
+        image = squeeze(eyePoseErrorsWithoutRayTrace(:,:,idxToPlot(panel)))+pupilRadiusMM;
+        % Assert that the pupil size at
+        image = ((image - image(8,6))./image(8,6))';
     else
         image = squeeze(eyePoseErrorsWithoutRayTrace(:,:,idxToPlot(panel)))';
     end
@@ -126,10 +127,10 @@ for panel = 1:3
 end
 
 figure
-image = 1-(pupilEllipseAreas./pupilEllipseAreas(8,6))';
+image = ((pupilEllipseAreas-pupilEllipseAreas(8,6))./pupilEllipseAreas(8,6))';
 [nr,nc] = size(image);
 pcolor([image nan(nr,1); nan(1,nc+1)]);
-caxis([0 0.125]);
+caxis([-0.125 0.125]);
 shading flat;
 axis equal
 % Set the axis backgroud to dark gray
