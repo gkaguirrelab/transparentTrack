@@ -137,10 +137,20 @@ videoSizeY = videoInObj.Height;
 % initialize variable to hold the perimeter data
 grayVideo = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
 % read the video into memory, adjusting gamma and local contrast
-for ii = 1:nFrames
-    thisFrame = readFrame(videoInObj);
-    thisFrame = imadjust(thisFrame,[],[],p.Results.pupilGammaCorrection);
-    grayVideo(:,:,ii) = rgb2gray (thisFrame);
+if ~p.Results.displayMode
+    for ii = 1:nFrames
+        thisFrame = readFrame(videoInObj);
+        thisFrame = imadjust(thisFrame,[],[],p.Results.pupilGammaCorrection);
+        grayVideo(:,:,ii) = rgb2gray (thisFrame);
+    end
+else
+    cc = 0;
+    for ii = p.Results.startFrame:p.Results.startFrame+nFrames
+        cc = cc+1;
+        thisFrame = read(videoInObj,ii);
+        thisFrame = imadjust(thisFrame,[],[],p.Results.pupilGammaCorrection);
+        grayVideo(:,:,cc) = rgb2gray (thisFrame);
+    end
 end
 % close the video object
 clear videoInObj
@@ -178,7 +188,7 @@ perimeter.data = cell(nFrames,1);
 pupilRange = p.Results.pupilRange;
 
 % loop through gray frames
-for ii = p.Results.startFrame:nFrames
+for ii = 1:nFrames
     
     if p.Results.displayMode && strcmp(get(figureHandle,'currentchar'),' ')
         close(figureHandle)

@@ -5,15 +5,17 @@
 %   A core operation of transparentTrack is estimation of the extrinsic
 %   camera translation vector from a set of pupil ellipses on the image
 %   plane. The accuracy of this estimation depends in part upon the
-%   accuracy of specification of the parameters of eye, and?-most
+%   accuracy of specification of the parameters of eye, and-most
 %   critically--upon the axial length of the eye and its rotation center.
 %   Here, we examine the ability of the scene estimation routine to recover
 %   the translation vector given a set of ellipses generated from a
-%   veridical model. The search is conducted for a range of X, Y, and Z
-%   translation values to demonstrate the generality of the accuracy of the
-%   solution. Additionally, we perform the calculation assuming the default
-%   eye model parameters, but generate the ellipses using modeled eyes with
-%   axial lengths that deviate from the assumed value.
+%   veridical model.
+%
+%   We first observe that the routine finds the X and Y position accurately
+%   regardless of Z position. We then examine the ability to recover depth.
+%   We perform the calculation assuming the default eye model parameters,
+%   but generate the ellipses using modeled eyes with axial lengths that
+%   deviate from the assumed value.
 %
 %   The axial length of the eye varies considerably across individuals. The
 %   precise length may be measured (e.g., using the Zeiss IOL Master). If
@@ -53,11 +55,11 @@ close all
 thisComputer = computer;
 switch thisComputer
     case 'MACI64'
-        outputFileStem = fullfile('~','Dropbox (Aguirre-Brainard Lab)','TOME_analysis','gka_simulationTests','TEST_estimateCameraTranslation','TEST_estimateCameraTranslation');
-        inputFileStem = fullfile('~','Dropbox (Aguirre-Brainard Lab)','Apps','CfNUploader','TEST_estimateCameraTranslation','TEST_estimateCameraTranslation');
+        outputFileStem = fullfile('~','Dropbox (Aguirre-Brainard Lab)','TOME_analysis','gka_simulationTests','TEST_estimateCameraTranslation','sceneGeometry');
     case 'GLNXA64'
-        outputFileStem = fullfile('~','TEST_estimateCameraTranslation','TEST_estimateCameraTranslation');
+        outputFileStem = fullfile('~','TEST_estimateCameraTranslation','sceneGeometry');
 end
+
 
 %% Analyze data extracted from Olsen 2007
 % Histogram data from Figure 1 of Olsen 2007
@@ -81,92 +83,65 @@ p = -0.59;
 % X given Y in a bivariate normal distribution
 conditionalSigmaLength = sqrt((1-p^2)*sigmaLengthMm);
 
-% Obtain the axial length of the default model eye. The axial length is
-% given by the depth of the center of the posterior chamber, plus the
-% radius of the axial dimension of the posterior chamber
+% Obtain the axial length of the default model eye.
 defaultSceneGeometry = createSceneGeometry();
-defaultAxialLength = -(defaultSceneGeometry.eye.posteriorChamberCenter(1)-defaultSceneGeometry.eye.posteriorChamberRadii(1));
+defaultAxialLength = defaultSceneGeometry.eye.axialLength;
 
 
-%% Run the simulation
-% Create a set of 9 pupil radii which will be used for all the the
-% searches. We use random values to demonstrate that the solution is not
-% dependent upon the area of the pupil ellipse, just position and shape
-pupilRadii = 2+(randn(9,1)./5);
+%% Recover veridical position with and without ray tracing
+% Create a veridical sceneGeometry with some arbitrary translation
+veridicalSceneGeometry = createSceneGeometry();
+outputFile = [outputFileStem '_veridical.mat'];
+save(outputFile,'veridicalSceneGeometry');
 
-% Loop over simulation conditions and estimate scene geometry
-resultIdx = 1;
-for axialErrorMultiplier = -2:1:2
-    for cameraX = -5:5:5
-        for cameraY = -5:5:5
-            for cameraZ = 125:25:175
-                % We will create the ellipses using an axial length for the
-                % eye that can is off by + and - 2SD of the conditional
-                % distribution of axial lengths given knowledge of the
-                % spherical refraction of the eye
-                axialLength = defaultAxialLength + (axialErrorMultiplier * conditionalSigmaLength);
-                veridicalSceneGeometry = createSceneGeometry('eyeLaterality','Right','axialLength',axialLength);
-                veridicalSceneGeometry.extrinsicTranslationVector = [cameraX; cameraY; cameraZ];
-                
-                % Assemble the ray tracing functions
-                rayTraceFuncs = assembleRayTraceFuncs( veridicalSceneGeometry );
-                
-                % Create a set of ellipses from the veridial geometry
-                
-                ellipseIdx=1;
-                for azi=-15:15:15
-                    for ele=-15:15:15
-                        eyePoses=[azi, ele, 0, pupilRadii(ellipseIdx)];
-                        pupilData.initial.ellipses.values(ellipseIdx,:) = pupilProjection_fwd(eyePoses, veridicalSceneGeometry, rayTraceFuncs);
-                        pupilData.initial.ellipses.RMSE(ellipseIdx,:) = 1;
-                        ellipseIdx=ellipseIdx+1;
-                    end
-                end
-                
-                % Estimate the scene Geometry
-                estimatedSceneGeometry = estimateCameraTranslation(pupilData,'','useParallel',false,'ellipseArrayList',1:1:ellipseIdx-1,'extrinsicTranslationVectorUB',[10; 10; 225]);
-                
-                % Save the veridical and estimated results
-                outputFile = [outputFileStem '_vsg_' num2str(resultIdx) '.mat'];
-                save(outputFile,'veridicalSceneGeometry');
-                outputFile = [outputFileStem '_esg_' num2str(resultIdx) '.mat'];
-                save(outputFile,'estimatedSceneGeometry');
-                
-                % Iterate the result index
-                resultIdx = resultIdx+1;
-            end
-        end
+% Assemble the ray tracing functions
+rayTraceFuncs = assembleRayTraceFuncs( veridicalSceneGeometry );
+
+% Create a set of ellipses using the veridical geometry and randomly
+% varying pupil radii.
+ellipseIdx=1;
+for azi=-15:15:15
+    for ele=-15:15:15
+        eyePose=[azi, ele, 0, 2+(randn()./5)];
+        pupilData.initial.ellipses.values(ellipseIdx,:) = pupilProjection_fwd(eyePose, veridicalSceneGeometry, rayTraceFuncs);
+        pupilData.initial.ellipses.RMSE(ellipseIdx,:) = 1;
+        ellipseIdx=ellipseIdx+1;
     end
 end
 
+% Save the ellipses
+outputFile = [outputFileStem '_pupilData.mat'];
+save(outputFile,'pupilData');
 
-%% Reload the data and plot
-figure
-plotColors=[1 0 0; 0.5 0 0; 0 0 0; 0 0.5 0; 0 1 0];
+% Estimate camera translation without ray tracing
+startTime=datetime('now');
+result = estimateCameraTranslation(pupilData,'','useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1,'nBADSsearches',100,'useRayTracing',false);
+endTime=datetime('now');
+result.startTime = startTime;
+result.endTime = endTime;
+outputFile = [outputFileStem '_withoutRayTrace.mat'];
+save(outputFile,'result');
+
+% Estimate camera translation with incorrect axial length
 resultIdx = 1;
 for axialErrorMultiplier = -2:1:2
-    for cameraX = -5:5:5
-        for cameraY = -5:5:5
-            for cameraZ = 125:25:175
-                
-                inputFile = [inputFileStem '_esg_' num2str(resultIdx) '.mat']
-                load(inputFile);
-                
-                plot3(cameraX, cameraY, cameraZ, '+k')
-                hold on
-                
-                plot3([cameraX estimatedSceneGeometry.extrinsicTranslationVector(1)],...
-                    [cameraY estimatedSceneGeometry.extrinsicTranslationVector(2)],...
-                    [cameraZ estimatedSceneGeometry.extrinsicTranslationVector(3)],...
-                    'Color',plotColors(axialErrorMultiplier+3,:));
-                
-                resultIdx = resultIdx+1;
-            end
-        end
-    end
+    axialLength = defaultAxialLength + (axialErrorMultiplier * conditionalSigmaLength);
+    startTime=datetime('now');
+    result = estimateCameraTranslation(pupilData,'','axialLength',axialLength,'useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1,'nBADSsearches',10,'useRayTracing',false);
+    endTime=datetime('now');
+    result.startTime = startTime;
+    result.endTime = endTime;
+    outputFile = [outputFileStem '_axialLength=' num2str(axialLength,'%2.2f') '.mat'];
+    save(outputFile,'result');
+    
 end
-axis equal
-xlim([-6 6]);
-ylim([-6 6]);
-zlim([90 190]);
+
+% Estimate camera translation with ray tracing
+startTime=datetime('now');
+result = estimateCameraTranslation(pupilData,'','useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1,'nBADSsearches',10,'useRayTracing',true);
+endTime=datetime('now');
+result.startTime = startTime;
+result.endTime = endTime;
+outputFile = [outputFileStem '_withRayTrace.mat'];
+save(outputFile,'result');
 

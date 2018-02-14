@@ -64,6 +64,7 @@ function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 %
 % Optional key/value pairs (flow control)
 %  'nFrames'              - Analyze fewer than the total number of frames.
+%  'startFrame'           - First frame from which to start the analysis.
 %
 % Optional key/value pairs (environment)
 %  'tbSnapshot'           - This should contain the output of the
@@ -121,6 +122,7 @@ p.addParameter('displayMode',false,@islogical);
 
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
+p.addParameter('startFrame',1,@isnumeric);
 
 % Optional environment params
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
