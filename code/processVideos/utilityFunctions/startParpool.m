@@ -8,7 +8,7 @@ function [ nWorkers ] = startParpool( nWorkers, tbtbRepoName, verbosity )
 %
 % Inputs:
 %   nWorkers              - Scalar. The number of workers requested.
-%   tbtbRepoName          - String, The repository to call for tBtB.
+%   tbtbRepoName          - String. The repository to call for tBtB.
 %   verbosity             - String. How verbose to be.
 %
 % Outputs:
