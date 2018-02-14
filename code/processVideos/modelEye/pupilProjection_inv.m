@@ -198,6 +198,10 @@ if isempty(p.Results.x0)
     x0(2) = ((CoP(2) - pupilEllipseOnImagePlane(2))/pixelsPerDeg);
     x0(3) = 0;
     
+    % Force the angles within bounds
+    x0=min([eyePoseUB(1:3); x0]);
+    x0=max([eyePoseLB(1:3); x0]);    
+    
     % Estimate the pupil radius in pixels, accounting for the eccentricity
     % of the ellipse in the image plane
     ellipseAspectRatio = sqrt(1 - (pupilEllipseOnImagePlane(4)^2));
