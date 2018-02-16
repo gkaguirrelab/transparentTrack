@@ -55,6 +55,10 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
 %  'anteriorChamberEllipsoidPoints' - The number of points that are on
 %                           each longitude line of the anterior chamber
 %                           ellipsoid. About 30 makes a nice image.
+%  'calcNodalIntersectError' - Logical. Controls if the nodal point
+%                           intersection error is calculated. Set to false
+%                           by default as this adds time to the forward
+%                           model.
 %
 % Outputs:
 %   pupilEllipseOnImagePlane - A 1x5 vector with the parameters of the
@@ -79,6 +83,13 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
 %                           'posteriorChamber', 'irisPerimeter',
 %                           'pupilPerimeter',
 %                           'anteriorChamber','cornealApex'}.
+%   nodalPointIntersectError - A nx1 vector that contains the distance (in
+%                           mm) between the nodal point of the camera and
+%                           the intersection of a ray on the camera plane.
+%                           The value is nan for points not subject to
+%                           refraction by the cornea. All values will be
+%                           nan if the key value calcNodalIntersectError is
+%                           set to false.
 %
 % Examples:
 %{
@@ -159,6 +170,7 @@ p.addParameter('nPupilPerimPoints',5,@(x)(isnumeric(x) && x>=4));
 p.addParameter('nIrisPerimPoints',5,@(x)(isnumeric(x) && x>=4));
 p.addParameter('posteriorChamberEllipsoidPoints',30,@isnumeric);
 p.addParameter('anteriorChamberEllipsoidPoints',30,@isnumeric);
+p.addParameter('calcNodalIntersectError',false,@islogical);
 
 % parse
 p.parse(eyePose, sceneGeometry, rayTraceFuncs, varargin{:})
@@ -415,21 +427,20 @@ if ~isempty(rayTraceFuncs)
         % The code below may be used to calculate the total error (in mm)
         % in both dimensions for intersecting the nodal point of the
         % camera. Error values on the order of 0.1 - 5 are found across
-        % pupil points and for a range of eye rotations. The code is not
-        % normally executed as it lengthens the computation and the result
-        % is not otherwise used. It is preserved here in case it is needed
-        % for diagnostic purposes.
-        %{        
-        nodalPointIntersectError(refractPointsIdx(ii)) = ...
-            rayTraceFuncs.cameraNodeDistanceError3D(...
-            sceneGeometry.extrinsicTranslationVector(1),...
-            sceneGeometry.extrinsicTranslationVector(2),...
-            sceneGeometry.extrinsicTranslationVector(3),...
-            deg2rad(eyeAzimuth), deg2rad(eyeElevation), deg2rad(eyeTorsion),...
-            eyeWorldPoint(1),eyeWorldPoint(2),eyeWorldPoint(3),...
-            sceneGeometry.eye.rotationCenter(1),...
-            theta_p1p2, theta_p1p3);
-        %}
+        % pupil points and for a range of eye rotations. By default, the
+        % flag that controls this calculatuin is set to false, as the 
+        % computation is lengthy and is not otherwise used.
+        if p.Results.calcNodalIntersectError
+            nodalPointIntersectError(refractPointsIdx(ii)) = ...
+                rayTraceFuncs.cameraNodeDistanceError3D(...
+                sceneGeometry.extrinsicTranslationVector(1),...
+                sceneGeometry.extrinsicTranslationVector(2),...
+                sceneGeometry.extrinsicTranslationVector(3),...
+                deg2rad(eyeAzimuth), deg2rad(eyeElevation), deg2rad(eyeTorsion),...
+                eyeWorldPoint(1),eyeWorldPoint(2),eyeWorldPoint(3),...
+                sceneGeometry.eye.rotationCenter(1),...
+                theta_p1p2, theta_p1p3);
+        end
     end
 end
 
