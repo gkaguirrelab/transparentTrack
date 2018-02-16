@@ -249,7 +249,7 @@ parfor (ii = 1:nFrames, nWorkers)
         % the edge case in which every frame in the window is "bad", in
         % which case we retain them all.
         rmseVector = pupilData.(fitLabel).ellipses.RMSE(rangeLowSignal:rangeHiSignal)';
-        badFrameIdx = rmseVector > badFrameErrorThreshold;
+        badFrameIdx = (rmseVector > badFrameErrorThreshold) + isnan(rmseVector);
         if sum(badFrameIdx) > 0 && sum(badFrameIdx) < length(badFrameIdx)
             precisionVector(badFrameIdx)=0;
         end
@@ -258,7 +258,7 @@ parfor (ii = 1:nFrames, nWorkers)
         % Thus, the noisiest measurement will not influence the prior.
         precisionVector=precisionVector-nanmin(precisionVector);
         precisionVector=precisionVector/nanmax(precisionVector);
-        
+                
         % The temporal weight vector is simply the exponential weights,
         % restricted to the available data widow
         temporalWeightVector = ...
