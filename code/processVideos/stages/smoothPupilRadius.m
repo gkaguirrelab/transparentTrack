@@ -199,7 +199,7 @@ end
 
 % Loop through the frames
 parfor (ii = 1:nFrames, nWorkers)
-
+%for ii = 1:nFrames
     % update progress
     if strcmp(verbosity,'full')
         if mod(ii,round(nFrames/50))==0
@@ -249,8 +249,9 @@ parfor (ii = 1:nFrames, nWorkers)
         % the edge case in which every frame in the window is "bad", in
         % which case we retain them all.
         rmseVector = pupilData.(fitLabel).ellipses.RMSE(rangeLowSignal:rangeHiSignal)';
-        badFrameIdx = (rmseVector > badFrameErrorThreshold) + isnan(rmseVector);
-        if sum(badFrameIdx) > 0 && sum(badFrameIdx) < length(badFrameIdx)
+        badFrameIdx = (rmseVector > badFrameErrorThreshold);
+        nanFrameIdx = isnan(rmseVector);
+        if sum(badFrameIdx+nanFrameIdx) > 0 && sum(badFrameIdx+nanFrameIdx) < length(badFrameIdx)
             precisionVector(badFrameIdx)=0;
         end
         
