@@ -265,25 +265,49 @@ end
 %% Perform blink detection
 dataLoad = load(glintFileName);
 glintData = dataLoad.glintData;
+if size (glintData.X,2) == 2
+    glintsMainDirection = dataLoad.glintData.meta.glintsMainDirection;
+end
 clear dataLoad
 
 % locate all nans
-blinkFrames = find(isnan(glintData.X));
+blinkFrames = find(isnan(glintData.X(:,1)));
 
-% locate candidate glints outside the user defined glint zone
-% define center of glint zone
-if isempty(p.Results.glintZoneCenter)
-    glintZoneCenter = [nanmedian(glintData.X) nanmedian(glintData.Y)];
-else
-    glintZoneCenter = p.Results.glintZoneCenter;
+switch size (glintData.X,2)
+    case 1
+        % locate candidate glints outside the user defined glint zone
+        % define center of glint zone
+        if isempty(p.Results.glintZoneCenter)
+            glintZoneCenter = [nanmedian(glintData.X) nanmedian(glintData.Y)];
+        else
+            glintZoneCenter = p.Results.glintZoneCenter;
+        end
+        
+        % get distance of each glint from the glintZone center
+        glintDistance = sqrt((glintData.X - glintZoneCenter(1)).^2 +(glintData.Y - glintZoneCenter(2)).^2);
+        
+        tooFarGlints = find(glintDistance>p.Results.glintZoneRadius);
+        
+        blinkFrames = sort([blinkFrames; tooFarGlints]);
+    case 2
+        % find glintZone center
+        if isempty(p.Results.glintZoneCenter)
+            glintZoneCenter = [median(nanmedian(glintData.X)) median(nanmedian(glintData.Y))];
+        else
+            glintZoneCenter = p.Results.glintZoneCenter;
+        end
+        
+        % find mean location of each glint vector
+        meanGlintVector = [mean(glintData.X,2) mean(glintData.Y,2)];
+        
+        % get distance of each glint from the glintZone center
+        glintDistance = sqrt((meanGlintVector(:,1) - glintZoneCenter(1)).^2 +(meanGlintVector(:,2) - glintZoneCenter(2)).^2);
+        
+        tooFarGlints = find(glintDistance>p.Results.glintZoneRadius);
+        
+        blinkFrames = sort([blinkFrames; tooFarGlints]);
 end
 
-% get distance of each glint from the glintZone center
-glintDistance = sqrt((glintData.X - glintZoneCenter(1)).^2 +(glintData.Y - glintZoneCenter(2)).^2);
-
-tooFarGlints = find(glintDistance>p.Results.glintZoneRadius);
-
-blinkFrames = sort([blinkFrames; tooFarGlints]);
 
 % extend the frames identified as blinks to before and after blocks of
 % blink frames
@@ -335,9 +359,15 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 % get glintData ready for the parfor. This includes transposing the
-% variables 
-glintData_X = glintData.X';
-glintData_Y = glintData.Y';
+% variables
+switch size (glintData.X,2)
+    case 1
+        glintData_X = glintData.X';
+        glintData_Y = glintData.Y';
+    case 2
+        glintData_X = meanGlintVector(:,1)';
+        glintData_Y = meanGlintVector(:,2)';
+end
 
 % Recast perimeter.data into a sliced cell array to reduce par for
 % broadcast overhead

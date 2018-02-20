@@ -174,7 +174,9 @@ for ii = 1:nFrames
     
     % add glint
     if ~isempty(p.Results.glintFileName)
-        plot(glintData.X(ii),glintData.Y(ii),['*' p.Results.glintColor]);
+        for gg = 1:size(glintData.X,2)
+        plot(glintData.X(ii,gg),glintData.Y(ii,gg),['*' p.Results.glintColor]);
+        end
     end
     
     % add pupil perimeter
