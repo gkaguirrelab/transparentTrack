@@ -555,7 +555,8 @@ else
         implicitEllipseParams = ellipsefit_direct( imagePoints(pupilPerimIdx,1), imagePoints(pupilPerimIdx,2));
     catch
         % In the event of an error, return nans for the ellipse
-        implicitEllipseParams = nan(1,length(pupilPerimIdx));
+        pupilEllipseOnImagePlane = nan(1,length(pupilPerimIdx));
+        return
     end
     % Convert the ellipse from implicit to transparent form
     pupilEllipseOnImagePlane = ellipse_ex2transparent(ellipse_im2ex(implicitEllipseParams));
