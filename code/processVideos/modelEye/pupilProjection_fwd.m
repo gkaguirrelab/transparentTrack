@@ -549,20 +549,19 @@ pupilPerimIdx = find(strcmp(pointLabels,'pupilPerimeter'));
 if eyePose(4)==0 || ~isreal(imagePoints(pupilPerimIdx,:)) || length(pupilPerimIdx)<5
     pupilEllipseOnImagePlane=nan(1,5);
 else
-    % We place the ellipsefit_direct in a try-catch block, as the fit can
+    % We place the ellipse fit in a try-catch block, as the fit can
     % fail when the ellipse is so eccentric that it approaches a line
     try
         implicitEllipseParams = ellipsefit_direct( imagePoints(pupilPerimIdx,1), imagePoints(pupilPerimIdx,2));
+        % Convert the ellipse from implicit to transparent form
+        pupilEllipseOnImagePlane = ellipse_ex2transparent(ellipse_im2ex(implicitEllipseParams));
+        % place theta within the range of 0 to pi
+        if pupilEllipseOnImagePlane(5) < 0
+            pupilEllipseOnImagePlane(5) = pupilEllipseOnImagePlane(5)+pi;
+        end
     catch
         % In the event of an error, return nans for the ellipse
         pupilEllipseOnImagePlane = nan(1,length(pupilPerimIdx));
-        return
-    end
-    % Convert the ellipse from implicit to transparent form
-    pupilEllipseOnImagePlane = ellipse_ex2transparent(ellipse_im2ex(implicitEllipseParams));
-    % place theta within the range of 0 to pi
-    if pupilEllipseOnImagePlane(5) < 0
-        pupilEllipseOnImagePlane(5) = pupilEllipseOnImagePlane(5)+pi;
     end
 end
 
