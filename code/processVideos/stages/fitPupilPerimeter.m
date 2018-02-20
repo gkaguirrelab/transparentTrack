@@ -195,7 +195,7 @@ end
 
 %% Calculate an ellipse fit for each video frame
 
-% Recast perimeter into a sliced cell array to reduce par for
+% Recast perimeter into a sliced cell array to reduce parfor
 % broadcast overhead
 frameCellArray = perimeter.data(1:nFrames);
 clear perimeter
