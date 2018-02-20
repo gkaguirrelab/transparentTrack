@@ -290,16 +290,24 @@ switch size (glintData.X,2)
         
         blinkFrames = sort([blinkFrames; tooFarGlints]);
     case 2
-        % find outliers
-        switch glintsMainDirection
-            case 'y'
-                notGlintsIDX = find(isoutlier(diff(glintData.Y,1,2)));
-            case 'x'
-                notGlintsIDX = find(isoutlier(diff(glintData.X,1,2)));
+        % find glintZone center
+        if isempty(p.Results.glintZoneCenter)
+            glintZoneCenter = [median(nanmedian(glintData.X)) median(nanmedian(glintData.Y))];
+        else
+            glintZoneCenter = p.Results.glintZoneCenter;
         end
-        blinkFrames = sort([blinkFrames; notGlintsIDX]);
+        
+        % find mean location of each glint vector
+        meanGlintVector = [mean(glintData.X,2) mean(glintData.Y,2)];
+        
+        % get distance of each glint from the glintZone center
+        glintDistance = sqrt((meanGlintVector(:,1) - glintZoneCenter(1)).^2 +(meanGlintVector(:,2) - glintZoneCenter(2)).^2);
+        
+        tooFarGlints = find(glintDistance>p.Results.glintZoneRadius);
+        
+        blinkFrames = sort([blinkFrames; tooFarGlints]);
 end
-     
+
 
 % extend the frames identified as blinks to before and after blocks of
 % blink frames
@@ -351,9 +359,15 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 % get glintData ready for the parfor. This includes transposing the
-% variables 
-glintData_X = glintData.X';
-glintData_Y = glintData.Y';
+% variables
+switch size (glintData.X,2)
+    case 1
+        glintData_X = glintData.X';
+        glintData_Y = glintData.Y';
+    case 2
+        glintData_X = meanGlintVector(:,1)';
+        glintData_Y = meanGlintVector(:,2)';
+end
 
 % Recast perimeter.data into a sliced cell array to reduce par for
 % broadcast overhead
