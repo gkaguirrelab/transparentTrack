@@ -103,10 +103,10 @@ switch p.Results.species
         % cornea circle for the back surface is positioned so that there is
         % 0.55 between the front and back surface of the cornea at the
         % apex.
-        eye.corneaFrontSurfaceRadius = 7.77;
-        eye.corneaFrontSurfaceCenter = [-7.77 0 0];
+        eye.corneaFrontSurfaceRadius = 7.77 + 0.022 * p.Results.spectacleRefractionDiopters;
+        eye.corneaFrontSurfaceCenter = [-eye.corneaFrontSurfaceRadius 0 0];
         eye.corneaBackSurfaceRadius = 6.4;
-        eye.corneaBackSurfaceCenter = [-7.22 0 0];
+        eye.corneaBackSurfaceCenter = [-eye.corneaFrontSurfaceRadius+0.55 0 0];
         
         % We position the pupil plane at the depth of the anterior point of
         % the lens. The coordinate space of the model eye is define with
