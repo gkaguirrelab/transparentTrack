@@ -423,12 +423,12 @@ if ~isempty(rayTraceFuncs)
         virtualImageRay = rayTraceFuncs.virtualImageRay(eyeWorldPoint(1), eyeWorldPoint(2), eyeWorldPoint(3), theta_p1p2, theta_p1p3);
         % Replace the original eyeWorld point with the virtual image
         % eyeWorld point
-        eyeWorldPoints(refractPointsIdx(ii),:) = virtualImageRay(1,:);        
+        eyeWorldPoints(refractPointsIdx(ii),:) = virtualImageRay(1,:);
         % The code below may be used to calculate the total error (in mm)
         % in both dimensions for intersecting the nodal point of the
         % camera. Error values on the order of 0.1 - 5 are found across
         % pupil points and for a range of eye rotations. By default, the
-        % flag that controls this calculatuin is set to false, as the 
+        % flag that controls this calculatuin is set to false, as the
         % computation is lengthy and is not otherwise used.
         if p.Results.calcNodalIntersectError
             nodalPointIntersectError(refractPointsIdx(ii)) = ...
@@ -549,13 +549,16 @@ pupilPerimIdx = find(strcmp(pointLabels,'pupilPerimeter'));
 if eyePose(4)==0 || ~isreal(imagePoints(pupilPerimIdx,:)) || length(pupilPerimIdx)<5
     pupilEllipseOnImagePlane=nan(1,5);
 else
-    pupilEllipseOnImagePlane = ellipse_ex2transparent(...
-        ellipse_im2ex(...
-        ellipsefit_direct( imagePoints(pupilPerimIdx,1), ...
-        imagePoints(pupilPerimIdx,2)  ...
-        ) ...
-        )...
-        );
+    % We place the ellipsefit_direct in a try-catch block, as the fit can
+    % fail when the ellipse is so eccentric that it approaches a line
+    try
+        implicitEllipseParams = ellipsefit_direct( imagePoints(pupilPerimIdx,1), imagePoints(pupilPerimIdx,2));
+    catch
+        % In the event of an error, return nans for the ellipse
+        implicitEllipseParams = nan(1,length(pupilPerimIdx));
+    end
+    % Convert the ellipse from implicit to transparent form
+    pupilEllipseOnImagePlane = ellipse_ex2transparent(ellipse_im2ex(implicitEllipseParams));
     % place theta within the range of 0 to pi
     if pupilEllipseOnImagePlane(5) < 0
         pupilEllipseOnImagePlane(5) = pupilEllipseOnImagePlane(5)+pi;
