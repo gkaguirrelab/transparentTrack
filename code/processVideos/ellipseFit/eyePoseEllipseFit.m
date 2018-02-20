@@ -45,6 +45,7 @@ p.addRequired('Yp',@isnumeric);
 p.addRequired('sceneGeometry',@isstruct);
 p.addRequired('rayTraceFuncs',@(x)(isempty(x) | isstruct(x)));
 
+% Optional
 p.addParameter('x0',[1e-3 1e-3 0 2],@isnumeric);
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
@@ -52,22 +53,8 @@ p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 % Parse and check the parameters
 p.parse(Xp, Yp, sceneGeometry, rayTraceFuncs, varargin{:});
 
-
-%% Define the objective function
-% This is the RMSE of the distance values of the boundary points to the
-% ellipse fit
-myFun = @(p) ...
-    sqrt(...
-    nanmean(...
-    ellipsefit_distance(...
-    Xp,...
-    Yp,...
-    ellipse_transparent2ex(...
-    pupilProjection_fwd(p, sceneGeometry, rayTraceFuncs)...
-    )...
-    ).^2 ...
-    )...
-    );
+% Define an anonymous function for the objective
+myObj = @(x) objfun(x, Xp, Yp, sceneGeometry, rayTraceFuncs);
 
 % define some search options
 options = optimoptions(@fmincon,...
@@ -75,18 +62,37 @@ options = optimoptions(@fmincon,...
 
 % Perform the non-linear search
 [eyePose, RMSE, exitFlag] = ...
-    fmincon(myFun, p.Results.x0, [], [], [], [], p.Results.eyePoseLB, p.Results.eyePoseUB, [], options);
+    fmincon(myObj, p.Results.x0, [], [], [], [], p.Results.eyePoseLB, p.Results.eyePoseUB, [], options);
 
-% If exitFlag==2, we might be in a local minimum; try again
+% If exitFlag==2, we might be in a local minimum; try again starting from
+% a position close to the point found by the prior search
 if exitFlag == 2
     [eyePose, RMSE] = ...
-        fmincon(myFun, eyePose+[1e-6 1e-6 0 1e-6], [], [], [], [], p.Results.eyePoseLB, p.Results.eyePoseUB, [], options);
+        fmincon(myObj, eyePose+[1e-6 1e-6 0 1e-6], [], [], [], [], p.Results.eyePoseLB, p.Results.eyePoseUB, [], options);
 end
+
 
 end % eyeParamEllipseFit
 
 
 %% LOCAL FUNCTIONS
+function fVal = objfun(x, Xp,Yp, sceneGeometry, rayTraceFuncs)
+% Define the objective function
+explicitEllipse = ellipse_transparent2ex(pupilProjection_fwd(x, sceneGeometry, rayTraceFuncs));
+% This is the RMSE of the distance values of the boundary points to
+% the ellipse fit. We check for the case in which the
+% explicitEllipse contains NAN values, which can happen when the
+% eye pose is such that the border of the pupil would not be
+% visible through the cornea. In this case, we return a realMax
+% value for the fVal.
+if any(isnan(explicitEllipse))
+    fVal = realmax;
+else
+    fVal = sqrt(nanmean(ellipsefit_distance(Xp,Yp,explicitEllipse).^2));
+end
+end % local objective function
+
+
 % Taken from the non-linear ellipse fitting routine found within the
 % "quadfit" matlab central toolbox
 
