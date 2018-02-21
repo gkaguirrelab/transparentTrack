@@ -9,7 +9,8 @@ function rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry )
 %   inverse ray-tracing of points through the cornea. The returned
 %   functions are:
 %
-%       cornea
+%       traceOpticalSystem
+%       traceSpectacleOnly
 %       cameraNodeDistanceError2D
 %       cameraNodeDistanceError3D
 %       virtualImageRay
@@ -27,25 +28,30 @@ function rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry )
 % Examples:
 %{
     % Obtain a default sceneGeometry
-    sceneGeometry = estimateSceneGeometry([],[]);
+    sceneGeometry = createSceneGeometry();
     % Define the ray tracing functions
     rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry )
 %}
 
-%% cornea
-% 2D ray tracing through the cornea
+%% traceOpticalSystem / traceSpectacleOnly
+% 2D ray tracing through the cornea and any corrective lenses
 % 
 % Syntax:
-%  outputRay = rayTraceFuncs.cornea(h, theta, z)
+%  outputRay = rayTraceFuncs.traceOpticalSystem(h, theta, z)
+%  outputRay = rayTraceFuncs.traceSpectacleOnly(h, theta, z)
 %
 % Description:
-%   The sceneGeometry.eye field specifies the spatial arrangement
-%   refractive indices of a model of the optics of the cornea as a set of
-%   centered spherical surfaces. This routine uses these parameters to
-%   construct a ray-tracing function that takes as input coordinates and
-%   angle of a ray arising from a point object and returns as output the
-%   unit vector of the ray that emerges from a point on the corneal
-%   surface.
+%   The sceneGeometry.eye field specifies the spatial arrangement and
+%   refractive indices of a model of the optics of the cornea and any
+%   corrective lenses as a set of centered spherical surfaces. This routine
+%   uses these parameters to construct a ray-tracing function that takes as
+%   input coordinates and angle of a ray arising from a point object and
+%   returns as output the unit vector of the ray that emerges from the last
+%   optical surface. The function 'traceOpticalSystem' is to be used for
+%   points that are to be traced through the cornea. The function 
+%   'traceSpectacleOnly' is for points that originate outside of the
+%   cornea. If no spectacle is specified in the eye field, then this latter
+%   function handle will be empty.
 %
 % Inputs:
 %   h                     - Scalar, units of mm. This is the height of 
@@ -73,7 +79,7 @@ function rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry )
 %
 % Outputs:
 %   outputRay             - A 2x2 matrix that describes the vector of the
-%                           ray emerging from the system at the corneal
+%                           ray emerging from the system at the last 
 %                           surface. outputRay(1,:) contains [position,
 %                           height] of the starting point of the output
 %                           ray, and outputRay(2,:) is the [position,
@@ -81,7 +87,11 @@ function rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry )
 %                           vector.
 %
 
-rayTraceFuncs.cornea = cornea(sceneGeometry);
+spectacleOnlyFlag = false;
+rayTraceFuncs.traceOpticalSystem = traceOpticalSystem(sceneGeometry, spectacleOnlyFlag);
+
+spectacleOnlyFlag = true;
+rayTraceFuncs.traceSpectacleOnly = traceOpticalSystem(sceneGeometry, spectacleOnlyFlag);
 
 
 %% cameraNodeDistanceError2D
@@ -156,7 +166,7 @@ rayTraceFuncs.cornea = cornea(sceneGeometry);
 %                           camera.
 
 [rayTraceFuncs.cameraNodeDistanceError2D.p1p2, rayTraceFuncs.cameraNodeDistanceError2D.p1p3] = ...
-    cameraNodeDistanceError2D(rayTraceFuncs.cornea);
+    cameraNodeDistanceError2D(rayTraceFuncs.traceOpticalSystem);
 
 
 %% cameraNodeDistanceError3D
@@ -174,7 +184,7 @@ rayTraceFuncs.cornea = cornea(sceneGeometry);
 %
 
 rayTraceFuncs.cameraNodeDistanceError3D = ...
-    cameraNodeDistanceError3D(rayTraceFuncs.cornea);
+    cameraNodeDistanceError3D(rayTraceFuncs.traceOpticalSystem);
 
 
 %% virtualImageRay
@@ -210,7 +220,7 @@ rayTraceFuncs.cameraNodeDistanceError3D = ...
 %                           of the unit vector.
 %
 
-rayTraceFuncs.virtualImageRay = virtualImageRay(rayTraceFuncs.cornea);
+rayTraceFuncs.virtualImageRay = virtualImageRay(rayTraceFuncs.traceOpticalSystem);
 
 
 end
@@ -222,9 +232,11 @@ end
 % This is where the computations are actually performed
 
 
-%% cornea
-function corneaFunc = cornea(sceneGeometry)
-% 2D ray tracing through the cornea
+
+
+%% traceOpticalSystem / traceSpectacleOnly
+function rayTraceFunc = traceOpticalSystem(sceneGeometry, spectacleOnlyFlag)
+% 2D ray tracing through the cornea and any corrective lenses
 
 
 % Obtain the eye field of the sceneGeometry structure
@@ -242,11 +254,14 @@ opticalSystem = [nan nan eye.aqueousRefractiveIndex; ...
     eye.corneaBackSurfaceCenter(1) -eye.corneaBackSurfaceRadius eye.corneaRefractiveIndex; ...
     eye.corneaFrontSurfaceCenter(1) -eye.corneaFrontSurfaceRadius 1.0];
 
+% Check if the system includes a contact lens and if so add it
+
+
 % Pass the optical system and the symbolic variables to the ray tracer
 outputRay2D = rayTraceCenteredSphericalSurfaces([z h], theta, opticalSystem);
 
 % Convert the equation with symbolic variables into a function
-corneaFunc = matlabFunction(outputRay2D);
+rayTraceFunc = matlabFunction(outputRay2D);
 end
 
 
