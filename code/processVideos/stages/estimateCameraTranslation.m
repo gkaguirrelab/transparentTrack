@@ -158,6 +158,7 @@ p.addParameter('ellipseArrayList',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nBinsPerDimension',4,@isnumeric);
 p.addParameter('useRayTracing',false,@islogical);
 p.addParameter('nBADSsearches',10,@isnumeric);
+p.addParameter('shapeErrorMultiplier',25,@isnumeric);
 
 % parse
 p.parse(pupilFileName, sceneGeometryFileName, varargin{:})
@@ -274,7 +275,8 @@ parfor (ss = 1:p.Results.nBADSsearches,nWorkers)
         p.Results.translationLBp, ...
         p.Results.translationUBp, ...
         p.Results.eyePoseLB, ...
-        p.Results.eyePoseUB);
+        p.Results.eyePoseUB, ...
+        p.Results.shapeErrorMultiplier);
     
     % update progress
     if strcmp(p.Results.verbosity,'full')
@@ -311,7 +313,8 @@ sceneGeometry = ...
     transVecMean, ...
     transVecMean, ...
     p.Results.eyePoseLB, ...
-    p.Results.eyePoseUB);
+    p.Results.eyePoseUB, ...
+    p.Results.shapeErrorMultiplier);
 
 % add additional search and meta field info to sceneGeometry
 sceneGeometry.meta.estimateCameraTranslation.parameters = p.Results;
@@ -357,7 +360,7 @@ end % main function
 
 %% LOCAL FUNCTIONS
 
-function sceneGeometry = performSceneSearch(initialSceneGeometry, rayTraceFuncs, ellipses, errorWeights, LB, UB, LBp, UBp, eyePoseLB, eyePoseUB)
+function sceneGeometry = performSceneSearch(initialSceneGeometry, rayTraceFuncs, ellipses, errorWeights, LB, UB, LBp, UBp, eyePoseLB, eyePoseUB, shapeErrorMultiplier)
 % Pattern search for best fitting sceneGeometry parameters
 %
 % Description:
@@ -400,7 +403,7 @@ x0 = LBp + (UBp-LBp).*rand(numel(LBp),1);
 
 % Define search options
 options = bads('defaults');          % Get a default OPTIONS struct
-options.Display = 'off';             % Silence display output
+options.Display = 'iter';             % Silence display output
 options.UncertaintyHandling = 0;     % The objective is deterministic
 
 % Silence the mesh overflow warning from BADS
@@ -458,11 +461,11 @@ end
         % between the taget and modeled ellipses
         switch errorForm
             case 'SSE'
-                fval=sum((centerDistanceErrorByEllipse.*(shapeErrorByEllipse.*100+1).*(areaErrorByEllipse.*100+1).*errorWeights).^2);
+                fval=sum((centerDistanceErrorByEllipse.*(shapeErrorByEllipse.*shapeErrorMultiplier+1).*(areaErrorByEllipse.*shapeErrorMultiplier+1).*errorWeights).^2);
                 % We have to keep the fval non-infinite to keep bads happy
                 fval=min([fval realmax]);
             case 'RMSE'
-                fval = mean((centerDistanceErrorByEllipse.*(shapeErrorByEllipse.*100+1).*(areaErrorByEllipse.*100+1).*errorWeights).^2).^(1/2);
+                fval = mean((centerDistanceErrorByEllipse.*(shapeErrorByEllipse.*shapeErrorMultiplier+1).*(areaErrorByEllipse.*shapeErrorMultiplier+1).*errorWeights).^2).^(1/2);
                 % We have to keep the fval non-infinite to keep bads happy
                 fval=min([fval realmax]);
             otherwise
