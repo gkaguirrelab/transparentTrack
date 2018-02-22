@@ -403,7 +403,7 @@ x0 = LBp + (UBp-LBp).*rand(numel(LBp),1);
 
 % Define search options
 options = bads('defaults');          % Get a default OPTIONS struct
-options.Display = 'iter';             % Silence display output
+options.Display = 'off';             % Silence display output
 options.UncertaintyHandling = 0;     % The objective is deterministic
 
 % Silence the mesh overflow warning from BADS
