@@ -22,9 +22,7 @@ function sceneGeometry = estimateCameraTranslation(pupilFileName, sceneGeometryF
 %                           of such paths, or a pupilData structure itself.
 %                           If a single path, the pupilData file is loaded.
 %                           If a cell array, the ellipse data from each
-%                           pupilData file is loaded and concatenated. If
-%                           set to empty, a sceneGeometry structure with
-%                           default values will be returned.
+%                           pupilData file is loaded and concatenated.
 %   sceneGeometryFileName - Full path to the file in which the
 %                           sceneGeometry data should be saved
 %
@@ -118,7 +116,7 @@ function sceneGeometry = estimateCameraTranslation(pupilFileName, sceneGeometryF
         end
     end
     % Estimate the scene Geometry using the ellipses
-    estimatedSceneGeometry = estimateCameraTranslation(pupilData,'','useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1,'nBADSsearches',4);
+    estimatedSceneGeometry = estimateCameraTranslation(pupilData,'','useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1,'nBADSsearches',2,'useRayTracing',true);
     % Report how well we did
     fprintf('Error in the recovered camera translation vector (x, y, depth] in mm: \n');
     veridicalSceneGeometry.extrinsicTranslationVector - estimatedSceneGeometry.extrinsicTranslationVector
@@ -128,7 +126,7 @@ function sceneGeometry = estimateCameraTranslation(pupilFileName, sceneGeometryF
 p = inputParser; p.KeepUnmatched = true;
 
 % Required
-p.addRequired('pupilFileName',@(x)(isempty(x) | isstruct(x) | iscell(x) | ischar(x)));
+p.addRequired('pupilFileName',@(x)(isstruct(x) | iscell(x) | ischar(x)));
 p.addRequired('sceneGeometryFileName',@ischar);
 
 % Optional display and I/O params
@@ -149,8 +147,10 @@ p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@i
 % Optional analysis params
 p.addParameter('translationLB',[-20; -20; 90],@isnumeric);
 p.addParameter('translationUB',[20; 20; 200],@isnumeric);
-p.addParameter('translationLBp',[-5; -5; 100],@isnumeric);
-p.addParameter('translationUBp',[5; 5; 160],@isnumeric);
+%p.addParameter('translationLBp',[-5; -5; 100],@isnumeric);
+%p.addParameter('translationUBp',[5; 5; 160],@isnumeric);
+p.addParameter('translationLBp',[-1; -1; 119],@isnumeric);
+p.addParameter('translationUBp',[1; 1; 121],@isnumeric);
 p.addParameter('eyePoseLB',[-35,-25,0,0.25],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('eyePoseUB',[35,25,0,4],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('fitLabel','initial',@ischar);
@@ -257,17 +257,17 @@ errorWeights = errorWeights./mean(errorWeights);
 
 %% Perform the search
 if strcmp(p.Results.verbosity,'full')
-    fprintf(['Searching over camera translations.\n']);
+    fprintf(['Searching over camera translations without ray tracing.\n']);
     fprintf('| 0                      50                   100%% |\n');
     fprintf('.\n');
 end
 
-% Peform the search
+% Peform the search without rayTracing
 searchResults = {};
 parfor (ss = 1:p.Results.nBADSsearches,nWorkers)
     
     searchResults{ss} = ...
-        performSceneSearch(initialSceneGeometry, rayTraceFuncs, ...
+        performSceneSearch(initialSceneGeometry, [], ...
         ellipses(ellipseArrayList,:), ...
         errorWeights, ...
         p.Results.translationLB, ...
@@ -301,11 +301,11 @@ end
 transVecMean=transVecMean';
 transVecSD=transVecSD';
 
-% Repeat the search once more with the bounds
-% fully constrained to the mean weighted mean value. This is to obtain the
-% error vectors to store in the final sceneGeometry
+% Repeat the search once more with the bounds fully constrained to the
+% weighted-mean value. This is to obtain the error vectors to store in the
+% final sceneGeometry
 sceneGeometry = ...
-    performSceneSearch(initialSceneGeometry, rayTraceFuncs, ...
+    performSceneSearch(initialSceneGeometry, [], ...
     ellipses(ellipseArrayList,:), ...
     errorWeights, ...
     transVecMean, ...
@@ -319,11 +319,87 @@ sceneGeometry = ...
 % add additional search and meta field info to sceneGeometry
 sceneGeometry.meta.estimateCameraTranslation.parameters = p.Results;
 sceneGeometry.meta.estimateCameraTranslation.search.ellipseArrayList = ellipseArrayList';
-sceneGeometry.meta.estimateCameraTranslation.search.allFvals = allFvals;
-sceneGeometry.meta.estimateCameraTranslation.search.allTranslationVecs = allTranslationVecs;
-sceneGeometry.meta.estimateCameraTranslation.search.transVecMean = transVecMean;
-sceneGeometry.meta.estimateCameraTranslation.search.transVecSD = transVecSD;
+sceneGeometry.meta.estimateCameraTranslation.search.allFvalsNoRayTrace = allFvals;
+sceneGeometry.meta.estimateCameraTranslation.search.allTranslationVecsNoRayTrace = allTranslationVecs;
+sceneGeometry.meta.estimateCameraTranslation.search.transVecMeanNoRayTrace = transVecMean;
+sceneGeometry.meta.estimateCameraTranslation.search.transVecSDNoRayTrace = transVecSD;
 
+% If rayTraceFuncs is not empty, now repeat the search, using the initial
+% result to inform the bounds for the search with rayTracing
+if ~isempty(rayTraceFuncs)
+    if strcmp(p.Results.verbosity,'full')
+        fprintf(['Searching over camera translations with ray tracing.\n']);
+        fprintf('| 0                      50                   100%% |\n');
+        fprintf('.\n');
+    end
+    
+    % Calculate new boundaries based upon the initial search without ray
+    % tracing
+    refinedLBp = transVecMean-transVecSD;
+    refinedUBp = transVecMean+transVecSD;
+    
+    % Peform the search with rayTracing
+    searchResults = {};
+    parfor (ss = 1:p.Results.nBADSsearches,nWorkers)
+        
+        searchResults{ss} = ...
+            performSceneSearch(initialSceneGeometry, rayTraceFuncs, ...
+            ellipses(ellipseArrayList,:), ...
+            errorWeights, ...
+            p.Results.translationLB, ...
+            p.Results.translationUB, ...
+            refinedLBp, ...
+            refinedUBp, ...
+            p.Results.eyePoseLB, ...
+            p.Results.eyePoseUB, ...
+            p.Results.shapeErrorMultiplier);
+        
+        % update progress
+        if strcmp(p.Results.verbosity,'full')
+            for pp=1:floor(50/p.Results.nBADSsearches)
+                fprintf('\b.\n');
+            end
+        end
+        
+    end
+    if strcmp(p.Results.verbosity,'full')
+        fprintf('\n');
+    end
+    
+    % Find the weighted mean and SD of the translation vector
+    allFvals = cellfun(@(x) x.meta.estimateCameraTranslation.search.fVal,searchResults);
+    allTranslationVecs = cellfun(@(x) x.extrinsicTranslationVector,searchResults,'UniformOutput',false);
+    for dim = 1:3
+        vals = cellfun(@(x) x(dim), allTranslationVecs);
+        transVecMean(dim)=mean(vals.*(1./allFvals))/mean(1./allFvals);
+        transVecSD(dim)=std(vals,1./allFvals);
+    end
+    transVecMean=transVecMean';
+    transVecSD=transVecSD';
+    
+    % Repeat the search once more with the bounds fully constrained to the
+    % weighted-mean value. This is to obtain the error vectors to store in the
+    % final sceneGeometry
+    sceneGeometry = ...
+        performSceneSearch(initialSceneGeometry, rayTraceFuncs, ...
+        ellipses(ellipseArrayList,:), ...
+        errorWeights, ...
+        transVecMean, ...
+        transVecMean, ...
+        transVecMean, ...
+        transVecMean, ...
+        p.Results.eyePoseLB, ...
+        p.Results.eyePoseUB, ...
+        p.Results.shapeErrorMultiplier);
+    
+    % add additional search and meta field info to sceneGeometry
+    sceneGeometry.meta.estimateCameraTranslation.parameters = p.Results;
+    sceneGeometry.meta.estimateCameraTranslation.search.ellipseArrayList = ellipseArrayList';
+    sceneGeometry.meta.estimateCameraTranslation.search.allFvals = allFvals;
+    sceneGeometry.meta.estimateCameraTranslation.search.allTranslationVecs = allTranslationVecs;
+    sceneGeometry.meta.estimateCameraTranslation.search.transVecMean = transVecMean;
+    sceneGeometry.meta.estimateCameraTranslation.search.transVecSD = transVecSD;
+end
 
 %% Save the sceneGeometry file
 if ~isempty(sceneGeometryFileName)
@@ -384,7 +460,7 @@ function sceneGeometry = performSceneSearch(initialSceneGeometry, rayTraceFuncs,
 %   plane.
 %
 %   The iterative search across sceneGeometry parameters attempts to
-%   minimize the L(norm) of the distances between the targeted and modeled
+%   minimize the L2 norm of the distances between the targeted and modeled
 %   centers of the ellipses. In the calculation of this objective functon,
 %   each distance error is weighted. The error weight is derived from the
 %   accuracy with which the boundary points of the pupil in the image plane
