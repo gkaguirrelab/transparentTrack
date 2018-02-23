@@ -2,10 +2,11 @@ function opticalSystemOut = addSpectacleLens(opticalSystemIn, lensRefractionDiop
 % Add a spectacle lens to a passed optical system
 %
 % Description:
-%	This routine adds a meniscus (ophthalmologic) lens to an optical system
-%	with the refractive power specified in the passed variable. The routine
-%   assumes that the prior optical medium to encountering the surfaces of
-%   the lens was air.
+%	This routine adds a meniscus (ophthalmologic) spectacle lens to an
+%	optical system with the refractive power specified in the passed
+%	variable. Note that a ray emerging from the eye encounters two concave
+%	surfaces for this lens, so both surfaces will have a negative radius of
+%	curvature for rayTraceCenteredSphericalSurfaces().
 %
 % Inputs:
 %   opticalSystemIn       - An mx3 matrix, where m is the number of
@@ -21,7 +22,7 @@ function opticalSystemOut = addSpectacleLens(opticalSystemIn, lensRefractionDiop
 % Optional key/value pairs:
 %  'vertexDistance'       - Scalar. Distance (in mm) between the corneal
 %                           apexa and the back surface of the lens. Typical
-%                           values are 12-14 mm/
+%                           values are 12-14 mm.
 %  'lensRefractiveIndex'  - Scalar. Refractive index of the lens material.
 %                           Typical values are in the range of 1.5 - 1.7.
 %  'nearPlanoCurvature'   - Scalar. This defines the curvature of the near-
@@ -49,7 +50,7 @@ function opticalSystemOut = addSpectacleLens(opticalSystemIn, lensRefractionDiop
                      eye.corneaBackSurfaceCenter(1) -eye.corneaBackSurfaceRadius eye.corneaRefractiveIndex; ...
                      eye.corneaFrontSurfaceCenter(1) -eye.corneaFrontSurfaceRadius 1.0];
     % Add a -2 diopter lens for the correction of myopia
-    opticalSystem=addSpectacleLens(opticalSystem, 2);
+    opticalSystem=addSpectacleLens(opticalSystem, -2);
     % Define FigureFlag as a structure, and set the new field to false so
     % that subsequent calls to the ray tracing routine will plot on the
     % same figure. Also, set the textLabels to false to reduce clutter
@@ -75,6 +76,7 @@ p.addRequired('lensRefractionDiopters',@isnumeric);
 p.addParameter('vertexDistance',12,@isnumeric);
 p.addParameter('lensRefractiveIndex',1.498,@isnumeric);
 p.addParameter('nearPlanoCurvature',-16000,@isnumeric);
+p.addParameter('minimumLensThickness',1,@isnumeric);
 
 % parse
 p.parse(opticalSystemIn, lensRefractionDiopters, varargin{:})
@@ -86,6 +88,12 @@ nearPlanoCurvature = p.Results.nearPlanoCurvature;
 
 % Copy the optical system from input to output
 opticalSystemOut = opticalSystemIn;
+
+% The passed optical system will have a ray that emerges into a medium with
+% a specified index of refraction. We store the index of refraction of
+% the ambient medium (which will typically be air and thus 1.0) to apply to
+% the final exit ray.
+mediumRefractiveIndex = opticalSystemIn(end,3);
 
 % The lens equations do not perform properly for corrections of less that
 % 0.25 diopters, and we don't bother trying to model so small a correction.
@@ -104,13 +112,13 @@ if lensRefractionDiopters > 0
     backCurvature = nearPlanoCurvature;
     backCenter = vertexDistance+backCurvature;
     opticalSystemOut(end+1,:)=[backCenter backCurvature lensRefractiveIndex];
-    backDiopters = (1-lensRefractiveIndex)/(backCurvature/1000);
+    backDiopters = (mediumRefractiveIndex-lensRefractiveIndex)/(backCurvature/1000);
  
     % How many diopters of correction do we need from the front surface?
     frontDiopters = lensRefractionDiopters - backDiopters;
  
     % Calculate the radius of curvature of the front surface
-    frontCurvature = ((1-lensRefractiveIndex)/frontDiopters)*1000;
+    frontCurvature = ((mediumRefractiveIndex-lensRefractiveIndex)/frontDiopters)*1000;
     
     % Calculate the location of the center of curvature for the front lens.
     % To do so, we introduce lens thickness as a symbolic variable.
@@ -140,30 +148,31 @@ if lensRefractionDiopters > 0
     clear x
     
     % Store the lens front surface in the optical system
-    opticalSystemOut(end+1,:)=[frontCurvature+vertexDistance+thickness frontCurvature 1.0];
+    opticalSystemOut(end+1,:)=[frontCurvature+vertexDistance+thickness frontCurvature mediumRefractiveIndex];
 else
     % This is a minus lens for the correction of myopia. It has a
     % relatively flat front surface and a more curved back surface. It will
-    % be thinnest at the center of the lens on the optical axis. For this
-    % model lens, we allow the thickness to become zero at this point
+    % be thinnest at the center of the lens on the optical axis. The
+    % parameter minimumLensThickness defines this minimum.
+
     % We first determine the properties of the the near-plano front surface
     frontCurvature = nearPlanoCurvature;
-    frontDiopters = (1-lensRefractiveIndex)/(frontCurvature/1000);
+    frontDiopters = (mediumRefractiveIndex-lensRefractiveIndex)/(frontCurvature/1000);
  
     % How many diopters of correction do we need from the back surface?
     backDiopters = frontDiopters - lensRefractionDiopters;
  
     % Calculate the radius of curvature of the back surface
-    backCurvature = ((1-lensRefractiveIndex)/backDiopters)*1000;
+    backCurvature = ((mediumRefractiveIndex-lensRefractiveIndex)/backDiopters)*1000;
     
     % Calculate the locations of the center of curvature for the back and
     % front lens.
     backCenter = vertexDistance+backCurvature;
-    frontCenter = vertexDistance+frontCurvature;
+    frontCenter = vertexDistance+frontCurvature+p.Results.minimumLensThickness;
     
     % Add the surfaces to the optical system
     opticalSystemOut(end+1,:)=[backCenter backCurvature lensRefractiveIndex];
-    opticalSystemOut(end+1,:)=[frontCenter frontCurvature 1.0];
+    opticalSystemOut(end+1,:)=[frontCenter frontCurvature mediumRefractiveIndex];
 
 end
 
