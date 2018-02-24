@@ -116,7 +116,7 @@ function sceneGeometry = estimateCameraTranslation(pupilFileName, sceneGeometryF
         end
     end
     % Estimate the scene Geometry using the ellipses
-    estimatedSceneGeometry = estimateCameraTranslation(pupilData,'','useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1,'nBADSsearches',2,'useRayTracing',true);
+    estimatedSceneGeometry = estimateCameraTranslation(pupilData,'','useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1,'nBADSsearches',4,'useRayTracing',true);
     % Report how well we did
     fprintf('Error in the recovered camera translation vector (x, y, depth] in mm: \n');
     veridicalSceneGeometry.extrinsicTranslationVector - estimatedSceneGeometry.extrinsicTranslationVector
@@ -291,38 +291,15 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 % Find the weighted mean and SD of the translation vector
-allFvals = cellfun(@(x) x.meta.estimateCameraTranslation.search.fVal,searchResults);
-allTranslationVecs = cellfun(@(x) x.extrinsicTranslationVector,searchResults,'UniformOutput',false);
+allFvalsNoRayTrace = cellfun(@(x) x.meta.estimateCameraTranslation.search.fVal,searchResults);
+allTranslationVecsNoRayTrace = cellfun(@(x) x.extrinsicTranslationVector,searchResults,'UniformOutput',false);
 for dim = 1:3
-    vals = cellfun(@(x) x(dim), allTranslationVecs);
-    transVecMean(dim)=mean(vals.*(1./allFvals))/mean(1./allFvals);
-    transVecSD(dim)=std(vals,1./allFvals);
+    vals = cellfun(@(x) x(dim), allTranslationVecsNoRayTrace);
+    transVecMeanNoRayTrace(dim)=mean(vals.*(1./allFvalsNoRayTrace))/mean(1./allFvalsNoRayTrace);
+    transVecSDNoRayTrace(dim)=std(vals,1./allFvalsNoRayTrace);
 end
-transVecMean=transVecMean';
-transVecSD=transVecSD';
-
-% Repeat the search once more with the bounds fully constrained to the
-% weighted-mean value. This is to obtain the error vectors to store in the
-% final sceneGeometry
-sceneGeometry = ...
-    performSceneSearch(initialSceneGeometry, [], ...
-    ellipses(ellipseArrayList,:), ...
-    errorWeights, ...
-    transVecMean, ...
-    transVecMean, ...
-    transVecMean, ...
-    transVecMean, ...
-    p.Results.eyePoseLB, ...
-    p.Results.eyePoseUB, ...
-    p.Results.shapeErrorMultiplier);
-
-% add additional search and meta field info to sceneGeometry
-sceneGeometry.meta.estimateCameraTranslation.parameters = p.Results;
-sceneGeometry.meta.estimateCameraTranslation.search.ellipseArrayList = ellipseArrayList';
-sceneGeometry.meta.estimateCameraTranslation.search.allFvalsNoRayTrace = allFvals;
-sceneGeometry.meta.estimateCameraTranslation.search.allTranslationVecsNoRayTrace = allTranslationVecs;
-sceneGeometry.meta.estimateCameraTranslation.search.transVecMeanNoRayTrace = transVecMean;
-sceneGeometry.meta.estimateCameraTranslation.search.transVecSDNoRayTrace = transVecSD;
+transVecMeanNoRayTrace=transVecMeanNoRayTrace';
+transVecSDNoRayTrace=transVecSDNoRayTrace';
 
 % If rayTraceFuncs is not empty, now repeat the search, using the initial
 % result to inform the bounds for the search with rayTracing
@@ -333,12 +310,8 @@ if ~isempty(rayTraceFuncs)
         fprintf('.\n');
     end
     
-    % Calculate new boundaries based upon the initial search without ray
-    % tracing
-    refinedLBp = transVecMean-transVecSD;
-    refinedUBp = transVecMean+transVecSD;
-    
-    % Peform the search with rayTracing
+    % Peform the search with rayTracing, and with plausible upper and lower
+    % boundaries informed by the initial search without ray tracing
     searchResults = {};
     parfor (ss = 1:p.Results.nBADSsearches,nWorkers)
         
@@ -348,8 +321,8 @@ if ~isempty(rayTraceFuncs)
             errorWeights, ...
             p.Results.translationLB, ...
             p.Results.translationUB, ...
-            refinedLBp, ...
-            refinedUBp, ...
+            transVecMeanNoRayTrace-transVecSDNoRayTrace, ...
+            transVecMeanNoRayTrace+transVecSDNoRayTrace, ...
             p.Results.eyePoseLB, ...
             p.Results.eyePoseUB, ...
             p.Results.shapeErrorMultiplier);
@@ -367,38 +340,50 @@ if ~isempty(rayTraceFuncs)
     end
     
     % Find the weighted mean and SD of the translation vector
-    allFvals = cellfun(@(x) x.meta.estimateCameraTranslation.search.fVal,searchResults);
-    allTranslationVecs = cellfun(@(x) x.extrinsicTranslationVector,searchResults,'UniformOutput',false);
+    allFvalsWithRayTrace = cellfun(@(x) x.meta.estimateCameraTranslation.search.fVal,searchResults);
+    allTranslationVecsWithRayTrace = cellfun(@(x) x.extrinsicTranslationVector,searchResults,'UniformOutput',false);
     for dim = 1:3
-        vals = cellfun(@(x) x(dim), allTranslationVecs);
-        transVecMean(dim)=mean(vals.*(1./allFvals))/mean(1./allFvals);
-        transVecSD(dim)=std(vals,1./allFvals);
+        vals = cellfun(@(x) x(dim), allTranslationVecsWithRayTrace);
+        transVecMeanWithRayTrace(dim)=mean(vals.*(1./allFvalsWithRayTrace))/mean(1./allFvalsWithRayTrace);
+        transVecSDWithRayTrace(dim)=std(vals,1./allFvalsWithRayTrace);
     end
-    transVecMean=transVecMean';
-    transVecSD=transVecSD';
-    
-    % Repeat the search once more with the bounds fully constrained to the
-    % weighted-mean value. This is to obtain the error vectors to store in the
-    % final sceneGeometry
-    sceneGeometry = ...
-        performSceneSearch(initialSceneGeometry, rayTraceFuncs, ...
-        ellipses(ellipseArrayList,:), ...
-        errorWeights, ...
-        transVecMean, ...
-        transVecMean, ...
-        transVecMean, ...
-        transVecMean, ...
-        p.Results.eyePoseLB, ...
-        p.Results.eyePoseUB, ...
-        p.Results.shapeErrorMultiplier);
-    
-    % add additional search and meta field info to sceneGeometry
-    sceneGeometry.meta.estimateCameraTranslation.parameters = p.Results;
-    sceneGeometry.meta.estimateCameraTranslation.search.ellipseArrayList = ellipseArrayList';
-    sceneGeometry.meta.estimateCameraTranslation.search.allFvals = allFvals;
-    sceneGeometry.meta.estimateCameraTranslation.search.allTranslationVecs = allTranslationVecs;
-    sceneGeometry.meta.estimateCameraTranslation.search.transVecMean = transVecMean;
-    sceneGeometry.meta.estimateCameraTranslation.search.transVecSD = transVecSD;
+    transVecMeanWithRayTrace=transVecMeanWithRayTrace';
+    transVecSDWithRayTrace=transVecSDWithRayTrace';
+end
+
+% Repeat the search once more with the bounds fully constrained to the
+% weighted-mean value. This is to obtain the error vectors to store in the
+% final sceneGeometry
+if isempty(rayTraceFuncs)
+    transVecFinal = transVecMeanNoRayTrace;
+else
+    transVecFinal = transVecMeanWithRayTrace;
+end
+sceneGeometry = ...
+    performSceneSearch(initialSceneGeometry, rayTraceFuncs, ...
+    ellipses(ellipseArrayList,:), ...
+    errorWeights, ...
+    transVecFinal, ...
+    transVecFinal, ...
+    transVecFinal, ...
+    transVecFinal, ...
+    p.Results.eyePoseLB, ...
+    p.Results.eyePoseUB, ...
+    p.Results.shapeErrorMultiplier);
+
+% add additional search and meta field info to sceneGeometry
+sceneGeometry.meta.estimateCameraTranslation.parameters = p.Results;
+sceneGeometry.meta.estimateCameraTranslation.search.ellipseArrayList = ellipseArrayList';
+sceneGeometry.meta.estimateCameraTranslation.search.allFvalsNoRayTrace = allFvalsNoRayTrace;
+sceneGeometry.meta.estimateCameraTranslation.search.allTranslationVecsNoRayTrace = allTranslationVecsNoRayTrace;
+sceneGeometry.meta.estimateCameraTranslation.search.transVecMeanNoRayTrace = transVecMeanNoRayTrace;
+sceneGeometry.meta.estimateCameraTranslation.search.transVecSDNoRayTrace = transVecSDNoRayTrace;
+
+if ~isempty(rayTraceFuncs)
+    sceneGeometry.meta.estimateCameraTranslation.search.allFvalsWithRayTrace = allFvalsWithRayTrace;
+    sceneGeometry.meta.estimateCameraTranslation.search.allTranslationVecsWithRayTrace = allTranslationVecsWithRayTrace;
+    sceneGeometry.meta.estimateCameraTranslation.search.transVecMeanWithRayTrace = transVecMeanWithRayTrace;
+    sceneGeometry.meta.estimateCameraTranslation.search.transVecSDWithRayTrace = transVecSDWithRayTrace;
 end
 
 %% Save the sceneGeometry file
