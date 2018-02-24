@@ -35,25 +35,17 @@ function opticalSystemOut = addSpectacleLens(opticalSystemIn, lensRefractionDiop
 %
 % Examples:
 %{
-    %% Example - Pupil through cornea and spectacle, plot range limits
-    % A model of the passage of a point on the pupil perimeter through
-    % the cornea and spectacle lens (units in mm)
-    clear coords
-    clear theta
-    clear figureFlag
-    %  Obtain the eye parameters from the modelEyeParameters() function
+    %% Example - Ray trace through cornea and spectacle lens
+    % Obtain the eye parameters from the modelEyeParameters() function
     eye = modelEyeParameters('spectacleRefractionDiopters',-2);
-    pupilRadius = 2;
-    theta = deg2rad(-45);
-    coords = [eye.pupilCenter(1) pupilRadius];
+    % Define an optical system
     opticalSystem = [nan nan eye.aqueousRefractiveIndex; ...
                      eye.corneaBackSurfaceCenter(1) -eye.corneaBackSurfaceRadius eye.corneaRefractiveIndex; ...
                      eye.corneaFrontSurfaceCenter(1) -eye.corneaFrontSurfaceRadius 1.0];
-    % Add a -2 diopter lens for the correction of myopia
+    % Add a minus lens for the correction of myopia
     opticalSystem=addSpectacleLens(opticalSystem, -2);
-    % Define FigureFlag as a structure, and set the new field to false so
-    % that subsequent calls to the ray tracing routine will plot on the
-    % same figure. Also, set the textLabels to false to reduce clutter
+    % Define FigureFlag as a structure so we can provide plot limits
+    clear figureFlag
     figureFlag.show = true;
     figureFlag.new = true;
     figureFlag.surfaces = true;
@@ -62,6 +54,13 @@ function opticalSystemOut = addSpectacleLens(opticalSystemIn, lensRefractionDiop
     figureFlag.textLabels = true;
     figureFlag.zLim = [-20 20];
     figureFlag.hLim = [-25 25];
+    % Define a ray originating from the border of the pupil
+    pupilRadius = 2;
+    clear coords
+    clear theta
+    theta = deg2rad(-30);
+    coords = [eye.pupilCenter(1) pupilRadius];
+    % Perform the ray tracing
     outputRay = rayTraceCenteredSphericalSurfaces(coords, theta, opticalSystem, figureFlag)
 %}
 
@@ -117,7 +116,8 @@ if lensRefractionDiopters > 0
     % How many diopters of correction do we need from the front surface?
     frontDiopters = lensRefractionDiopters - backDiopters;
  
-    % Calculate the radius of curvature of the front surface
+    % Calculate the radius of curvature of the front surface using the thin
+    % lens approximation
     frontCurvature = ((mediumRefractiveIndex-lensRefractiveIndex)/frontDiopters)*1000;
     
     % Calculate the location of the center of curvature for the front lens.
@@ -162,7 +162,8 @@ else
     % How many diopters of correction do we need from the back surface?
     backDiopters = frontDiopters - lensRefractionDiopters;
  
-    % Calculate the radius of curvature of the back surface
+    % Calculate the radius of curvature of the back surface using the thin
+    % lens approximation
     backCurvature = ((mediumRefractiveIndex-lensRefractiveIndex)/backDiopters)*1000;
     
     % Calculate the locations of the center of curvature for the back and

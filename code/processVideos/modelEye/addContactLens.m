@@ -30,25 +30,53 @@ function opticalSystemOut = addContactLens(opticalSystemIn, lensRefractionDiopte
 %
 % Examples:
 %{
-    %% Example - Pupil through cornea and contact lens, plot range limits
-    % A model of the passage of a point on the pupil perimeter through
-    % the cornea and a contact lens (units in mm)
-    clear coords
-    clear theta
-    clear figureFlag
-    %  Obtain the eye parameters from the modelEyeParameters() function
-    eye = modelEyeParameters('spectacleRefractionDiopters',-4);
-    pupilRadius = 2;
-    theta = deg2rad(-45);
-    coords = [eye.pupilCenter(1) pupilRadius];
+    %% Example - Replicate calculation of contact lens curvature
+    % WJ Benajamin provudes an example calculation for a contact lens
+    % that provides -10D power. We confirm here that our routine provides
+    % the same solution.
+    %   Bennett, Edward S., and Barry A. Weissman, eds. Clinical contact 
+    %   lens practice. Lippincott Williams & Wilkins, 2005. Chapter 7A, 
+    %   "Optical phenomena of contact lenses", WJ Benjamin. p130
+    eye = modelEyeParameters();
+    eye.corneaFrontSurfaceRadius = 7.8;
+    eye.corneaFrontSurfaceCenter(1) = -7.8;
+    eye.corneaRefractiveIndex = 1.376;
     opticalSystem = [nan nan eye.aqueousRefractiveIndex; ...
                      eye.corneaBackSurfaceCenter(1) -eye.corneaBackSurfaceRadius eye.corneaRefractiveIndex; ...
                      eye.corneaFrontSurfaceCenter(1) -eye.corneaFrontSurfaceRadius 1.0];
-    % Add a -2 diopter lens for the correction of myopia
-    opticalSystem=addContactLens(opticalSystem, -4);
-    % Define FigureFlag as a structure, and set the new field to false so
-    % that subsequent calls to the ray tracing routine will plot on the
-    % same figure. Also, set the textLabels to false to reduce clutter
+    % Add a -10 diopter lens
+    opticalSystem=addContactLens(opticalSystem, -10, 'lensRefractiveIndex', 1.43, 'minimumLensThickness', 0.1);
+    % The curvature of the front surface of the contact lens should be
+    % 9.56 mm
+    opticalSystem(end,2)
+%}
+%{
+    %% Example - Test the output at zero diopters
+    % If zero diopters are requested for a contact lens with an index of
+    % refraction equal to the corneal index, then the curvature of the
+    % front surface of the lens should be equivalent to the corneal front
+    % surface curvature.
+    eye = modelEyeParameters();
+    eye.corneaRefractiveIndex = 1.376;
+    opticalSystem = [nan nan eye.aqueousRefractiveIndex; ...
+                     eye.corneaBackSurfaceCenter(1) -eye.corneaBackSurfaceRadius eye.corneaRefractiveIndex; ...
+                     eye.corneaFrontSurfaceCenter(1) -eye.corneaFrontSurfaceRadius 1.0];
+    opticalSystem=addContactLens(opticalSystem, 0, 'lensRefractiveIndex', eye.corneaRefractiveIndex, 'minimumLensThickness',0);
+    % Is the lens surface the same curvature as the corneal surface?
+    round(opticalSystem(end,1),4) == round(opticalSystem(end-1,1),4)
+%}
+%{
+    %% Example - Ray trace through cornea and contact lens
+    % Obtain the eye parameters from the modelEyeParameters() function
+    eye = modelEyeParameters('spectacleRefractionDiopters',-2);
+    % Define an optical system
+    opticalSystem = [nan nan eye.aqueousRefractiveIndex; ...
+                     eye.corneaBackSurfaceCenter(1) -eye.corneaBackSurfaceRadius eye.corneaRefractiveIndex; ...
+                     eye.corneaFrontSurfaceCenter(1) -eye.corneaFrontSurfaceRadius 1.0];
+    % Add a plus lens for the correction of hyperopia
+    opticalSystem=addContactLens(opticalSystem, -2);
+    % Define FigureFlag as a structure so we can provide plot limits
+    clear figureFlag
     figureFlag.show = true;
     figureFlag.new = true;
     figureFlag.surfaces = true;
@@ -57,6 +85,13 @@ function opticalSystemOut = addContactLens(opticalSystemIn, lensRefractionDiopte
     figureFlag.textLabels = true;
     figureFlag.zLim = [-10 5];
     figureFlag.hLim = [-5 5];
+    % Define a ray originating from the border of the pupil
+    pupilRadius = 2;
+    clear coords
+    clear theta
+    theta = deg2rad(-30);
+    coords = [eye.pupilCenter(1) pupilRadius];
+    % Perform the ray tracing
     outputRay = rayTraceCenteredSphericalSurfaces(coords, theta, opticalSystem, figureFlag)
 %}
 
@@ -83,16 +118,17 @@ opticalSystemOut = opticalSystemIn;
 % The lens equations do not perform properly for corrections of less that
 % 0.25 diopters, and we don't bother trying to model so small a correction.
 % In such a case, return the opticalSystem unaltered.
-if abs(lensRefractionDiopters) < 0.25
-    return
-end
+% if abs(lensRefractionDiopters) < 0.25
+%     return
+% end
 
 % The passed optical system will have a ray that emerges into a medium with
 % a specified index of refraction. Because the contact lens contacts the
 % corneal surface, this index of refraction will be replaced with the index
-% of refraction of the contact lens. We store the index of refraction of
-% the ambient medium (which will typically be air and thus 1.0) to apply to
-% the final exit ray.
+% of refraction of the contact lens. This is now the back surface of the
+% contact lens.
+% We store the index of refraction of the ambient medium (which will
+% typically be air and thus 1.0) to apply to the final exit ray.
 priorRefractiveIndex = opticalSystemIn(end-1,3);
 mediumRefractiveIndex = opticalSystemIn(end,3);
 opticalSystemOut(end,3) = lensRefractiveIndex;
@@ -103,26 +139,41 @@ opticalSystemOut(end,3) = lensRefractiveIndex;
 %   cornealSurfaceDiopters + lensRefractionDiopters
 cornealSurfaceDiopters = (mediumRefractiveIndex-priorRefractiveIndex)/(opticalSystemIn(end,2)/1000);
 
-% The back surface of the contact lens has the same radius of curvature
-% and position as the front surface of the cornea. We then calculate
-% the refractive power of the back surface of the lens, which will be
-% small given that the index of refraction of the lens will be similar
-% to that of the cornea.
+% Calculate the refractive power of the back surface of the lens.
 backCurvature = opticalSystemIn(end,2);
-backCenter = opticalSystemIn(end,1);
-opticalSystemOut(end+1,:)=[backCenter backCurvature lensRefractiveIndex];
 backDiopters = (lensRefractiveIndex-priorRefractiveIndex)/(backCurvature/1000);
-
 
 % We calculate here thickness and thus center of the front surface.
 if lensRefractionDiopters > 0
     % This is a plus lens for the correction of hyperopia.
     
     % How many diopters of correction do we need from the front surface?
-    frontDiopters = lensRefractionDiopters - backDiopters + cornealSurfaceDiopters;
+    frontDiopters = cornealSurfaceDiopters + lensRefractionDiopters - backDiopters;
     
-    % Calculate the radius of curvature of the front surface
-    frontCurvature = ((mediumRefractiveIndex-lensRefractiveIndex)/frontDiopters)*1000;
+    % Calculate the radius of curvature of the front surface. This is the
+    % lens-maker's equation, re-arranged to solve for the initial radius of
+    % curvature.
+    %{
+    syms r1 r2 n m t d
+    lensMakersEqn = (n-m)*(1/r1 - 1/r2 + ((n-m)*t)/(n*r1*r2)) == d;
+    frontCurvatureEqn = isolate(lensMakersEqn,r2)*1000;
+    % where r1 = back curvature in meters; r2 = front curvature; n = index
+    % of refraction of lens material; m = index of refraction of medium
+    % (usually the air); t = thickness of the lens at the optical axis in
+    % meters; d = diopters of the lens
+    %}
+    % First perform the calculation using the thin-lens approximation
+    frontCurvatureApprox = (((0/1000*(mediumRefractiveIndex-lensRefractiveIndex))/ ...
+        (lensRefractiveIndex*backCurvature/1000)+1) / ...
+        (frontDiopters/(mediumRefractiveIndex-lensRefractiveIndex) + 1/backCurvature/1000))*1000;
+
+    % Use the approximation to define a thickness at the optical axis
+    thickness = max([frontCurvatureApprox-backCurvature p.Results.minimumLensThickness]);
+
+    % Now calculate using the thickness
+    frontCurvature = (((thickness/1000*(mediumRefractiveIndex-lensRefractiveIndex))/ ...
+        (lensRefractiveIndex*backCurvature/1000)+1) / ...
+        (frontDiopters/(mediumRefractiveIndex-lensRefractiveIndex) + 1/backCurvature/1000))*1000;
 
     % Calculate the location of the center of curvature for the front lens.
     frontCenter = frontCurvature + (frontCurvature-backCurvature);
@@ -134,11 +185,24 @@ else
     % It will be thinnest at the center of the lens on the optical axis.
     % The parameter minimumLensThickness defines this minimum.
     
-    % How many diopters of correction do we need from the front surface?
-    frontDiopters = lensRefractionDiopters - backDiopters + cornealSurfaceDiopters;
+    % How many diopters of correction do we need from the lens?
+    frontDiopters = cornealSurfaceDiopters + lensRefractionDiopters - backDiopters;
     
-    % Calculate the radius of curvature of the front surface
-    frontCurvature = ((mediumRefractiveIndex-lensRefractiveIndex)/frontDiopters)*1000;
+    % Calculate the radius of curvature of the front surface. This is the
+    % lens-maker's equation, re-arranged to solve for the initial radius of
+    % curvature.
+    %{
+    syms r1 r2 n m t d
+    lensMakersEqn = (n-m)*(1/r1 - 1/r2 + ((n-m)*t)/(n*r1*r2)) == d;
+    frontCurvatureEqn = isolate(lensMakersEqn,r2)*1000;
+    % where r1 = back curvature in meters; r2 = front curvature; n = index
+    % of refraction of lens material; m = index of refraction of medium
+    % (usually the air); t = thickness of the lens at the optical axis in
+    % meters; d = diopters of the lens
+    %}
+    frontCurvature = (((p.Results.minimumLensThickness/1000*(mediumRefractiveIndex-lensRefractiveIndex))/ ...
+        (lensRefractiveIndex*backCurvature/1000)+1) / ...
+        (frontDiopters/(mediumRefractiveIndex-lensRefractiveIndex) + 1/backCurvature/1000))*1000;
     
     % Calculate the location of the center of curvature for the front lens.
     frontCenter = frontCurvature + p.Results.minimumLensThickness;
