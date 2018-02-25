@@ -95,6 +95,7 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
     % with those given on page 340, section C.
     clear coords
     clear theta
+    clear figureFlag
     coords = [0 0];
     theta = deg2rad(17.309724);
     figureFlag=true;
@@ -112,6 +113,7 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
     % the cornea (units in mm)
     clear coords
     clear theta
+    clear figureFlag
     %  Obtain the eye parameters from the modelEyeParameters() function
     eye = modelEyeParameters();
     pupilRadius = 2;
@@ -139,16 +141,8 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
                      eye.corneaBackSurfaceCenter(1) -eye.corneaBackSurfaceRadius eye.corneaRefractiveIndex; ...
                      eye.corneaFrontSurfaceCenter(1) -eye.corneaFrontSurfaceRadius 1.0];
     % Add a -2 diopter lens for the correction of myopia
-    opticalSystem=addSpectacle(opticalSystem, -2);
-    % Define FigureFlag as a structure, and set the new field to false so
-    % that subsequent calls to the ray tracing routine will plot on the
-    % same figure. Also, set the textLabels to false to reduce clutter
-    figureFlag.show = true;
-    figureFlag.new = true;
-    figureFlag.surfaces = true;
-    figureFlag.imageLines = true;
-    figureFlag.rayLines = true;
-    figureFlag.textLabels = true;
+    opticalSystem=addSpectacleLens(opticalSystem, -2);
+    % Define FigureFlag as a structure with limits on the plot range
     figureFlag.zLim = [-20 20];
     figureFlag.hLim = [-25 25];
     outputRay = rayTraceCenteredSphericalSurfaces(coords, theta, opticalSystem, figureFlag)
@@ -157,21 +151,17 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
     %% Example 4 - Pupil through cornea, multiple points and rays
     clear coords
     clear theta
+    clear figureFlag
     eye = modelEyeParameters();
     pupilRadius = 2;
     opticalSystem = [nan nan eye.aqueousRefractiveIndex; ...
                      eye.corneaBackSurfaceCenter(1) -eye.corneaBackSurfaceRadius eye.corneaRefractiveIndex; ...
                      eye.corneaFrontSurfaceCenter(1) -eye.corneaFrontSurfaceRadius 1.0];
-    figure
-    clear figureFlag
     % Define FigureFlag as a structure, and set the new field to false so
     % that subsequent calls to the ray tracing routine will plot on the
     % same figure. Also, set the textLabels to false to reduce clutter
-    figureFlag.show = true;
+    figure
     figureFlag.new = false;
-    figureFlag.surfaces = true;
-    figureFlag.imageLines = true;
-    figureFlag.rayLines = true;
     figureFlag.textLabels = false;
     for theta = -35:70:35
         for pupilRadius = -2:4:2
@@ -265,9 +255,33 @@ if nargin==3
     figureFlag.imageLines = false;
     figureFlag.rayLines = false;
     figureFlag.textLabels = false;
+    figureFlag.legend = false;
 end
 
+% A value was passed for figureFlag
 if nargin==4
+    % if the passed figureFlag is a structure, set all fields to true, and
+    % then copy over the values of passed fields. This allows the use to
+    % just specify values for some fields and causes the remainder to have
+    % valid values.
+    if isstruct(figureFlag)
+        temp=figureFlag;
+        clear figureFlag
+        figureFlag.show = true;
+        figureFlag.new = true;
+        figureFlag.surfaces = true;
+        figureFlag.imageLines = true;
+        figureFlag.rayLines = true;
+        figureFlag.textLabels = true;
+        figureFlag.legend = true;
+        figureFlag.zLim = [];
+        figureFlag.hLim = [];
+        names = fieldnames(temp);
+        for nn = 1:length(names)
+            figureFlag.(names{nn})=temp.(names{nn});
+        end
+    end
+    % if figureFlag is logical, set all fields to true or false accordingly
     if islogical(figureFlag)
         if figureFlag
             clear figureFlag
@@ -277,6 +291,7 @@ if nargin==4
             figureFlag.imageLines = true;
             figureFlag.rayLines = true;
             figureFlag.textLabels = true;
+            figureFlag.legend = true;
             figureFlag.zLim = [];
             figureFlag.hLim = [];
         else
@@ -287,6 +302,7 @@ if nargin==4
             figureFlag.imageLines = false;
             figureFlag.rayLines = false;
             figureFlag.textLabels = false;
+            figureFlag.legend = false;
             figureFlag.zLim = [];
             figureFlag.hLim = [];
         end
@@ -332,7 +348,17 @@ opticalSystem(2:nSurfaces,:)=opticalSystemIn(2:nSurfaces,:);
 % Initialize the figure
 if figureFlag.show
     if figureFlag.new
-        figure
+        if figureFlag.legend
+            figure
+            subplot(3,3,1:6);
+        else
+            figure
+        end
+    else
+        if figureFlag.legend
+            subplot(3,3,1:6);
+        else
+        end
     end
     hold on
     refline(0,0)
@@ -461,6 +487,17 @@ if figureFlag.show
         text(opticalSystem(:,1),zeros(nSurfaces,1)-(diff(ylim)/50),strseq('c',[1:1:nSurfaces]),'HorizontalAlignment','center')
         plot(imageCoords(:,1),zeros(nSurfaces,1),'*r');
         text(imageCoords(:,1),zeros(nSurfaces,1)-(diff(ylim)/50),strseq('i',[1:1:nSurfaces]),'HorizontalAlignment','center')
+    end
+    % Add a legend
+    if figureFlag.legend
+        hSub = subplot(3,3,8);
+        plot(nan, nan,'-r');
+        hold on
+        plot(nan, nan,'--b');
+        plot(nan, nan,'-b');
+        plot(nan, nan,'-g');
+        set(hSub, 'Visible', 'off');
+        legend({'ray path','virtual ray','final virtual ray','output unit ray vector'},'Location','north', 'Orientation','vertical');
     end
     hold off
 end
