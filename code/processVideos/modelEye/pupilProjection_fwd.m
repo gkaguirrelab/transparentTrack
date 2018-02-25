@@ -106,7 +106,7 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
 %{
     %% Display a 2D image of a slightly myopic left eye
     % Obtain a default sceneGeometry structure
-    sceneGeometry=createSceneGeometry('eyeLaterality','left','spectacleRefractionDiopters',-2);
+    sceneGeometry=createSceneGeometry('eyeLaterality','left','sphericalAmetropia',-2);
     % Define the ray tracing functions
     rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
     % Define an eyePose with azimuth, elevation, torsion, and pupil radius

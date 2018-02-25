@@ -28,7 +28,7 @@ function eye = modelEyeParameters( varargin )
 %   none
 %
 % Optional key/value pairs:
-%  'spectacleRefractionDiopters' - Scalar, in units of diopters. The
+%  'sphericalAmetropia'   - Scalar, in units of diopters. The
 %                           dimensions of the posterior chamber of the eye
 %                           (and to a lesser extent the curvature of the
 %                           cornea) change with the observed refractive
@@ -68,7 +68,7 @@ function eye = modelEyeParameters( varargin )
 %}
 %{
     % Parameters for an myopic (-3), left, human eye
-    eye = modelEyeParameters('spectacleRefractionDiopters',-3,'eyeLaterality','left');
+    eye = modelEyeParameters('sphericalAmetropia',-3,'eyeLaterality','left');
 %}
 
 
@@ -76,7 +76,7 @@ function eye = modelEyeParameters( varargin )
 p = inputParser; p.KeepUnmatched = true;
 
 % Optional
-p.addParameter('spectacleRefractionDiopters',0,@isnumeric);
+p.addParameter('sphericalAmetropia',0,@isnumeric);
 p.addParameter('axialLength',[],@(x)(isempty(x) || isnumeric(x)));
 p.addParameter('kappaAngle',[],@(x)(isempty(x) || isnumeric(x)));
 p.addParameter('eyeLaterality','Right',@ischar);
@@ -103,7 +103,7 @@ switch p.Results.species
         % cornea circle for the back surface is positioned so that there is
         % 0.55 between the front and back surface of the cornea at the
         % apex.
-        eye.corneaFrontSurfaceRadius = 7.77 + 0.022 * p.Results.spectacleRefractionDiopters;
+        eye.corneaFrontSurfaceRadius = 7.77 + 0.022 * p.Results.sphericalAmetropia;
         eye.corneaFrontSurfaceCenter = [-eye.corneaFrontSurfaceRadius 0 0];
         eye.corneaBackSurfaceRadius = 6.4;
         eye.corneaBackSurfaceCenter = [-eye.corneaFrontSurfaceRadius+0.55 0 0];
@@ -141,9 +141,9 @@ switch p.Results.species
         % greater dependence of the first (axial) dimension upon
         % refractive error.        
         eye.posteriorChamberRadii = [...
-            10.148 - 0.163 * p.Results.spectacleRefractionDiopters ...
-            11.365 - 0.090 * p.Results.spectacleRefractionDiopters ...
-            11.455 - 0.043 * p.Results.spectacleRefractionDiopters ];
+            10.148 - 0.163 * p.Results.sphericalAmetropia ...
+            11.365 - 0.090 * p.Results.sphericalAmetropia ...
+            11.455 - 0.043 * p.Results.sphericalAmetropia ];
         
         % Our model holds the depth of the anterior chamber constant. To
         % position the posterior chamber, we need to know the distance
@@ -289,7 +289,7 @@ switch p.Results.species
 end
 
 % Meta data regarding the units of the model
-eye.meta.spectacleRefractionDiopters = p.Results.spectacleRefractionDiopters;
+eye.meta.sphericalAmetropia = p.Results.sphericalAmetropia;
 eye.meta.axialLength = p.Results.axialLength;
 eye.meta.laterality = eyeLaterality;
 eye.meta.species = p.Results.species;

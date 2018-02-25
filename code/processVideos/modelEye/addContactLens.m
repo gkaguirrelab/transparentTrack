@@ -71,7 +71,7 @@ function opticalSystemOut = addContactLens(opticalSystemIn, lensRefractionDiopte
 %{
     %% Example - Ray trace through cornea and contact lens
     % Obtain the eye parameters from the modelEyeParameters() function
-    eye = modelEyeParameters('spectacleRefractionDiopters',2);
+    eye = modelEyeParameters('sphericalAmetropia',2);
     % Define an optical system
     opticalSystem = [nan nan eye.aqueousRefractiveIndex; ...
                      eye.corneaBackSurfaceCenter(1) -eye.corneaBackSurfaceRadius eye.corneaRefractiveIndex; ...

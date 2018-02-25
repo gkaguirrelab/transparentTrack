@@ -133,7 +133,7 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
     clear theta
     clear figureFlag
     %  Obtain the eye parameters from the modelEyeParameters() function
-    eye = modelEyeParameters('spectacleRefractionDiopters',-2);
+    eye = modelEyeParameters('sphericalAmetropia',-2);
     pupilRadius = 2;
     theta = deg2rad(-45);
     coords = [eye.pupilCenter(1) pupilRadius];
