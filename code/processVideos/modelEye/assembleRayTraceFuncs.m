@@ -19,7 +19,7 @@ function rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry )
 %
 % Inputs:
 %   sceneGeometry         - A sceneGeometry structure. Critically, this
-%                           include the eye field.
+%                           includes the eye field.
 %
 % Outputs:
 %   rayTraceFuncs         - A structure that contains fields that in turn

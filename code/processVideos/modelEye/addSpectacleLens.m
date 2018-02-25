@@ -1,6 +1,9 @@
 function opticalSystemOut = addSpectacleLens(opticalSystemIn, lensRefractionDiopters, varargin)
 % Add a spectacle lens to a passed optical system
 %
+% Syntax:
+%  opticalSystemOut = addSpectacleLens(opticalSystemIn, lensRefractionDiopters)
+%
 % Description:
 %	This routine adds a meniscus (ophthalmologic) spectacle lens to an
 %	optical system with the refractive power specified in the passed

@@ -1,6 +1,9 @@
 function sceneGeometry = createSceneGeometry(varargin)
 % Create and return a sceneGeometry structure
 %
+% Syntax:
+%  sceneGeometry = createSceneGeometry()
+%
 % Description:
 %   Using default values and passed key/value pairs, this routine creates a
 %   sceneGeometry structure, with fields the describe a camera, an eye, and
@@ -83,7 +86,7 @@ function sceneGeometry = createSceneGeometry(varargin)
 %   chamber. These parameters are adjusted for the measured spherical
 %   refractive error of the subject and (optionally) measured axial length.
 %   Unmatched key-value pairs passed to createSceneGeometry are passed to
-%   modelEyeParameters.  
+%   modelEyeParameters.
 %
 % Inputs:
 %   none

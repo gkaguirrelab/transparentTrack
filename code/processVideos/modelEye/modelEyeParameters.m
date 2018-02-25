@@ -5,9 +5,9 @@ function eye = modelEyeParameters( varargin )
 %  eye = modelEyeParameters()
 %
 % Description:
-%   This routine returns the parameters that define the model eye that is
-%   used in the sceneGeometry routines. We make use of the values derived
-%   by Atchison for human eyes:
+%   This routine returns the parameters that define a model eye that is
+%   used in the sceneGeometry routines. We make use of values derived by
+%   Atchison for human eyes:
 %
 %       Atchison, David A. "Optical models for human myopic eyes." Vision
 %       research 46.14 (2006): 2236-2250.
@@ -20,7 +20,7 @@ function eye = modelEyeParameters( varargin )
 %   returned by this routine correspond to the eyeWorld coordinate space
 %   used in pupilProjection_fwd, which is relative to the pupil axis, with
 %   the apex of the cornea set as zero in depth. The space has the
-%   dimensions [depth, horizontal, vertical]; negative values of depth
+%   dimensions [depth, horizontal, vertical]; negative values of depth are
 %   towards the center of the eye. The model assumes the optical and pupil
 %   axis of the eye are algined.
 %
@@ -232,9 +232,9 @@ switch p.Results.species
         %
         % A source for an estimate of kappa comes from Mathur 2013:
         %
-        %	Mathur, Ankit, Julia Gehrmann, and David A. Atchison. "Pupil shape
-        %	as viewed along the horizontal visual field." Journal of vision
-        %	13.6 (2013): 3-3.
+        %	Mathur, Ankit, Julia Gehrmann, and David A. Atchison. "Pupil
+        %	shape as viewed along the horizontal visual field." Journal of
+        %	vision 13.6 (2013): 3-3.
         %
         % They measured the shape of the entrance pupil as a function of
         % viewing angle relative to the fixation point of the eye. Their
@@ -246,7 +246,7 @@ switch p.Results.species
         %   Tabernero, Juan, et al. "Mechanism of compensation of
         %   aberrations in the human eye." JOSA A 24.10 (2007): 3274-3283.
         %
-        % Tabernero 2007 reports a mean horizontal kappa of 5 degrees in
+        % Tabernero 2007 report a mean horizontal kappa of 5 degrees in
         % emmetropes, and their Equation 6 expresses kappa (technically
         % alpha, the angle w.r.t. the optical axis) as a function of axial
         % length. Their formula assumes an emmetropic model eye of 24 mm,
