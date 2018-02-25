@@ -32,7 +32,7 @@ function opticalSystemOut = addSpectacleLens(opticalSystemIn, lensRefractionDiop
 %                           plano face of the lens.
 %
 % Outputs:
-%   opticalSystemOut      - An (m+2)x3 matrix, correspinding to the
+%   opticalSystemOut      - An (m+2)x3 matrix, corresponding to the
 %                           opticalSystemIn with the addition of the
 %                           spectacle lens
 %

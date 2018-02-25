@@ -27,7 +27,7 @@ function opticalSystemOut = addContactLens(opticalSystemIn, lensRefractionDiopte
 %                           Contact lens material is ~1.4.
 %
 % Outputs:
-%   opticalSystemOut      - An (m+2)x3 matrix, correspinding to the
+%   opticalSystemOut      - An (m+2)x3 matrix, corresponding to the
 %                           opticalSystemIn with the addition of the
 %                           contact lens
 %

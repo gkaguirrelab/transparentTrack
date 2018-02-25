@@ -141,6 +141,8 @@ sceneGeometry.constraintTolerance = p.Results.constraintTolerance;
 % Values returned by the modelEyeParameters() routine
 sceneGeometry.eye = modelEyeParameters(varargin{:});
 
+% Optionally add fields for a spectacle or contact lens
+
 
 %% Save the sceneGeometry file
 if ~isempty(p.Results.sceneGeometryFileName)
