@@ -46,12 +46,6 @@ function opticalSystemOut = addSpectacleLens(opticalSystemIn, lensRefractionDiop
     opticalSystem=addSpectacleLens(opticalSystem, -2);
     % Define FigureFlag as a structure so we can provide plot limits
     clear figureFlag
-    figureFlag.show = true;
-    figureFlag.new = true;
-    figureFlag.surfaces = true;
-    figureFlag.imageLines = true;
-    figureFlag.rayLines = true;
-    figureFlag.textLabels = true;
     figureFlag.zLim = [-20 20];
     figureFlag.hLim = [-25 25];
     % Define a ray originating from the border of the pupil
@@ -61,7 +55,7 @@ function opticalSystemOut = addSpectacleLens(opticalSystemIn, lensRefractionDiop
     theta = deg2rad(-30);
     coords = [eye.pupilCenter(1) pupilRadius];
     % Perform the ray tracing
-    outputRay = rayTraceCenteredSphericalSurfaces(coords, theta, opticalSystem, figureFlag)
+    outputRay = rayTraceCenteredSphericalSurfaces(coords, theta, opticalSystem, figureFlag);
 %}
 
 %% input parser

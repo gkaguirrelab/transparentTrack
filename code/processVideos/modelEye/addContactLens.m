@@ -51,7 +51,7 @@ function opticalSystemOut = addContactLens(opticalSystemIn, lensRefractionDiopte
     opticalSystem(end,2)
 %}
 %{
-    %% Example - Test the output at zero diopters
+    %% Example - Test the output for zero diopters
     % If zero diopters are requested for a contact lens with an index of
     % refraction equal to the corneal index, then the curvature of the
     % front surface of the lens should be equivalent to the corneal front
@@ -68,21 +68,17 @@ function opticalSystemOut = addContactLens(opticalSystemIn, lensRefractionDiopte
 %{
     %% Example - Ray trace through cornea and contact lens
     % Obtain the eye parameters from the modelEyeParameters() function
-    eye = modelEyeParameters('spectacleRefractionDiopters',-2);
+    eye = modelEyeParameters('spectacleRefractionDiopters',2);
     % Define an optical system
     opticalSystem = [nan nan eye.aqueousRefractiveIndex; ...
                      eye.corneaBackSurfaceCenter(1) -eye.corneaBackSurfaceRadius eye.corneaRefractiveIndex; ...
                      eye.corneaFrontSurfaceCenter(1) -eye.corneaFrontSurfaceRadius 1.0];
     % Add a plus lens for the correction of hyperopia
-    opticalSystem=addContactLens(opticalSystem, -2);
-    % Define FigureFlag as a structure so we can provide plot limits
+    opticalSystem=addContactLens(opticalSystem, 2);
+    % Define FigureFlag as a structure so we can provide plot limits. Also,
+    % turn off the text labels to reduce clutter
     clear figureFlag
-    figureFlag.show = true;
-    figureFlag.new = true;
-    figureFlag.surfaces = true;
-    figureFlag.imageLines = true;
-    figureFlag.rayLines = true;
-    figureFlag.textLabels = true;
+    figureFlag.textLabels = false;
     figureFlag.zLim = [-10 5];
     figureFlag.hLim = [-5 5];
     % Define a ray originating from the border of the pupil
@@ -209,7 +205,6 @@ else
 
     % Add the surfaces to the optical system
     opticalSystemOut(end+1,:)=[frontCenter frontCurvature mediumRefractiveIndex];
-    
 end
 
 end % function - addContactLens
