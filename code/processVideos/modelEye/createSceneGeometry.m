@@ -88,6 +88,13 @@ function sceneGeometry = createSceneGeometry(varargin)
 %   Unmatched key-value pairs passed to createSceneGeometry are passed to
 %   modelEyeParameters.
 %
+%   spectacleLens -  [optional] A set of fields that define a "single
+%   vision" corrective lens. Only modeling of spherical correction is
+%   supported.
+%
+%   contactLens -  [optional] A set of fields that define a corrective
+%   contact lens. Only modeling of spherical correction is supported.   
+%
 % Inputs:
 %   none
 %
@@ -123,13 +130,16 @@ p.parse(varargin{:})
 
 
 %% assemble the sceneGeometry structure
+% Values defined locally
 sceneGeometry.intrinsicCameraMatrix = p.Results.intrinsicCameraMatrix;
 sceneGeometry.radialDistortionVector = p.Results.radialDistortionVector;
 sceneGeometry.extrinsicTranslationVector = p.Results.extrinsicTranslationVector;
 sceneGeometry.extrinsicRotationMatrix = p.Results.extrinsicRotationMatrix;
 sceneGeometry.primaryPosition = p.Results.primaryPosition;
-sceneGeometry.eye = modelEyeParameters(varargin{:});
 sceneGeometry.constraintTolerance = p.Results.constraintTolerance;
+
+% Values returned by the modelEyeParameters() routine
+sceneGeometry.eye = modelEyeParameters(varargin{:});
 
 
 %% Save the sceneGeometry file
