@@ -1,13 +1,13 @@
 # transparentTrack
 Code to analyze pupil size and gaze location in IR videos of the eye.
 
-These MATLAB routines are designed to operate upon monocular, infra-red videos of the eye and extract the elliptical boundary of the pupil in the image plane. Absolute pupil size and gaze position are estimated without the need for explicit calibration.
+These MATLAB routines are designed to operate upon monocular, infra-red videos of the eye and extract the elliptical boundary of the pupil in the image plane. Absolute pupil size and gaze position are estimated without need for explicit calibration.
 
 Notably, this software is computationally intensive and is designed to be run off-line upon videos collected during an experimental session. A particular design goal is to provide an accurate fit to the pupil boundary even when it is partially obscured by the eyelid. This circumstance is encountered when the pupil is large, as is seen in data collected under low-light conditions or in people with retinal disease.
 
 The central computation is to fit an ellipse to the pupil boundary in each image frame. This fitting operation is performed iteratively, aided by ever more informed constraints upon the parameters that define the ellipse. The ellipse equation is cast in "transparent" form, with parameters that define x center, y center, area, eccentricity (non-linear aspect ratio), and theta (angle of tilt). Expressing the parameters of the ellipse in this way allows us to place boundaries and non-linear constraints upon the values.
 
-The parameters of the ellipse are constrained by a projection model of the appearance of the pupil on the image plane. A perspective projection of an anatomically accurate eye is calculated, accounting for the refractive properties of the cornea and any lens distortion in the camera. The parameters of this model are informed by normal variation in eye biometrics from the literature, subject spherical refraction and optionally measured axial length, by empirical calibration of the IR camera, and by estimation of the geometry of the scene performed by the routine.
+The fitting is also constrained by a projection model of the appearance of the pupil on the image plane. A perspective projection of an anatomically accurate eye is calculated, accounting for the refractive properties of the cornea and any lens distortion in the camera. The parameters of this model are informed by normal variation in eye biometrics from the literature, subject ametropia (and optionally measured axial length), by empirical calibration of the IR camera, knowledge of corrective lenses worn by the subject during recording, and by estimation of the geometry of the scene performed by the routines.
 
 At a high level of description, the fitting approach involves:
 - **Intensity segmentation to extract the boundary of the pupil**. A preliminary circle fit via the Hough transform and an adaptive size window. In principle, another algorithm (e.g., the Starburst) could be substituted here.
