@@ -114,7 +114,7 @@ figure(3)
 sceneGeometry = createSceneGeometry();
 rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
 
-% Plot the values for eyePost [0 0 0 x]
+% Plot the values for eyePose [0 0 0 x]
 subplot(1,2,1);
 entrancePupilRadiusRayTrace = [];
 entrancePupilRadiusNoRayTrace = [];
@@ -136,7 +136,7 @@ ylabel('entrance pupil radius in image [pixels]');
 legend({'Without corneal refraction','With corneal refraction'},'Location','southeast');
 title('eyePose [0 0 0 x]');
 
-% Plot the values for eyePost [15 15 0 x]
+% Plot the values for eyePose [15 15 0 x]
 subplot(1,2,2);
 entrancePupilRadiusRayTrace = [];
 entrancePupilRadiusNoRayTrace = [];
