@@ -129,11 +129,11 @@ for axialErrorMultiplier = -2:1:2
 end
 
 % Estimate camera translation with ray tracing
-% startTime=datetime('now');
-% result = estimateCameraTranslation(pupilData,'','useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1,'nBADSsearches',10,'useRayTracing',true);
-% endTime=datetime('now');
-% result.startTime = startTime;
-% result.endTime = endTime;
-% outputFile = [outputFileStem '_withRayTrace.mat'];
-% save(outputFile,'result');
+startTime=datetime('now');
+result = estimateCameraTranslation(pupilData,'','useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1,'nBADSsearches',10,'useRayTracing',true);
+endTime=datetime('now');
+result.startTime = startTime;
+result.endTime = endTime;
+outputFile = [outputFileStem '_withRayTrace.mat'];
+save(outputFile,'result');
 
