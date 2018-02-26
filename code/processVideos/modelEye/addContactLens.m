@@ -1,8 +1,8 @@
-function opticalSystemOut = addContactLens(opticalSystemIn, lensRefractionDiopters, varargin)
+function [opticalSystemOut, p] = addContactLens(opticalSystemIn, lensRefractionDiopters, varargin)
 % Add a contact lens to a passed optical system
 %
 % Syntax:
-%  opticalSystemOut = addContactLens(opticalSystemIn, lensRefractionDiopters)
+%  [opticalSystemOut, p] = addContactLens(opticalSystemIn, lensRefractionDiopters)
 %
 % Description:
 %	This routine adds a meniscus (ophthalmologic) contact lens to an
@@ -30,6 +30,7 @@ function opticalSystemOut = addContactLens(opticalSystemIn, lensRefractionDiopte
 %   opticalSystemOut      - An (m+2)x3 matrix, corresponding to the
 %                           opticalSystemIn with the addition of the
 %                           contact lens
+%   p                     - The parameters returned by the input parser.
 %
 % Examples:
 %{

@@ -1,5 +1,5 @@
 function rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry )
-% Function handles to symbolic ray tracing equations through the cornea
+% Function handles to ray tracing equations
 %
 % Syntax:
 %  rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry )

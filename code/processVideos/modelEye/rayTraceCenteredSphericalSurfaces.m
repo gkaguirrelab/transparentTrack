@@ -111,38 +111,23 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
     %% Example 2 - Pupil through cornea
     % A model of the passage of a point on the pupil perimeter through
     % the cornea (units in mm)
-    clear coords
-    clear theta
-    clear figureFlag
-    %  Obtain the eye parameters from the modelEyeParameters() function
-    eye = modelEyeParameters();
-    pupilRadius = 2;
-    theta = deg2rad(-45);
-    coords = [eye.pupilCenter(1) pupilRadius];
-    opticalSystem = [nan nan eye.aqueousRefractiveIndex; ...
-                     eye.corneaBackSurfaceCenter(1) -eye.corneaBackSurfaceRadius eye.corneaRefractiveIndex; ...
-                     eye.corneaFrontSurfaceCenter(1) -eye.corneaFrontSurfaceRadius 1.0];
-    figureFlag=true;
-    outputRay = rayTraceCenteredSphericalSurfaces(coords, theta, opticalSystem, figureFlag)
+    sceneGeometry = createSceneGeometry();
+    outputRay = rayTraceCenteredSphericalSurfaces([sceneGeometry.eye.pupilCenter(1) 2], deg2rad(-45), sceneGeometry.opticalSystem, true)
 %}
 %{
     %% Example 3 - Pupil through cornea and spectacle, plot range limits
     % A model of the passage of a point on the pupil perimeter through
     % the cornea and spectacle lens (units in mm)
-    clear coords
-    clear theta
-    clear figureFlag
-    %  Obtain the eye parameters from the modelEyeParameters() function
-    eye = modelEyeParameters('sphericalAmetropia',-2);
+    %  Create a myopic eye
+    sceneGeometry = createSceneGeometry('sphericalAmetropia',-2);
     pupilRadius = 2;
     theta = deg2rad(-45);
-    coords = [eye.pupilCenter(1) pupilRadius];
-    opticalSystem = [nan nan eye.aqueousRefractiveIndex; ...
-                     eye.corneaBackSurfaceCenter(1) -eye.corneaBackSurfaceRadius eye.corneaRefractiveIndex; ...
-                     eye.corneaFrontSurfaceCenter(1) -eye.corneaFrontSurfaceRadius 1.0];
+    coords = [sceneGeometry.eye.pupilCenter(1) pupilRadius];
+    opticalSystem = sceneGeometry.opticalSystem;
     % Add a -2 diopter lens for the correction of myopia
     opticalSystem=addSpectacleLens(opticalSystem, -2);
     % Define FigureFlag as a structure with limits on the plot range
+    clear figureFlag
     figureFlag.zLim = [-20 20];
     figureFlag.hLim = [-25 25];
     outputRay = rayTraceCenteredSphericalSurfaces(coords, theta, opticalSystem, figureFlag)

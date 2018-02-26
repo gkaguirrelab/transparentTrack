@@ -6,8 +6,9 @@ function sceneGeometry = createSceneGeometry(varargin)
 %
 % Description:
 %   Using default values and passed key/value pairs, this routine creates a
-%   sceneGeometry structure, with fields the describe a camera, an eye, and
-%   the geometric relationship between them. The fields are:
+%   sceneGeometry structure, with fields the describe a camera, an eye,
+%   corrective lenses, and the geometric relationship between them. The
+%   fields are:
 %
 %   intrinsicCameraMatrix - This matrix has the form:
 %
@@ -80,20 +81,23 @@ function sceneGeometry = createSceneGeometry(varargin)
 %   perspective effects. We find that a value in the range 0.01 - 0.03
 %   provides an acceptable compromise in empirical data.
 %
-%   eye -  This is itself a structure that is returned by the function
-%   modelEyeParameters(). The parameters define the anatomical properties
-%   of the eye, including the size and shape of the anterior and posterior
-%   chamber. These parameters are adjusted for the measured spherical
-%   refractive error of the subject and (optionally) measured axial length.
-%   Unmatched key-value pairs passed to createSceneGeometry are passed to
-%   modelEyeParameters.
+%   eye -  A sub-structure returned by the function modelEyeParameters. The
+%   parameters define the anatomical properties of the eye, including the
+%   size and shape of the anterior and posterior chamber. These parameters
+%   are adjusted for the measured spherical refractive error of the subject
+%   and (optionally) measured axial length. Unmatched key-value pairs
+%   passed to createSceneGeometry are passed to modelEyeParameters.
 %
 %   spectacleLens -  [optional] A set of fields that define a "single
 %   vision" corrective lens. Only modeling of spherical correction is
 %   supported.
 %
 %   contactLens -  [optional] A set of fields that define a corrective
-%   contact lens. Only modeling of spherical correction is supported.   
+%   contact lens. Only modeling of spherical correction is supported.
+%
+%   opticalSystem - An mx3 matrix that assembles information regarding the
+%   m surfaces of the cornea and any corrective lenses into a format needed
+%   for ray tracing.
 %
 % Inputs:
 %   none
@@ -106,11 +110,39 @@ function sceneGeometry = createSceneGeometry(varargin)
 %  'extrinsicTranslationVector' - 3x1 vector
 %  'primaryPosition'      - 1x3 vector
 %  'constraintTolerance'  - Scalar. Range 0-1. Typical value 0.01 - 0.03
+%  'contactLens'          - Scalar or 1x2 vector, with values for the lens
+%                           refraction in diopters, and (optionally) the
+%                           index of refraction of the lens material. If
+%                           left empty, no contact lens is added to the
+%                           model.
+%  'spectacleLens'        - Scalar, 1x2, or 1x3 vector, with values for the
+%                           lens refraction in diopters, (optionally) the
+%                           index of refraction of the lens material, and
+%                           (optinally) the vertex distance in mm. If left
+%                           empty, no contact lens is added to the model.
+%  'mediumRefractiveIndex' - Refractive index of the medium that is present
+%                           between the eye and the camera. Air = 1.0.
 %
 % Outputs
 %	sceneGeometry         - A structure that contains the components of the
 %                           projection model.
 %
+% Examples:
+%{
+    % Create a scene geometry file for a myopic eye wearing a contact lens.
+    % The key-value sphericalAmetropia is passed to modelEyeParameters
+    % within the routine
+    sceneGeometry = createSceneGeometry('sphericalAmetropia',-2,'contactLens',-2);
+%}
+%{
+    % Create a scene geometry file for a hyperopic eye wearing spectacles
+    % that provide appropriate correction when underwater.
+    sceneGeometry = createSceneGeometry('sphericalAmetropia',-2,'spectacleLens',2,'mediumRefractiveIndex',1.333);
+    % Plot a figure that traces a ray arising from the optical axis at the
+    % pupil plane, departing at 15 degrees.    
+    figureFlag.zLim = [-10 20]; figureFlag.hLim = [-10 10];
+    rayTraceCenteredSphericalSurfaces([sceneGeometry.eye.pupilCenter(1) 0], deg2rad(15), sceneGeometry.opticalSystem,figureFlag);
+%}
 
 
 %% input parser
@@ -124,6 +156,9 @@ p.addParameter('extrinsicTranslationVector',[0; 0; 120],@isnumeric);
 p.addParameter('extrinsicRotationMatrix',[1 0 0; 0 1 0; 0 0 1],@isnumeric);
 p.addParameter('primaryPosition',[0 0 0],@isnumeric);
 p.addParameter('constraintTolerance',0.02,@isnumeric);
+p.addParameter('contactLens',[], @(x)(isempty(x) | isnumeric(x)));
+p.addParameter('spectacleLens',[], @(x)(isempty(x) | isnumeric(x)));
+p.addParameter('mediumRefractiveIndex',1.0,@isnumeric);
 
 % parse
 p.parse(varargin{:})
@@ -141,8 +176,44 @@ sceneGeometry.constraintTolerance = p.Results.constraintTolerance;
 % Values returned by the modelEyeParameters() routine
 sceneGeometry.eye = modelEyeParameters(varargin{:});
 
-% Optionally add fields for a spectacle or contact lens
+% Generate the opticalSystem matrix through the cornea
+opticalSystem = [nan nan sceneGeometry.eye.aqueousRefractiveIndex; ...
+    sceneGeometry.eye.corneaBackSurfaceCenter(1) -sceneGeometry.eye.corneaBackSurfaceRadius sceneGeometry.eye.corneaRefractiveIndex; ...
+    sceneGeometry.eye.corneaFrontSurfaceCenter(1) -sceneGeometry.eye.corneaFrontSurfaceRadius p.Results.mediumRefractiveIndex];
 
+% Add a contact lens if requested
+if ~isempty(p.Results.contactLens)
+    switch length(p.Results.contactLens)
+        case 1
+            [opticalSystem, pOutFun] = addContactLens(opticalSystem, p.Results.contactLens);
+        case 2
+            [opticalSystem, pOutFun] = addContactLens(opticalSystem, p.Results.contactLens(1), 'lensRefractiveIndex', p.Results.contactLens(2));
+        otherwise
+            error('The key-value pair contactLens is limited to two elements: [refractionDiopters, refractionIndex]');
+    end
+    sceneGeometry.contactLens = pOutFun.Results;
+end
+
+% Add a spectacle lens if requested
+if ~isempty(p.Results.spectacleLens)
+    switch length(p.Results.spectacleLens)
+        case 1
+            [opticalSystem, pOutFun] = addSpectacleLens(opticalSystem, p.Results.spectacleLens);
+        case 2
+            [opticalSystem, pOutFun] = addSpectacleLens(opticalSystem, p.Results.spectacleLens(1), 'lensRefractiveIndex', p.Results.spectacleLens(2));
+        case 3
+            [opticalSystem, pOutFun] = addSpectacleLens(opticalSystem, p.Results.spectacleLens(1), 'lensRefractiveIndex', p.Results.spectacleLens(2),'lensVertexDistance', p.Results.spectacleLens(3));
+        otherwise
+            error('The key-value pair spectacleLens is limited to three elements: [refractionDiopters, refractionIndex, vertexDistance]');
+    end
+    sceneGeometry.spectacleLens = pOutFun.Results;
+end
+
+% Store the optical system
+sceneGeometry.opticalSystem = opticalSystem;
+
+% Save the meta data
+sceneGeometry.meta.createSceneGeometry = p.Results;
 
 %% Save the sceneGeometry file
 if ~isempty(p.Results.sceneGeometryFileName)

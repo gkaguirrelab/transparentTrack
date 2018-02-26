@@ -1,8 +1,8 @@
-function opticalSystemOut = addSpectacleLens(opticalSystemIn, lensRefractionDiopters, varargin)
+function [opticalSystemOut, p] = addSpectacleLens(opticalSystemIn, lensRefractionDiopters, varargin)
 % Add a spectacle lens to a passed optical system
 %
 % Syntax:
-%  opticalSystemOut = addSpectacleLens(opticalSystemIn, lensRefractionDiopters)
+%  [opticalSystemOut, p] = addSpectacleLens(opticalSystemIn, lensRefractionDiopters)
 %
 % Description:
 %	This routine adds a meniscus (ophthalmologic) spectacle lens to an
@@ -23,11 +23,11 @@ function opticalSystemOut = addSpectacleLens(opticalSystemIn, lensRefractionDiop
 %                           correct their vision.
 %
 % Optional key/value pairs:
+%  'lensRefractiveIndex'  - Scalar. Refractive index of the lens material.
+%                           Typical values are in the range of 1.5 - 1.7.
 %  'lensVertexDistance'       - Scalar. Distance (in mm) between the corneal
 %                           apexa and the back surface of the lens. Typical
 %                           values are 12-14 mm.
-%  'lensRefractiveIndex'  - Scalar. Refractive index of the lens material.
-%                           Typical values are in the range of 1.5 - 1.7.
 %  'nearPlanoCurvature'   - Scalar. This defines the curvature of the near-
 %                           plano face of the lens.
 %
@@ -35,6 +35,7 @@ function opticalSystemOut = addSpectacleLens(opticalSystemIn, lensRefractionDiop
 %   opticalSystemOut      - An (m+2)x3 matrix, corresponding to the
 %                           opticalSystemIn with the addition of the
 %                           spectacle lens
+%   p                     - The parameters returned by the input parser.
 %
 % Examples:
 %{
@@ -69,8 +70,8 @@ p.addRequired('opticalSystemIn',@isnumeric);
 p.addRequired('lensRefractionDiopters',@isnumeric);
 
 % Optional
-p.addParameter('lensVertexDistance',12,@isnumeric);
 p.addParameter('lensRefractiveIndex',1.498,@isnumeric);
+p.addParameter('lensVertexDistance',12,@isnumeric);
 p.addParameter('nearPlanoCurvature',-16000,@isnumeric);
 p.addParameter('minimumLensThickness',1,@isnumeric);
 
