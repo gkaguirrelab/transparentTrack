@@ -59,7 +59,8 @@ function eye = modelEyeParameters( varargin )
 %  'spectralDomain'       - String, options include {'vis','nir'}.
 %                           This is the light domain within which imaging
 %                           is being performed. The refractive indices vary
-%                           based upon this choice.%
+%                           based upon this choice.
+%
 % Outputs:
 %   eye                   - A structure with fields that contain the values
 %                           for the model eye.
@@ -118,9 +119,16 @@ switch p.Results.species
         % zero
         eye.pupilCenter = [-3.7 0 0];
         
-        % Define the properties of the iris. Geoff needs to do some work to
-        % find and justify values here.
-        % https://www.clspectrum.com/issues/2002/april-2002/contact-lens-case-reports        
+        % Define the iris radius. One study measured the horizontal visible
+        % iris diameter in 200 people, and found a mean of 11.8 with a
+        % range of 10.2 - 13.0.
+        %    PJ Caroline & MP Andrew. "The Effect of Corneal Diameter on
+        %    Soft Lens Fitting, Part 1" Contact Lens Spectrum, Issue: April
+        %    2002
+        %    https://www.clspectrum.com/issues/2002/april-2002/contact-lens-case-reports
+        % The visible iris diamtere, however, is a virtual image of the
+        % actual iris that is recracted by the cornea. For now, we'll use
+        % this smaller value for the iris, but GKA needs to return to this.
         eye.irisRadius = 5;
                 
         % In both eyes, the iris center is shifted slightly temporally and
