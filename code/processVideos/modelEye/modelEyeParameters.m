@@ -56,7 +56,10 @@ function eye = modelEyeParameters( varargin )
 %  'species'              - A text string that specifies the species to be
 %                           modeled. Supported values (in any case) are
 %                           {'human'}
-%
+%  'spectralDomain'       - String, options include {'vis','nir'}.
+%                           This is the light domain within which imaging
+%                           is being performed. The refractive indices vary
+%                           based upon this choice.%
 % Outputs:
 %   eye                   - A structure with fields that contain the values
 %                           for the model eye.
@@ -81,6 +84,7 @@ p.addParameter('axialLength',[],@(x)(isempty(x) || isnumeric(x)));
 p.addParameter('kappaAngle',[],@(x)(isempty(x) || isnumeric(x)));
 p.addParameter('eyeLaterality','Right',@ischar);
 p.addParameter('species','Human',@ischar);
+p.addParameter('spectralDomain','nir',@ischar);
 
 % parse
 p.parse(varargin{:})
@@ -216,9 +220,9 @@ switch p.Results.species
         % than the position of the center of the posterior chamber.
         eye.rotationCenter = [eye.posteriorChamberCenter(1)+0.1444 0 0];
         
-        % Refractive index values from Atchison 2006.
-        eye.corneaRefractiveIndex = 1.376;
-        eye.aqueousRefractiveIndex = 1.3374;
+        % Obtain refractive index values for this spectral domain.
+        eye.corneaRefractiveIndex = returnRefractiveIndex( 'cornea', p.Results.spectralDomain );
+        eye.aqueousRefractiveIndex = returnRefractiveIndex( 'aqueous', p.Results.spectralDomain );
         
         % We now calculate kappa, which is the angle (in degrees) between
         % the pupil and visual axes of the eye. The visual axis is
@@ -289,10 +293,7 @@ switch p.Results.species
 end
 
 % Meta data regarding the units of the model
-eye.meta.sphericalAmetropia = p.Results.sphericalAmetropia;
-eye.meta.axialLength = p.Results.axialLength;
-eye.meta.laterality = eyeLaterality;
-eye.meta.species = p.Results.species;
+eye.meta = p.Results;
 eye.meta.units = 'mm';
 eye.meta.coordinates = 'eyeWorld';
 eye.meta.dimensions = {'depth (axial)' 'horizontal' 'vertical'};

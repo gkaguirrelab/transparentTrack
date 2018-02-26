@@ -120,8 +120,15 @@ function sceneGeometry = createSceneGeometry(varargin)
 %                           index of refraction of the lens material, and
 %                           (optinally) the vertex distance in mm. If left
 %                           empty, no contact lens is added to the model.
-%  'mediumRefractiveIndex' - Refractive index of the medium that is present
-%                           between the eye and the camera. Air = 1.0.
+%  'medium'               - String, options include:
+%                           {'air','water','vacuum'}. This sets the index
+%                           of refraction of the medium between the eye an
+%                           the camera.
+%  'spectralDomain'       - String, options include {'vis','nir'}.
+%                           This is the light domain within which imaging
+%                           is being performed. The refractive indices vary
+%                           based upon this choice.
+%                           
 %
 % Outputs
 %	sceneGeometry         - A structure that contains the components of the
@@ -137,7 +144,7 @@ function sceneGeometry = createSceneGeometry(varargin)
 %{
     % Create a scene geometry file for a hyperopic eye wearing spectacles
     % that provide appropriate correction when underwater.
-    sceneGeometry = createSceneGeometry('sphericalAmetropia',-2,'spectacleLens',2,'mediumRefractiveIndex',1.333);
+    sceneGeometry = createSceneGeometry('sphericalAmetropia',-2,'spectacleLens',2,'medium','water');
     % Plot a figure that traces a ray arising from the optical axis at the
     % pupil plane, departing at 15 degrees.    
     figureFlag.zLim = [-10 20]; figureFlag.hLim = [-10 10];
@@ -158,7 +165,8 @@ p.addParameter('primaryPosition',[0 0 0],@isnumeric);
 p.addParameter('constraintTolerance',0.02,@isnumeric);
 p.addParameter('contactLens',[], @(x)(isempty(x) | isnumeric(x)));
 p.addParameter('spectacleLens',[], @(x)(isempty(x) | isnumeric(x)));
-p.addParameter('mediumRefractiveIndex',1.0,@isnumeric);
+p.addParameter('medium','air',@ischar);
+p.addParameter('spectralDomain','nir',@ischar);
 
 % parse
 p.parse(varargin{:})
@@ -174,18 +182,20 @@ sceneGeometry.primaryPosition = p.Results.primaryPosition;
 sceneGeometry.constraintTolerance = p.Results.constraintTolerance;
 
 % Values returned by the modelEyeParameters() routine
-sceneGeometry.eye = modelEyeParameters(varargin{:});
+sceneGeometry.eye = modelEyeParameters('spectralDomain',p.Results.spectralDomain,varargin{:});
 
 % Generate the opticalSystem matrix through the cornea
+mediumRefractiveIndex = returnRefractiveIndex( p.Results.medium, p.Results.spectralDomain );
 opticalSystem = [nan nan sceneGeometry.eye.aqueousRefractiveIndex; ...
     sceneGeometry.eye.corneaBackSurfaceCenter(1) -sceneGeometry.eye.corneaBackSurfaceRadius sceneGeometry.eye.corneaRefractiveIndex; ...
-    sceneGeometry.eye.corneaFrontSurfaceCenter(1) -sceneGeometry.eye.corneaFrontSurfaceRadius p.Results.mediumRefractiveIndex];
+    sceneGeometry.eye.corneaFrontSurfaceCenter(1) -sceneGeometry.eye.corneaFrontSurfaceRadius mediumRefractiveIndex];
 
 % Add a contact lens if requested
 if ~isempty(p.Results.contactLens)
     switch length(p.Results.contactLens)
         case 1
-            [opticalSystem, pOutFun] = addContactLens(opticalSystem, p.Results.contactLens);
+            lensRefractiveIndex=returnRefractiveIndex( 'hydrogel', p.Results.spectralDomain );
+            [opticalSystem, pOutFun] = addContactLens(opticalSystem, p.Results.contactLens, 'lensRefractiveIndex', lensRefractiveIndex);
         case 2
             [opticalSystem, pOutFun] = addContactLens(opticalSystem, p.Results.contactLens(1), 'lensRefractiveIndex', p.Results.contactLens(2));
         otherwise
@@ -198,7 +208,8 @@ end
 if ~isempty(p.Results.spectacleLens)
     switch length(p.Results.spectacleLens)
         case 1
-            [opticalSystem, pOutFun] = addSpectacleLens(opticalSystem, p.Results.spectacleLens);
+            lensRefractiveIndex=returnRefractiveIndex( 'polycarbonate', p.Results.spectralDomain );
+            [opticalSystem, pOutFun] = addSpectacleLens(opticalSystem, p.Results.spectacleLens, 'lensRefractiveIndex', lensRefractiveIndex);
         case 2
             [opticalSystem, pOutFun] = addSpectacleLens(opticalSystem, p.Results.spectacleLens(1), 'lensRefractiveIndex', p.Results.spectacleLens(2));
         case 3
