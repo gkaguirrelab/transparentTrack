@@ -40,7 +40,7 @@ function [eyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaEr
 %                           pupil ellipse on the image plane cast in
 %                           transparent form
 %   sceneGeometry         - The sceneGeometry structure. Defined in
-%                           estimateSceneGeometry()
+%                           createSceneGeometry()
 %   rayTraceFuncs         - A structure of function handles. Defined in
 %                           assembleRayTraceFuncs().
 %

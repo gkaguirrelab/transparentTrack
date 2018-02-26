@@ -5,9 +5,9 @@ function eye = modelEyeParameters( varargin )
 %  eye = modelEyeParameters()
 %
 % Description:
-%   This routine returns the parameters that define the model eye that is
-%   used in the sceneGeometry routines. We make use of the values derived
-%   by Atchison for human eyes:
+%   This routine returns the parameters that define a model eye that is
+%   used in the sceneGeometry routines. We make use of values derived by
+%   Atchison for human eyes:
 %
 %       Atchison, David A. "Optical models for human myopic eyes." Vision
 %       research 46.14 (2006): 2236-2250.
@@ -20,7 +20,7 @@ function eye = modelEyeParameters( varargin )
 %   returned by this routine correspond to the eyeWorld coordinate space
 %   used in pupilProjection_fwd, which is relative to the pupil axis, with
 %   the apex of the cornea set as zero in depth. The space has the
-%   dimensions [depth, horizontal, vertical]; negative values of depth
+%   dimensions [depth, horizontal, vertical]; negative values of depth are
 %   towards the center of the eye. The model assumes the optical and pupil
 %   axis of the eye are algined.
 %
@@ -28,7 +28,7 @@ function eye = modelEyeParameters( varargin )
 %   none
 %
 % Optional key/value pairs:
-%  'spectacleRefractionDiopters' - Scalar, in units of diopters. The
+%  'sphericalAmetropia'   - Scalar, in units of diopters. The
 %                           dimensions of the posterior chamber of the eye
 %                           (and to a lesser extent the curvature of the
 %                           cornea) change with the observed refractive
@@ -56,7 +56,10 @@ function eye = modelEyeParameters( varargin )
 %  'species'              - A text string that specifies the species to be
 %                           modeled. Supported values (in any case) are
 %                           {'human'}
-%
+%  'spectralDomain'       - String, options include {'vis','nir'}.
+%                           This is the light domain within which imaging
+%                           is being performed. The refractive indices vary
+%                           based upon this choice.%
 % Outputs:
 %   eye                   - A structure with fields that contain the values
 %                           for the model eye.
@@ -68,7 +71,7 @@ function eye = modelEyeParameters( varargin )
 %}
 %{
     % Parameters for an myopic (-3), left, human eye
-    eye = modelEyeParameters('spectacleRefractionDiopters',-3,'eyeLaterality','left');
+    eye = modelEyeParameters('sphericalAmetropia',-3,'eyeLaterality','left');
 %}
 
 
@@ -76,11 +79,12 @@ function eye = modelEyeParameters( varargin )
 p = inputParser; p.KeepUnmatched = true;
 
 % Optional
-p.addParameter('spectacleRefractionDiopters',0,@isnumeric);
+p.addParameter('sphericalAmetropia',0,@isnumeric);
 p.addParameter('axialLength',[],@(x)(isempty(x) || isnumeric(x)));
 p.addParameter('kappaAngle',[],@(x)(isempty(x) || isnumeric(x)));
 p.addParameter('eyeLaterality','Right',@ischar);
 p.addParameter('species','Human',@ischar);
+p.addParameter('spectralDomain','nir',@ischar);
 
 % parse
 p.parse(varargin{:})
@@ -103,10 +107,10 @@ switch p.Results.species
         % cornea circle for the back surface is positioned so that there is
         % 0.55 between the front and back surface of the cornea at the
         % apex.
-        eye.corneaFrontSurfaceRadius = 7.77;
-        eye.corneaFrontSurfaceCenter = [-7.77 0 0];
+        eye.corneaFrontSurfaceRadius = 7.77 + 0.022 * p.Results.sphericalAmetropia;
+        eye.corneaFrontSurfaceCenter = [-eye.corneaFrontSurfaceRadius 0 0];
         eye.corneaBackSurfaceRadius = 6.4;
-        eye.corneaBackSurfaceCenter = [-7.22 0 0];
+        eye.corneaBackSurfaceCenter = [-eye.corneaFrontSurfaceRadius+0.55 0 0];
         
         % We position the pupil plane at the depth of the anterior point of
         % the lens. The coordinate space of the model eye is define with
@@ -141,9 +145,9 @@ switch p.Results.species
         % greater dependence of the first (axial) dimension upon
         % refractive error.        
         eye.posteriorChamberRadii = [...
-            10.148 - 0.163 * p.Results.spectacleRefractionDiopters ...
-            11.365 - 0.090 * p.Results.spectacleRefractionDiopters ...
-            11.455 - 0.043 * p.Results.spectacleRefractionDiopters ];
+            10.148 - 0.163 * p.Results.sphericalAmetropia ...
+            11.365 - 0.090 * p.Results.sphericalAmetropia ...
+            11.455 - 0.043 * p.Results.sphericalAmetropia ];
         
         % Our model holds the depth of the anterior chamber constant. To
         % position the posterior chamber, we need to know the distance
@@ -216,9 +220,9 @@ switch p.Results.species
         % than the position of the center of the posterior chamber.
         eye.rotationCenter = [eye.posteriorChamberCenter(1)+0.1444 0 0];
         
-        % Refractive index values from Atchison 2006.
-        eye.corneaRefractiveIndex = 1.376;
-        eye.aqueousRefractiveIndex = 1.3374;
+        % Obtain refractive index values for this spectral domain.
+        eye.corneaRefractiveIndex = returnRefractiveIndex( 'cornea', p.Results.spectralDomain );
+        eye.aqueousRefractiveIndex = returnRefractiveIndex( 'aqueous', p.Results.spectralDomain );
         
         % We now calculate kappa, which is the angle (in degrees) between
         % the pupil and visual axes of the eye. The visual axis is
@@ -232,9 +236,9 @@ switch p.Results.species
         %
         % A source for an estimate of kappa comes from Mathur 2013:
         %
-        %	Mathur, Ankit, Julia Gehrmann, and David A. Atchison. "Pupil shape
-        %	as viewed along the horizontal visual field." Journal of vision
-        %	13.6 (2013): 3-3.
+        %	Mathur, Ankit, Julia Gehrmann, and David A. Atchison. "Pupil
+        %	shape as viewed along the horizontal visual field." Journal of
+        %	vision 13.6 (2013): 3-3.
         %
         % They measured the shape of the entrance pupil as a function of
         % viewing angle relative to the fixation point of the eye. Their
@@ -246,7 +250,7 @@ switch p.Results.species
         %   Tabernero, Juan, et al. "Mechanism of compensation of
         %   aberrations in the human eye." JOSA A 24.10 (2007): 3274-3283.
         %
-        % Tabernero 2007 reports a mean horizontal kappa of 5 degrees in
+        % Tabernero 2007 report a mean horizontal kappa of 5 degrees in
         % emmetropes, and their Equation 6 expresses kappa (technically
         % alpha, the angle w.r.t. the optical axis) as a function of axial
         % length. Their formula assumes an emmetropic model eye of 24 mm,
@@ -289,10 +293,7 @@ switch p.Results.species
 end
 
 % Meta data regarding the units of the model
-eye.meta.spectacleRefractionDiopters = p.Results.spectacleRefractionDiopters;
-eye.meta.axialLength = p.Results.axialLength;
-eye.meta.laterality = eyeLaterality;
-eye.meta.species = p.Results.species;
+eye.meta = p.Results;
 eye.meta.units = 'mm';
 eye.meta.coordinates = 'eyeWorld';
 eye.meta.dimensions = {'depth (axial)' 'horizontal' 'vertical'};

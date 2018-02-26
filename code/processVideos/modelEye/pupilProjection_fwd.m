@@ -11,8 +11,8 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
 %   of the projection of the pupil to the image plane.
 %
 %   The forward model is a perspective projection of an anatomically
-%   accurate eye, with points positioned behind the cornea subject
-%   to refractive displacement. The projection incorporates the intrinsic
+%   accurate eye, with points positioned behind the cornea subject to
+%   refractive displacement. The projection incorporates the intrinsic
 %   properties of the camera, including any radial lens distortion.
 %
 % Notes:
@@ -96,7 +96,7 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     %% Obtain the parameters of the pupil ellipse in the image
     % Obtain a default sceneGeometry structure
     sceneGeometry=createSceneGeometry();
-    % Define the ray tracing functions
+    % Define the ray tracing functions (slow; only need to do once)
     rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
     % Define in eyePoses the azimuth, elevation, torsion, and pupil radius
     eyePose = [-10 5 0 3];
@@ -104,9 +104,9 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     pupilEllipseOnImagePlane = pupilProjection_fwd(eyePose,sceneGeometry,rayTraceFuncs);
 %}
 %{
-    %% Display a 2D image of a slightly myopic left eye
+    %% Display a 2D image of a slightly myopic left eye wearing contacts
     % Obtain a default sceneGeometry structure
-    sceneGeometry=createSceneGeometry('eyeLaterality','left','spectacleRefractionDiopters',-2);
+    sceneGeometry=createSceneGeometry('eyeLaterality','left','sphericalAmetropia',-2,'contactLens',-2);
     % Define the ray tracing functions
     rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
     % Define an eyePose with azimuth, elevation, torsion, and pupil radius
@@ -377,10 +377,11 @@ eyeRotation = R1*R2*R3;
 
 
 %% Obtain the virtual image for the eyeWorld points
-% This steps accounts for the effect of corneal refraction upon the
-% appearance of points from the iris and pupil
+% This steps accounts for the effect of corneal and corrective lens
+% refraction upon the appearance of points from the eye
 if ~isempty(rayTraceFuncs)
-    % Identify the eyeWorldPoints that are subject to refraction by the cornea
+    % Identify the eyeWorldPoints that are subject to refraction by the
+    % cornea
     refractPointsIdx = find(strcmp(pointLabels,'pupilPerimeter')+...
         strcmp(pointLabels,'irisPerimeter')+...
         strcmp(pointLabels,'pupilCenter')+...
@@ -405,7 +406,7 @@ if ~isempty(rayTraceFuncs)
         % Conduct an fminsearch to find the p1p2 theta that results in a
         % ray that strikes as close as possible to the camera nodal point.
         % Because the errorFunc returns nan for values very close to zero,
-        % we initialize the search with a value slightly away (1e-4)
+        % we initialize the search with a slightly non-zero value (1e-4)
         theta_p1p2=fminsearch(errorFunc,1e-4);
         % Now repeat this process for a ray that varies in theta in the
         % p1p3 plane
@@ -423,12 +424,12 @@ if ~isempty(rayTraceFuncs)
         virtualImageRay = rayTraceFuncs.virtualImageRay(eyeWorldPoint(1), eyeWorldPoint(2), eyeWorldPoint(3), theta_p1p2, theta_p1p3);
         % Replace the original eyeWorld point with the virtual image
         % eyeWorld point
-        eyeWorldPoints(refractPointsIdx(ii),:) = virtualImageRay(1,:);        
+        eyeWorldPoints(refractPointsIdx(ii),:) = virtualImageRay(1,:);
         % The code below may be used to calculate the total error (in mm)
         % in both dimensions for intersecting the nodal point of the
         % camera. Error values on the order of 0.1 - 5 are found across
         % pupil points and for a range of eye rotations. By default, the
-        % flag that controls this calculatuin is set to false, as the 
+        % flag that controls this calculation is set to false, as the
         % computation is lengthy and is not otherwise used.
         if p.Results.calcNodalIntersectError
             nodalPointIntersectError(refractPointsIdx(ii)) = ...
@@ -450,7 +451,7 @@ headWorldPoints = (eyeRotation*(eyeWorldPoints-sceneGeometry.eye.rotationCenter)
 
 %% Project the headWorld points to sceneWorld coordinates.
 % This coordinate frame is in mm units and has the dimensions (X,Y,Z).
-% The diagram is of a cartoon head (borrowed from Leszek Swirski), being
+% The diagram is of a cartoon head (taken from Leszek Swirski), being
 % viewed from above:
 %
 %   |
@@ -502,8 +503,8 @@ projectionMatrix = ...
 nEyeWorldPoints = size(eyeWorldPoints,1);
 
 % Project the sceneWorld points to the image plane and scale. The
-% sceneWorld points have a column of ones added support the multiplication
-% with a combined rotation and translation matrix
+% sceneWorld points have a column of ones added to support the
+% multiplication with a combined rotation and translation matrix
 tmpImagePoints=(projectionMatrix*[sceneWorldPoints, ones(nEyeWorldPoints,1)]')';
 imagePointsPreDistortion=zeros(nEyeWorldPoints,2);
 imagePointsPreDistortion(:,1) = ...
@@ -549,16 +550,19 @@ pupilPerimIdx = find(strcmp(pointLabels,'pupilPerimeter'));
 if eyePose(4)==0 || ~isreal(imagePoints(pupilPerimIdx,:)) || length(pupilPerimIdx)<5
     pupilEllipseOnImagePlane=nan(1,5);
 else
-    pupilEllipseOnImagePlane = ellipse_ex2transparent(...
-        ellipse_im2ex(...
-        ellipsefit_direct( imagePoints(pupilPerimIdx,1), ...
-        imagePoints(pupilPerimIdx,2)  ...
-        ) ...
-        )...
-        );
-    % place theta within the range of 0 to pi
-    if pupilEllipseOnImagePlane(5) < 0
-        pupilEllipseOnImagePlane(5) = pupilEllipseOnImagePlane(5)+pi;
+    % We place the ellipse fit in a try-catch block, as the fit can
+    % fail when the ellipse is so eccentric that it approaches a line
+    try
+        implicitEllipseParams = ellipsefit_direct( imagePoints(pupilPerimIdx,1), imagePoints(pupilPerimIdx,2));
+        % Convert the ellipse from implicit to transparent form
+        pupilEllipseOnImagePlane = ellipse_ex2transparent(ellipse_im2ex(implicitEllipseParams));
+        % place theta within the range of 0 to pi
+        if pupilEllipseOnImagePlane(5) < 0
+            pupilEllipseOnImagePlane(5) = pupilEllipseOnImagePlane(5)+pi;
+        end
+    catch
+        % In the event of an error, return nans for the ellipse
+        pupilEllipseOnImagePlane = nan(1,length(pupilPerimIdx));
     end
 end
 

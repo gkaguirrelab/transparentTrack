@@ -92,6 +92,44 @@ fprintf('The largest elevation error is %f degrees.\n',max(max(abs(eyePoseErrors
 fprintf('The largest proportion radius error is %f.\n',1-max(max(abs(eyePoseErrorsWithRayTrace(:,:,4)-pupilRadiusMM)./pupilRadiusMM)));
 
 %% Create some figures
+
+% Error in the inverse model with ray tracing
+idxToPlot = [1,2,4];
+plotRange = [-1 1; -.5 .5; -0.0005 0.0005];
+titleStrings = {'azimuth error','elevation error','-proportion pupil radius error'};
+
+figure
+for panel = 1:3
+    subplot(3,1,panel)
+    if panel == 3
+        image = squeeze(eyePoseErrorsWithRayTrace(:,:,idxToPlot(panel)))+pupilRadiusMM;
+        % Assert that the pupil size at
+        image = -((image - image(8,6))./image(8,6))';
+    else
+        image = squeeze(eyePoseErrorsWithRayTrace(:,:,idxToPlot(panel)))';
+    end
+    [nr,nc] = size(image);
+    pcolor([image nan(nr,1); nan(1,nc+1)]);
+    caxis(plotRange(panel,:));
+    shading flat;
+    axis equal
+    % Set the axis backgroud to dark gray
+    set(gcf,'Color',[1 1 1]); set(gca,'Color',[.75 .75 .75]); set(gcf,'InvertHardCopy','off');
+    colorbar;
+    title(titleStrings{panel});
+    xlabel('veridical azimuth [deg]')
+    ylabel('veridical elevation [deg]')
+    xticks((1:1:size(image,2))+.5);
+    xticklabels(-35:5:35);
+    xtickangle(90);
+    yticks((1:1:size(image,1))+.5);
+    yticklabels(-25:5:25);
+    xlim([1 size(image,2)+1]);
+    ylim([1 size(image,1)+1]);
+end
+
+
+% Error in the inverse model without ray tracing
 idxToPlot = [1,2,4];
 plotRange = [-5 5; -5 5; -0.05 0.05];
 titleStrings = {'azimuth error','elevation error','-proportion pupil radius error'};
