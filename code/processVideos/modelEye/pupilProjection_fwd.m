@@ -96,7 +96,7 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     %% Obtain the parameters of the pupil ellipse in the image
     % Obtain a default sceneGeometry structure
     sceneGeometry=createSceneGeometry();
-    % Define the ray tracing functions
+    % Define the ray tracing functions (slow; only need to do once)
     rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
     % Define in eyePoses the azimuth, elevation, torsion, and pupil radius
     eyePose = [-10 5 0 3];
@@ -104,9 +104,9 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     pupilEllipseOnImagePlane = pupilProjection_fwd(eyePose,sceneGeometry,rayTraceFuncs);
 %}
 %{
-    %% Display a 2D image of a slightly myopic left eye
+    %% Display a 2D image of a slightly myopic left eye wearing contacts
     % Obtain a default sceneGeometry structure
-    sceneGeometry=createSceneGeometry('eyeLaterality','left','sphericalAmetropia',-2);
+    sceneGeometry=createSceneGeometry('eyeLaterality','left','sphericalAmetropia',-2,'contactLens',-2);
     % Define the ray tracing functions
     rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
     % Define an eyePose with azimuth, elevation, torsion, and pupil radius

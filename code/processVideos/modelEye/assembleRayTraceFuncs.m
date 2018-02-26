@@ -26,10 +26,40 @@ function rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry )
 %
 % Examples:
 %{
-    % Obtain a default sceneGeometry
+    % Basic example
     sceneGeometry = createSceneGeometry();
-    % Define the ray tracing functions
-    rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry )
+    rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
+%}
+%{
+    % Demonstrate how the time it takes to perform the symbolic variable
+    % calculations grows geometrically with the number of surfaces in the
+    % optical system.
+
+    % Obtain a default sceneGeometry. 
+    sceneGeometry = createSceneGeometry();
+    % Define the ray tracing functions 
+    tic
+    rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
+    t(1)=toc;
+    n(1)=size(sceneGeometry.opticalSystem,1);
+    % Add a contact lens (one additional surface)
+    sceneGeometry = createSceneGeometry('sphericalAmetropia',-2,'contactLens',-2);
+    % Define the ray tracing functions 
+    tic
+    rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
+    t(2)=toc;
+    n(2)=size(sceneGeometry.opticalSystem,1);
+    % Add a spectacle lens (two additional surfaces)
+    sceneGeometry = createSceneGeometry('sphericalAmetropia',-2,'spectacleLens',2);
+    % Define the ray tracing functions 
+    tic
+    rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
+    t(3)=toc;
+    n(3)=size(sceneGeometry.opticalSystem,1);
+    % Plot the timing results
+    plot(n,t,'*r');
+    xlabel('# of surfaces in optical model');
+    ylabel('time to assemble ray tracing funcs [secs]');
 %}
 
 %% traceOpticalSystem
