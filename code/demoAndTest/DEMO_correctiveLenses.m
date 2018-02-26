@@ -3,166 +3,92 @@
 %
 % Description:
 %   Data is sometimes collected from subjects while they are wearing either
-%   contact lenses or 
-%
-% Here we demonstrate the interpretation of these parameters
+%   contact lenses or spectacles. This routine demonstrates the change in
+%   the appearance of the pupil in the image plane as a consequence of the
+%   presence of corrective lenses.
 %
 
 clear all
 close all
 clc
 
-fprintf(['The pose of the eye is described by the parameters:\n\n' ...
-    '\t[azimuth, elevation, torsion, pupilRadius]\n\n' ...
-    'The three rotation variables are in units of degrees, and are in the\n' ...
-    'head-fixed, extrinsic coordinate space. This means that the parameters\n' ...
-    'are unlike "Fick" coordinates, which are with reference to an intrinsic\n' ...
-    '(i.e., rotating) coordinate frame.\n\n']);
-
-% Obtain the sceneGeometry and ray tracing functions
-sceneGeometry = createSceneGeometry('eyeLaterality','Right');
-rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
 
 % Define some variables for plotting the model eye
-eyePartLabels = {'rotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex' 'pupilCenter'};
-plotColors = {'+r' '.w' '.b' '*g' '.y' '*y' '+g'};
+eyePartLabels = {'rotationCenter'};
+plotColors = {'+w'};
+diopterColors = {'g','r','b'};
 blankFrame = zeros(480,640)+0.5;
 
-%% Present Figure 1
+
+%% Present Figure 1 -- Spectacle lens virtual image displacement
+
+fprintf(['Figure 1 shows the outline of the pupil on the image plane for an\n' ...
+    'eye in three different azimuthal poses. The pupil ellipse is drawn in \n' ...
+    'green for a projection that does not include a corrective lens, red for \n' ...
+    'the projection with a -4 diopter spectacle lens, and blue for a +4 diopter \n' ...
+    'lens. As can be seen, a spectacle lens shifts the virtual image of the \n'...
+    'pupil. The same effect is present for a contact lens, but much smaller.\n\n']);
+
+% Open a figure and define the eye poses and refractive corrections
 figure(1)
-eyePoses=[-20 20 0 3; 0 20 0 3; 20 20 0 3; -20 0 0 3; 0 0 0 3; 20 0 0 3; -20 -20 0 3; 0 -20 0 3; 20 -20 0 3 ];
+eyePoses=[-20 0 0 3; 0 0 0 3; 20 0 0 3];
+lensRefractionDiopters = [0, -4, 4];
 
-for pose = 1:size(eyePoses,1)
-    % Perform the projection and request the full eye model
-    [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses(pose,:),sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
-    % plot
-    subplot(3,3,pose);
-    imshow(blankFrame, 'Border', 'tight');
-    hold on
-    axis off
-    axis equal
-    xlim([0 640]);
-    ylim([0 480]);
-    % Plot each anatomical component
-    for pp = 1:length(eyePartLabels)-1
-        idx = strcmp(pointLabels,eyePartLabels{pp});
-        plot(imagePoints(idx,1), imagePoints(idx,2), plotColors{pp})
+for dd = 1:length(lensRefractionDiopters)
+    
+    % Obtain the sceneGeometry and ray tracing functions
+    sceneGeometry{dd} = createSceneGeometry('sphericalAmetropia',0,'spectacleLens',lensRefractionDiopters(dd));
+    rayTraceFuncs{dd} = assembleRayTraceFuncs( sceneGeometry{dd} );
+    
+    for pose = 1:size(eyePoses,1)
+        % Perform the projection and request the full eye model
+        [pupilEllipseOnImagePlane, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses(pose,:),sceneGeometry{dd},rayTraceFuncs{dd},'fullEyeModelFlag',true);
+        % Obtain the 
+        eyePoseRecovered = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry{1}, rayTraceFuncs{1});
+        apparentPupilRadius(dd,pose)=eyePoseRecovered(4);
+        % plot
+        subplot(1,3,pose);
+        if dd==1
+            imshow(blankFrame, 'Border', 'tight');
+        end
+        hold on
+        axis off
+        axis equal
+        xlim([0 640]);
+        ylim([0 480]);
+        % Plot each anatomical component
+        for pp = 1:length(eyePartLabels)
+            idx = strcmp(pointLabels,eyePartLabels{pp});
+            plot(imagePoints(idx,1), imagePoints(idx,2), plotColors{pp})
+        end
+        % Plot the pupil ellipse
+        pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(pupilEllipseOnImagePlane));
+        fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
+        fimplicit(fh,[1, 640, 1, 480],'Color', diopterColors{dd},'LineWidth',1);
+        axis off;
+        title(num2str(eyePoses(pose,:)));
     end
-    title(num2str(eyePoses(pose,:)));
+    drawnow
 end
-drawnow
-fprintf(['Figure 1 shows the pose of the eye across positive and negative values\n' ...
-    'of azimuth and elevation. Torsion is fixed at zero. For saccadic\n' ...
-    'eye movements under head-fixed conditions, Listing`s Law holds that \n' ...
-    'rotations of the eye keep torsion constant.\n\n']);
 
-%% Present Figure 2
+%% Present Figure 2 -- Spectacle lens magnification
+fprintf(['As Figure 2 illustrates, there is a also a magnification effect.\n' ...
+    'We recovered the pupil radius by inverse projection for each of the \n' ...
+    'ellipses in Figure 1, but each cases used a model that did not \n' ...
+    'include the spectacle lens. The veridial pupil radius is 3mm, but \n' ...
+    'appears smaller when viewed through a negative spectacle lens, and \n' ...
+    'larger when viewed through a positive lens. Accurate modeling of \n' ...
+    'corrective lenses in the optical path avoid this error.\n\n']);
+
 figure(2)
-eyeSides = {'right','left'};
-for laterality = 1:2
-    % prepare the model eye for this laterality
-    sceneGeometry = createSceneGeometry('eyeLaterality',eyeSides{laterality});
-    rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
-    [pupilEllipseOnImagePlane, imagePoints, ~, ~, pointLabels] = ...
-        pupilProjection_fwd([0 0 0 3],sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true,'nIrisPerimPoints',50);
-    
-    % Obtain the point that corresponds to the visual axis at the pupil
-    % plane
-    [~, imagePointsVisualAxis, ~, ~, pointLabelsVisualAxis] = ...
-        pupilProjection_fwd([sceneGeometry.eye.kappaAngle 0 3],sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
-    
-    % setup the figure
-    subplot(1,2,laterality);
-    imshow(blankFrame, 'Border', 'tight');
+for dd = 1:3
+    plot([-20 0 20],apparentPupilRadius(dd,:),['-*' diopterColors{dd}]);
     hold on
-    axis off
-    axis equal
-    xlim([0 640]);
-    ylim([0 480]);
-    text(320,50,[eyeSides{laterality} ' eye'],'HorizontalAlignment','center');
-    
-    % Plot each anatomical component
-    pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(pupilEllipseOnImagePlane));
-    fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
-    fimplicit(fh,[1, 640, 1, 480],'Color', 'g','LineWidth',1);
-    axis off;
-    idx = strcmp(pointLabels,eyePartLabels{3});
-    plot(imagePoints(idx,1), imagePoints(idx,2), plotColors{3})
-    idx = strcmp(pointLabels,eyePartLabels{4});
-    plot(imagePoints(idx,1), imagePoints(idx,2), plotColors{4})
-    idx = strcmp(pointLabels,eyePartLabels{7});
-    plot(imagePoints(idx,1), imagePoints(idx,2), plotColors{7})
-
-    % Add the visual axis point
-    idx = strcmp(pointLabelsVisualAxis,eyePartLabels{7});
-    plot(imagePointsVisualAxis(idx,1), imagePointsVisualAxis(idx,2), '+w')
-    hold off
 end
-drawnow
-fprintf(['Figure 2 top shows just the perimeter of the pupil (green) and\n' ...
-    ' iris (blue) for eyePoses [0 0 0 3] for the right and left eye. The\n' ...
-    'axis of the camera is aligned with the pupil axis of the model eye. \n' ...
-    'The center of the iris is displaced upwards and temporally\n' ...
-    'with respect to the pupil axis of each eye [ES Bennett (2005) Clinical\n'...
-    'contact lens practice]. The white point indicates the location on the' ...
-    'pupil plane of the visual axis of the eye. It is displaced nasally and' ...
-    'superiorly.\n\n']);
+ylim([0 4]);
+xlim([-25 25]);
+xlabel('eye azimuth [deg]');
+ylabel('recovered pupil radius [mm]');
+title('Image magnification by spectacle lens');
+legend({'no corrective lens in path','-4 spectacle lens not modeled','+4 spectacle lens not modeled'},'Location','southeast');
 
-
-%% Present Figure 3
-figure(3)
-sceneGeometry = createSceneGeometry();
-rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
-
-% Plot the values for eyePost [0 0 0 x]
-subplot(1,2,1);
-entrancePupilRadiusRayTrace = [];
-entrancePupilRadiusNoRayTrace = [];
-for radius = 0.5:0.5:4
-    pupilEllipseOnImagePlane = pupilProjection_fwd([0 0 0 radius],sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
-    entrancePupilRadiusRayTrace = [entrancePupilRadiusRayTrace sqrt(pupilEllipseOnImagePlane(3)/pi)];
-    pupilEllipseOnImagePlane = pupilProjection_fwd([0 0 0 radius],sceneGeometry,[],'fullEyeModelFlag',true);
-    entrancePupilRadiusNoRayTrace = [entrancePupilRadiusNoRayTrace sqrt(pupilEllipseOnImagePlane(3)/pi)];
-end
-plot(0.5:0.5:4,entrancePupilRadiusNoRayTrace,'*k');
-hold on
-plot(0.5:0.5:4,entrancePupilRadiusRayTrace,'*r');
-lsline()
-hold off
-xlim([0 5]);
-ylim([0 125]);
-xlabel('pupil radius modeled [mm]');
-ylabel('entrance pupil radius in image [pixels]');
-legend({'Without corneal refraction','With corneal refraction'},'Location','southeast');
-title('eyePose [0 0 0 x]');
-
-% Plot the values for eyePost [15 15 0 x]
-subplot(1,2,2);
-entrancePupilRadiusRayTrace = [];
-entrancePupilRadiusNoRayTrace = [];
-for radius = 0.5:0.5:4
-    pupilEllipseOnImagePlane = pupilProjection_fwd([15 15 0 radius],sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
-    entrancePupilRadiusRayTrace = [entrancePupilRadiusRayTrace sqrt(pupilEllipseOnImagePlane(3)/pi)];
-    pupilEllipseOnImagePlane = pupilProjection_fwd([15 15 0 radius],sceneGeometry,[],'fullEyeModelFlag',true);
-    entrancePupilRadiusNoRayTrace = [entrancePupilRadiusNoRayTrace sqrt(pupilEllipseOnImagePlane(3)/pi)];
-end
-plot(0.5:0.5:4,entrancePupilRadiusNoRayTrace,'*k');
-hold on
-plot(0.5:0.5:4,entrancePupilRadiusRayTrace,'*r');
-lsline()
-hold off
-xlim([0 5]);
-ylim([0 125]);
-xlabel('pupil radius modeled [mm]');
-ylabel('entrance pupil radius in image [pixels]');
-legend({'Without corneal refraction','With corneal refraction'},'Location','southeast');
-title('eyePose [30 25 0 x]');
-drawnow
-
-fprintf(['Figure 3 shows the radius of the entrance pupil in the image\n' ...
-    'as a function of the modeled radius of the physical pupil for an\n' ...
-    'eye in two different poses. The black points are the values for \n' ...
-    'a model in which the refractive effects of the cornea are not modeled \n' ...
-    'while the red points do include this component. Corneal refraction \n' ...
-    'magnifies the image of the pupil and, depending upon eye rotation, \n' ...
-    'will also alter the elliptical shape of the pupil on the image plane.\n']);
