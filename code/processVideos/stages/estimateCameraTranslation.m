@@ -546,13 +546,8 @@ end
 warning(warningState);
 
 % Assemble the sceneGeometry file to return
-sceneGeometry.radialDistortionVector = initialSceneGeometry.radialDistortionVector;
-sceneGeometry.intrinsicCameraMatrix = initialSceneGeometry.intrinsicCameraMatrix;
+sceneGeometry = initialSceneGeometry;
 sceneGeometry.extrinsicTranslationVector = x';
-sceneGeometry.extrinsicRotationMatrix = initialSceneGeometry.extrinsicRotationMatrix;
-sceneGeometry.primaryPosition = initialSceneGeometry.primaryPosition;
-sceneGeometry.constraintTolerance = initialSceneGeometry.constraintTolerance;
-sceneGeometry.eye = initialSceneGeometry.eye;
 sceneGeometry.meta.estimateCameraTranslation.search.options = options;
 sceneGeometry.meta.estimateCameraTranslation.search.errorForm = errorForm;
 sceneGeometry.meta.estimateCameraTranslation.search.initialSceneGeometry = initialSceneGeometry;
