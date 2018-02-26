@@ -24,8 +24,11 @@ function [opticalSystemOut, p] = addSpectacleLens(opticalSystemIn, lensRefractio
 %
 % Optional key/value pairs:
 %  'lensRefractiveIndex'  - Scalar. Refractive index of the lens material.
-%                           Typical values are in the range of 1.5 - 1.7.
-%  'lensVertexDistance'       - Scalar. Distance (in mm) between the corneal
+%                           The routine returnRefractiveIndex() provides
+%                           the indices for several spectacle materials
+%                           under visible (vis) and near infra-red (nir)
+%                           imaging domains.
+%  'lensVertexDistance'   - Scalar. Distance (in mm) between the corneal
 %                           apexa and the back surface of the lens. Typical
 %                           values are 12-14 mm.
 %  'nearPlanoCurvature'   - Scalar. This defines the curvature of the near-
@@ -70,7 +73,7 @@ p.addRequired('opticalSystemIn',@isnumeric);
 p.addRequired('lensRefractionDiopters',@isnumeric);
 
 % Optional
-p.addParameter('lensRefractiveIndex',1.498,@isnumeric);
+p.addParameter('lensRefractiveIndex',returnRefractiveIndex( 'polycarbonate', 'NIR' ),@isnumeric);
 p.addParameter('lensVertexDistance',12,@isnumeric);
 p.addParameter('nearPlanoCurvature',-16000,@isnumeric);
 p.addParameter('minimumLensThickness',1,@isnumeric);

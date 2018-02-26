@@ -24,7 +24,10 @@ function [opticalSystemOut, p] = addContactLens(opticalSystemIn, lensRefractionD
 %
 % Optional key/value pairs:
 %  'lensRefractiveIndex'  - Scalar. Refractive index of the lens material.
-%                           Contact lens material is ~1.4.
+%                           The routine returnRefractiveIndex() provides
+%                           the indices for several spectacle materials
+%                           under visible (vis) and near infra-red (nir)
+%                           imaging domains.
 %
 % Outputs:
 %   opticalSystemOut      - An (m+2)x3 matrix, corresponding to the
@@ -103,7 +106,7 @@ p.addRequired('opticalSystemIn',@isnumeric);
 p.addRequired('lensRefractionDiopters',@isnumeric);
 
 % Optional
-p.addParameter('lensRefractiveIndex',1.43,@isnumeric);
+p.addParameter('lensRefractiveIndex',returnRefractiveIndex( 'hydrogel', 'NIR' ),@isnumeric);
 p.addParameter('minimumLensThickness',0.05,@isnumeric);
 
 % parse
@@ -114,13 +117,6 @@ lensRefractiveIndex = p.Results.lensRefractiveIndex;
 
 % Copy the optical system from input to output
 opticalSystemOut = opticalSystemIn;
-
-% The lens equations do not perform properly for corrections of less that
-% 0.25 diopters, and we don't bother trying to model so small a correction.
-% In such a case, return the opticalSystem unaltered.
-% if abs(lensRefractionDiopters) < 0.25
-%     return
-% end
 
 % The passed optical system will have a ray that emerges into a medium with
 % a specified index of refraction. Because the contact lens contacts the
