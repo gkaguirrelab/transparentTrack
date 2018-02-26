@@ -1,6 +1,9 @@
 function makeEyeModelVideo(videoOutFileName,pupilFileName, sceneGeometryFileName, varargin)
 % Create and store a video that displays the eye model fit to the data
 %
+% Syntax:
+%  makeEyeModelVideo(videoOutFileName,pupilFileName, sceneGeometryFileName)
+%
 % Description:
 %   This routine creates a video that illustrates for each frame the
 %   appearance of the model eye in the image plane.

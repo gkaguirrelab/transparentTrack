@@ -1,6 +1,9 @@
 function sceneGeometry = estimateCameraTranslation(pupilFileName, sceneGeometryFileName, varargin)
 % Estimate camera translation given a set of image plane ellipses
 %
+% Syntax:
+%  sceneGeometry = estimateCameraTranslation(pupilFileName, sceneGeometryFileName)
+%
 % Description:
 %   This function searches over a set of ellipses from the passed pupil
 %   file(s) to estimate the extrinsic camera translation vector. The search

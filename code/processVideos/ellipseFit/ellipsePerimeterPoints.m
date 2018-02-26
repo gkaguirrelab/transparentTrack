@@ -1,6 +1,9 @@
 function [ Xp, Yp ] = ellipsePerimeterPoints( transparentEllipseParams, steps )
 % Returns a set of points on the boundary of a transparent ellipse
 %
+% Syntax:
+%  [ Xp, Yp ] = ellipsePerimeterPoints( transparentEllipseParams, steps )
+%
 % Description:
 %   Given an ellipse in transparent form, the routine returns the
 %   coordinates [Xp, Yp], which are points on the ellipse. The points are

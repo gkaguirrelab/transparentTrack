@@ -1,6 +1,9 @@
 function perimeter = findPupilPerimeter(grayVideoName, perimeterFileName, varargin)
 % Threshold video frames to find the pupil perimeter
 %
+% Syntax:
+%  perimeter = findPupilPerimeter(grayVideoName, perimeterFileName)
+%
 % Description:
 %	An initial search for the pupil border is performed with the local
 %   function 'findPupilCircle'. If a candidate circle is found, the region

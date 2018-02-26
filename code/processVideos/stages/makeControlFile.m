@@ -1,6 +1,9 @@
 function makeControlFile(controlFileName, perimeterFileName, glintFileName, varargin)
 % Create a control file of instructions for refinement of pupil perimeters
 %
+% Syntax:
+%  makeControlFile(controlFileName, perimeterFileName, glintFileName)
+%
 % Description:
 %   Creates and saves a "control file", which is a text (csv) file that
 %   instructs subsequent routines as to how a perimeter may be cleaned up

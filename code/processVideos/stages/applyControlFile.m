@@ -1,6 +1,9 @@
 function perimeter = applyControlFile(perimeterFileName, controlFileName, correctedPerimeterFileName, varargin)
 % Modify a perimeter file by applying instructions from a control File
 %
+% Syntax:
+%  perimeter = applyControlFile(perimeterFileName, controlFileName, correctedPerimeterFileName)
+%
 % Description:
 %   This routine applies the instructions from the control file to the
 %   pupil perimeter video. A new corrected perimeter video will be saved

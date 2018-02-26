@@ -1,6 +1,9 @@
 function resizeAndCropVideo(inputVideoName, outputVideoName, varargin)
 % Resize a crop a video
 %
+% Syntax:
+%  resizeAndCropVideo(inputVideoName, outputVideoName)
+%
 % Description:
 %   This fuction crops and resizes a video according to the specified
 %   parameters. Using the default options the routine will scale and crop a

@@ -1,6 +1,9 @@
 function makeFitVideo(videoInFileName, videoOutFileName, varargin)
 % Create and store a video that displays the results of eye tracking
 %
+% Syntax:
+%  makeFitVideo(videoInFileName, videoOutFileName)
+%
 % Description:
 %   This routine creates an integrated fit video that illustrates the
 %   position of the pupil and glint and indicates any control instructions.

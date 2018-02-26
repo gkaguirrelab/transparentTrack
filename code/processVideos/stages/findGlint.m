@@ -1,6 +1,9 @@
 function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 % Identifies one or more glints in the frames of an IR video of the eye
 %
+% Syntax:
+%  [glintData] = findGlint(grayVideoName, glintFileName)
+%
 % Description:
 %   This function tracks one or more glints in an IR video using a simple
 %   thresholding and region property identification approach.

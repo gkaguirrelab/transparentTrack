@@ -1,6 +1,9 @@
 function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, sceneGeometryFileName, varargin)
 % Empirical Bayes smoothing of pupil radius in the scene
 %
+% Syntax:
+%  [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, sceneGeometryFileName)
+%
 % Description:
 %   This routine implements a smoothing operation upon pupil radius using
 %   an empirical Bayes approach. A non-causal, exponentially weighted

@@ -1,5 +1,8 @@
 function sceneGeometry = refineIrisRadius(grayVideoName, pupilFileName, sceneGeometryFileName, varargin)
-% Adjust the model iris radius to best fit the image plane data 
+% Adjust the model iris radius to best fit the image plane data
+%
+% Syntax:
+%  sceneGeometry = refineIrisRadius(grayVideoName, pupilFileName, sceneGeometryFileName)
 %
 % Description:
 %   This function searches over values for the radius of the iris in the

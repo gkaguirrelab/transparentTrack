@@ -1,6 +1,9 @@
 function Wp = ellipseproj(W, center, axes, angle)
 % An overloaded version of the ellipseproj routine from quadfit
 %
+% Syntax:
+%  Wp = ellipseproj(W, center, axes, angle)
+%
 % Description:
 %   Because this function is called repeatedly in our fitting routines, we
 %   have created this version that overloads the original function included

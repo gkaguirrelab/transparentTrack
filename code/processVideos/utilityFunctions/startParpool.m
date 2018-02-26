@@ -1,7 +1,10 @@
 function [ nWorkers ] = startParpool( nWorkers, tbtbRepoName, verbosity )
 % Open and configure the parpool
 %
-% Description
+% Syntax:
+%  [ nWorkers ] = startParpool( nWorkers, tbtbRepoName, verbosity )
+%
+% Description:
 %   Several stages of transparentTrack make use of the parpool. This
 %   routine opens the par pool if it does not exit, configures it with
 %   tbBtb, and returns the number
