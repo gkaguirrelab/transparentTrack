@@ -113,7 +113,7 @@ end
 outputFile = [outputFileStem '_pupilData.mat'];
 save(outputFile,'pupilData');
 
-if ~isempty(testRayTrace)
+if exist('testRayTrace')
     % Estimate camera translation with ray tracing
     startTime=datetime('now');
     result = estimateCameraTranslation(pupilData,'','useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1,'nBADSsearches',10,'useRayTracing',true);
