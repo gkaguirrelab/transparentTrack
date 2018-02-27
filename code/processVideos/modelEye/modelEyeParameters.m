@@ -187,6 +187,11 @@ switch p.Results.species
             % adjust the axial length for the component of the anterior
             % chamber that contibutes to length, which is calculated below
             % to be 3.2964.
+            %
+            % GKA to follow up: Axial length is usually measured with the
+            % IOL master along the visual (as opposed to optic or
+            % pupillary) axis of the eye. May want to correct for this
+            % somewhere.
             scaleFactor = (p.Results.axialLength - posteriorChamberApexDepth) / (eye.posteriorChamberRadii(1)*2);
             eye.posteriorChamberRadii = eye.posteriorChamberRadii .* scaleFactor;
             eye.axialLength = p.Results.axialLength;
