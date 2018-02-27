@@ -732,6 +732,9 @@ scatter(nan, nan,2,'filled', ...
 set(hSub, 'Visible', 'off');
 legend({'0',num2str(sceneGeometry.constraintTolerance/2), ['=> ' num2str(sceneGeometry.constraintTolerance)]},'Location','north', 'Orientation','vertical');
 
+% Add text to report the extrinsic translation vector
+myString = sprintf('Translation vector [mm] = %4.1f, %4.1f, %4.1f',sceneGeometry.extrinsicTranslationVector(1),sceneGeometry.extrinsicTranslationVector(2),sceneGeometry.extrinsicTranslationVector(3));
+text(0.5,0.85,myString,'Units','normalized','HorizontalAlignment','center')
 
 %% Right panel -- area error
 subplot(3,3,[3 6]);
