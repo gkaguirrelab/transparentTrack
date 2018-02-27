@@ -148,7 +148,7 @@ if ~p.Results.displayMode
     end
 else
     cc = 0;
-    for ii = p.Results.startFrame:p.Results.startFrame+nFrames
+    for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
         cc = cc+1;
         thisFrame = read(videoInObj,ii);
         thisFrame = imadjust(thisFrame,[],[],p.Results.pupilGammaCorrection);
