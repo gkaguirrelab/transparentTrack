@@ -155,6 +155,30 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     hold off
     axis equal
 %}
+%{
+    %% Calculate the time required for the forward projection
+    % Obtain a default sceneGeometry structure
+    sceneGeometry=createSceneGeometry();
+    % Define the ray tracing functions (slow; only need to do once)
+    rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
+    % Perform 1000 forward projections with randomly selected eye poses
+    % without ray tracing
+    nPoses = 1000;
+    eyePoses=[(rand(nPoses,1)-0.5)*20, (rand(nPoses,1)-0.5)*10, zeros(nPoses,1), 2+(rand(nPoses,1)-0.5)*1];
+    tic
+    for pp = 1:nPoses
+    	pupilProjection_fwd(eyePoses(pp,:),sceneGeometry,[]);
+    end
+    noRayTraceTimeMsec = toc / nPoses * 1000;
+    % Now with ray tracing
+    tic
+    for pp = 1:nPoses
+    	pupilProjection_fwd(eyePoses(pp,:),sceneGeometry,rayTraceFuncs);
+    end
+    withRayTraceTimeMsec = toc / nPoses * 1000;
+    fprintf('Forward model calculation time is %4.2f msecs without ray tracing and %4.2f with ray tracing.\n',noRayTraceTimeMsec,withRayTraceTimeMsec);
+%}
+
 
 
 %% input parser
