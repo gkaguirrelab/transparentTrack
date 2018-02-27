@@ -379,7 +379,9 @@ sceneGeometry = ...
     p.Results.shapeErrorMultiplier);
 
 % add additional search and meta field info to sceneGeometry
-sceneGeometry.meta.estimateCameraTranslation.parameters = p.Results;
+tmpHold=sceneGeometry.meta.estimateCameraTranslation.search;
+sceneGeometry.meta.estimateCameraTranslation = p.Results;
+sceneGeometry.meta.estimateCameraTranslation.search = tmpHold;
 sceneGeometry.meta.estimateCameraTranslation.search.ellipseArrayList = ellipseArrayList';
 sceneGeometry.meta.estimateCameraTranslation.search.allFvalsNoRayTrace = allFvalsNoRayTrace;
 sceneGeometry.meta.estimateCameraTranslation.search.allTranslationVecsNoRayTrace = allTranslationVecsNoRayTrace;
