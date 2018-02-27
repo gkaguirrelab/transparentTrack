@@ -119,7 +119,7 @@ function sceneGeometry = estimateCameraTranslation(pupilFileName, sceneGeometryF
         end
     end
     % Estimate the scene Geometry using the ellipses
-    estimatedSceneGeometry = estimateCameraTranslation(pupilData,'','useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1,'nBADSsearches',4,'useRayTracing',true);
+    estimatedSceneGeometry = estimateCameraTranslation(pupilData,'','useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1,'nBADSsearches',4,'useRayTracing',false);
     % Report how well we did
     fprintf('Error in the recovered camera translation vector (x, y, depth] in mm: \n');
     veridicalSceneGeometry.extrinsicTranslationVector - estimatedSceneGeometry.extrinsicTranslationVector
@@ -359,12 +359,14 @@ if ~isempty(rayTraceFuncs)
 end
 
 % Repeat the search once more with the bounds fully constrained to the
-% weighted-mean value. This is to obtain the error vectors to store in the
-% final sceneGeometry
+% solution that was closest to the weighted-mean value. This is to obtain
+% the error vectors to store in the final sceneGeometry
 if isempty(rayTraceFuncs)
-    transVecFinal = transVecMeanNoRayTrace;
+    [~, idx]=min(cellfun(@(x) sqrt(sum((x-transVecMeanNoRayTrace).^2)), allTranslationVecsNoRayTrace));
+    transVecFinal = allTranslationVecsNoRayTrace{idx};
 else
-    transVecFinal = transVecMeanWithRayTrace;
+    [~, idx]=min(cellfun(@(x) sqrt(sum((x-transVecMeanWithRayTrace).^2)), allTranslationVecsWithRayTrace));
+    transVecFinal = allTranslationVecsWithRayTrace{idx};
 end
 sceneGeometry = ...
     performSceneSearch(initialSceneGeometry, rayTraceFuncs, ...
