@@ -163,7 +163,6 @@ else
     nWorkers=0;
 end
 
-
 % Recast perimeter.data into a sliced cell array to reduce parfor
 % broadcast overhead
 frameCellArray = perimeter.data(1:nFrames);
