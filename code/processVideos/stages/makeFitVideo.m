@@ -115,7 +115,7 @@ end
 if ~isempty(p.Results.sceneGeometryFileName)
     dataLoad = load(p.Results.sceneGeometryFileName);
     sceneGeometry = dataLoad.sceneGeometry;
-    clear dataLoad
+    clear dataLoad    
 else
     sceneGeometry=[];
 end
@@ -234,9 +234,10 @@ for ii = 1:nFrames
     
     % add the center of rotation
     if ~isempty(p.Results.sceneGeometryFileName)
-        centerOfRotation = pupilProjection_fwd([0 0 0 2], sceneGeometry, []);
-
-        plot(centerOfRotation(1),centerOfRotation(2),['+' p.Results.sceneGeometryColor]);
+        % Obtain the pupilProjection of the model eye to the image plane
+        [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd([0 0 0 2], sceneGeometry, [], 'fullEyeModelFlag', true);
+        idx = find(strcmp(pointLabels,'rotationCenter'));
+        plot(imagePoints(idx,1),imagePoints(idx,2),['+' p.Results.sceneGeometryColor]);
     end
     
     % Get the frame and close the figure
