@@ -126,13 +126,13 @@ switch p.Results.species
         %    Soft Lens Fitting, Part 1" Contact Lens Spectrum, Issue: April
         %    2002
         %    https://www.clspectrum.com/issues/2002/april-2002/contact-lens-case-reports
-        % The visible iris diamtere, however, is a virtual image of the
+        % The visible iris diameter, however, is a virtual image of the
         % actual iris that is recracted by the cornea. For now, we'll use
         % this smaller value for the iris, but GKA needs to return to this.
         eye.irisRadius = 5;
                 
-        % In both eyes, the iris center is shifted slightly temporally and
-        % upward with respect to the pupil center:
+        % The iris center is shifted slightly temporally and upward with
+        % respect to the pupil center:
         %
         %   ...the typical entrance pupil is decentered
         %   approximately 0.15 mm nasally and 0.1 mm inferior to the
