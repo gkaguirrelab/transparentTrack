@@ -184,11 +184,14 @@ sceneGeometry.constraintTolerance = p.Results.constraintTolerance;
 % Values returned by the modelEyeParameters() routine
 sceneGeometry.eye = modelEyeParameters('spectralDomain',p.Results.spectralDomain,varargin{:});
 
-% Generate the opticalSystem matrix through the cornea
+% Generate the opticalSystem matrix through the cornea. Note that we model
+% the corneal surfaces as spheres. To create a more accurate model, we
+% would need to update rayTraceCenteredSphericalSurfaces() to model
+% aspherical surfaces.
 mediumRefractiveIndex = returnRefractiveIndex( p.Results.medium, p.Results.spectralDomain );
 opticalSystem = [nan nan sceneGeometry.eye.aqueousRefractiveIndex; ...
-    sceneGeometry.eye.corneaBackSurfaceCenter(1) -sceneGeometry.eye.corneaBackSurfaceRadius sceneGeometry.eye.corneaRefractiveIndex; ...
-    sceneGeometry.eye.corneaFrontSurfaceCenter(1) -sceneGeometry.eye.corneaFrontSurfaceRadius mediumRefractiveIndex];
+    sceneGeometry.eye.corneaBackSurfaceCenter(1) -sceneGeometry.eye.corneaBackSurfaceRadii(1) sceneGeometry.eye.corneaRefractiveIndex; ...
+    sceneGeometry.eye.corneaFrontSurfaceCenter(1) -sceneGeometry.eye.corneaFrontSurfaceRadii(1) mediumRefractiveIndex];
 
 % Add a contact lens if requested
 if ~isempty(p.Results.contactLens)
