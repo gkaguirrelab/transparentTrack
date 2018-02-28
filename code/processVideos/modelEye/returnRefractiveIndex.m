@@ -69,7 +69,7 @@ switch material
         ns = [1.5089 1.5004];
     case 'cr-39'
         % Traynor, Nathan BJ, et al. "CR-39 (PADC) Reflection and
-        % Transmission of Light in the Ultraviolet?Near-Infrared (UV?NIR)
+        % Transmission of Light in the Ultraviolet-Near-Infrared (UV-NIR)
         % Range." Applied spectroscopy (2017): 0003702817745071.
         % NIR value estimated from Figure 5b.
         ns = [1.51 1.50];
