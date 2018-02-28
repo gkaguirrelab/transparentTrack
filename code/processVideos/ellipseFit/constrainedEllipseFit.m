@@ -16,26 +16,44 @@ function [transparentEllipseParams, RMSE, constraintError] = constrainedEllipseF
 %   routine is dependent upon the quadfit toolbox.
 %
 % Input:
-%	Xp, Yp                - Vector of points to be fit
-%   lb, ub                - Upper and lower bounds for the fit search, in 
-%                           transparent ellipse form
+%	Xp, Yp                - nx1 Column vectors of the n points to be fit
+%   lb, ub                - 1x5 vectors of the upper and lower bounds for
+%                           the fit search, in transparent ellipse form
 %   nonlinconst           - Function handle to a non-linear constraint
 %                           function. This function should take as input
 %                           the set of ellipse parameters in transparent
 %                           form and return [c, ceq], where the optimizer
 %                           constrains the solution such that c<=0 and
-%                           ceq=0. This is an optional input or can be sent
+%                           ceq=0. This is an optional input; can be set
 %                           as empty.
 %
 % Output:
 %   transparentEllipseParams - Parameters of the best fitting ellipse
-%                           expressed in transparent form [5x1 vector]
+%                           expressed in transparent form [1x5 vector]
 %   RMSE                  - Root mean squared error of the distance of each
 %                           point in the data to the fitted ellipse
 %   constraintError       - The value of the nonlinear constraint function
 %                           for the best fitting ellipse
 %
-%
+% Examples:
+%{
+    %% Calculate the time to perform a constrained fit
+    % Generate some random transparent ellipse parameters
+    nEllipses = 500;
+    params=[(rand(nEllipses,1)-0.5)*1000, (rand(nEllipses,1)-0.5)*1000, 600+(rand(nEllipses,1)-0.5)*1000, rand(nEllipses,1)*0.75, rand(nEllipses,1)*pi];
+    for ii = 1:nEllipses
+        [xPoints(ii,:), yPoints(ii,:)] = ellipsePerimeterPoints(params(ii,:) );
+    end
+    tic
+    for ii = 1:nEllipses
+        fitParams(ii,:) = constrainedEllipseFit(xPoints(ii,:)', yPoints(ii,:)', [-500 -500 100 0 0], [500 500 1100 1 pi], [] );
+    end
+    timePerFitMsecs = toc / nEllipses * 1000;
+    fprintf('Ellipse fitting time is %4.2f msecs.\n',timePerFitMsecs);
+    e = max(abs(params-fitParams));
+    fprintf('The maximum absolute fitting errors were [%4.3f %4.3f %4.3f %4.3f %4.3f].\n',e(1),e(2),e(3),e(4),e(5));
+    fprintf('Note that elevated errors in theta fitting result from theta being unconstrained at low eccentricities.\n');
+%}
 
 
 %% Parse input
