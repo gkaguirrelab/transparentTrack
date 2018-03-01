@@ -428,16 +428,16 @@ for ii = 2:nSurfaces
             warning('The ray is either tangential to or misses surface %d. Returning.',ii);
             return
         end
-        % This next bit of logic figures out which of the two coordinates of
-        % intersection of the ray with a sphere correspond to the one we want
-        % for the lens
+        % This next bit of logic figures out which of the two coordinates
+        % of intersection of the ray with a sphere correspond to the one we
+        % want for the lens
         if length(xout)==2
             whichIdx = 1.5+0.5*((sign(opticalSystem(ii,1))*sign(opticalSystem(ii,2))));
             intersectionCoords(ii,:)=[xout(whichIdx) yout(whichIdx)];
         else
-            % If it returns only one coordinate the ray either was tangential
-            % to the surface or missed entirely. We therefore exit the ray
-            % tracing
+            % If it returns only one coordinate the ray either was
+            % tangential to the surface or missed entirely. We therefore
+            % exit the ray tracing
             warning('The ray is either tangential to or misses surface %d. Returning.',ii);
             return
         end
