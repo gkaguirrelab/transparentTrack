@@ -236,11 +236,15 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
 if nargin==3
     figureFlag.show = false;
     figureFlag.new = false;
+    figureFlag.refLine = false;
     figureFlag.surfaces = false;
     figureFlag.imageLines = false;
     figureFlag.rayLines = false;
+    figureFlag.finalUnitRay = true;
     figureFlag.textLabels = false;
     figureFlag.legend = false;
+    figureFlag.zLim = [];
+    figureFlag.hLim = [];
 end
 
 % A value was passed for figureFlag
@@ -254,9 +258,11 @@ if nargin==4
         clear figureFlag
         figureFlag.show = true;
         figureFlag.new = true;
+        figureFlag.refLine = true;
         figureFlag.surfaces = true;
         figureFlag.imageLines = true;
         figureFlag.rayLines = true;
+        figureFlag.finalUnitRay = true;
         figureFlag.textLabels = true;
         figureFlag.legend = true;
         figureFlag.zLim = [];
@@ -272,9 +278,11 @@ if nargin==4
             clear figureFlag
             figureFlag.show = true;
             figureFlag.new = true;
+            figureFlag.refLine = true;
             figureFlag.surfaces = true;
             figureFlag.imageLines = true;
             figureFlag.rayLines = true;
+            figureFlag.finalUnitRay = true;
             figureFlag.textLabels = true;
             figureFlag.legend = true;
             figureFlag.zLim = [];
@@ -283,9 +291,11 @@ if nargin==4
             clear figureFlag
             figureFlag.show = false;
             figureFlag.new = false;
+            figureFlag.refLine = false;
             figureFlag.surfaces = false;
             figureFlag.imageLines = false;
             figureFlag.rayLines = false;
+            figureFlag.finalUnitRay = false;
             figureFlag.textLabels = false;
             figureFlag.legend = false;
             figureFlag.zLim = [];
@@ -346,7 +356,9 @@ if figureFlag.show
         end
     end
     hold on
-    refline(0,0)
+    if figureFlag.refLine
+        refline(0,0)
+    end
     axis equal
     if ~isempty(figureFlag.zLim)
         xlim(figureFlag.zLim);
@@ -461,11 +473,13 @@ if figureFlag.show
         plot([imageCoords(ii,1) intersectionCoords(ii,1)],[imageCoords(ii,2) intersectionCoords(ii,2)],'-b');
     end
     % Plot the output unit ray vector
-    if figureFlag.rayLines
+    if figureFlag.finalUnitRay
         plot([outputRay(1,1) outputRay(2,1)],[outputRay(1,2) outputRay(2,2)],'-g');
     end
     % Replot the refline
-    refline(0,0)
+    if figureFlag.refLine
+        refline(0,0)
+    end
     % Add some labels
     if figureFlag.textLabels
         plot(opticalSystem(:,1),zeros(nSurfaces,1),'+k');
