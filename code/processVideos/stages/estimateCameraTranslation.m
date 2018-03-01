@@ -119,7 +119,8 @@ function sceneGeometry = estimateCameraTranslation(pupilFileName, sceneGeometryF
         end
     end
     % Estimate the scene Geometry using the ellipses
-    estimatedSceneGeometry = estimateCameraTranslation(pupilData,'','useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1,'nBADSsearches',4,'useRayTracing',false);
+    nBADSsearches = 4;
+    estimatedSceneGeometry = estimateCameraTranslation(pupilData,'','useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1,'nBADSsearches',nBADSsearches,'useRayTracing',false);
     % Report how well we did
     fprintf('Error in the recovered camera translation vector (x, y, depth] in mm: \n');
     veridicalSceneGeometry.extrinsicTranslationVector - estimatedSceneGeometry.extrinsicTranslationVector
