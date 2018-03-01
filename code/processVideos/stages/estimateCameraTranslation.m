@@ -151,10 +151,8 @@ p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@i
 % Optional analysis params
 p.addParameter('translationLB',[-20; -20; 90],@isnumeric);
 p.addParameter('translationUB',[20; 20; 200],@isnumeric);
-%p.addParameter('translationLBp',[-5; -5; 100],@isnumeric);
-%p.addParameter('translationUBp',[5; 5; 160],@isnumeric);
-p.addParameter('translationLBp',[-1; -1; 119],@isnumeric);
-p.addParameter('translationUBp',[1; 1; 121],@isnumeric);
+p.addParameter('translationLBp',[-5; -5; 100],@isnumeric);
+p.addParameter('translationUBp',[5; 5; 160],@isnumeric);
 p.addParameter('eyePoseLB',[-35,-25,0,0.25],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('eyePoseUB',[35,25,0,4],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('fitLabel','initial',@ischar);
