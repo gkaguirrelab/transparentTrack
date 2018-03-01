@@ -89,7 +89,13 @@ end
 %% Report the errors
 fprintf('The largest azimuth error is %f degrees.\n',max(max(abs(eyePoseErrorsWithRayTrace(:,:,1)))));
 fprintf('The largest elevation error is %f degrees.\n',max(max(abs(eyePoseErrorsWithRayTrace(:,:,2)))));
+fprintf('The largest absolute radius error is %f.\n',max(max(abs(eyePoseErrorsWithRayTrace(:,:,4)))));
 fprintf('The largest proportion radius error is %f.\n',1-max(max(abs(eyePoseErrorsWithRayTrace(:,:,4)-pupilRadiusMM)./pupilRadiusMM)));
+
+fprintf('The median azimuth error is %f degrees.\n',median(median(abs(eyePoseErrorsWithRayTrace(:,:,1)))));
+fprintf('The median elevation error is %f degrees.\n',median(median(abs(eyePoseErrorsWithRayTrace(:,:,2)))));
+fprintf('The largest absolute radius error is %f.\n',median(median(abs(eyePoseErrorsWithRayTrace(:,:,4)))));
+fprintf('The median proportion radius error is %f.\n',1-median(median(abs(eyePoseErrorsWithRayTrace(:,:,4)-pupilRadiusMM)./pupilRadiusMM)));
 
 %% Create some figures
 
