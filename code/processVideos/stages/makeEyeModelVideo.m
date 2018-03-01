@@ -21,10 +21,10 @@ function makeEyeModelVideo(videoOutFileName,pupilFileName, sceneGeometryFileName
 %                           a video with a 10x reduction in file size
 %  'videoSizeX'           - Size of the video in the X dimension
 %  'videoSizeY'           - Size of the video in the Y dimension
-%  'labelNames'           - A cell array of the classes of eye model points
+%  'modelEyeLabelNames'   - A cell array of the classes of eye model points
 %                           to be displayed.
-%  'plotColors'           - The colors to be used for the plotting of each
-%                           of the label names.
+%  'modelEyePlotColors'   - The colors to be used for the plotting of each
+%                           of the model eye label names.
 %  'fitLabel'             - The field of the pupilData file to use
 %
 % Outputs:
@@ -45,8 +45,8 @@ p.addParameter('videoOutFrameRate', 60, @isnumeric);
 p.addParameter('saveCompressedVideo', true, @islogical);
 p.addParameter('videoSizeX', 640, @isnumeric);
 p.addParameter('videoSizeY', 480, @isnumeric);
-p.addParameter('labelNames', {'rotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex'}, @iscell);
-p.addParameter('plotColors', {'+m' '.w' '.b' '*g' '.y' '*y'}, @iscell);
+p.addParameter('modelEyeLabelNames', {'rotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex'}, @iscell);
+p.addParameter('modelEyePlotColors', {'+m' '.w' '.b' '*g' '.y' '*y'}, @iscell);
 p.addParameter('fitLabel', 'radiusSmoothed', @ischar);
 
 % parse
@@ -127,9 +127,9 @@ for ii = 1:nFrames
         [pupilEllipseParams, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses(ii,:), sceneGeometry, rayTraceFuncs, 'fullEyeModelFlag', true);
         
         % Loop through the point labels present in the eye model
-        for pp = 1:length(p.Results.labelNames)
-            idx = strcmp(pointLabels,p.Results.labelNames{pp});
-            if strcmp(p.Results.labelNames{pp},'pupilPerimeter')
+        for pp = 1:length(p.Results.modelEyeLabelNames)
+            idx = strcmp(pointLabels,p.Results.modelEyeLabelNames{pp});
+            if strcmp(p.Results.modelEyeLabelNames{pp},'pupilPerimeter')
                 % Just before we plot the pupil perimeter points, add the
                 % pupil fit ellipse
                 pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(pupilEllipseParams));
@@ -146,7 +146,7 @@ for ii = 1:nFrames
                     set(plotHandle,'LineWidth',1);
                 end
             end
-            plot(imagePoints(idx,1), imagePoints(idx,2), p.Results.plotColors{pp})
+            plot(imagePoints(idx,1), imagePoints(idx,2), p.Results.modelEyePlotColors{pp})
         end
         
     end
