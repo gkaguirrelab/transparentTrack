@@ -101,7 +101,11 @@ if ~isempty(p.Results.pupilFileName)
     pupilData = dataLoad.pupilData;
     clear dataLoad
     ellipseFitParams = pupilData.(p.Results.fitLabel).ellipses.values;
-    eyePoses = pupilData.(p.Results.fitLabel).eyePoses.values;
+    if isfield(pupilData.(p.Results.fitLabel),'eyePoses')
+        eyePoses = pupilData.(p.Results.fitLabel).eyePoses.values;
+    else
+        eyePoses = [];
+    end
 else
     ellipseFitParams=[];
     eyePoses=[];
