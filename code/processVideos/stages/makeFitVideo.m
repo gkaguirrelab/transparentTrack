@@ -27,7 +27,7 @@ function makeFitVideo(videoInFileName, videoOutFileName, varargin)
 %                           to be included in the video. 
 %  'glint/perimeter/pupil/sceneGeometry/Color' - Text string that assigns
 %                           a color to the display of this item.
-%  'ellipseFitLabel'      - The field of the pupilData file that contains
+%  'fitLabel'      - The field of the pupilData file that contains
 %                           ellipse fit params to be added to the video.
 %  'controlFileName'      - Full path to the control file to be included.
 %
@@ -59,7 +59,10 @@ p.addParameter('glintColor','r',@ischar);
 p.addParameter('perimeterColor','w',@ischar);
 p.addParameter('pupilColor','green',@ischar);
 p.addParameter('sceneGeometryColor','magenta',@ischar);
-p.addParameter('ellipseFitLabel', 'radiusSmoothed',@(x)(isempty(x) | ischar(x)));
+p.addParameter('modelEyeAlpha', 0.25,@isnumeric);
+p.addParameter('modelEyeLabelNames', {'rotationCenter', 'posteriorChamber' 'irisPerimeter' 'anteriorChamber' 'cornealApex'}, @iscell);
+p.addParameter('modelEyePlotColors', {'+m' 'ow' 'ob' '.y' '*y'}, @iscell);
+p.addParameter('fitLabel', 'radiusSmoothed',@(x)(isempty(x) | ischar(x)));
 p.addParameter('controlFileName',[],@(x)(isempty(x) | ischar(x)));
 
 % parse
@@ -97,9 +100,11 @@ if ~isempty(p.Results.pupilFileName)
     dataLoad = load(p.Results.pupilFileName);
     pupilData = dataLoad.pupilData;
     clear dataLoad
-    pupilFitParams = pupilData.(p.Results.ellipseFitLabel).ellipses.values;
+    ellipseFitParams = pupilData.(p.Results.fitLabel).ellipses.values;
+    eyePoses = pupilData.(p.Results.fitLabel).eyePoses.values;
 else
-    pupilFitParams=[];
+    ellipseFitParams=[];
+    eyePoses=[];
 end
 
 % Read in and parse the control file if passed
@@ -115,7 +120,9 @@ end
 if ~isempty(p.Results.sceneGeometryFileName)
     dataLoad = load(p.Results.sceneGeometryFileName);
     sceneGeometry = dataLoad.sceneGeometry;
-    clear dataLoad    
+    clear dataLoad
+    % Define the ray tracing functions
+    rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
 else
     sceneGeometry=[];
 end
@@ -190,12 +197,38 @@ for ii = 1:nFrames
         end
     end
     
+    % superimpose the model eye
+    if ~isempty(eyePoses) && p.Results.modelEyeAlpha~=0
+        if ~any(isnan(eyePoses(ii,:)))
+            % Obtain the pupilProjection of the model eye to the image plane
+            [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses(ii,:), sceneGeometry, rayTraceFuncs, 'fullEyeModelFlag', true);
+            
+            % Loop through the point labels present in the eye model
+            for pp = 1:length(p.Results.modelEyeLabelNames)
+                idx = strcmp(pointLabels,p.Results.modelEyeLabelNames{pp});
+                mc =  p.Results.modelEyePlotColors{pp};
+                switch mc(1)
+                    case '.'
+                        sc = scatter(imagePoints(idx,1), imagePoints(idx,2), 10, 'o', 'filled', 'MarkerFaceColor', mc(2), 'MarkerEdgeColor','none');
+                        sc.MarkerFaceAlpha = p.Results.modelEyeAlpha;
+                    case 'o'
+                        sc = scatter(imagePoints(idx,1), imagePoints(idx,2), mc(1), 'filled', 'MarkerFaceColor', mc(2), 'MarkerEdgeColor','none');
+                        sc.MarkerFaceAlpha = p.Results.modelEyeAlpha;
+                    otherwise
+                        sc = scatter(imagePoints(idx,1), imagePoints(idx,2), mc(1), 'MarkerFaceColor', 'none', 'MarkerEdgeColor',mc(2));
+                        sc.MarkerEdgeAlpha = p.Results.modelEyeAlpha;
+                end
+            end
+            
+        end
+    end
+    
     % add pupil ellipse fit
     if ~isempty(p.Results.pupilFileName)
-        if ~isempty(pupilFitParams)
-            if sum(isnan(pupilFitParams(ii,:)))==0
+        if ~isempty(ellipseFitParams)
+            if sum(isnan(ellipseFitParams(ii,:)))==0
                 % build ellipse impicit equation
-                pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(pupilFitParams(ii,:)));
+                pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(ellipseFitParams(ii,:)));
                 fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
                 % superimpose the ellipse using fimplicit or ezplot (ezplot
                 % is the fallback option for older Matlab versions)
