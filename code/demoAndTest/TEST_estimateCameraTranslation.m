@@ -45,9 +45,6 @@
 %   specification of axial length of 1SD (+- 0.9384 mm) or 2SDs.
 %
 
-% Clean up for the simulation
-%clear all
-%close all
 
 % Set up a destination to save the files as they are generated one by one.
 % We save the data as they are generated because this can take a while and

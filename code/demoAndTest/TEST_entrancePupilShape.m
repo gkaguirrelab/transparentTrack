@@ -25,8 +25,6 @@
 %   Mathur 2013.
 %
 
-clear all
-close all
 
 % Obtain the default sceneGeometry with the following modifications:
 % - camera distance to 100 mm
