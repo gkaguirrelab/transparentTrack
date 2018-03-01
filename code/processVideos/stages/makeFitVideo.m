@@ -59,9 +59,9 @@ p.addParameter('glintColor','r',@ischar);
 p.addParameter('perimeterColor','w',@ischar);
 p.addParameter('pupilColor','green',@ischar);
 p.addParameter('sceneGeometryColor','magenta',@ischar);
-p.addParameter('modelEyeAlpha', 0.5,@isnumeric);
+p.addParameter('modelEyeAlpha', 0.25,@isnumeric);
 p.addParameter('modelEyeLabelNames', {'rotationCenter', 'posteriorChamber' 'irisPerimeter' 'anteriorChamber' 'cornealApex'}, @iscell);
-p.addParameter('modelEyePlotColors', {'+m' '.w' '.b' '.y' '*y'}, @iscell);
+p.addParameter('modelEyePlotColors', {'+m' 'ow' 'ob' '.y' '*y'}, @iscell);
 p.addParameter('fitLabel', 'radiusSmoothed',@(x)(isempty(x) | ischar(x)));
 p.addParameter('controlFileName',[],@(x)(isempty(x) | ischar(x)));
 
@@ -199,19 +199,28 @@ for ii = 1:nFrames
     
     % superimpose the model eye
     if ~isempty(eyePoses) && p.Results.modelEyeAlpha~=0
-    if ~any(isnan(eyePoses(ii,:))) 
-        % Obtain the pupilProjection of the model eye to the image plane
-        [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses(ii,:), sceneGeometry, rayTraceFuncs, 'fullEyeModelFlag', true);
-        
-        % Loop through the point labels present in the eye model
-        for pp = 1:length(p.Results.modelEyeLabelNames)
-            idx = strcmp(pointLabels,p.Results.modelEyeLabelNames{pp});
-            mc =  p.Results.modelEyePlotColors{pp};
-            sc = scatter(imagePoints(idx,1), imagePoints(idx,2), mc(1), 'MarkerFaceColor', mc(2), 'MarkerEdgeColor','none');
-            sc.MarkerFaceAlpha = p.Results.modelEyeAlpha;
+        if ~any(isnan(eyePoses(ii,:)))
+            % Obtain the pupilProjection of the model eye to the image plane
+            [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses(ii,:), sceneGeometry, rayTraceFuncs, 'fullEyeModelFlag', true);
+            
+            % Loop through the point labels present in the eye model
+            for pp = 1:length(p.Results.modelEyeLabelNames)
+                idx = strcmp(pointLabels,p.Results.modelEyeLabelNames{pp});
+                mc =  p.Results.modelEyePlotColors{pp};
+                switch mc(1)
+                    case '.'
+                        sc = scatter(imagePoints(idx,1), imagePoints(idx,2), 10, 'o', 'filled', 'MarkerFaceColor', mc(2), 'MarkerEdgeColor','none');
+                        sc.MarkerFaceAlpha = p.Results.modelEyeAlpha;
+                    case 'o'
+                        sc = scatter(imagePoints(idx,1), imagePoints(idx,2), mc(1), 'filled', 'MarkerFaceColor', mc(2), 'MarkerEdgeColor','none');
+                        sc.MarkerFaceAlpha = p.Results.modelEyeAlpha;
+                    otherwise
+                        sc = scatter(imagePoints(idx,1), imagePoints(idx,2), mc(1), 'MarkerFaceColor', 'none', 'MarkerEdgeColor',mc(2));
+                        sc.MarkerEdgeAlpha = p.Results.modelEyeAlpha;
+                end
+            end
+            
         end
-        
-    end
     end
     
     % add pupil ellipse fit
