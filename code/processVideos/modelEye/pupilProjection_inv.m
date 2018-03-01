@@ -93,7 +93,7 @@ function [eyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaEr
 %
 % Examples:
 %{
-    %% Test if we can find obtain eyePose from image ellipse
+    %% Test if we can find the eyePose for image ellipse
     % Obtain a default sceneGeometry structure
     sceneGeometry=createSceneGeometry();
     % Define the ray tracing functions
@@ -123,13 +123,20 @@ function [eyePose, bestMatchEllipseOnImagePlane, centerError, shapeError, areaEr
     for pp = 1:nPoses
     	ellipseParams(pp,:) = pupilProjection_fwd(eyePoses(pp,:),sceneGeometry,[]);
     end
-    % Now calculate the time to do the inverse projection
+    % Calculate the time to do the inverse projection without ray tracing
     tic
     for pp = 1:nPoses
     	pupilProjection_inv(ellipseParams(pp,:),sceneGeometry,[]);
     end
     noRayTraceTimeMsec = toc / nPoses * 1000;
     fprintf('Inverse projection time is %4.2f msecs without ray tracing.\n',noRayTraceTimeMsec);
+    % and with ray tracing
+    tic
+    for pp = 1:nPoses
+    	pupilProjection_inv(ellipseParams(pp,:),sceneGeometry,rayTraceFuncs);
+    end
+    withRayTraceTimeMsec = toc / nPoses * 1000;
+    fprintf('Inverse projection time is %4.2f msecs with ray tracing.\n',withRayTraceTimeMsec);
 %}
 
 
