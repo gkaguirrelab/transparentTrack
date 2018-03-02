@@ -123,6 +123,6 @@ result = estimateCameraTranslation(pupilData,'','axialLength',defaultAxialLength
 endTime=datetime('now');
 result.startTime = startTime;
 result.endTime = endTime;
-outputFile = [outputFileStem '_result)axialLength=' num2str(axialLength,'%2.2f') '.mat'];
+outputFile = [outputFileStem '_result_axialLength=' num2str(axialLength,'%2.2f') '.mat'];
 save(outputFile,'result');
 
