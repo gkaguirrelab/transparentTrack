@@ -62,13 +62,13 @@ end
 % Histogram data from Figure 1 of Olsen 2007
 res_refractionVals = [-12	-7	-6	-5	-4	-3	-2	-1	0	1	2	3	4	5	6	7	8];
 res_refractionCounts = [1	1	4	5	25	19	28	79	149	189	114	60	23	6	7	5	1];
-tmpFit = fit(res_refractionVals',(res_refractionCounts./max(res_refractionCounts))','gauss1');
+tmpFit = fit(res_refractionVals',res_refractionCounts','gauss1');
 sigmaRefractionDiopters  = tmpFit.c1;
 
 % Histogram data from Figure 4 of Olsen 2007
 res_axialLengthVals = [21 22 23 24 25 26 27 28];
 res_axialLengthCounts = [7	40	199	291	126	51	5	2];
-tmpFit = fit(res_axialLengthVals',(res_axialLengthCounts./max(res_axialLengthCounts))','gauss1');
+tmpFit = fit(res_axialLengthVals',res_axialLengthCounts','gauss1');
 sigmaLengthMm = tmpFit.c1;
 
 % Reported correlation between axial length and diopters of refractive
@@ -84,11 +84,15 @@ conditionalSigmaLength = sqrt((1-p^2)*sigmaLengthMm);
 defaultSceneGeometry = createSceneGeometry();
 defaultAxialLength = defaultSceneGeometry.eye.axialLength;
 
+% Create and save the default scene geometry
+outputFile = [outputFileStem '_default.mat'];
+save(outputFile,'defaultSceneGeometry');
 
-%% Recover veridical position with and without ray tracing
-% Create a veridical sceneGeometry with some arbitrary translation
-veridicalSceneGeometry = createSceneGeometry();
-outputFile = [outputFileStem '_veridical.mat'];
+%% Create a veridical sceneGeometry with the specified axial lenght
+axialLength = defaultAxialLength + (axialErrorMultiplier * conditionalSigmaLength);
+
+veridicalSceneGeometry = createSceneGeometry('axialLength',axialLength);
+outputFile = [outputFileStem '_veridical_axialLength=' num2str(axialLength,'%2.2f') '.mat'];
 save(outputFile,'veridicalSceneGeometry');
 
 % Assemble the ray tracing functions
@@ -96,6 +100,7 @@ rayTraceFuncs = assembleRayTraceFuncs( veridicalSceneGeometry );
 
 % Create a set of ellipses using the veridical geometry and randomly
 % varying pupil radii.
+rng('default')
 ellipseIdx=1;
 for azi=-15:15:15
     for ele=-15:15:15
@@ -106,34 +111,11 @@ for azi=-15:15:15
     end
 end
 
-% Save the ellipses
-outputFile = [outputFileStem '_pupilData.mat'];
-save(outputFile,'pupilData');
+startTime=datetime('now');
+result = estimateCameraTranslation(pupilData,'','axialLength',defaultAxialLength,'useParallel',false,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1,'nBADSsearches',100,'useRayTracing',false);
+endTime=datetime('now');
+result.startTime = startTime;
+result.endTime = endTime;
+outputFile = [outputFileStem '_result)axialLength=' num2str(axialLength,'%2.2f') '.mat'];
+save(outputFile,'result');
 
-if exist('testRayTrace')
-    % Estimate camera translation with ray tracing
-    startTime=datetime('now');
-    result = estimateCameraTranslation(pupilData,'','useParallel',false,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1,'nBADSsearches',10,'useRayTracing',true);
-    endTime=datetime('now');
-    result.startTime = startTime;
-    result.endTime = endTime;
-    outputFile = [outputFileStem '_withRayTrace.mat'];
-    save(outputFile,'result');
-else
-    
-    % Estimate camera translation with an axial length that is too long, too
-    % short, and juuuust right.
-    resultIdx = 1;
-    %for axialErrorMultiplier = -2:1:2
-    axialLength = defaultAxialLength + (axialErrorMultiplier * conditionalSigmaLength);
-    startTime=datetime('now');
-    result = estimateCameraTranslation(pupilData,'','axialLength',axialLength,'useParallel',false,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1,'nBADSsearches',100,'useRayTracing',false);
-    endTime=datetime('now');
-    result.startTime = startTime;
-    result.endTime = endTime;
-    outputFile = [outputFileStem '_axialLength=' num2str(axialLength,'%2.2f') '.mat'];
-    save(outputFile,'result');
-    %end
-    
-    
-end
