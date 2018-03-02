@@ -57,3 +57,8 @@ end
 fprintf('The largest azimuth error is %f degrees.\n',max(abs(eyePoseErrors(:,1))));
 fprintf('The largest elevation error is %f degrees.\n',max(abs(eyePoseErrors(:,2))));
 fprintf('The largest radius error is %f millimeters.\n',max(abs(eyePoseErrors(:,4))));
+
+fprintf('The median absolute azimuth error is %f degrees.\n',median(abs(eyePoseErrors(:,1))));
+fprintf('The median elevation error is %f degrees.\n',median(abs(eyePoseErrors(:,2))));
+fprintf('The median radius error is %f millimeters.\n',median(abs(eyePoseErrors(:,4))));
+
