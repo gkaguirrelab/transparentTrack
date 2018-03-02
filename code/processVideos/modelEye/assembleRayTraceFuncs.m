@@ -271,7 +271,7 @@ end
 
 
 %% cameraNodeDistanceError2D
-function [p1p2Func, p1p3Func] = cameraNodeDistanceError2D(corneaFunc)
+function [p1p2Func, p1p3Func] = cameraNodeDistanceError2D(rayTraceFunc)
 % 2D distance of ray intersection on camera plane from camera node
 
 
@@ -279,9 +279,9 @@ function [p1p2Func, p1p3Func] = cameraNodeDistanceError2D(corneaFunc)
 syms p1 p2 p3
 syms theta_p1p2 theta_p1p3
 
-% The corneaFunc takes input as h, theta, z
-outputRayEyeWorld2D_p1p2 = corneaFunc(p2,theta_p1p2,p1);
-outputRayEyeWorld2D_p1p3 = corneaFunc(p3,theta_p1p3,p1);
+% NOTE:  The rayTraceFunc takes input in the order h, theta, z
+outputRayEyeWorld2D_p1p2 = rayTraceFunc(p2,theta_p1p2,p1);
+outputRayEyeWorld2D_p1p3 = rayTraceFunc(p3,theta_p1p3,p1);
 
 % Add the third, constant dimension for the output rays
 outputRayEyeWorld_p1p2=[outputRayEyeWorld2D_p1p2(1,1) outputRayEyeWorld2D_p1p2(1,2) p3;...
@@ -342,7 +342,7 @@ end
 
 
 %% cameraNodeDistanceError3D
-function p1p2p3Func = cameraNodeDistanceError3D(corneaFunc)
+function p1p2p3Func = cameraNodeDistanceError3D(rayTraceFunc)
 % 3D distance of ray intersection on camera plane from camera node
 
 
@@ -350,9 +350,9 @@ function p1p2p3Func = cameraNodeDistanceError3D(corneaFunc)
 syms p1 p2 p3
 syms theta_p1p2 theta_p1p3
 
-% The corneaFunc takes input as h, theta, z
-outputRayEyeWorld2D_p1p2 = corneaFunc(p2,theta_p1p2,p1);
-outputRayEyeWorld2D_p1p3 = corneaFunc(p3,theta_p1p3,p1);
+% NOTE: The rayTraceFunc takes input in the order h, theta, z
+outputRayEyeWorld2D_p1p2 = rayTraceFunc(p2,theta_p1p2,p1);
+outputRayEyeWorld2D_p1p3 = rayTraceFunc(p3,theta_p1p3,p1);
 
 % Create a 3D output ray system. Shift the p1p3 ray to have the same
 % initial p1 value as the p1p2 vector
@@ -411,7 +411,7 @@ end
 
 
 %% virtualImageRay
-function [virtualImageRayFunc] = virtualImageRay(corneaFunc)
+function [virtualImageRayFunc] = virtualImageRay(rayTraceFunc)
 % Returns the unit vector virtual image ray for the initial depth position
 
 
@@ -420,8 +420,8 @@ syms p1 p2 p3
 syms theta_p1p2 theta_p1p3
 
 % Assemble the virtual image ray
-outputRayEyeWorld_p1p2 = corneaFunc(p2, theta_p1p2, p1);
-outputRayEyeWorld_p1p3 = corneaFunc(p3, theta_p1p3, p1);
+outputRayEyeWorld_p1p2 = rayTraceFunc(p2, theta_p1p2, p1);
+outputRayEyeWorld_p1p3 = rayTraceFunc(p3, theta_p1p3, p1);
 
 % Adjust the p1 (optical axis) position of the rays to have the
 % their initial position at the same p1
