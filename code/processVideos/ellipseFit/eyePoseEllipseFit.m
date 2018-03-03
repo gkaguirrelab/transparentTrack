@@ -60,16 +60,24 @@ myObj = @(x) objfun(x, Xp, Yp, sceneGeometry, rayTraceFuncs);
 options = optimoptions(@fmincon,...
     'Display','off');
 
-% Perform the non-linear search
+% Perform the non-linear search .We sometimes obtain a singular matrix
+% warning here; turn it off temporarily
+warningState = warning;
+warning('off','MATLAB:nearlySingularMatrix');
+
 [eyePose, RMSE, exitFlag] = ...
     fmincon(myObj, p.Results.x0, [], [], [], [], p.Results.eyePoseLB, p.Results.eyePoseUB, [], options);
 
 % If exitFlag==2, we might be in a local minimum; try again starting from
 % a position close to the point found by the prior search
 if exitFlag == 2
+    x0 = eyePose+[1e-6 1e-6 0 1e-6];
     [eyePose, RMSE] = ...
-        fmincon(myObj, eyePose+[1e-6 1e-6 0 1e-6], [], [], [], [], p.Results.eyePoseLB, p.Results.eyePoseUB, [], options);
+        fmincon(myObj, x0, [], [], [], [], p.Results.eyePoseLB, p.Results.eyePoseUB, [], options);
 end
+
+% Restore the warning state
+warning(warningState);
 
 
 end % eyeParamEllipseFit
