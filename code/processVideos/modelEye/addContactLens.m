@@ -45,12 +45,11 @@ function [opticalSystemOut, p] = addContactLens(opticalSystemIn, lensRefractionD
     %   lens practice. Lippincott Williams & Wilkins, 2005. Chapter 7A, 
     %   "Optical phenomena of contact lenses", WJ Benjamin. p130
     eye = modelEyeParameters();
-    eye.corneaFrontSurfaceRadius = 7.8;
-    eye.corneaFrontSurfaceCenter(1) = -7.8;
-    eye.corneaRefractiveIndex = 1.376;
-    opticalSystem = [nan nan eye.aqueousRefractiveIndex; ...
-                     eye.corneaBackSurfaceCenter(1) -eye.corneaBackSurfaceRadius eye.corneaRefractiveIndex; ...
-                     eye.corneaFrontSurfaceCenter(1) -eye.corneaFrontSurfaceRadius 1.0];
+    eye.corneaFrontSurfaceR = 7.8;
+    cornealThickness = eye.corneaBackSurfaceCenter(1) - eye.corneaFrontSurfaceCenter(1);
+    opticalSystem = [nan, nan, eye.aqueousRefractiveIndex; ...
+        -eye.corneaBackSurfaceR-cornealThickness, -eye.corneaBackSurfaceR, eye.corneaRefractiveIndex; ...
+        -eye.corneaFrontSurfaceR, -eye.corneaFrontSurfaceR, 1.0];
     % Add a -10 diopter lens
     opticalSystem=addContactLens(opticalSystem, -10, 'lensRefractiveIndex', 1.43, 'minimumLensThickness', 0.1);
     % The curvature of the front surface of the contact lens should be
@@ -65,9 +64,10 @@ function [opticalSystemOut, p] = addContactLens(opticalSystemIn, lensRefractionD
     % surface curvature.
     eye = modelEyeParameters();
     eye.corneaRefractiveIndex = 1.376;
-    opticalSystem = [nan nan eye.aqueousRefractiveIndex; ...
-                     eye.corneaBackSurfaceCenter(1) -eye.corneaBackSurfaceRadius eye.corneaRefractiveIndex; ...
-                     eye.corneaFrontSurfaceCenter(1) -eye.corneaFrontSurfaceRadius 1.0];
+    cornealThickness = eye.corneaBackSurfaceCenter(1) - eye.corneaFrontSurfaceCenter(1);
+    opticalSystem = [nan, nan, eye.aqueousRefractiveIndex; ...
+        -eye.corneaBackSurfaceR-cornealThickness, -eye.corneaBackSurfaceR, eye.corneaRefractiveIndex; ...
+        -eye.corneaFrontSurfaceR, -eye.corneaFrontSurfaceR, 1.0];
     opticalSystem=addContactLens(opticalSystem, 0, 'lensRefractiveIndex', eye.corneaRefractiveIndex, 'minimumLensThickness',0);
     % Is the lens surface the same curvature as the corneal surface?
     round(opticalSystem(end,1),4) == round(opticalSystem(end-1,1),4)
@@ -77,9 +77,10 @@ function [opticalSystemOut, p] = addContactLens(opticalSystemIn, lensRefractionD
     % Obtain the eye parameters from the modelEyeParameters() function
     eye = modelEyeParameters('sphericalAmetropia',2);
     % Define an optical system
-    opticalSystem = [nan nan eye.aqueousRefractiveIndex; ...
-                     eye.corneaBackSurfaceCenter(1) -eye.corneaBackSurfaceRadius eye.corneaRefractiveIndex; ...
-                     eye.corneaFrontSurfaceCenter(1) -eye.corneaFrontSurfaceRadius 1.0];
+    cornealThickness = eye.corneaBackSurfaceCenter(1) - eye.corneaFrontSurfaceCenter(1);
+    opticalSystem = [nan, nan, eye.aqueousRefractiveIndex; ...
+        -eye.corneaBackSurfaceR-cornealThickness, -eye.corneaBackSurfaceR, eye.corneaRefractiveIndex; ...
+        -eye.corneaFrontSurfaceR, -eye.corneaFrontSurfaceR, 1.0];
     % Add a plus lens for the correction of hyperopia
     opticalSystem=addContactLens(opticalSystem, 2);
     % Define FigureFlag as a structure so we can provide plot limits. Also,
