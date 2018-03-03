@@ -46,9 +46,10 @@ function [opticalSystemOut, p] = addSpectacleLens(opticalSystemIn, lensRefractio
     % Obtain the eye parameters from the modelEyeParameters() function
     eye = modelEyeParameters('sphericalAmetropia',-2);
     % Define an optical system
-    opticalSystem = [nan nan eye.aqueousRefractiveIndex; ...
-                     eye.corneaBackSurfaceCenter(1) -eye.corneaBackSurfaceRadius eye.corneaRefractiveIndex; ...
-                     eye.corneaFrontSurfaceCenter(1) -eye.corneaFrontSurfaceRadius 1.0];
+    cornealThickness = eye.corneaBackSurfaceCenter(1) - eye.corneaFrontSurfaceCenter(1);
+    opticalSystem = [nan, nan, eye.aqueousRefractiveIndex; ...
+        -eye.corneaBackSurfaceR-cornealThickness, -eye.corneaBackSurfaceR, eye.corneaRefractiveIndex; ...
+        -eye.corneaFrontSurfaceR, -eye.corneaFrontSurfaceR, 1.0];
     % Add a minus lens for the correction of myopia
     opticalSystem=addSpectacleLens(opticalSystem, -2);
     % Define FigureFlag as a structure so we can provide plot limits
