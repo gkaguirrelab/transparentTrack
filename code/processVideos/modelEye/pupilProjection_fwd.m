@@ -296,9 +296,12 @@ if p.Results.fullEyeModelFlag
     ansTmp = surf2patch(p1tmp, p2tmp, p3tmp);
     anteriorChamberPoints=ansTmp.vertices;
     
-    % Retain those points that are anterior to the iris plane
+    % Retain those points that are anterior to the iris plane and not at a
+    % greater radius in the p2xp3 plane than the iris.
     retainIdx = logical(...
-        (anteriorChamberPoints(:,1) > sceneGeometry.eye.irisCenter(1)));
+        (anteriorChamberPoints(:,1) > sceneGeometry.eye.irisCenter(1)) .* ...
+        (sqrt(anteriorChamberPoints(:,2).^2+anteriorChamberPoints(:,3).^2) < sceneGeometry.eye.irisRadius) ...
+        );
     if all(~retainIdx)
         error('The pupil plane is set in front of the corneal apea');
     end
@@ -412,7 +415,6 @@ if ~isempty(rayTraceFuncs)
     % Identify the eyeWorldPoints that are subject to refraction by the
     % cornea
     refractPointsIdx = find(strcmp(pointLabels,'pupilPerimeter')+...
-        strcmp(pointLabels,'irisPerimeter')+...
         strcmp(pointLabels,'pupilCenter')+...
         strcmp(pointLabels,'irisCenter'));
     % Loop through the eyeWorldPoints that are to be refracted
