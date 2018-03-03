@@ -104,7 +104,7 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     pupilEllipseOnImagePlane = pupilProjection_fwd(eyePose,sceneGeometry,rayTraceFuncs);
 %}
 %{
-    %% Display a 2D image of a slightly myopic left eye wearing contacts
+    %% Display a 2D image of a slightly myopic left eye wearing a contact
     % Obtain a default sceneGeometry structure
     sceneGeometry=createSceneGeometry('eyeLaterality','left','sphericalAmetropia',-2,'contactLens',-2);
     % Define the ray tracing functions
@@ -266,39 +266,6 @@ if p.Results.fullEyeModelFlag
     eyeWorldPoints = [eyeWorldPoints; sceneGeometry.eye.rotationCenter];
     pointLabels = [pointLabels; 'rotationCenter'];
     
-    % Create the posterior chamber ellipsoid. We switch dimensions here so
-    % that the ellipsoid points have their poles at corneal apex and
-    % posterior apex of the eye
-    [p3tmp, p2tmp, p1tmp] = ellipsoid( ...
-        sceneGeometry.eye.posteriorChamberCenter(3), ...
-        sceneGeometry.eye.posteriorChamberCenter(2), ...
-        sceneGeometry.eye.posteriorChamberCenter(1), ...
-        sceneGeometry.eye.posteriorChamberRadii(3), ...
-        sceneGeometry.eye.posteriorChamberRadii(2), ...
-        sceneGeometry.eye.posteriorChamberRadii(1), ...
-        p.Results.posteriorChamberEllipsoidPoints);
-    % Convert the surface matrices to a vector of points and switch the
-    % axes back
-    ansTmp = surf2patch(p1tmp, p2tmp, p3tmp);
-    posteriorChamberPoints=ansTmp.vertices;
-    
-    % Retain those points that are anterior to the center of the posterior
-    % chamber and are posterior to the iris plane
-    retainIdx = logical(...
-        (posteriorChamberPoints(:,1) > sceneGeometry.eye.posteriorChamberCenter(1)) .* ...
-        (posteriorChamberPoints(:,1) < sceneGeometry.eye.irisCenter(1)) ...
-        );
-    if all(~retainIdx)
-        error('The iris center is behind the center of the posterior chamber');
-    end
-    posteriorChamberPoints = posteriorChamberPoints(retainIdx,:);
-    
-    % Add the points and labels
-    eyeWorldPoints = [eyeWorldPoints; posteriorChamberPoints];
-    tmpLabels = cell(size(posteriorChamberPoints,1), 1);
-    tmpLabels(:) = {'posteriorChamber'};
-    pointLabels = [pointLabels; tmpLabels];
-    
     % Define points around the perimeter of the iris
     nIrisPerimPoints = p.Results.nIrisPerimPoints;
     perimeterPointAngles = 0:2*pi/nIrisPerimPoints:2*pi-(2*pi/nIrisPerimPoints);
@@ -347,6 +314,44 @@ if p.Results.fullEyeModelFlag
     cornealApex=[0 0 0];
     eyeWorldPoints = [eyeWorldPoints; cornealApex];
     pointLabels = [pointLabels; 'cornealApex'];
+    
+    % Create the posterior chamber ellipsoid. We switch dimensions here so
+    % that the ellipsoid points have their poles at corneal apex and
+    % posterior apex of the eye
+    [p3tmp, p2tmp, p1tmp] = ellipsoid( ...
+        sceneGeometry.eye.posteriorChamberCenter(3), ...
+        sceneGeometry.eye.posteriorChamberCenter(2), ...
+        sceneGeometry.eye.posteriorChamberCenter(1), ...
+        sceneGeometry.eye.posteriorChamberRadii(3), ...
+        sceneGeometry.eye.posteriorChamberRadii(2), ...
+        sceneGeometry.eye.posteriorChamberRadii(1), ...
+        p.Results.posteriorChamberEllipsoidPoints);
+    % Convert the surface matrices to a vector of points and switch the
+    % axes back
+    ansTmp = surf2patch(p1tmp, p2tmp, p3tmp);
+    posteriorChamberPoints=ansTmp.vertices;
+    
+    % Retain those points that are anterior to the center of the posterior
+    % chamber, posterior to the iris plane, and have a distance from the
+    % optical axis in the p2xp3 plane of greater than the radius of the
+    % anterior chamber
+        anteriorChamberRadius = (max(anteriorChamberPoints(:,2)) - min(anteriorChamberPoints(:,2)))/2;
+
+    retainIdx = logical(...
+        (posteriorChamberPoints(:,1) > sceneGeometry.eye.posteriorChamberCenter(1)) .* ...
+        (posteriorChamberPoints(:,1) < sceneGeometry.eye.irisCenter(1)) .* ...
+        sqrt(posteriorChamberPoints(:,2).^2+posteriorChamberPoints(:,3).^2) > anteriorChamberRadius );
+    if all(~retainIdx)
+        error('The iris center is behind the center of the posterior chamber');
+    end
+    posteriorChamberPoints = posteriorChamberPoints(retainIdx,:);
+    
+    % Add the points and labels
+    eyeWorldPoints = [eyeWorldPoints; posteriorChamberPoints];
+    tmpLabels = cell(size(posteriorChamberPoints,1), 1);
+    tmpLabels(:) = {'posteriorChamber'};
+    pointLabels = [pointLabels; tmpLabels];
+    
 end
 
 
