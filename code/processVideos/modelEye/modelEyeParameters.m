@@ -178,9 +178,6 @@ switch p.Results.species
         %    Soft Lens Fitting, Part 1" Contact Lens Spectrum, Issue: April
         %    2002
         %    https://www.clspectrum.com/issues/2002/april-2002/contact-lens-case-reports
-        % The visible iris diameter, however, is a virtual image of the
-        % actual iris that is recracted by the cornea. For now, we'll use
-        % this smaller value for the iris, but GKA needs to return to this.
         eye.irisRadius = 5.9;
                 
         % The iris center is shifted slightly temporally and upward with
