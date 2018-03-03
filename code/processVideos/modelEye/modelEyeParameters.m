@@ -104,48 +104,73 @@ end
 switch p.Results.species
     case {'human','Human','HUMAN'}
 
-        % Cornea front surface. These values taken from Atchison 2006,
-        % Table 1. The radius of curvature of the front surface at the apex
-        % varies by spherical ametropia of the eye.
-        eye.corneaFrontSurfaceRadii(1) = 7.77 + 0.022 * p.Results.sphericalAmetropia;
         
-        % The cornea is generally prolate, meaning that it is an ellipsoid
-        % that is radially symmetric about the optical axis and has a
-        % shorter and equal radius for the length and width dimension than
-        % for the axial dimension. The "asphericity" of the cornea is
-        % typically expressed by the value Q:
+        %% Cornea front surface
+        % The properties of the cornea are typically described by the
+        % radius of curvature (R) at the vertex and its asphericity (Q).
+        % These values are taken from Atchison 2006, Table 1. The radius of
+        % curvature of the front surface at the apex varies by spherical
+        % ametropia of the eye; Q does not vary.
+        eye.corneaFrontSurfaceR = 7.77 + 0.022 * p.Results.sphericalAmetropia;
+        eye.corneaFrontSurfaceQ = -0.15;
+        
+        % We model the cornea as a prolate ellipsoid that is radially
+        % symmetric about the optical axis, and require the radii of the
+        % ellipsoid. The major and minor radii of an ellipse (a,
+        % b) are related to R and Q by:
+        %   R = a^2/b
         %	Q = (a^2 / b^2) - 1
-        % where a and b are the major and minor axis radius lengths.
-        % Atchison assigns a value of Q = -0.15 for the front corneal
-        % surface. As we describe the shape of the chambers of the eye by
-        % providing the radii that define an ellipsoid, we convert Q here
-        % to the radius of curvature, so
-        %   horiz | vert radius = sqrt( axialRadius^2 * (Q + 1) )
-        %
-        eye.corneaFrontSurfaceRadii(2:3) = sqrt(eye.corneaFrontSurfaceRadii(1)^2 * (-0.15 + 1));
+        % Therefore, given R and Q, we can obtain a and b, which correspond
+        % to the radii of the ellipsoid model, with a corresponding to the
+        % axial dimension, and b to the horizontal and verical dimensions.
+        % Checking my algebra here:
+        %{
+            syms a b R Q
+            eqn1 = R == a^2/b;
+            eqn2 = Q == (a^2 / b^2) - 1;
+            solution = solve([eqn1, eqn2]);
+            solution.a
+            solution.b
+        %}
+        a = eye.corneaFrontSurfaceR * sqrt( 1 / (eye.corneaFrontSurfaceQ + 1 ) );
+        b = eye.corneaFrontSurfaceR / (eye.corneaFrontSurfaceQ + 1 );
+        eye.corneaFrontSurfaceRadii(1) = a;
+        eye.corneaFrontSurfaceRadii(2:3) = b;
         
         % We set the axial apex of the corneal front surface at position
         % [0, 0, 0]
         eye.corneaFrontSurfaceCenter = [-eye.corneaFrontSurfaceRadii(1) 0 0];
 
+        
+        %% Cornea back surface
         % The radius of curvature for the back corneal surface was not
         % found to vary by spherical ametropia. The asphericity Q for the
         % back corneal surface was set by Atchison to -0.275.        
-        eye.corneaBackSurfaceRadii(1) = 6.4;
-        eye.corneaBackSurfaceRadii(2:3) = sqrt(eye.corneaBackSurfaceRadii(1)^2 * (-0.275 + 1));
+        eye.corneaBackSurfaceR = 6.4;
+        eye.corneaBackSurfaceQ = -0.275;
+
+        % Compute the radii of the ellipsoid
+        a = eye.corneaBackSurfaceR * sqrt( 1 / (eye.corneaBackSurfaceQ + 1 ) );
+        b = eye.corneaBackSurfaceR / (eye.corneaBackSurfaceQ + 1 );        
+        eye.corneaBackSurfaceRadii(1) = a;
+        eye.corneaBackSurfaceRadii(2:3) = b;
                 
         % The center of the cornea circle for the back surface is
         % positioned so that there is 0.55 mm of corneal thickness between
         % the front and back surface of the cornea at the apex, following
         % Atchison 2006.
         eye.corneaBackSurfaceCenter = [-eye.corneaFrontSurfaceRadii(1)+0.55 0 0];
+
         
+        %% Pupil
         % We position the pupil plane at the depth of the anterior point of
         % the lens. The coordinate space of the model eye is define with
         % respect to the center of the pupil, so the p2 and p3 values are
         % zero
         eye.pupilCenter = [-3.7 0 0];
         
+
+        %% Iris
         % Define the iris radius. One study measured the horizontal visible
         % iris diameter in 200 people, and found a mean of 11.8 with a
         % range of 10.2 - 13.0.
@@ -156,7 +181,7 @@ switch p.Results.species
         % The visible iris diameter, however, is a virtual image of the
         % actual iris that is recracted by the cornea. For now, we'll use
         % this smaller value for the iris, but GKA needs to return to this.
-        eye.irisRadius = 5.5;
+        eye.irisRadius = 5.9;
                 
         % The iris center is shifted slightly temporally and upward with
         % respect to the pupil center:
@@ -168,25 +193,21 @@ switch p.Results.species
         % Bennett, Edward S., and Barry A. Weissman, eds. Clinical contact
         % lens practice. Lippincott Williams & Wilkins, 2005, p119
         %
-        % While the iris does not lie in a plane (given a non-zero iris
-        % angle), we are concerned here with modeling the outer visible
-        % border of the iris. We set the depth of the iris plane to the
-        % minimum value that allows the typically observed horizontal width
-        % of the iris to be visible through the cornea. Note that the
-        % horizontal and vertical width of the back surface of the cornea
-        % constrains the possible width of the iris.
+        % We model an eye with zero iris angle, and thus set the depth of
+        % the iris plane equal to the pupil plane.
         switch eyeLaterality
             case 'Right'
-                eye.irisCenter = [-5.5 -0.15 -0.1];
+                eye.irisCenter = [-3.7 -0.15 -0.1];
             case 'Left'
-                eye.irisCenter = [-5.5 0.15 -0.1];
+                eye.irisCenter = [-3.7 0.15 -0.1];
         end
         
-        % The posterior chamber of the eye is modeled as an ellipsoid. The
-        % dimensions of the ellipsoid are set by the values observed for
-        % the radius of curvature of the retina in Atchison 2005. Note the
-        % greater dependence of the first (axial) dimension upon
-        % refractive error.        
+        
+        %% Posterior chamber
+        % The posterior chamber of the eye is modeled as an ellipsoid.
+        % Atchison 2005 provides the radii of an ellipsoid model for the
+        % posterior chamber and how these dimensions vary with spherical
+        % refractive error.
         eye.posteriorChamberRadii = [...
             10.148 - 0.163 * p.Results.sphericalAmetropia ...
             11.365 - 0.090 * p.Results.sphericalAmetropia ...
