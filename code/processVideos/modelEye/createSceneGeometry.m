@@ -185,13 +185,19 @@ sceneGeometry.constraintTolerance = p.Results.constraintTolerance;
 sceneGeometry.eye = modelEyeParameters('spectralDomain',p.Results.spectralDomain,varargin{:});
 
 % Generate the opticalSystem matrix through the cornea. Note that we model
-% the corneal surfaces as spheres. To create a more accurate model, we
-% would need to update rayTraceCenteredSphericalSurfaces() to model
-% aspherical surfaces.
+% the corneal surfaces as spheres, with a radius equal to the radius of
+% curvature value R. To create a more accurate model, we would need to
+% update rayTraceCenteredSphericalSurfaces() to model aspherical surfaces.
 mediumRefractiveIndex = returnRefractiveIndex( p.Results.medium, p.Results.spectralDomain );
-opticalSystem = [nan nan sceneGeometry.eye.aqueousRefractiveIndex; ...
-    sceneGeometry.eye.corneaBackSurfaceCenter(1) -sceneGeometry.eye.corneaBackSurfaceRadii(1) sceneGeometry.eye.corneaRefractiveIndex; ...
-    sceneGeometry.eye.corneaFrontSurfaceCenter(1) -sceneGeometry.eye.corneaFrontSurfaceRadii(1) mediumRefractiveIndex];
+
+% The center of the cornea front surface is at a position equal to its
+% radius of curvature, thus placing the apex of the front corneal surface
+% at a z position of zero. The back surface is shifted back to produce
+% the appropriate corneal thickness.
+cornealThickness = sceneGeometry.eye.corneaBackSurfaceCenter(1) - sceneGeometry.eye.corneaFrontSurfaceCenter(1);
+opticalSystem = [nan, nan, sceneGeometry.eye.aqueousRefractiveIndex; ...
+    -sceneGeometry.eye.corneaBackSurfaceR-cornealThickness, -sceneGeometry.eye.corneaBackSurfaceR, sceneGeometry.eye.corneaRefractiveIndex; ...
+    -sceneGeometry.eye.corneaFrontSurfaceR, -sceneGeometry.eye.corneaFrontSurfaceR, mediumRefractiveIndex];
 
 % Add a contact lens if requested
 if ~isempty(p.Results.contactLens)
