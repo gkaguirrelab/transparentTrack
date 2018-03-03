@@ -64,6 +64,7 @@ options = optimoptions(@fmincon,...
 % warning here; turn it off temporarily
 warningState = warning;
 warning('off','MATLAB:nearlySingularMatrix');
+warning('off','MATLAB:singularMatrix');
 
 [eyePose, RMSE, exitFlag] = ...
     fmincon(myObj, p.Results.x0, [], [], [], [], p.Results.eyePoseLB, p.Results.eyePoseUB, [], options);
