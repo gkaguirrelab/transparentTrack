@@ -485,6 +485,7 @@ warning('off','bads:meshOverflow');
 centerDistanceErrorByEllipse=zeros(size(ellipses,1),1);
 shapeErrorByEllipse=zeros(size(ellipses,1),1);
 areaErrorByEllipse=zeros(size(ellipses,1),1);
+recoveredEyePoses =zeros(size(ellipses,1),4);
 
 % Detect if we have pinned the parameters, in which case just evaluate the
 % objective function
@@ -518,7 +519,7 @@ end
             % the search and initialize with the returned eyePose
             if exitFlag == 2
                 x0tmp = eyePose + [1e-3 1e-3 0 1-3];
-                [~, ~, centerDistanceErrorByEllipse(ii), shapeErrorByEllipse(ii), areaErrorByEllipse(ii)] = ...
+                [eyePose, ~, centerDistanceErrorByEllipse(ii), shapeErrorByEllipse(ii), areaErrorByEllipse(ii)] = ...
                     pupilProjection_inv(...
                     ellipses(ii,:),...
                     candidateSceneGeometry, rayTraceFuncs, ...
@@ -527,6 +528,7 @@ end
                     'x0',x0tmp...
                     );
             end
+            recoveredEyePoses(ii,:)=eyePose;
         end
         % Now compute objective function as the RMSE of the distance
         % between the taget and modeled ellipses
@@ -567,6 +569,7 @@ sceneGeometry.meta.estimateCameraTranslation.search.fVal = fVal;
 sceneGeometry.meta.estimateCameraTranslation.search.centerDistanceErrorByEllipse = centerDistanceErrorByEllipse;
 sceneGeometry.meta.estimateCameraTranslation.search.shapeErrorByEllipse = shapeErrorByEllipse;
 sceneGeometry.meta.estimateCameraTranslation.search.areaErrorByEllipse = areaErrorByEllipse;
+sceneGeometry.meta.estimateCameraTranslation.search.recoveredEyePoses = recoveredEyePoses;
 
 end % local search function
 
