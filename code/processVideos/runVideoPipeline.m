@@ -343,6 +343,15 @@ pupilFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_pup
 sceneGeometryFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sceneGeometry.mat']);
 irisFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_iris.mat']);
 
+% the sceneGeometryFileNameInput is the name of the file passed to the
+% fitPupilPerimeter, smoothPupilRadius, refineIrisRadius, and make fit
+% video routines. A custom value can be passed.
+if ~isempty(p.Results.customSceneGeometryFile)
+    sceneGeometryFileNameInput = p.Results.customSceneGeometryFile;
+else
+    sceneGeometryFileNameInput = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sceneGeometry.mat']);
+end
+
 % Depending upon which stage just completed, set to empty any files
 % that do not yet exist, and select the appropriate perimeter file and
 % pupil ellipse fit to display.
