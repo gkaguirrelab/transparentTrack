@@ -300,7 +300,15 @@ parfor (ii = 1:nFrames, nWorkers)
         % Calculate the SD of the posterior of the pupil radius
         posteriorPupilRadiusSD = sqrt((priorPupilRadiusSD.^2.*likelihoodPupilRadiusSD.^2) ./ ...
             (priorPupilRadiusSD.^2+likelihoodPupilRadiusSD.^2));
-                
+
+        % It can be the case that the prior mean is nan, due to this frame
+        % having a measurement, but all surrounding frames being bad.
+        % Detect this case, and set the posterior to the likelihood.
+        if isnan(priorPupilRadius)
+            posteriorPupilRadius = likelihoodPupilRadiusMean;
+            posteriorPupilRadiusSD = inf;
+        end
+        
         % Re-fit the ellipse with the radius constrained to the posterior
         % value. Pass the prior azimuth and elevation as x0.
         lb_pin = eyePoseLB;
