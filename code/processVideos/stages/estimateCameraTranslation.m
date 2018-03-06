@@ -86,13 +86,17 @@ function sceneGeometry = estimateCameraTranslation(pupilFileName, sceneGeometryF
 %                           the camera translation search improves accuracy
 %                           slightly, but increases search time by about
 %                           25x.
-%  'nBADSsearches'        - Scalar. We perform the search for camera
-%                           translation from a randomly selected starting
-%                           point within the plausible bounds. This
-%                           parameter sets how many random starting points
-%                           to try; the best result is retained. Each
-%                           search is run on a separate worker if the
-%                           parpool is available.
+%  'nBADSsearches'        - Scalar or 1x2 vector. We perform the search for
+%                           camera translation from a randomly selected
+%                           starting point within the plausible bounds.
+%                           This parameter sets how many random starting
+%                           points to try; the best result is retained.
+%                           Each search is run on a separate worker if the
+%                           parpool is available. If a two element vector
+%                           is passed, and if 'useRayTracing' is set to
+%                           true, then the first element sets the number of
+%                           non-ray-traced searches, and the second element
+%                           the number of ray-traced searches.
 %
 %
 % Outputs
@@ -266,7 +270,8 @@ end
 
 % Peform the search without rayTracing
 searchResults = {};
-parfor (ss = 1:p.Results.nBADSsearches,nWorkers)
+parfor (ss = 1:p.Results.nBADSsearches(1),nWorkers)
+%for ss = 1:p.Results.nBADSsearches(1)
     
     searchResults{ss} = ...
         performSceneSearch(initialSceneGeometry, [], ...
@@ -282,7 +287,7 @@ parfor (ss = 1:p.Results.nBADSsearches,nWorkers)
     
     % update progress
     if strcmp(p.Results.verbosity,'full')
-        for pp=1:floor(50/p.Results.nBADSsearches)
+        for pp=1:floor(50/p.Results.nBADSsearches(1))
             fprintf('\b.\n');
         end
     end
@@ -318,15 +323,25 @@ if ~isempty(rayTraceFuncs)
     pLB = transVecMeanNoRayTrace-transVecSDNoRayTrace;
     pUB = transVecMeanNoRayTrace+transVecSDNoRayTrace;
     pLB(3) = transVecMeanNoRayTrace(3) - transVecMeanNoRayTrace(3)/10;
-    pUB(3) = transVecMeanNoRayTrace(3) + transVecMeanNoRayTrace(3)/10;
-    parfor (ss = 1:p.Results.nBADSsearches,nWorkers)
+    pUB(3) = transVecMeanNoRayTrace(3);
+    
+    LB = min([pLB p.Results.translationLB],[],2);
+    UB = max([pUB p.Results.translationUB],[],2);
+    
+    % Check if there is a second value in nBADSsearches we should use
+    if length(p.Results.nBADSsearches)>1
+        nRayTracedSearches = p.Results.nBADSsearches(2);
+    else
+        nRayTracedSearches = p.Results.nBADSsearches(1);
+    end
+    parfor (ss = 1:nRayTracedSearches,nWorkers)
         
         searchResults{ss} = ...
             performSceneSearch(initialSceneGeometry, rayTraceFuncs, ...
             ellipses(ellipseArrayList,:), ...
             errorWeights, ...
-            p.Results.translationLB, ...
-            p.Results.translationUB, ...
+            LB, ...
+            UB, ...
             pLB, ...
             pUB, ...
             p.Results.eyePoseLB, ...
@@ -335,7 +350,7 @@ if ~isempty(rayTraceFuncs)
         
         % update progress
         if strcmp(p.Results.verbosity,'full')
-            for pp=1:floor(50/p.Results.nBADSsearches)
+            for pp=1:floor(50/nRayTracedSearches)
                 fprintf('\b.\n');
             end
         end
