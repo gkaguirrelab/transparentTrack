@@ -36,7 +36,7 @@ function eye = modelEyeParameters( varargin )
 %                           spherical refractive correction for the
 %                           subject. A negative number is the correction
 %                           that would be used for a myopic person.
-%  'axialLength'          - Scalar. When set, this fixes the axial length 
+%  'axialLength'          - Scalar. When set, this fixes the axial length
 %                           of the eye to the passed value in millimeters.
 %                           As the modeled anterior chamber depth is not
 %                           variable, this change is enforced on the
@@ -103,7 +103,7 @@ end
 % Switch parameters at the top level by species
 switch p.Results.species
     case {'human','Human','HUMAN'}
-
+        
         
         %% Cornea front surface
         % The properties of the cornea are typically described by the
@@ -140,27 +140,27 @@ switch p.Results.species
         % We set the axial apex of the corneal front surface at position
         % [0, 0, 0]
         eye.corneaFrontSurfaceCenter = [-eye.corneaFrontSurfaceRadii(1) 0 0];
-
+        
         
         %% Cornea back surface
         % The radius of curvature for the back corneal surface was not
         % found to vary by spherical ametropia. The asphericity Q for the
-        % back corneal surface was set by Atchison to -0.275.        
+        % back corneal surface was set by Atchison to -0.275.
         eye.corneaBackSurfaceR = 6.4;
         eye.corneaBackSurfaceQ = -0.275;
-
+        
         % Compute the radii of the ellipsoid
         a = eye.corneaBackSurfaceR * sqrt( 1 / (eye.corneaBackSurfaceQ + 1 ) );
-        b = eye.corneaBackSurfaceR / (eye.corneaBackSurfaceQ + 1 );        
+        b = eye.corneaBackSurfaceR / (eye.corneaBackSurfaceQ + 1 );
         eye.corneaBackSurfaceRadii(1) = a;
         eye.corneaBackSurfaceRadii(2:3) = b;
-                
+        
         % The center of the cornea circle for the back surface is
         % positioned so that there is 0.55 mm of corneal thickness between
         % the front and back surface of the cornea at the apex, following
         % Atchison 2006.
         eye.corneaBackSurfaceCenter = [-eye.corneaFrontSurfaceRadii(1)+0.55 0 0];
-
+        
         
         %% Pupil
         % We position the pupil plane at the depth of the anterior point of
@@ -169,17 +169,30 @@ switch p.Results.species
         % zero
         eye.pupilCenter = [-3.7 0 0];
         
-
+        
         %% Iris
         % Define the iris radius. One study measured the horizontal visible
-        % iris diameter in 200 people, and found a mean of 11.8 with a
-        % range of 10.2 - 13.0.
+        % iris diameter (HVID) in 200 people, and found a mean of 11.8 with
+        % a range of 10.2 - 13.0.
         %    PJ Caroline & MP Andrew. "The Effect of Corneal Diameter on
         %    Soft Lens Fitting, Part 1" Contact Lens Spectrum, Issue: April
         %    2002
         %    https://www.clspectrum.com/issues/2002/april-2002/contact-lens-case-reports
-        eye.irisRadius = 5.9;
-                
+        %
+        % Mark Andre supplied me with a histogram of measurements of the
+        % HVID obtained by Bernd Bruckner of Aalen University. These data
+        % yield a mean iris radius of 5.92 mm, 0.28 SD. The values from the
+        % histogram are represented here, along with a Gaussian fit to the
+        % distribution
+        %{
+            counts = [0 2 2 0 0 4 5 12 19 23 36 44 52 41 39 37 43 30 28 12 15 10 4 1 0 2 0];
+            HVIDRadiusmm = (10.5:0.1:13.1)/2;
+            hvidGaussFit = fit(HVIDRadiusmm', counts', 'gauss1');
+            hvidRadiusMean = hvidGaussFit.b1;
+            hvidRadiusSD =  hvidGaussFit.c1;
+        %}
+        eye.irisRadius = 5.92;
+        
         % The iris center is shifted slightly temporally and upward with
         % respect to the pupil center:
         %
@@ -266,15 +279,15 @@ switch p.Results.species
         % of rotation. Support for this 1:1 relationship is found in the
         % paper:
         %
-        %   Dick, Graham L., Bryan T. Smith, and Peter L. Spanos. 
-        %   "Axial length and radius of rotation of the eye." 
+        %   Dick, Graham L., Bryan T. Smith, and Peter L. Spanos.
+        %   "Axial length and radius of rotation of the eye."
         %   Clinical and Experimental Optometry 73.2 (1990): 43-50.
         %
-        % Specifically, Figure 6 shows that, for each mm of increase in 
+        % Specifically, Figure 6 shows that, for each mm of increase in
         % the axial length of an eye, the center of rotation tended to
         % increase by 0.5 mm. Thus, there is a 1:1 relationship of axial
         % radius and rotation length.
-        % 
+        %
         % In an emmetropic eye, the distance from the corneal apex to the
         % center of the posterior chamber is
         %
@@ -309,7 +322,7 @@ switch p.Results.species
         % They measured the shape of the entrance pupil as a function of
         % viewing angle relative to the fixation point of the eye. Their
         % data is well fit by a kappa of [5, -2] degrees (see
-        % TEST_entrancePupilShape.m). 
+        % TEST_entrancePupilShape.m).
         %
         % Measured kappa has been found to depend upon axial length:
         %
@@ -327,7 +340,7 @@ switch p.Results.species
         % -2 degrees.
         %
         % While a horizontal kappa of ~5 degrees is a consistent finding,
-        % measurements of vertical kappa differ: 
+        % measurements of vertical kappa differ:
         %
         %   Hashemi, Hassan, et al. "Distribution of angle kappa
         %   measurements with Orbscan II in a population-based survey."
@@ -341,7 +354,7 @@ switch p.Results.species
         % vary based upon the subject being in a sittng or supine position.
         % Until better evidene is available, we adopt a vertical kappa of
         % -2 degrees for the emmetropic model eye.
-
+        
         if isempty(p.Results.kappaAngle)
             switch eyeLaterality
                 case 'Right'
