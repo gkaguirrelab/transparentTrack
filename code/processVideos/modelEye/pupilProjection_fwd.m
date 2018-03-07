@@ -135,12 +135,10 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     %% Display a 3D plot of a right eye
     % Obtain a default sceneGeometry structure
     sceneGeometry=createSceneGeometry();
-    % Define the ray tracing functions
-    rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
     % Define an eyePose with azimuth, elevation, torsion, and pupil radius
-    eyePose = [0 0 0 3];
+    eyePose = [-10 5 0 3];
     % Perform the projection and request the full eye model
-    [~, ~, ~, eyeWorldPoints, pointLabels] = pupilProjection_fwd(eyePose,sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
+    [~, ~, sceneWorldPoints, ~, pointLabels] = pupilProjection_fwd(eyePose,sceneGeometry,[],'fullEyeModelFlag',true);
     % Define some settings for display
     eyePartLabels = {'rotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex'};
     plotColors = {'+r' '.k' '*b' '*g' '.y' '*y'};
@@ -149,7 +147,7 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     % Plot each anatomical component
     for pp = 1:length(eyePartLabels)
     	idx = strcmp(pointLabels,eyePartLabels{pp});
-        plot3(eyeWorldPoints(idx,1), eyeWorldPoints(idx,2), eyeWorldPoints(idx,3), plotColors{pp})
+        plot3(sceneWorldPoints(idx,1), sceneWorldPoints(idx,2), sceneWorldPoints(idx,3), plotColors{pp})
         hold on
     end
     hold off
@@ -334,14 +332,12 @@ if p.Results.fullEyeModelFlag
     ansTmp = surf2patch(p1tmp, p2tmp, p3tmp);
     posteriorChamberPoints=ansTmp.vertices;
     
-    % Retain those points that are anterior to the center of the posterior
-    % chamber, posterior to the iris plane, and have a distance from the
-    % optical axis in the p2xp3 plane of greater than the radius of the
-    % anterior chamber
-        anteriorChamberRadius = (max(anteriorChamberPoints(:,2)) - min(anteriorChamberPoints(:,2)))/2;
-
+    % Retain those points that are posterior to the iris plane, and have a
+    % distance from the optical axis in the p2xp3 plane of greater than the
+    % radius of the anterior chamber
+    anteriorChamberRadius = (max(anteriorChamberPoints(:,2)) - min(anteriorChamberPoints(:,2)))/2;
+    
     retainIdx = logical(...
-        (posteriorChamberPoints(:,1) > sceneGeometry.eye.posteriorChamberCenter(1)) .* ...
         (posteriorChamberPoints(:,1) < sceneGeometry.eye.irisCenter(1)) .* ...
         sqrt(posteriorChamberPoints(:,2).^2+posteriorChamberPoints(:,3).^2) > anteriorChamberRadius );
     if all(~retainIdx)
@@ -481,6 +477,15 @@ end
 %% Apply the eye rotation
 headWorldPoints = (eyeRotation*(eyeWorldPoints-sceneGeometry.eye.rotationCenter)')'+sceneGeometry.eye.rotationCenter;
 
+% If we are projecting a full eye model, remove those points that are
+% posterior to the center of rotation of the eye, and thus would not be
+% visible to the camera.
+if p.Results.fullEyeModelFlag
+    retainIdx = headWorldPoints(:,1) > sceneGeometry.eye.rotationCenter(1);
+    eyeWorldPoints = eyeWorldPoints(retainIdx,:);
+    headWorldPoints = headWorldPoints(retainIdx,:);
+    pointLabels = pointLabels(retainIdx);
+end
 
 %% Project the headWorld points to sceneWorld coordinates.
 % This coordinate frame is in mm units and has the dimensions (X,Y,Z).
