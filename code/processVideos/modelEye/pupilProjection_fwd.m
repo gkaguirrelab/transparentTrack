@@ -187,6 +187,7 @@ p.addRequired('eyePose',@isnumeric);
 p.addRequired('sceneGeometry',@(x)(isempty(x) || isstruct(x)));
 p.addRequired('rayTraceFuncs',@(x)(isempty(x) || isstruct(x)));
 
+% Optional
 p.addParameter('fullEyeModelFlag',false,@islogical);
 p.addParameter('nPupilPerimPoints',5,@(x)(isnumeric(x) && x>4));
 p.addParameter('nIrisPerimPoints',5,@(x)(isnumeric(x) && x>4));
