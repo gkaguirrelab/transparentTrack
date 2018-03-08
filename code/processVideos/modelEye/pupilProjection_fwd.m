@@ -55,6 +55,10 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
 %  'anteriorChamberEllipsoidPoints' - The number of points that are on
 %                           each longitude line of the anterior chamber
 %                           ellipsoid. About 30 makes a nice image.
+%  'removeObscuredPoints' - Logical. If set to true (default) the set of 
+%                           modeled points will be restricted to only those
+%                           that are anterior to the center of rotation of 
+%                           the eye following rotation of the eye.
 %  'calcNodalIntersectError' - Logical. Controls if the nodal point
 %                           intersection error is calculated. Set to false
 %                           by default as this adds time to the forward
@@ -193,6 +197,7 @@ p.addParameter('nPupilPerimPoints',5,@(x)(isnumeric(x) && x>4));
 p.addParameter('nIrisPerimPoints',5,@(x)(isnumeric(x) && x>4));
 p.addParameter('posteriorChamberEllipsoidPoints',30,@isnumeric);
 p.addParameter('anteriorChamberEllipsoidPoints',30,@isnumeric);
+p.addParameter('removeObscuredPoints',true,@islogical);
 p.addParameter('calcNodalIntersectError',false,@islogical);
 
 % parse
@@ -478,10 +483,11 @@ end
 %% Apply the eye rotation
 headWorldPoints = (eyeRotation*(eyeWorldPoints-sceneGeometry.eye.rotationCenter)')'+sceneGeometry.eye.rotationCenter;
 
-% If we are projecting a full eye model, remove those points that are
-% posterior to the center of rotation of the eye, and thus would not be
+% If we are projecting a full eye model, and the 'removeObscuredPoints' is
+% set to true, then remove those points that are posterior to the center of
+% rotation of the eye, and thus would not be
 % visible to the camera.
-if p.Results.fullEyeModelFlag
+if p.Results.fullEyeModelFlag && p.Results.removeObscuredPoints
     retainIdx = headWorldPoints(:,1) > sceneGeometry.eye.rotationCenter(1);
     eyeWorldPoints = eyeWorldPoints(retainIdx,:);
     headWorldPoints = headWorldPoints(retainIdx,:);
