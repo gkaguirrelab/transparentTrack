@@ -118,7 +118,7 @@ for ii = 1:length(azimuthsDeg)
     eyePose=[azimuthsDeg(ii) elevationsDeg(ii) 0 pupilDiam/2];
     % First, perform the forward projection to determine where the center
     % of the pupil is located in the sceneWorld coordinates
-    [~, ~, sceneWorldPoints, ~, pointLabels] = pupilProjection_fwd(eyePose, sceneGeometry, rayTraceFuncs, 'fullEyeModelFlag', true);
+    [~, ~, sceneWorldPoints, ~, pointLabels] = pupilProjection_fwd(eyePose, sceneGeometry, rayTraceFuncs, 'fullEyeModelFlag', true, 'removeObscuredPoints', false);
     % Adjust the sceneGeometry to translate the camera to be centered on
     % center of the pupil. This is not exactly right, as the center of the
     % pupil in the sceneWorld would not exactly correspond to the center of
