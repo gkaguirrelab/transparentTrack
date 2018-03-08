@@ -179,10 +179,11 @@ switch p.Results.species
         %    2002
         %    https://www.clspectrum.com/issues/2002/april-2002/contact-lens-case-reports
         %
-        % Mark Andre supplied me with a histogram of measurements of the
-        % HVID obtained by Bernd Bruckner of Aalen University. These data
-        % yield a mean iris radius of 5.92 mm, 0.28 SD. The values from the
-        % histogram are represented here, along with a Gaussian fit to the
+        % Bernd Bruckner of the company Appenzeller Kontaktlinsen AG
+        % supplied me with a tech report from his company (HVID & SimK
+        % study) that measured HVID in 461 people. These data yield a mean
+        % iris radius of 5.92 mm, 0.28 SD. The values from the histogram
+        % are represented here, along with a Gaussian fit to the
         % distribution
         %{
             counts = [0 2 2 0 0 4 5 12 19 23 36 44 52 41 39 37 43 30 28 12 15 10 4 1 0 2 0];
@@ -190,6 +191,12 @@ switch p.Results.species
             hvidGaussFit = fit(HVIDRadiusmm', counts', 'gauss1');
             hvidRadiusMean = hvidGaussFit.b1;
             hvidRadiusSD =  hvidGaussFit.c1;
+            figure
+            plot(HVIDRadiusmm, hvidGaussFit(HVIDRadiusmm), '-r')
+            hold on
+            plot(HVIDRadiusmm, counts, '*k')
+            xlabel('HVID radius in mm')
+            ylabel('counts')
         %}
         eye.irisRadius = 5.92;
         
@@ -267,6 +274,8 @@ switch p.Results.species
         eye.posteriorChamberCenter = ...
             [(-posteriorChamberApexDepth - eye.posteriorChamberRadii(1)) 0 0];
         
+
+        %% Rotation center
         % The eye center of rotation in emmetropes is on average 13.3 mm
         % behind the corneal apex per Gunter K. vonNoorden, MD; Emilio C.
         % Campos "Binocular Vision and Ocular Motility Theory and
@@ -299,10 +308,8 @@ switch p.Results.species
         % than the position of the center of the posterior chamber.
         eye.rotationCenter = [eye.posteriorChamberCenter(1)+0.1444 0 0];
         
-        % Obtain refractive index values for this spectral domain.
-        eye.corneaRefractiveIndex = returnRefractiveIndex( 'cornea', p.Results.spectralDomain );
-        eye.aqueousRefractiveIndex = returnRefractiveIndex( 'aqueous', p.Results.spectralDomain );
         
+        %% Kappa
         % We now calculate kappa, which is the angle (in degrees) between
         % the pupil and visual axes of the eye. The visual axis is
         % displaced nasally and superiorly within the visual field relative
@@ -366,6 +373,12 @@ switch p.Results.species
         else
             eye.kappaAngle = p.Results.kappaAngle;
         end
+        
+        
+        %% Refractive indices
+        % Obtain refractive index values for this spectral domain.
+        eye.corneaRefractiveIndex = returnRefractiveIndex( 'cornea', p.Results.spectralDomain );
+        eye.aqueousRefractiveIndex = returnRefractiveIndex( 'aqueous', p.Results.spectralDomain );
         
     otherwise
         error('Please specify a valid species for the eye model');
