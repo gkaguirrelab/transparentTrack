@@ -21,6 +21,7 @@ function [ nWorkers ] = startParpool( nWorkers, tbtbRepoName, verbosity )
 % Silence the timezone warning
 warningState = warning;
 warning('off','MATLAB:datetime:NonstandardSystemTimeZoneFixed');
+warning('off','MATLAB:datetime:NonstandardSystemTimeZone');
 
 % If a parallel pool does not exist, attempt to create one
 poolObj = gcp('nocreate');
