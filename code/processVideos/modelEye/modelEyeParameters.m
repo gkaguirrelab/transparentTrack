@@ -159,7 +159,7 @@ switch p.Results.species
         % positioned so that there is 0.55 mm of corneal thickness between
         % the front and back surface of the cornea at the apex, following
         % Atchison 2006.
-        eye.corneaBackSurfaceCenter = [-eye.corneaFrontSurfaceRadii(1)+0.55 0 0];
+        eye.corneaBackSurfaceCenter = [-eye.corneaBackSurfaceRadii(1)-0.55 0 0];
         
         
         %% Pupil
