@@ -114,26 +114,28 @@ switch p.Results.species
         eye.corneaFrontSurfaceR = 7.77 + 0.022 * p.Results.sphericalAmetropia;
         eye.corneaFrontSurfaceQ = -0.15;
         
-        % We model the cornea as a prolate ellipsoid that is radially
-        % symmetric about the optical axis, and require the radii of the
-        % ellipsoid. The major and minor radii of an ellipse (a,
-        % b) are related to R and Q by:
-        %   R = a^2/b
-        %	Q = (a^2 / b^2) - 1
-        % Therefore, given R and Q, we can obtain a and b, which correspond
-        % to the radii of the ellipsoid model, with a corresponding to the
-        % axial dimension, and b to the horizontal and verical dimensions.
+        % The cornea is modeled as a prolate ellipsoid that is radially
+        % symmetric about the optical axis. We calculate here the radii of
+        % the ellipsoid. The radii of an ellipse along the primary and
+        % secondy axes (a, b) are related to R and Q by:
+        %   R = b^2/a
+        %	Q = (b^2 / a^2) - 1
+        % when Q < 0. Therefore, given R and Q, we can obtain a and b,
+        % which correspond to the radii of the ellipsoid model, with a
+        % corresponding to the axial dimension, and b to the horizontal and
+        % verical dimensions.
         % Checking my algebra here:
         %{
             syms a b R Q
-            eqn1 = R == a^2/b;
-            eqn2 = Q == (a^2 / b^2) - 1;
+            eqn1 = R == b^2/a;
+            eqn2 = Q == (b^2 / a^2) - 1;
             solution = solve([eqn1, eqn2]);
             solution.a
             solution.b
         %}
-        a = eye.corneaFrontSurfaceR * sqrt( 1 / (eye.corneaFrontSurfaceQ + 1 ) );
-        b = eye.corneaFrontSurfaceR / (eye.corneaFrontSurfaceQ + 1 );
+        
+        a = eye.corneaFrontSurfaceR / ( eye.corneaFrontSurfaceQ + 1 );
+        b = eye.corneaFrontSurfaceR * sqrt(1/(eye.corneaFrontSurfaceQ+1)) ;
         eye.corneaFrontSurfaceRadii(1) = a;
         eye.corneaFrontSurfaceRadii(2:3) = b;
         
@@ -150,8 +152,8 @@ switch p.Results.species
         eye.corneaBackSurfaceQ = -0.275;
         
         % Compute the radii of the ellipsoid
-        a = eye.corneaBackSurfaceR * sqrt( 1 / (eye.corneaBackSurfaceQ + 1 ) );
-        b = eye.corneaBackSurfaceR / (eye.corneaBackSurfaceQ + 1 );
+        a = eye.corneaBackSurfaceR / ( eye.corneaBackSurfaceQ + 1 );
+        b = eye.corneaBackSurfaceR * sqrt(1/(eye.corneaBackSurfaceQ+1)) ;
         eye.corneaBackSurfaceRadii(1) = a;
         eye.corneaBackSurfaceRadii(2:3) = b;
         
@@ -159,7 +161,7 @@ switch p.Results.species
         % positioned so that there is 0.55 mm of corneal thickness between
         % the front and back surface of the cornea at the apex, following
         % Atchison 2006.
-        eye.corneaBackSurfaceCenter = [-eye.corneaBackSurfaceRadii(1)-0.55 0 0];
+        eye.corneaBackSurfaceCenter = [-0.55-eye.corneaBackSurfaceRadii(1) 0 0];
         
         
         %% Pupil
@@ -220,17 +222,61 @@ switch p.Results.species
         end
         
         
+        %% Lens
+        % Although the lens does not influence the pupil tracking, we
+        % include it here to support an illustration of a complete eye
+        % model. The front and back surfaces of the lens are modeled as
+        % hyperbolas. This simplified model does not model the gradient in
+        % refractive index across the extent of the lens, and therefore
+        % does not support ray tracing. All values taken from Atchison
+        % 2006.
+        % To convert R and Q to radii of a hyperbola:
+        %   R = b^2/a
+        %	Q = (a^2 / b^2) + 1
+        % Therefore, given R and Q, we can obtain a and b, which correspond
+        % to the radii of the ellipsoid model, with a corresponding to the
+        % axial dimension, and b to the horizontal and verical dimensions.
+        % Checking my algebra here:
+        %{
+            syms a b R Q
+            eqn1 = R == a^2/b;
+            eqn2 = Q == (a^2 / b^2) + 1;
+            solution = solve([eqn1, eqn2]);
+            solution.a
+            solution.b
+        %}
+        eye.lensFrontSurfaceR = 11.48;
+        eye.lensFrontSurfaceQ = -5;
+        a = eye.lensFrontSurfaceR * sqrt(abs( 1 / (eye.lensFrontSurfaceQ - 1 ) )) * sign(eye.lensFrontSurfaceQ);
+        b = eye.lensFrontSurfaceR / (eye.lensFrontSurfaceQ - 1 );
+        eye.lensFrontSurfaceRadii(1) = b;
+        eye.lensFrontSurfaceRadii(2:3) = a;
+        eye.lensFrontSurfaceCenter = [-3.7-eye.lensFrontSurfaceRadii(1) 0 0];
+        
+        eye.lensBackSurfaceR = -5.9;
+        eye.lensBackSurfaceQ = -2;
+        a = eye.lensBackSurfaceR * sqrt(abs( 1 / (eye.lensBackSurfaceQ - 1 ) )) * sign(eye.lensBackSurfaceQ);
+        b = eye.lensBackSurfaceR / (eye.lensBackSurfaceQ - 1 );
+        eye.lensBackSurfaceRadii(1) = b;
+        eye.lensBackSurfaceRadii(2:3) = a;
+        eye.lensBackSurfaceCenter = [-7.3-eye.lensBackSurfaceRadii(1) 0 0];
+        
+        
         %% Posterior chamber
         % The posterior chamber of the eye is modeled as an ellipsoid.
-        % Atchison 2005 provides the radii of an ellipsoid model for the
-        % posterior chamber and how these dimensions vary with spherical
-        % refractive error.
-        eye.posteriorChamberRadii = [...
-            10.148 - 0.163 * p.Results.sphericalAmetropia ...
-            11.365 - 0.090 * p.Results.sphericalAmetropia ...
-            11.455 - 0.043 * p.Results.sphericalAmetropia ];
-        
-        % Our model holds the depth of the anterior chamber constant. To
+        % Atchison 2006 provides radii of curvature and asphericity for the
+        % posterior chamber as they vary by spherical ametropia. We perform
+        % the calculations here and save only the corresponding radii.
+        % Calculated using the formula for a positive Q value. We can
+        % compare the posterior chamber radii calculated here to those
+        % reported in Atchison 2005, and we find they are very similar.
+        Rzx = -12.91-0.094*p.Results.sphericalAmetropia;
+        Rzy = -12.72+0.004*p.Results.sphericalAmetropia;
+        Qzx = 0.27+0.026*p.Results.sphericalAmetropia;
+        Qzy = 0.25+0.017*p.Results.sphericalAmetropia;
+        eye.posteriorChamberRadii = [ -(Rzx/(Qzx+1)) -(Rzx*sqrt(1/(Qzx+1))) -(Rzy*sqrt(1/(Qzy+1)))];
+
+        % The model holds the depth of the anterior chamber constant. To
         % position the posterior chamber, we need to know the distance
         % between the apex of the anterior chamber and the apex of the
         % posterior chamber. The value for this fixed distance is derived
@@ -242,12 +288,12 @@ switch p.Results.species
         % The axial length of the posterior chamber ellipsoid in an
         % emmetrope is:
         %
-        %   10.1418 * 2 = 20.2836
+        %   10.165 * 2 = 20.33
         %
         % Therefore, the apex of the posterior ellipsoid is:
-        %   23.5800 - 20.2836 = 3.2964 mm
+        %   23.5800 - 20.33 = 3.2964 mm
         % behind the corneal apex.
-        posteriorChamberApexDepth = 3.2964;
+        posteriorChamberApexDepth = 3.25;
         
         % Compute and store axial length
         if isempty(p.Results.axialLength)
@@ -258,8 +304,7 @@ switch p.Results.species
             % eye to have this length, and scale the other dimensions of
             % the posterior chamber to maintain the specified ametropia. We
             % adjust the axial length for the component of the anterior
-            % chamber that contibutes to length, which is calculated below
-            % to be 3.2964.
+            % chamber that contibutes to length (posteriorChamberApexDepth)
             %
             % GKA to follow up: Axial length is usually measured with the
             % IOL master along the visual (as opposed to optic or
@@ -275,39 +320,100 @@ switch p.Results.species
             [(-posteriorChamberApexDepth - eye.posteriorChamberRadii(1)) 0 0];
         
 
-        %% Rotation center
-        % The eye center of rotation in emmetropes is on average 13.3 mm
-        % behind the corneal apex per Gunter K. vonNoorden, MD; Emilio C.
-        % Campos "Binocular Vision and Ocular Motility Theory and
-        % Management of Strabismus" American Orthoptic Journal 51.1 (2001):
-        % 161-162. Spectacle refraction adjusts the axial length of the
+        %% Rotation centers
+        % The rotation center of the eye is often treated as a single,
+        % fixed point. A typical assumption is that the eye center of
+        % rotation in emmetropes is 13.3 mm behind the corneal apex:
+        %
+        %   Gunter K. vonNoorden, MD; Emilio C. Campos "Binocular Vision
+        %   and Ocular Motility Theory and Management of Strabismus"
+        %   American Orthoptic Journal 51.1 (2001): 161-162.
+        %
+        % The source of this value in the cited text is not entirely clear.
+        % It appears to be some compromise between the observed centers of
+        % rotation that are obtained for azimuthal and elevation rotations. 
+        % Measurements by Fry & Hill in 1962 and 1963 find that the
+        % center of rotation is slightly nasal to the optical axis of the
+        % eye, and differs for horizontal and vertical rotations:
+        %
+        %   Fry, G. A., and W. W. Hill. "The center of rotation of the
+        %   eye." Optometry and Vision Science 39.11 (1962): 581-595.
+        %
+        %   Fry, Glenn A., and W. W. Hill. "The mechanics of elevating the
+        %   eye." Optometry and Vision Science 40.12 (1963): 707-716.
+        %
+        % This difference in the apparent horizontal and vertical radii of
+        % the eye was subsequently confirmed:
+        %
+        %   Hayami, Takehito, Kazunori Shidoji, and Katsuya Matsunaga. "An
+        %   ellipsoidal trajectory model for measuring the line of sight."
+        %   Vision research 42.19 (2002): 2287-2293.
+        %
+        % Fry & Hill report that the average azimuthal center of rotation
+        % was 14.8 mm posterior to the corneal apex (14.7 in the
+        % emmetropes), and 0.79 mm nasal to visual axis; and the elevation
+        % center of rotation was 12.2 mm posterior to the corneal apex
+        % (12.0 in the emmetropes) and 0.33 mm superior. These measurements
+        % were made relative to the visual axis of the eye. While our model
+        % is in optical axis coordinates, the effect of this difference is
+        % very small (less than 1/100th of a millimeter).
+        % 
+        % Note that the Fry & Hill measurements superseed the earlier, Park
+        % & Park measurements that claimed substantial translation of the
+        % eye during rotation:
+        %
+        %   Park, Russell Smith, and George E. Park. "The center of ocular
+        %   rotation in the horizontal plane." American Journal of
+        %   Physiology--Legacy Content 104.3 (1933): 545-552.
+        % 
+        % The Park & Park result was due to their assumption that all
+        % "sight lines" (i.e., rotations of the visual axis of the eye)
+        % pass through the same point in space. Fry & Hill that some
+        % subjects (2 of 31) show translation of the eye with rotation.
+        % Also, there is a small, transient retraction of the eye following
+        % a saccade that we do not attempt to model:
+        %
+        %   Enright, J. T. "The aftermath of horizontal saccades: saccadic
+        %   retraction and cyclotorsion." Vision research 26.11 (1986):
+        %   1807-1814.
+        %
+        % Spherical ametropia is correlated with the axial length of the
         % eye. We assume here that the center of rotation reflects this
-        % change in length. Specifically, we assume that the increase in
-        % the radius of curvature of the posterior chamber described by the
-        % Atchison model produces an equivalent lengthening of the radius
-        % of rotation. Support for this 1:1 relationship is found in the
-        % paper:
+        % change in length. Fry & Hill found that azimuthal rotation depth
+        % increased by 0.167 mm for each negative diopter of spherical
+        % refraction, and elevation rotation depth by 0.15 mm for each
+        % negative diopter. Dick and colleagues (Figure 6) found that for
+        % each mm of increase in axial length, the center of rotation
+        % increased by 0.5 mm:
         %
         %   Dick, Graham L., Bryan T. Smith, and Peter L. Spanos.
         %   "Axial length and radius of rotation of the eye."
         %   Clinical and Experimental Optometry 73.2 (1990): 43-50.
         %
-        % Specifically, Figure 6 shows that, for each mm of increase in
-        % the axial length of an eye, the center of rotation tended to
-        % increase by 0.5 mm. Thus, there is a 1:1 relationship of axial
-        % radius and rotation length.
+        % Given that in the Atchison data the axial length of the eye
+        % increases by 0.27 mm for each negative diopter of spherical
+        % ametropic error, this would imply a lengthening of the radius of
+        % eye rotation by 0.14 mm, which is in good agreement with the Fry
+        % & Hill observation of 0.15 - 0.167 mm of increase.
         %
-        % In an emmetropic eye, the distance from the corneal apex to the
-        % center of the posterior chamber is
-        %
-        %   posteriorChamberApexDepth + posteriorChamberRadii(1), or
-        %   3.2964 + 10.148 = 13.4444
-        %
-        % This implies that the center of rotation of an emmetropic eye
-        % lies (13.4444 - 13.3 = 0.1444 mm) closer to the corneal surface
-        % than the position of the center of the posterior chamber.
-        eye.rotationCenter = [eye.posteriorChamberCenter(1)+0.1444 0 0];
+        % We provide three rotation centers, corresponding to the point of
+        % rotation for azimuth, elevation, and torsional eye movements. The
+        % values differ by eye because of the nasal displacement of the
+        % rotation center.
+        rotationDepthAxialIncrease = eye.axialLength - 23.58;
+        switch eyeLaterality
+            case 'Right'
+                eye.rotationCenters = [-14.7-rotationDepthAxialIncrease 0.79 0;
+                    -12.0-rotationDepthAxialIncrease 0 -0.33;
+                    0 0 0];
+            case 'Left'
+                eye.rotationCenters = [-14.7-rotationDepthAxialIncrease -0.79 0;
+                    -12.0-rotationDepthAxialIncrease 0 -0.33;
+                    0 0 0];
+        end
         
+        %% LEAVING THIS HERE UNTIL I CLEAN UP CODE THAT DEPENDS ON OLD ROTATION CENTER STYLE
+        eye.rotationCenter = [-13.3 0 0];
         
         %% Kappa
         % We now calculate kappa, which is the angle (in degrees) between
@@ -379,6 +485,7 @@ switch p.Results.species
         % Obtain refractive index values for this spectral domain.
         eye.corneaRefractiveIndex = returnRefractiveIndex( 'cornea', p.Results.spectralDomain );
         eye.aqueousRefractiveIndex = returnRefractiveIndex( 'aqueous', p.Results.spectralDomain );
+        eye.lensRefractiveIndex = returnRefractiveIndex( 'lens', p.Results.spectralDomain );
         
     otherwise
         error('Please specify a valid species for the eye model');
