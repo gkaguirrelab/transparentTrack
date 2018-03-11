@@ -48,6 +48,12 @@ switch material
         % in the near infrared region." Lasers in medical science 22.1
         % (2007): 46-52.
         ns = [1.357 1.345];
+    case 'lens'
+        % The refractive index of the lens of the eye varies along a
+        % gradient in thickness. Until such time as I implement these
+        % values properly, I will leave the index undefined.
+        % See Atchison 2006 for discussion of this.
+        ns = [nan nan];
     case 'aqueous'
         % Sardar, Dhiraj K., et al. "Optical properties of ocular tissues
         % in the near infrared region." Lasers in medical science 22.1
