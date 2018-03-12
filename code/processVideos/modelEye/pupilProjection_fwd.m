@@ -83,9 +83,9 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
 %                           coordinate frame.
 %   pointsLabels          - An nx1 cell array that identifies each of the
 %                           points, from the set {'pupilCenter',
-%                           'irisCenter', 'rotationCenter',
-%                           'posteriorChamber', 'irisPerimeter',
-%                           'pupilPerimeter',
+%                           'irisCenter', 'aziRotationCenter',
+%                           'eleRotationCenter', 'posteriorChamber',
+%                           'irisPerimeter', 'pupilPerimeter',
 %                           'anteriorChamber','cornealApex'}.
 %   nodalPointIntersectError - A nx1 vector that contains the distance (in
 %                           mm) between the nodal point of the camera and
@@ -118,8 +118,8 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     % Perform the projection and request the full eye model
     [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePose,sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
     % Define some settings for display
-    eyePartLabels = {'rotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex'};
-    plotColors = {'+r' '.w' '.b' '*g' '.y' '*y'};
+    eyePartLabels = {'aziRotationCenter', 'eleRotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex'};
+    plotColors = {'+r' '+r' '.w' '.b' '*g' '.y' '*y'};
     blankFrame = zeros(480,640)+0.5;
     % Prepare a figure
     figure
@@ -144,8 +144,8 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     % Perform the projection and request the full eye model
     [~, ~, sceneWorldPoints, ~, pointLabels] = pupilProjection_fwd(eyePose,sceneGeometry,[],'fullEyeModelFlag',true);
     % Define some settings for display
-    eyePartLabels = {'rotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex'};
-    plotColors = {'+r' '.k' '*b' '*g' '.y' '*y'};
+    eyePartLabels = {'aziRotationCenter', 'eleRotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex'};
+    plotColors = {'+r' '+r' '.k' '*b' '*g' '.y' '*y'};
     % Prepare a figure
     figure
     % Plot each anatomical component
@@ -306,7 +306,7 @@ if p.Results.fullEyeModelFlag
     tmpLabels(:) = {'irisPerimeter'};
     pointLabels = [pointLabels; tmpLabels];
     
-    % Create the anterior chamber ellipsoid.
+    % Create the anterior chamber ellipsoid
     [p1tmp, p2tmp, p3tmp] = ellipsoid( ...
         sceneGeometry.eye.corneaFrontSurfaceCenter(1), ...
         sceneGeometry.eye.corneaFrontSurfaceCenter(2), ...
@@ -516,7 +516,7 @@ end
 % rotation of the eye, and thus would not be
 % visible to the camera.
 if p.Results.fullEyeModelFlag && p.Results.removeObscuredPoints
-    retainIdx = headWorldPoints(:,1) > sceneGeometry.eye.rotationCenter(1);
+    retainIdx = headWorldPoints(:,1) > min([sceneGeometry.eye.rotationCenters.azi(1) sceneGeometry.eye.rotationCenters.ele(1)]);
     eyeWorldPoints = eyeWorldPoints(retainIdx,:);
     headWorldPoints = headWorldPoints(retainIdx,:);
     pointLabels = pointLabels(retainIdx);
