@@ -344,17 +344,15 @@ options = optimoptions(@fmincon,...
         
         switch state
             case 'init'
-                % Unused
+                lastFVal = optimValues.fval;
             case 'iter'
                 lastFVal = optimValues.fval;
-                % Store the current best value for x that satisfies the
-                % constraint. This is done as we observe that fmincon can
-                % move away from the best solution when azimuth and
-                % elevation are close to zero. This behavior has been seen
-                % by others:
+                % Store the current best value for x. This is done as we
+                % observe that fmincon can move away from the best solution
+                % when azimuth and elevation are close to zero. This
+                % behavior has been seen by others:
                 %   https://groups.google.com/forum/#!topic/comp.soft-sys.matlab/SuNzbhEun1Y
-                if optimValues.constrviolation < constraintTolerance && ...
-                        lastFVal < bestFVal
+                if lastFVal < bestFVal
                     bestFVal = lastFVal;
                     xBest = xLast;
                     shapeErrorAtBest = shapeErrorAtLast;
