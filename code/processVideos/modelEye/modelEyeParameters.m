@@ -410,8 +410,6 @@ switch p.Results.species
         eye.rotationCenters.ele = [-12.0-rotationDepthAxialIncrease 0 -0.33];
         eye.rotationCenters.tor = [0 0 0];
         
-        %% LEAVING THIS HERE UNTIL I CLEAN UP CODE THAT DEPENDS ON OLD ROTATION CENTER STYLE
-        eye.rotationCenter = [-13.3 0 0];
         
         %% Kappa
         % We now calculate kappa, which is the angle (in degrees) between
