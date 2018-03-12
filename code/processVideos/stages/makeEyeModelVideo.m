@@ -45,8 +45,8 @@ p.addParameter('videoOutFrameRate', 60, @isnumeric);
 p.addParameter('saveCompressedVideo', true, @islogical);
 p.addParameter('videoSizeX', 640, @isnumeric);
 p.addParameter('videoSizeY', 480, @isnumeric);
-p.addParameter('modelEyeLabelNames', {'rotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex'}, @iscell);
-p.addParameter('modelEyePlotColors', {'+m' '.w' '.b' '*g' '.y' '*y'}, @iscell);
+p.addParameter('modelEyeLabelNames', {'aziRotationCenter', 'eleRotationCenter', 'posteriorChamber' 'irisPerimeter' 'anteriorChamber' 'cornealApex'}, @iscell);
+p.addParameter('modelEyePlotColors', {'+m' '+r' '.w' 'ob' '.y' '*y'}, @iscell);
 p.addParameter('fitLabel', 'radiusSmoothed', @ischar);
 
 % parse
