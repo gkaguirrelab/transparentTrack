@@ -403,14 +403,12 @@ switch p.Results.species
         rotationDepthAxialIncrease = eye.axialLength - 23.58;
         switch eyeLaterality
             case 'Right'
-                eye.rotationCenters = [-14.7-rotationDepthAxialIncrease 0.79 0;
-                    -12.0-rotationDepthAxialIncrease 0 -0.33;
-                    0 0 0];
+                eye.rotationCenters.azi = [-14.7-rotationDepthAxialIncrease 0.79 0];
             case 'Left'
-                eye.rotationCenters = [-14.7-rotationDepthAxialIncrease -0.79 0;
-                    -12.0-rotationDepthAxialIncrease 0 -0.33;
-                    0 0 0];
+                eye.rotationCenters.azi = [-14.7-rotationDepthAxialIncrease -0.79 0];
         end
+        eye.rotationCenters.ele = [-12.0-rotationDepthAxialIncrease 0 -0.33];
+        eye.rotationCenters.tor = [0 0 0];
         
         %% LEAVING THIS HERE UNTIL I CLEAN UP CODE THAT DEPENDS ON OLD ROTATION CENTER STYLE
         eye.rotationCenter = [-13.3 0 0];
