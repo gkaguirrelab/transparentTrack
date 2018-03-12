@@ -163,9 +163,9 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     sceneGeometry=createSceneGeometry();
     % Define the ray tracing functions (slow; only need to do once)
     rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
-    % Perform 1000 forward projections with randomly selected eye poses
+    % Perform 100 forward projections with randomly selected eye poses
     % without ray tracing
-    nPoses = 1000;
+    nPoses = 100;
     eyePoses=[(rand(nPoses,1)-0.5)*20, (rand(nPoses,1)-0.5)*10, zeros(nPoses,1), 2+(rand(nPoses,1)-0.5)*1];
     tic
     for pp = 1:nPoses
@@ -400,15 +400,9 @@ end
 % the head-centered world coordinate frame, positive azimuth, elevation and
 % torsion values correspond to leftward, downward and clockwise (as seen
 % from the perspective of the subject) eye movements
-R3 = [cosd(eyeAzimuth) -sind(eyeAzimuth) 0; sind(eyeAzimuth) cosd(eyeAzimuth) 0; 0 0 1];
-R2 = [cosd(eyeElevation) 0 sind(eyeElevation); 0 1 0; -sind(eyeElevation) 0 cosd(eyeElevation)];
-R1 = [1 0 0; 0 cosd(eyeTorsion) -sind(eyeTorsion); 0 sind(eyeTorsion) cosd(eyeTorsion)];
-
-% This order (1-2-3) corresponds to a head-fixed, extrinsic, rotation
-% matrix. The reverse order (3-2-1) would be an eye-fixed, intrinsic
-% rotation matrix and would corresponds to the "Fick coordinate" scheme.
-eyeRotation = R1*R2*R3;
-
+R.azi = [cosd(eyeAzimuth) -sind(eyeAzimuth) 0; sind(eyeAzimuth) cosd(eyeAzimuth) 0; 0 0 1];
+R.ele = [cosd(eyeElevation) 0 sind(eyeElevation); 0 1 0; -sind(eyeElevation) 0 cosd(eyeElevation)];
+R.tor = [1 0 0; 0 cosd(eyeTorsion) -sind(eyeTorsion); 0 sind(eyeTorsion) cosd(eyeTorsion)];
 
 %% Obtain the virtual image for the eyeWorld points
 % This steps accounts for the effect of corneal and corrective lens
@@ -427,16 +421,19 @@ if ~isempty(rayTraceFuncs)
         % Define an error function which is the distance between the nodal
         % point of the camera and the point at which a ray impacts the
         % plane that contains the camera, with the ray departing from the
-        % eyeWorld point at angle theta in the p1p2 plane.
-        % NOTE: This function takes the eye rotations in a modified order
-        % of azimuth, torsion, then elevation.
+        % eyeWorld point at angle theta in the p1p2 plane. NOTE: The order
+        % of variables here is determined by the function that is called.
+        % To check:
+        %{
+        rayTraceFuncs = assembleRayTraceFuncs(createSceneGeometry());
+        rayTraceFuncs.cameraNodeDistanceError2D.varNames
+        %}
         errorFunc = @(theta) rayTraceFuncs.cameraNodeDistanceError2D.p1p2(...
-            sceneGeometry.extrinsicTranslationVector(1),...
-            sceneGeometry.extrinsicTranslationVector(2),...
-            sceneGeometry.extrinsicTranslationVector(3),...
-            deg2rad(eyeAzimuth), deg2rad(eyeTorsion), deg2rad(eyeElevation), ...
-            eyeWorldPoint(1),eyeWorldPoint(2),eyeWorldPoint(3),...
-            sceneGeometry.eye.rotationCenter(1),...
+            eyeWorldPoint, sceneGeometry.extrinsicTranslationVector, ...
+            [deg2rad(eyeAzimuth), deg2rad(eyeElevation), deg2rad(eyeTorsion)], ...
+            sceneGeometry.eye.rotationCenters.azi([1 2]),...
+            sceneGeometry.eye.rotationCenters.ele([1 3]),...
+            sceneGeometry.eye.rotationCenters.tor([2 3]),...
             theta);
         % Conduct an fminsearch to find the p1p2 theta that results in a
         % ray that strikes as close as possible to the camera nodal point.
@@ -446,12 +443,11 @@ if ~isempty(rayTraceFuncs)
         % Now repeat this process for a ray that varies in theta in the
         % p1p3 plane
         errorFunc = @(theta) rayTraceFuncs.cameraNodeDistanceError2D.p1p3(...
-            sceneGeometry.extrinsicTranslationVector(1),...
-            sceneGeometry.extrinsicTranslationVector(2),...
-            sceneGeometry.extrinsicTranslationVector(3),...
-            deg2rad(eyeAzimuth), deg2rad(eyeTorsion), deg2rad(eyeElevation), ...
-            eyeWorldPoint(1),eyeWorldPoint(2),eyeWorldPoint(3),...
-            sceneGeometry.eye.rotationCenter(1),...
+            eyeWorldPoint, sceneGeometry.extrinsicTranslationVector, ...
+            [deg2rad(eyeAzimuth), deg2rad(eyeElevation), deg2rad(eyeTorsion)], ...
+            sceneGeometry.eye.rotationCenters.azi([1 2]),...
+            sceneGeometry.eye.rotationCenters.ele([1 3]),...
+            sceneGeometry.eye.rotationCenters.tor([2 3]),...
             theta);
         theta_p1p3=fminsearch(errorFunc,1e-4);
         % With both theta values calculated, now obtain the virtual image
@@ -481,7 +477,20 @@ if ~isempty(rayTraceFuncs)
 end
 
 %% Apply the eye rotation
-headWorldPoints = (eyeRotation*(eyeWorldPoints-sceneGeometry.eye.rotationCenter)')'+sceneGeometry.eye.rotationCenter;
+% Copy the eyeWorld points into headWorld
+headWorldPoints=eyeWorldPoints;
+
+% This order (tor-ele-azi) corresponds to a head-fixed, extrinsic, rotation
+% matrix. The reverse order (azi-ele-tor) would be an eye-fixed, intrinsic
+% rotation matrix and would corresponds to the "Fick coordinate" scheme.
+rotOrder = {'tor','ele','azi'};
+
+% We shift the headWorld points to this rotation center, rotate, shift
+% back, and repeat.
+for rr=1:3
+    headWorldPoints = ...
+        (R.(rotOrder{rr})*(headWorldPoints-sceneGeometry.eye.rotationCenters.(rotOrder{rr}))')'+sceneGeometry.eye.rotationCenters.(rotOrder{rr});
+end
 
 % If we are projecting a full eye model, and the 'removeObscuredPoints' is
 % set to true, then remove those points that are posterior to the center of

@@ -187,7 +187,7 @@ rayTraceFuncs.traceOpticalSystem = traceOpticalSystem(sceneGeometry.opticalSyste
 
 [rayTraceFuncs.cameraNodeDistanceError2D.p1p2, rayTraceFuncs.cameraNodeDistanceError2D.p1p3] = ...
     cameraNodeDistanceError2D(rayTraceFuncs.traceOpticalSystem);
-
+rayTraceFuncs.cameraNodeDistanceError2D.varNames = {'eyeWorldPoint','extrinsicTranslationVector','[eyeAzimuthRads, eyeElevationRads, eyeTorsionRads]','aziRotCenter_p1p2','eleRotCenter_p1p3','torRotCenter_p2p3','theta'};
 
 %% cameraNodeDistanceError3D
 % 3D distance of ray intersection on camera plane from camera node
@@ -203,8 +203,8 @@ rayTraceFuncs.traceOpticalSystem = traceOpticalSystem(sceneGeometry.opticalSyste
 %   nodal point of the camera.
 %
 
-rayTraceFuncs.cameraNodeDistanceError3D = ...
-    cameraNodeDistanceError3D(rayTraceFuncs.traceOpticalSystem);
+% rayTraceFuncs.cameraNodeDistanceError3D = ...
+%     cameraNodeDistanceError3D(rayTraceFuncs.traceOpticalSystem);
 
 
 %% virtualImageRay
@@ -290,28 +290,109 @@ outputRayEyeWorld_p1p3=[outputRayEyeWorld2D_p1p3(1,1) p2 outputRayEyeWorld2D_p1p
     outputRayEyeWorld2D_p1p3(2,1) p2 outputRayEyeWorld2D_p1p3(2,2)];
 
 % Prepare to rotate the outputRay into the sceneWorld coordinates
-syms cameraTranslationX cameraTranslationY cameraTranslationZ rotationCenterDepth
+syms cameraTranslationX cameraTranslationY cameraTranslationZ 
 syms eyeAzimuthRads eyeElevationRads eyeTorsionRads
+syms aziRotCent_p1 aziRotCent_p2
+rotationCenterAzi = [aziRotCent_p1 aziRotCent_p2 0];
+syms eleRotCent_p1 eleRotCent_p3
+rotationCenterEle = [eleRotCent_p1 0 eleRotCent_p3];
+syms torRotCent_p2 torRotCent_p3
+rotationCenterTor = [0 torRotCent_p2 torRotCent_p3];
 
-R3 = [cos(eyeAzimuthRads) -sin(eyeAzimuthRads) 0; sin(eyeAzimuthRads) cos(eyeAzimuthRads) 0; 0 0 1];
-R2 = [cos(eyeElevationRads) 0 sin(eyeElevationRads); 0 1 0; -sin(eyeElevationRads) 0 cos(eyeElevationRads)];
-R1 = [1 0 0; 0 cos(eyeTorsionRads) -sin(eyeTorsionRads); 0 sin(eyeTorsionRads) cos(eyeTorsionRads)];
 
-eyeRotation = R1*R2*R3;
+RotAzi = [cos(eyeAzimuthRads) -sin(eyeAzimuthRads) 0; sin(eyeAzimuthRads) cos(eyeAzimuthRads) 0; 0 0 1];
+RotEle = [cos(eyeElevationRads) 0 sin(eyeElevationRads); 0 1 0; -sin(eyeElevationRads) 0 cos(eyeElevationRads)];
+RotTor = [1 0 0; 0 cos(eyeTorsionRads) -sin(eyeTorsionRads); 0 sin(eyeTorsionRads) cos(eyeTorsionRads)];
 
-% Shift the eyeWorld ray to the rotational center of the eye,
-% rotate for this eye pose, then undo the centering
-outputRayHeadWorld_p1p2(1,:)=outputRayEyeWorld_p1p2(1,:)-rotationCenterDepth;
-outputRayHeadWorld_p1p2(2,:)=outputRayEyeWorld_p1p2(2,:)-rotationCenterDepth;
-outputRayHeadWorld_p1p2 = (eyeRotation*(outputRayHeadWorld_p1p2)')';
-outputRayHeadWorld_p1p2(1,:)=outputRayHeadWorld_p1p2(1,:)+rotationCenterDepth;
-outputRayHeadWorld_p1p2(2,:)=outputRayHeadWorld_p1p2(2,:)+rotationCenterDepth;
+% Copy eyeWorld rays over the HeadWorld variables
+outputRayHeadWorld_p1p2 = outputRayEyeWorld_p1p2;
+outputRayHeadWorld_p1p3 = outputRayEyeWorld_p1p3;
 
-outputRayHeadWorld_p1p3(1,:)=outputRayEyeWorld_p1p3(1,:)-rotationCenterDepth;
-outputRayHeadWorld_p1p3(2,:)=outputRayEyeWorld_p1p3(2,:)-rotationCenterDepth;
-outputRayHeadWorld_p1p3 = (eyeRotation*(outputRayHeadWorld_p1p3)')';
-outputRayHeadWorld_p1p3(1,:)=outputRayHeadWorld_p1p3(1,:)+rotationCenterDepth;
-outputRayHeadWorld_p1p3(2,:)=outputRayHeadWorld_p1p3(2,:)+rotationCenterDepth;
+% For each of the two coordinates in each ray, shift the eyeWorld ray to
+% the rotational center of the eye, rotate for this eye pose, then undo the
+% centering
+
+
+%% Torsion
+% p1p2
+for coord = 1:2
+    for dim = 1:3
+        outputRayHeadWorld_p1p2(coord,dim)=outputRayHeadWorld_p1p2(coord,dim)-rotationCenterTor(dim);
+    end
+end
+outputRayHeadWorld_p1p2 = (RotTor*(outputRayHeadWorld_p1p2)')';
+for coord = 1:2
+    for dim = 1:3
+        outputRayHeadWorld_p1p2(coord,dim)=outputRayHeadWorld_p1p2(coord,dim)+rotationCenterTor(dim);
+    end
+end
+% p1p3
+for coord = 1:2
+    for dim = 1:3
+        outputRayHeadWorld_p1p3(coord,dim)=outputRayHeadWorld_p1p3(coord,dim)-rotationCenterTor(dim);
+    end
+end
+outputRayHeadWorld_p1p3 = (RotTor*(outputRayHeadWorld_p1p3)')';
+for coord = 1:2
+    for dim = 1:3
+        outputRayHeadWorld_p1p3(coord,dim)=outputRayHeadWorld_p1p3(coord,dim)+rotationCenterTor(dim);
+    end
+end
+
+
+%% Elevation
+% p1p2
+for coord = 1:2
+    for dim = 1:3
+        outputRayHeadWorld_p1p2(coord,dim)=outputRayHeadWorld_p1p2(coord,dim)-rotationCenterEle(dim);
+    end
+end
+outputRayHeadWorld_p1p2 = (RotEle*(outputRayHeadWorld_p1p2)')';
+for coord = 1:2
+    for dim = 1:3
+        outputRayHeadWorld_p1p2(coord,dim)=outputRayHeadWorld_p1p2(coord,dim)+rotationCenterEle(dim);
+    end
+end
+% p1p3
+for coord = 1:2
+    for dim = 1:3
+        outputRayHeadWorld_p1p3(coord,dim)=outputRayHeadWorld_p1p3(coord,dim)-rotationCenterEle(dim);
+    end
+end
+outputRayHeadWorld_p1p3 = (RotEle*(outputRayHeadWorld_p1p3)')';
+for coord = 1:2
+    for dim = 1:3
+        outputRayHeadWorld_p1p3(coord,dim)=outputRayHeadWorld_p1p3(coord,dim)+rotationCenterEle(dim);
+    end
+end
+
+
+%% Azimith
+% p1p2
+for coord = 1:2
+    for dim = 1:3
+        outputRayHeadWorld_p1p2(coord,dim)=outputRayHeadWorld_p1p2(coord,dim)-rotationCenterAzi(dim);
+    end
+end
+outputRayHeadWorld_p1p2 = (RotAzi*(outputRayHeadWorld_p1p2)')';
+for coord = 1:2
+    for dim = 1:3
+        outputRayHeadWorld_p1p2(coord,dim)=outputRayHeadWorld_p1p2(coord,dim)+rotationCenterAzi(dim);
+    end
+end
+% p1p3
+for coord = 1:2
+    for dim = 1:3
+        outputRayHeadWorld_p1p3(coord,dim)=outputRayHeadWorld_p1p3(coord,dim)-rotationCenterAzi(dim);
+    end
+end
+outputRayHeadWorld_p1p3 = (RotAzi*(outputRayHeadWorld_p1p3)')';
+for coord = 1:2
+    for dim = 1:3
+        outputRayHeadWorld_p1p3(coord,dim)=outputRayHeadWorld_p1p3(coord,dim)+rotationCenterAzi(dim);
+    end
+end
+
 
 % Re-arrange the head world coordinate frame to transform to the scene
 % world coordinate frame
@@ -324,19 +405,31 @@ slope_xZ =(outputRaySceneWorld_p1p2(2,1)-outputRaySceneWorld_p1p2(1,1))/(outputR
 slope_yZ =(outputRaySceneWorld_p1p2(2,2)-outputRaySceneWorld_p1p2(1,2))/(outputRaySceneWorld_p1p2(2,3)-outputRaySceneWorld_p1p2(1,3));
 cameraPlaneX = outputRaySceneWorld_p1p2(1,1)+((cameraTranslationZ-outputRaySceneWorld_p1p2(1,3))*slope_xZ);
 cameraPlaneY = outputRaySceneWorld_p1p2(1,2)+((cameraTranslationZ-outputRaySceneWorld_p1p2(1,3))*slope_yZ);
-p1p2Func = matlabFunction(sqrt(...
-    (cameraTranslationX-cameraPlaneX)^2 + ...
-    (cameraTranslationY-cameraPlaneY)^2 ...
-    ));
+p1p2Func = matlabFunction(...
+    sqrt((cameraTranslationX-cameraPlaneX)^2 + ...
+    (cameraTranslationY-cameraPlaneY)^2 ), ...
+    'Vars',{[p1 p2 p3],...
+        [cameraTranslationX; cameraTranslationY; cameraTranslationZ],...
+        [eyeAzimuthRads, eyeElevationRads, eyeTorsionRads],...
+        [aziRotCent_p1, aziRotCent_p2],...
+        [eleRotCent_p1, eleRotCent_p3],...
+        [torRotCent_p2, torRotCent_p3],...
+        theta_p1p2});
 
 slope_xZ =(outputRaySceneWorld_p1p3(2,1)-outputRaySceneWorld_p1p3(1,1))/(outputRaySceneWorld_p1p3(2,3)-outputRaySceneWorld_p1p3(1,3));
 slope_yZ =(outputRaySceneWorld_p1p3(2,2)-outputRaySceneWorld_p1p3(1,2))/(outputRaySceneWorld_p1p3(2,3)-outputRaySceneWorld_p1p3(1,3));
 cameraPlaneX = outputRaySceneWorld_p1p3(1,1)+((cameraTranslationZ-outputRaySceneWorld_p1p3(1,3))*slope_xZ);
 cameraPlaneY = outputRaySceneWorld_p1p3(1,2)+((cameraTranslationZ-outputRaySceneWorld_p1p3(1,3))*slope_yZ);
-p1p3Func = matlabFunction(sqrt(...
-    (cameraTranslationX-cameraPlaneX)^2 + ...
-    (cameraTranslationY-cameraPlaneY)^2 ...
-    ));
+p1p3Func = matlabFunction(...
+    sqrt((cameraTranslationX-cameraPlaneX)^2 + ...
+    (cameraTranslationY-cameraPlaneY)^2 ), ...
+    'Vars',{[p1 p2 p3],...
+        [cameraTranslationX; cameraTranslationY; cameraTranslationZ],...
+        [eyeAzimuthRads, eyeElevationRads, eyeTorsionRads],...
+        [aziRotCent_p1, aziRotCent_p2],...
+        [eleRotCent_p1, eleRotCent_p3],...
+        [torRotCent_p2, torRotCent_p3],...
+        theta_p1p3});
 
 end
 
