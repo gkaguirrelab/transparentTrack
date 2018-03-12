@@ -187,7 +187,8 @@ rayTraceFuncs.traceOpticalSystem = traceOpticalSystem(sceneGeometry.opticalSyste
 
 [rayTraceFuncs.cameraNodeDistanceError2D.p1p2, rayTraceFuncs.cameraNodeDistanceError2D.p1p3] = ...
     cameraNodeDistanceError2D(rayTraceFuncs.traceOpticalSystem);
-rayTraceFuncs.cameraNodeDistanceError2D.varNames = {'eyeWorldPoint','extrinsicTranslationVector','[eyeAzimuthRads, eyeElevationRads, eyeTorsionRads]','aziRotCenter_p1p2','eleRotCenter_p1p3','torRotCenter_p2p3','theta'};
+rayTraceFuncs.cameraNodeDistanceError2D.argumentNames = {'eyeWorldPoint','extrinsicTranslationVector','[eyeAzimuthRads, eyeElevationRads, eyeTorsionRads]','aziRotCenter_p1p2','eleRotCenter_p1p3','torRotCenter_p2p3','theta'};
+
 
 %% cameraNodeDistanceError3D
 % 3D distance of ray intersection on camera plane from camera node
@@ -203,8 +204,8 @@ rayTraceFuncs.cameraNodeDistanceError2D.varNames = {'eyeWorldPoint','extrinsicTr
 %   nodal point of the camera.
 %
 
-% rayTraceFuncs.cameraNodeDistanceError3D = ...
-%     cameraNodeDistanceError3D(rayTraceFuncs.traceOpticalSystem);
+ rayTraceFuncs.cameraNodeDistanceError3D = ...
+     cameraNodeDistanceError3D(rayTraceFuncs.traceOpticalSystem);
 
 
 %% virtualImageRay
@@ -299,7 +300,6 @@ rotationCenterEle = [eleRotCent_p1 0 eleRotCent_p3];
 syms torRotCent_p2 torRotCent_p3
 rotationCenterTor = [0 torRotCent_p2 torRotCent_p3];
 
-
 RotAzi = [cos(eyeAzimuthRads) -sin(eyeAzimuthRads) 0; sin(eyeAzimuthRads) cos(eyeAzimuthRads) 0; 0 0 1];
 RotEle = [cos(eyeElevationRads) 0 sin(eyeElevationRads); 0 1 0; -sin(eyeElevationRads) 0 cos(eyeElevationRads)];
 RotTor = [1 0 0; 0 cos(eyeTorsionRads) -sin(eyeTorsionRads); 0 sin(eyeTorsionRads) cos(eyeTorsionRads)];
@@ -311,7 +311,6 @@ outputRayHeadWorld_p1p3 = outputRayEyeWorld_p1p3;
 % For each of the two coordinates in each ray, shift the eyeWorld ray to
 % the rotational center of the eye, rotate for this eye pose, then undo the
 % centering
-
 
 %% Torsion
 % p1p2
@@ -464,22 +463,65 @@ outputRayEyeWorld3D=[outputRayEyeWorld2D_p1p2(1,1) outputRayEyeWorld2D_p1p2(1,2)
     outputRayEyeWorld2D_p1p2(2,1) outputRayEyeWorld2D_p1p2(2,2) outputRayEyeWorld2D_p1p3(2,2)];
 
 % prepare to rotate the outputRay into the sceneWorld coordinates
-syms cameraTranslationX cameraTranslationY cameraTranslationZ rotationCenterDepth
+syms cameraTranslationX cameraTranslationY cameraTranslationZ 
 syms eyeAzimuthRads eyeElevationRads eyeTorsionRads
+syms aziRotCent_p1 aziRotCent_p2
+rotationCenterAzi = [aziRotCent_p1 aziRotCent_p2 0];
+syms eleRotCent_p1 eleRotCent_p3
+rotationCenterEle = [eleRotCent_p1 0 eleRotCent_p3];
+syms torRotCent_p2 torRotCent_p3
+rotationCenterTor = [0 torRotCent_p2 torRotCent_p3];
 
-R3 = [cos(eyeAzimuthRads) -sin(eyeAzimuthRads) 0; sin(eyeAzimuthRads) cos(eyeAzimuthRads) 0; 0 0 1];
-R2 = [cos(eyeElevationRads) 0 sin(eyeElevationRads); 0 1 0; -sin(eyeElevationRads) 0 cos(eyeElevationRads)];
-R1 = [1 0 0; 0 cos(eyeTorsionRads) -sin(eyeTorsionRads); 0 sin(eyeTorsionRads) cos(eyeTorsionRads)];
+RotAzi = [cos(eyeAzimuthRads) -sin(eyeAzimuthRads) 0; sin(eyeAzimuthRads) cos(eyeAzimuthRads) 0; 0 0 1];
+RotEle = [cos(eyeElevationRads) 0 sin(eyeElevationRads); 0 1 0; -sin(eyeElevationRads) 0 cos(eyeElevationRads)];
+RotTor = [1 0 0; 0 cos(eyeTorsionRads) -sin(eyeTorsionRads); 0 sin(eyeTorsionRads) cos(eyeTorsionRads)];
 
-eyeRotation = R1*R2*R3;
+% Copy over the outputRay from eye to head world
+outputRayHeadWorld3D=outputRayEyeWorld3D;
 
-% Shift the eyeWorld ray to the rotational center of the eye,
-% rotate for this eye pose, undo the centering
-outputRayHeadWorld3D(1,:)=outputRayEyeWorld3D(1,:)-rotationCenterDepth;
-outputRayHeadWorld3D(2,:)=outputRayEyeWorld3D(2,:)-rotationCenterDepth;
-outputRayHeadWorld3D = (eyeRotation*(outputRayHeadWorld3D)')';
-outputRayHeadWorld3D(1,:)=outputRayHeadWorld3D(1,:)+rotationCenterDepth;
-outputRayHeadWorld3D(2,:)=outputRayHeadWorld3D(2,:)+rotationCenterDepth;
+%% Torsion
+% p1p2
+for coord = 1:2
+    for dim = 1:3
+        outputRayHeadWorld3D(coord,dim)=outputRayHeadWorld3D(coord,dim)-rotationCenterTor(dim);
+    end
+end
+outputRayHeadWorld3D = (RotTor*(outputRayHeadWorld3D)')';
+for coord = 1:2
+    for dim = 1:3
+        outputRayHeadWorld3D(coord,dim)=outputRayHeadWorld3D(coord,dim)+rotationCenterTor(dim);
+    end
+end
+
+
+%% Elevation
+% p1p2
+for coord = 1:2
+    for dim = 1:3
+        outputRayHeadWorld3D(coord,dim)=outputRayHeadWorld3D(coord,dim)-rotationCenterEle(dim);
+    end
+end
+outputRayHeadWorld3D = (RotEle*(outputRayHeadWorld3D)')';
+for coord = 1:2
+    for dim = 1:3
+        outputRayHeadWorld3D(coord,dim)=outputRayHeadWorld3D(coord,dim)+rotationCenterEle(dim);
+    end
+end
+
+
+%% Azimith
+% p1p2
+for coord = 1:2
+    for dim = 1:3
+        outputRayHeadWorld3D(coord,dim)=outputRayHeadWorld3D(coord,dim)-rotationCenterAzi(dim);
+    end
+end
+outputRayHeadWorld3D = (RotAzi*(outputRayHeadWorld3D)')';
+for coord = 1:2
+    for dim = 1:3
+        outputRayHeadWorld3D(coord,dim)=outputRayHeadWorld3D(coord,dim)+rotationCenterAzi(dim);
+    end
+end
 
 % Re-arrange the head world coordinate frame to transform to the scene
 % world coordinate frame
@@ -495,10 +537,17 @@ slope_xZ =(outputRaySceneWorld3D(2,1)-outputRaySceneWorld3D(1,1))/(outputRayScen
 slope_yZ =(outputRaySceneWorld3D(2,2)-outputRaySceneWorld3D(1,2))/(outputRaySceneWorld3D(2,3)-outputRaySceneWorld3D(1,3));
 cameraPlaneX = outputRaySceneWorld3D(1,1)+((cameraTranslationZ-outputRaySceneWorld3D(1,3))*slope_xZ);
 cameraPlaneY = outputRaySceneWorld3D(1,2)+((cameraTranslationZ-outputRaySceneWorld3D(1,3))*slope_yZ);
-p1p2p3Func = matlabFunction(sqrt(...
-    (cameraTranslationX-cameraPlaneX)^2 + ...
-    (cameraTranslationY-cameraPlaneY)^2 ...
-    ));
+p1p2p3Func = matlabFunction(...
+    sqrt((cameraTranslationX-cameraPlaneX)^2 + ...
+    (cameraTranslationY-cameraPlaneY)^2 ), ...
+    'Vars',{[p1 p2 p3],...
+        [cameraTranslationX; cameraTranslationY; cameraTranslationZ],...
+        [eyeAzimuthRads, eyeElevationRads, eyeTorsionRads],...
+        [aziRotCent_p1, aziRotCent_p2],...
+        [eleRotCent_p1, eleRotCent_p3],...
+        [torRotCent_p2, torRotCent_p3],...
+        theta_p1p2, theta_p1p3});
+
 
 end
 
