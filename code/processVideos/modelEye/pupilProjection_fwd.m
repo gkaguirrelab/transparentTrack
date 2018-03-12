@@ -158,6 +158,24 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     axis equal
 %}
 %{
+    %% Calculate the ray tracing error for some random poses
+    % Obtain a default sceneGeometry structure
+    sceneGeometry=createSceneGeometry();
+    % Define the ray tracing functions (slow; only need to do once)
+    rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
+    % Perform 100 forward projections with randomly selected eye poses
+    nPoses = 100;
+    eyePoses=[(rand(nPoses,1)-0.5)*30, (rand(nPoses,1)-0.5)*20, zeros(nPoses,1), 2+(rand(nPoses,1)-0.5)*1];
+    for pp = 1:nPoses
+    	[~,~,~,~,~,rayTraceError(:,pp)]=pupilProjection_fwd(eyePoses(pp,:),sceneGeometry,rayTraceFuncs,'calcNodalIntersectError',true);
+    end
+    % Observe that the ray trace nodal error, while small, grows as a
+    % function of the rotation of the eye.
+    plot(sqrt(eyePoses(:,1).^2+eyePoses(:,2).^2),median(rayTraceError),'.r')
+    xlabel('Euclidean rotation distance [deg]');
+    ylabel('Ray trace nodal error [mm]');
+%}
+%{
     %% Calculate the time required for the forward projection
     % Obtain a default sceneGeometry structure
     sceneGeometry=createSceneGeometry();
@@ -267,8 +285,10 @@ if p.Results.fullEyeModelFlag
     pointLabels = [pointLabels; 'pupilCenter'];
     eyeWorldPoints = [eyeWorldPoints; sceneGeometry.eye.irisCenter];
     pointLabels = [pointLabels; 'irisCenter'];
-    eyeWorldPoints = [eyeWorldPoints; sceneGeometry.eye.rotationCenter];
-    pointLabels = [pointLabels; 'rotationCenter'];
+    eyeWorldPoints = [eyeWorldPoints; sceneGeometry.eye.rotationCenters.azi];
+    pointLabels = [pointLabels; 'aziRotationCenter'];
+    eyeWorldPoints = [eyeWorldPoints; sceneGeometry.eye.rotationCenters.ele];
+    pointLabels = [pointLabels; 'eleRotationCenter'];
     
     % Define points around the perimeter of the iris
     nIrisPerimPoints = p.Results.nIrisPerimPoints;
@@ -458,19 +478,18 @@ if ~isempty(rayTraceFuncs)
         eyeWorldPoints(refractPointsIdx(ii),:) = virtualImageRay(1,:);
         % The code below may be used to calculate the total error (in mm)
         % in both dimensions for intersecting the nodal point of the
-        % camera. Error values on the order of 0.1 - 5 are found across
+        % camera. Error values on the order of 0.01 - 0.02 are found across
         % pupil points and for a range of eye rotations. By default, the
         % flag that controls this calculation is set to false, as the
         % computation is lengthy and is not otherwise used.
         if p.Results.calcNodalIntersectError
             nodalPointIntersectError(refractPointsIdx(ii)) = ...
                 rayTraceFuncs.cameraNodeDistanceError3D(...
-                sceneGeometry.extrinsicTranslationVector(1),...
-                sceneGeometry.extrinsicTranslationVector(2),...
-                sceneGeometry.extrinsicTranslationVector(3),...
-                deg2rad(eyeAzimuth), deg2rad(eyeElevation), deg2rad(eyeTorsion),...
-                eyeWorldPoint(1),eyeWorldPoint(2),eyeWorldPoint(3),...
-                sceneGeometry.eye.rotationCenter(1),...
+                eyeWorldPoint, sceneGeometry.extrinsicTranslationVector, ...
+                [deg2rad(eyeAzimuth), deg2rad(eyeElevation), deg2rad(eyeTorsion)], ...
+                sceneGeometry.eye.rotationCenters.azi([1 2]),...
+                sceneGeometry.eye.rotationCenters.ele([1 3]),...
+                sceneGeometry.eye.rotationCenters.tor([2 3]),...
                 theta_p1p2, theta_p1p3);
         end
     end
