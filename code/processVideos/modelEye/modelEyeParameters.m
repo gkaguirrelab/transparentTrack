@@ -270,6 +270,13 @@ switch p.Results.species
         % Calculated using the formula for a positive Q value. We can
         % compare the posterior chamber radii calculated here to those
         % reported in Atchison 2005, and we find they are very similar.
+        %{
+            eye = modelEyeParameters();
+            fprintf('Atchison emmetropic eye 2005, posterior chamber radii [axial x horizontal x vertical]:\n');
+            fprintf('\t10.148\t11.455\t11.365\n');
+            fprintf('The current model eye, emmetropic eye:\n');
+            fprintf('\t%4.3f \t%4.3f \t%4.3f \n',eye.posteriorChamberRadii(1),eye.posteriorChamberRadii(2),eye.posteriorChamberRadii(3));
+        %}
         Rzx = -12.91-0.094*p.Results.sphericalAmetropia;
         Rzy = -12.72+0.004*p.Results.sphericalAmetropia;
         Qzx = 0.27+0.026*p.Results.sphericalAmetropia;
@@ -377,6 +384,19 @@ switch p.Results.species
         %   retraction and cyclotorsion." Vision research 26.11 (1986):
         %   1807-1814.
         %
+        % We provide three rotation centers, corresponding to the point of
+        % rotation for azimuth, elevation, and torsional eye movements. The
+        % values differ by eye because of the nasal displacement of the
+        % rotation center.
+        switch eyeLaterality
+            case 'Right'
+                eye.rotationCenters.azi = [-14.7 0.79 0];
+            case 'Left'
+                eye.rotationCenters.azi = [-14.7 -0.79 0];
+        end
+        eye.rotationCenters.ele = [-12.0 0 -0.33];
+        eye.rotationCenters.tor = [0 0 0];
+        
         % Spherical ametropia is correlated with the axial length of the
         % eye. We assume here that the center of rotation reflects this
         % change in length. Fry & Hill found that azimuthal rotation depth
@@ -396,20 +416,15 @@ switch p.Results.species
         % eye rotation by 0.14 mm, which is in good agreement with the Fry
         % & Hill observation of 0.15 - 0.167 mm of increase.
         %
-        % We provide three rotation centers, corresponding to the point of
-        % rotation for azimuth, elevation, and torsional eye movements. The
-        % values differ by eye because of the nasal displacement of the
-        % rotation center.
-        rotationDepthAxialIncrease = eye.axialLength - 23.58;
-        switch eyeLaterality
-            case 'Right'
-                eye.rotationCenters.azi = [-14.7-rotationDepthAxialIncrease 0.79 0];
-            case 'Left'
-                eye.rotationCenters.azi = [-14.7-rotationDepthAxialIncrease -0.79 0];
+        % We scale the azi and ele rotation centers by the ratio of the
+        % posterior chamber axial and vertical radii relative to the
+        % emmetropic size
+        emmetropicPostChamberRadii = [10.1653543307087 11.455772536562 11.3771138695189];
+        for dim=1:3
+            eye.rotationCenters.azi(dim) = eye.rotationCenters.azi(dim) .* (eye.posteriorChamberRadii(dim)/emmetropicPostChamberRadii(dim));
+            eye.rotationCenters.ele(dim) = eye.rotationCenters.ele(dim) .* (eye.posteriorChamberRadii(dim)/emmetropicPostChamberRadii(dim));
+            eye.rotationCenters.tor(dim) = eye.rotationCenters.tor(dim) .* (eye.posteriorChamberRadii(dim)/emmetropicPostChamberRadii(dim));
         end
-        eye.rotationCenters.ele = [-12.0-rotationDepthAxialIncrease 0 -0.33];
-        eye.rotationCenters.tor = [0 0 0];
-        
         
         %% Kappa
         % We now calculate kappa, which is the angle (in degrees) between
