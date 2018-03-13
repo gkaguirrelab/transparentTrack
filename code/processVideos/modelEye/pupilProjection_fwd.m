@@ -114,12 +114,12 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     % Define the ray tracing functions
     rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
     % Define an eyePose with azimuth, elevation, torsion, and pupil radius
-    eyePose = [-10 5 0 3];
+    eyePose = [-10 -5 0 3];
     % Perform the projection and request the full eye model
     [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePose,sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
     % Define some settings for display
     eyePartLabels = {'aziRotationCenter', 'eleRotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex'};
-    plotColors = {'+r' '+r' '.w' '.b' '*g' '.y' '*y'};
+    plotColors = {'+r' '+m' '.w' '.b' '*g' '.y' '*y'};
     blankFrame = zeros(480,640)+0.5;
     % Prepare a figure
     figure
@@ -142,10 +142,10 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     % Define an eyePose with azimuth, elevation, torsion, and pupil radius
     eyePose = [-10 5 0 3];
     % Perform the projection and request the full eye model
-    [~, ~, sceneWorldPoints, ~, pointLabels] = pupilProjection_fwd(eyePose,sceneGeometry,[],'fullEyeModelFlag',true);
+    [~, ~, sceneWorldPoints, ~, pointLabels] = pupilProjection_fwd(eyePose,sceneGeometry,[],'fullEyeModelFlag',true,'removeObscuredPoints',false);
     % Define some settings for display
     eyePartLabels = {'aziRotationCenter', 'eleRotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex'};
-    plotColors = {'+r' '+r' '.k' '*b' '*g' '.y' '*y'};
+    plotColors = {'>r' '^m' '.k' '*b' '*g' '.y' '*y'};
     % Prepare a figure
     figure
     % Plot each anatomical component
@@ -495,6 +495,7 @@ if ~isempty(rayTraceFuncs)
     end
 end
 
+
 %% Apply the eye rotation
 % Copy the eyeWorld points into headWorld
 headWorldPoints=eyeWorldPoints;
@@ -505,22 +506,24 @@ headWorldPoints=eyeWorldPoints;
 rotOrder = {'tor','ele','azi'};
 
 % We shift the headWorld points to this rotation center, rotate, shift
-% back, and repeat.
+% back, and repeat. Omit the eye rotation centers from this process
+rotatePointsIdx = ~contains(pointLabels,'Rotation');
 for rr=1:3
-    headWorldPoints = ...
-        (R.(rotOrder{rr})*(headWorldPoints-sceneGeometry.eye.rotationCenters.(rotOrder{rr}))')'+sceneGeometry.eye.rotationCenters.(rotOrder{rr});
+    headWorldPoints(rotatePointsIdx,:) = ...
+        (R.(rotOrder{rr})*(headWorldPoints(rotatePointsIdx,:)-sceneGeometry.eye.rotationCenters.(rotOrder{rr}))')'+sceneGeometry.eye.rotationCenters.(rotOrder{rr});
 end
 
 % If we are projecting a full eye model, and the 'removeObscuredPoints' is
-% set to true, then remove those points that are posterior to the center of
-% rotation of the eye, and thus would not be
+% set to true, then remove those points that are posterior to the most
+% posterior of the centers of rotation of the eye, and thus would not be
 % visible to the camera.
 if p.Results.fullEyeModelFlag && p.Results.removeObscuredPoints
-    retainIdx = headWorldPoints(:,1) > min([sceneGeometry.eye.rotationCenters.azi(1) sceneGeometry.eye.rotationCenters.ele(1)]);
+    retainIdx = headWorldPoints(:,1) >= min([sceneGeometry.eye.rotationCenters.azi(1) sceneGeometry.eye.rotationCenters.ele(1)]);
     eyeWorldPoints = eyeWorldPoints(retainIdx,:);
     headWorldPoints = headWorldPoints(retainIdx,:);
     pointLabels = pointLabels(retainIdx);
 end
+
 
 %% Project the headWorld points to sceneWorld coordinates.
 % This coordinate frame is in mm units and has the dimensions (X,Y,Z).
