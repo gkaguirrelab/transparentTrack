@@ -153,10 +153,10 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional analysis params
-p.addParameter('translationLB',[-20; -20; 90],@isnumeric);
-p.addParameter('translationUB',[20; 20; 200],@isnumeric);
-p.addParameter('translationLBp',[-5; -5; 100],@isnumeric);
-p.addParameter('translationUBp',[5; 5; 160],@isnumeric);
+p.addParameter('translationLB',[-20; -20; 90; 0.5],@isnumeric);
+p.addParameter('translationUB',[20; 20; 200; 2],@isnumeric);
+p.addParameter('translationLBp',[-5; -5; 100; 0.75],@isnumeric);
+p.addParameter('translationUBp',[5; 5; 160; 1.25],@isnumeric);
 p.addParameter('eyePoseLB',[-35,-25,0,0.25],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('eyePoseUB',[35,25,0,4],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('fitLabel','initial',@ischar);
@@ -164,7 +164,7 @@ p.addParameter('ellipseArrayList',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nBinsPerDimension',4,@isnumeric);
 p.addParameter('useRayTracing',false,@islogical);
 p.addParameter('nBADSsearches',10,@isnumeric);
-p.addParameter('shapeErrorMultiplier',25,@isnumeric);
+p.addParameter('shapeErrorMultiplier',0,@isnumeric);
 
 % parse
 p.parse(pupilFileName, sceneGeometryFileName, varargin{:})
@@ -271,7 +271,7 @@ end
 % Peform the search without rayTracing
 searchResults = {};
 parfor (ss = 1:p.Results.nBADSsearches(1),nWorkers)
-%for ss = 1:p.Results.nBADSsearches(1)
+    %for ss = 1:p.Results.nBADSsearches(1)
     
     searchResults{ss} = ...
         performSceneSearch(initialSceneGeometry, [], ...
@@ -297,7 +297,8 @@ if strcmp(p.Results.verbosity,'full')
     fprintf('\n');
 end
 
-% Find the weighted mean and SD of the translation vector
+% Find the weighted mean and SD of the translation vector and rotation
+% scaler
 allFvalsNoRayTrace = cellfun(@(x) x.meta.estimateCameraTranslation.search.fVal,searchResults);
 allTranslationVecsNoRayTrace = cellfun(@(x) x.extrinsicTranslationVector,searchResults,'UniformOutput',false);
 for dim = 1:3
@@ -305,6 +306,8 @@ for dim = 1:3
     transVecMeanNoRayTrace(dim)=mean(vals.*(1./allFvalsNoRayTrace))/mean(1./allFvalsNoRayTrace);
     transVecSDNoRayTrace(dim)=std(vals,1./allFvalsNoRayTrace);
 end
+transVecMeanNoRayTrace(4) = mean(cellfun(@(x) x.eye.rotationCenters.scaler,searchResults));
+transVecSDNoRayTrace(4) = std(cellfun(@(x) x.eye.rotationCenters.scaler,searchResults));
 transVecMeanNoRayTrace=transVecMeanNoRayTrace';
 transVecSDNoRayTrace=transVecSDNoRayTrace';
 
@@ -358,28 +361,18 @@ if ~isempty(rayTraceFuncs)
         fprintf('\n');
     end
     
-    % Find the weighted mean and SD of the translation vector
-    allFvalsWithRayTrace = cellfun(@(x) x.meta.estimateCameraTranslation.search.fVal,searchResults);
-    allTranslationVecsWithRayTrace = cellfun(@(x) x.extrinsicTranslationVector,searchResults,'UniformOutput',false);
-    for dim = 1:3
-        vals = cellfun(@(x) x(dim), allTranslationVecsWithRayTrace);
-        transVecMeanWithRayTrace(dim)=mean(vals.*(1./allFvalsWithRayTrace))/mean(1./allFvalsWithRayTrace);
-        transVecSDWithRayTrace(dim)=std(vals,1./allFvalsWithRayTrace);
-    end
-    transVecMeanWithRayTrace=transVecMeanWithRayTrace';
-    transVecSDWithRayTrace=transVecSDWithRayTrace';
 end
 
-% Find the solution that was closest to the weighted-mean value.
+% Find the solution with the best fVal.
 if isempty(rayTraceFuncs)
-    [~, idx]=min(cellfun(@(x) sqrt(sum((x-transVecMeanNoRayTrace).^2)), allTranslationVecsNoRayTrace));
+    [~, idx]=min(allFvalsNoRayTrace);
     sceneGeometry = searchResults{idx};
 else
-    [~, idx]=min(cellfun(@(x) sqrt(sum((x-transVecMeanWithRayTrace).^2)), allTranslationVecsWithRayTrace));
+    [~, idx]=min(allFvalsWithRayTrace);
     sceneGeometry = searchResults{idx};
 end
 
-% add additional search and meta field info to sceneGeometry
+% Add additional search and meta field info to sceneGeometry
 tmpHold=sceneGeometry.meta.estimateCameraTranslation.search;
 sceneGeometry.meta.estimateCameraTranslation = p.Results;
 sceneGeometry.meta.estimateCameraTranslation.search = tmpHold;
@@ -392,8 +385,6 @@ sceneGeometry.meta.estimateCameraTranslation.search.transVecSDNoRayTrace = trans
 if ~isempty(rayTraceFuncs)
     sceneGeometry.meta.estimateCameraTranslation.search.allFvalsWithRayTrace = allFvalsWithRayTrace;
     sceneGeometry.meta.estimateCameraTranslation.search.allTranslationVecsWithRayTrace = allTranslationVecsWithRayTrace;
-    sceneGeometry.meta.estimateCameraTranslation.search.transVecMeanWithRayTrace = transVecMeanWithRayTrace;
-    sceneGeometry.meta.estimateCameraTranslation.search.transVecSDWithRayTrace = transVecSDWithRayTrace;
 end
 
 %% Save the sceneGeometry file
@@ -466,9 +457,6 @@ function sceneGeometry = performSceneSearch(initialSceneGeometry, rayTraceFuncs,
 %   accepts row vectors, so there is much transposing ahead.
 %
 
-% Set the error form
-errorForm = 'RMSE';
-
 % Pick a random x0 from within the plausible bounds
 x0 = LBp + (UBp-LBp).*rand(numel(LBp),1);
 
@@ -500,7 +488,12 @@ end
     function fval = objfun(x)
         % Assemble a candidate sceneGeometry structure
         candidateSceneGeometry = initialSceneGeometry;
-        candidateSceneGeometry.extrinsicTranslationVector = x';
+        % Store the extrinsic camera translation vector
+        candidateSceneGeometry.extrinsicTranslationVector = x(1:3)';
+        % Scale the rotation center values
+        candidateSceneGeometry.eye.rotationCenters.azi = candidateSceneGeometry.eye.rotationCenters.azi .* x(4);
+        candidateSceneGeometry.eye.rotationCenters.ele = candidateSceneGeometry.eye.rotationCenters.ele .* x(4);
+        candidateSceneGeometry.eye.rotationCenters.tor = candidateSceneGeometry.eye.rotationCenters.tor .* x(4);
         % For each ellipse, perform the inverse projection from the ellipse
         % on the image plane to eyePose. We retain the errors from the
         % inverse projection and use these to assemble the objective
@@ -531,30 +524,25 @@ end
             recoveredEyePoses(ii,:)=eyePose;
         end
         % Now compute objective function as the RMSE of the distance
-        % between the taget and modeled ellipses
-        switch errorForm
-            case 'SSE'
-                fval=sum((centerDistanceErrorByEllipse.*(shapeErrorByEllipse.*shapeErrorMultiplier+1).*(areaErrorByEllipse.*shapeErrorMultiplier+1).*errorWeights).^2);
-                % We have to keep the fval non-infinite to keep bads happy
-                fval=min([fval realmax]);
-            case 'RMSE'
-                fval = mean((centerDistanceErrorByEllipse.*(shapeErrorByEllipse.*shapeErrorMultiplier+1).*(areaErrorByEllipse.*shapeErrorMultiplier+1).*errorWeights).^2).^(1/2);
-                % We have to keep the fval non-infinite to keep bads happy
-                fval=min([fval realmax]);
-            otherwise
-                error('I do not recognize that error form');
-        end
-        
+        % between the taget and modeled ellipses in shape and area
+        fval = mean(((shapeErrorByEllipse+1).*(areaErrorByEllipse+1).*errorWeights).^2).^(1/2);
+        % We have to keep the fval non-infinite to keep bads happy
+        fval=min([fval realmax]);
     end
+
+
 
 % Restore the warning state
 warning(warningState);
 
 % Assemble the sceneGeometry file to return
 sceneGeometry = initialSceneGeometry;
-sceneGeometry.extrinsicTranslationVector = x';
+sceneGeometry.extrinsicTranslationVector = x(1:3)';
+sceneGeometry.eye.rotationCenters.azi = sceneGeometry.eye.rotationCenters.azi .* x(4);
+sceneGeometry.eye.rotationCenters.ele = sceneGeometry.eye.rotationCenters.ele .* x(4);
+sceneGeometry.eye.rotationCenters.tor = sceneGeometry.eye.rotationCenters.tor .* x(4);
+sceneGeometry.eye.rotationCenters.scaler = x(4);
 sceneGeometry.meta.estimateCameraTranslation.search.options = options;
-sceneGeometry.meta.estimateCameraTranslation.search.errorForm = errorForm;
 sceneGeometry.meta.estimateCameraTranslation.search.initialSceneGeometry = initialSceneGeometry;
 sceneGeometry.meta.estimateCameraTranslation.search.ellipses = ellipses;
 sceneGeometry.meta.estimateCameraTranslation.search.errorWeights = errorWeights;
@@ -739,7 +727,7 @@ set(hSub, 'Visible', 'off');
 legend({'0',num2str(sceneGeometry.constraintTolerance/2), ['=> ' num2str(sceneGeometry.constraintTolerance)]},'Location','north', 'Orientation','vertical');
 
 % Add text to report the extrinsic translation vector
-myString = sprintf('Translation vector [mm] = %4.1f, %4.1f, %4.1f',sceneGeometry.extrinsicTranslationVector(1),sceneGeometry.extrinsicTranslationVector(2),sceneGeometry.extrinsicTranslationVector(3));
+myString = sprintf('Translation vector [mm] = %4.1f, %4.1f, %4.1f; rotation center scaler: %4.2f ',sceneGeometry.extrinsicTranslationVector(1),sceneGeometry.extrinsicTranslationVector(2),sceneGeometry.extrinsicTranslationVector(3),sceneGeometry.eye.rotationCenters.scaler);
 text(0.5,1.0,myString,'Units','normalized','HorizontalAlignment','center')
 
 %% Right panel -- area error
