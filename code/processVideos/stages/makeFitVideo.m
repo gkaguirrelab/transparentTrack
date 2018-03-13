@@ -61,7 +61,7 @@ p.addParameter('pupilColor','green',@ischar);
 p.addParameter('sceneGeometryColor','magenta',@ischar);
 p.addParameter('modelEyeAlpha', 0,@isnumeric);
 p.addParameter('modelEyeLabelNames', {'aziRotationCenter', 'eleRotationCenter', 'posteriorChamber' 'irisPerimeter' 'anteriorChamber' 'cornealApex'}, @iscell);
-p.addParameter('modelEyePlotColors', {'+m' '+r' '.w' 'ob' '.y' '*y'}, @iscell);
+p.addParameter('modelEyePlotColors', {'>r' '^m' '.w' 'ob' '.y' '*y'}, @iscell);
 p.addParameter('fitLabel', 'radiusSmoothed',@(x)(isempty(x) | ischar(x)));
 p.addParameter('controlFileName',[],@(x)(isempty(x) | ischar(x)));
 
