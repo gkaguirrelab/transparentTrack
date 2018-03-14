@@ -1,56 +1,60 @@
 function calcGazeCalFactors (gazeDataFileName,gazeCalFactorsFileName,varargin)
-
-% calcGazeCalFactors (gazeDataFileName,gazeCalFactorsFileName)
+% calculates the gaze calibration matrix starting from a set of known targets
 % 
-% this function calculates the gaze calibration matrix starting from a set
-% of known targets observed at a known distance, and apparent gaze
-% direction for each fixation. The calibration matrix is the one that
-% minimizes the distance between all the target locations and the
-% projection of the apparent gaze direction for each fixation.
+% Description:
+%   this function calculates the gaze calibration matrix starting from a
+%   set of known targets observed at a known distance, and apparent gaze
+%   direction for each fixation. The calibration matrix is the one that
+%   minimizes the distance between all the target locations and the
+%   projection of the apparent gaze direction for each fixation.
 % 
-% The calibration matrix is a 4x4 matrix in homogeneous coordinates and can
-% be applied to the raw pupil and glint data as follows:
+%   The calibration matrix is a 4x4 matrix in homogeneous coordinates and
+%   can be applied to the raw pupil and glint data as follows:
 % 
 % [aXYZW] = calMatrix * [(pX-gX)/perspectiveCorrection; (pY-gY)/perspectiveCorrection; (1 - sqrt(((pX-gX)/perspectiveCorrection)^2 + ((pY-gY)/perspectiveCorrection)^2)); 1];
 % [calGazeX;calGazeY;viewingDistance] =    (aXYZW(1:3)/aXYZW(4))';
 % 
-% Where:
-%   aXYZW = calibrated Gaze Data in homogeneous screen coordinates
-%   [pX pY] = center of pupil in pixels
-%   [gX gY] = center of glint in pixels
-%   perspectiveCorrection = perspective correction (between target and apparent gaze
-%       vector)
+%   Where:
+%       aXYZW = calibrated Gaze Data in homogeneous screen coordinates
+%       [pX pY] = center of pupil in pixels
+%       [gX gY] = center of glint in pixels
+%       perspectiveCorrection = perspective correction (between target and apparent gaze
+%           vector)
 %   
-% Note that the first line applies the calMatrix to the 3-D projection of
-% the apparent gaze vector (in pixels) in homogeneous coordinates, while
-% the second line converts the calibrated data from homogeneous
-% coordinates to 3-D screen coordinates, where the 3rd dimension is the
-% distance between the observer and the screen.
+%   Note that the first line applies the calMatrix to the 3-D projection of
+%   the apparent gaze vector (in pixels) in homogeneous coordinates, while
+%   the second line converts the calibrated data from homogeneous
+%   coordinates to 3-D screen coordinates, where the 3rd dimension is the
+%   distance between the observer and the screen.
 %
-% OUTPUTS: (saved to file)
-%   gazeCalFactors: struct containing the calibration matrix and the
-%       perspective correction value to calibrate raw data as shown above.
+% Input (required)
+%   gazeDataFileName       - name of the mat file containing the gaze calibration
+%                            data
+%   gazeCalFactorsFileName - name of the mat file to save the calibration
+%                           factors
 % 
-% INPUTS:
-%   gazeDataFileName: name of the mat file containing the gaze calibration
-%       data.
-%   gazeCalParamsFileName: name of the mat file to save the calibration
-%       params.
-% 
-% Optional params:
-%   fminsearchCalls: number of iteration for fminseach, changing the
-%       tolerance.
-%   showFigures: toggle on to show the figure with the results of the
-%       calibration test
+% Optional key/value pairs (analysis)
+%   'fminsearchCalls'      - number of iteration for fminseach, changing the
+%                            tolerance
+%   'showFigures'          - toggle on to show the figure with the results
+%                            of the calibration test
 %
 % Optional key/value pairs (display and I/O)
-%  'verbosity' - level of verbosity. [none, full]
+%  'verbosity'             - level of verbosity. [none, full]
 %
-% Options (environment)
-%   tbSnapshot - the passed tbSnapshot output that is to be saved along
-%      with the data
-%   timestamp / username / hostname - these are automatically derived and
-%      saved within the p.Results structure.
+% Optional key/value pairs (environment)
+%   'tbSnapshot'           - This should contain the output of the
+%                            tbDeploymentSnapshot performed upon the result
+%                            of the tbUse command. This documents the state
+%                            of the system at the time of analysis.
+%   'timestamp'            - AUTOMATIC; The current time and date
+%   'username'             - AUTOMATIC; The user
+%   'hostname'             - AUTOMATIC; The host
+% 
+% Output (saved to file)
+%   gazeCalFactors         - struct containing the calibration matrix and
+%                            the perspective correction value to calibrate
+%                            raw data as shown above.
 % 
 % 
 % 

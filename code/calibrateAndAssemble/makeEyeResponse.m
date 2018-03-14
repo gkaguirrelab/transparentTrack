@@ -1,10 +1,10 @@
 function makeEyeResponse(timebase,pupil,gaze,eyeResponseFileName,varargin)
+% Assembles the eye response file in its standard format
 % 
-% makeEyeResponse(timebase,pupil,gaze,eyeResponseFileName)
-% 
-% header
-% 
-%  The eyeResponse struct includes the following fields:
+% Description:
+%  This function assebles the calibrated data in a standardized format
+%  for further analysis.
+%  The eyeResponse mat file contains a structure with the following fields:
 %         eyeResponse.timebase
 %         eyeResponse.pupil.width
 %         eyeResponse.pupil.height
@@ -14,31 +14,35 @@ function makeEyeResponse(timebase,pupil,gaze,eyeResponseFileName,varargin)
 %         eyeResponse.gaze.ecc
 %         eyeResponse.gaze.pol
 %         eyeResponse.meta
-% % Output (saved to file)
-%	eyeResponse - structure with fields that contain the eyeResponse parameters.
 %
 % Input (required)
-%   timebase - structure with fields that contain the timebase information
-%       in milliseconds, and a meta field.
-%   pupil - structure with fields that contain the pupil size information.
-%       As default, this will be calibrated values expressed in mm, but the
-%       routine will also accept uncalibrated pupil structs.
-%   gaze - structure with fields that contain the pupil size information.
-%       As default, this will be calibrated values, but the routine will
-%       also accept uncalibrated gaze vectors.
+%   timebase 			- structure with fields that contain the timebase information
+%       				  in milliseconds, and a meta field.
+%   pupil 				- structure with fields that contain the pupil size information.
+%       				  As default, this will be calibrated values expressed in mm, but the
+%       				  routine will also accept uncalibrated pupil structs.
+%   gaze 				- structure with fields that contain the pupil size information.
+%       				  As default, this will be calibrated values, but the routine will
+%       				  also accept uncalibrated gaze vectors.
 %   eyeResponseFileName - name of the file in which to save the
-%       eyeResponse struct.
+%       				  eyeResponse struct.
 % 
-% Options (analysis)
-%   uncalibratedData - toggle to true to add a flag for uncalibrated data
-%   
+% Optional key/value pairs (analysis)
+%   'uncalibratedData'  - toggle to true to add a flag for uncalibrated data
 %
-% Options (environment)
-%   tbSnapshot - the passed tbSnapshot output that is to be saved along
-%      with the data
-%   timestamp / username / hostname - these are automatically derived and
-%      saved within the p.Results structure.
+% Optional key/value pairs (environment)
+%  'tbSnapshot'         - This should contain the output of the
+%                         tbDeploymentSnapshot performed upon the result
+%                         of the tbUse command. This documents the state
+%                         of the system at the time of analysis.
+%  'timestamp'          - AUTOMATIC; The current time and date
+%  'username'           - AUTOMATIC; The user
+%  'hostname'           - AUTOMATIC; The host
+%
+% Output (saved to file)
+%	eyeResponse 		- structure with fields that contain the eyeResponse parameters.
 % 
+
 %% input parser
 
 p = inputParser; p.KeepUnmatched = true;

@@ -1,15 +1,52 @@
 function runCalibrationAndTimebasePipeline(pathParams, varargin )
-
-% header
-
-% steps:
-% deriveTimebaseFromLTData
-% calcSizeCalFactors
-% applySizeCalibration
-% prepareLTGazeCalibrationData
-% calcGazeCalFactors
-% applyGazeCalibration
-
+% runs the full calibration pipeline
+% 
+% Description
+%   This is a wrapper to run the full standard calibration pipeline for
+%   videos acquired with the LiveTrack+VTop setup. It includes the
+%   following steps:
+%       deriveTimebaseFromLTData
+%       calcSizeCalFactors
+%       applySizeCalibration
+%       makeTargetsFile
+%       calcGazeCalFactors
+%       applyGazeCalibration
+%   Each step is fully documented in the header of the corresponding
+%   function.
+% 
+% Input (required)
+%   pathParams 			       - Structure with the path information of the 
+%                                files to be analyzed.
+% 
+% Optional key/value pairs (analysis)
+%   'videoTypeChoice'          - Type of video acquisition setup (only 
+%                                option currently available is
+%                                'LiveTrackWithVTOP', or the flag 'custom'
+%                                can be used followed in combination with
+%                                the 'customFunCall' option).
+%   'variableNamingConvention' - Type of eytetracking file naming convention
+%                                for automatic retreival (only
+%                                optioncurrently available is
+%                               'LiveTrackWithVTOP').
+%   'customFunCalls'           - Cell array to customize the calls 
+%                                to the calibration functions.
+%   'skipStageByName'          - A cell array of function calls to be
+%                                skipped during execution of the pipeline.
+%   'lastStage'                - The last stage to be executed. By deafult
+%                                ends with the application of the gaze
+%                                calibration.
+%   'sizeCalIdentifier'        - Combination of wildcart and characters
+%                                used to automatically identify size
+%                                calibration files.
+%   'sizeCalSuffixLength'      - Lenght of the common suffix in the size
+%                                calibration file names.
+%   'mostRecentGazeCal'        - Option to identify whether the most recent
+%                                GazeCalibration to apply for a given run
+%                                is the one 'before' or 'after' the
+%                                acquisition of said run (based on files
+%                                timestamps).
+% Output:
+%   None. The routine saves files but does not return variables.
 %% Parse input and define variables
 p = inputParser; p.KeepUnmatched = true;
 
@@ -20,7 +57,7 @@ p.addRequired('pathParams',@isstruct);
 p.addParameter('videoTypeChoice', 'LiveTrackWithVTOP', @ischar);
 p.addParameter('variableNamingConvention', 'LiveTrackWithVTOP', @ischar);
 p.addParameter('customFunCalls', {}, @iscell);
-p.addParameter('skipStage', {}, @iscell);
+p.addParameter('skipStageByName', {}, @iscell);
 p.addParameter('lastStage', '', @ischar);
 p.addParameter('sizeCalIdentifier', '*Scale*_pupil.mat', @ischar);
 p.addParameter('sizeCalSuffixLength', 10, @isnumeric);
@@ -142,7 +179,7 @@ funNames = cellfun(@(x) strtok(x,'('),funCalls,'UniformOutput',false);
 
 % Loop through the function calls
 for ff = 1:length(funCalls)
-    if ~any(strcmp(p.Results.skipStage,funNames{ff}))
+    if ~any(strcmp(p.Results.skipStageByName,funNames{ff}))
         if strcmp(funNames{ff},'prepareLTGazeCalibrationData') && isempty(LTdatFileName)
             break 
         end

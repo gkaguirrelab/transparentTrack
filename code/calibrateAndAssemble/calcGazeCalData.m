@@ -1,45 +1,22 @@
 function calcGazeCalData(pupilFileName,glintFileName,targetsFileName,gazeDataFileName,varargin)
 
-% calcGazeCalData(pupilFileName,glintFileName,targetsFileName,gazeDataFileName)
-%
-% this function will calculate the data necessary to compute the
-% gazeCalibration factors starting from pupil, glint and target files.
-
-% TARGET ALIGNMENT
-%
-% If the presentation time of the target in each location was recorded
-% along with the dot locations, the routine will align the raw data with
-% the following strategy:
-% 1.build a target timeseries in pseudo-pixel units: map the target
-% positions as if they were position of an ideal pupil center on the frame.
-% 2. cross correlate the pupil and target position timeseries.
-% 3. cross correlate the pupil and target velocity timeseries to refine
-% the results.
-
-% If there is no information about the presentation time of the target, the
-% routine will attempt to automatically align the pupil timeseries with the
-% following strategy:
-% 1. get the pseudo-velocity peaks from the target locations
-% 2. extract velocity peaks from pupil timeseries
-% 3. attempt cross correlation of the peaks
-% 4. create a candidate target position timeseries
-% 5. attempt cross correlation between pupil and target timeseries
-% 6. if cross correlation is not good, try correcting the candidate target
-% position timeseries, shifting to the next available pupil velocity peak.
-% This strategy is not guaranteed to work, and it is recommended to review
-% the alignment results before proceeding. In case the automatic alignment
-% fails, it is usually possible to align the pupil timeseries by hand, as
-% the fixations can usually be spotted by eye.
-%
-%
-% OUTPUTS: (saved to file)
-%   gazeCalData
-%       targets = location of each target espressed as mm
+% Description:
+% 	this function will calculate the data necessary to compute the
+% 	gazeCalibration factors starting from pupil, glint and target files,
+%	using the "gaze vector" approach.  The gaze vector is
+%   defined as (P - G) , where P and G are the X,Y position on the scene of 
+%   the center of the pupil and the glint, respectively.
+%	This routine will therefore extract and align the timeseries of target, glint and 
+%	pupil center locations from a calibration trial and assign them a common
+%	timebase to align the data.
+%	The output is a structure saved to file containing
+%	the following fields:
+%		targets - location of each target espressed as mm
 %           on screen (origin center of the screen, X axis growing left to
 %           right, Y axis growing top to bottom)
-%       pupil = location of pupil center for each fixation in pixels (origin top left corner)
-%       glint = location of glint center for each fixation in pixels
-%       viewingDistance = viewing distance from the screen
+%       pupil - location of pupil center for each fixation in pixels (origin top left corner)
+%       glint - location of glint center for each fixation in pixels
+%       viewingDistance - viewing distance from the screen
 %       meta
 %           pupilTimeseries
 %           targetPseudoTimeseries
@@ -48,41 +25,72 @@ function calcGazeCalData(pupilFileName,glintFileName,targetsFileName,gazeDataFil
 %           fixDurationSec
 %           units
 %           targetsLayout
+
+% 	Assigning a common timebase:
+% 	If the presentation time of the target in each location was recorded
+% 	along with the dot locations, the routine will align the raw data with
+% 	the following strategy:
+% 		1. build a target timeseries in pseudo-pixel units: map the target
+% 		   positions as if they were position of an ideal pupil center on the frame.
+% 		2. cross correlate the pupil and target position timeseries.
+% 		3. cross correlate the pupil and target velocity timeseries to refine
+% 		   the results.
+%	If there is no information about the presentation time of the target, the
+% 	routine will attempt to automatically align the pupil timeseries with the
+% 	following strategy:
+% 		1. get the pseudo-velocity peaks from the target locations
+% 		2. extract velocity peaks from pupil timeseries
+% 		3. attempt cross correlation of the peaks
+% 		4. create a candidate target position timeseries
+% 		5. attempt cross correlation between pupil and target timeseries
+% 		6. if cross correlation is not good, try correcting the candidate target
+% 		   position timeseries, shifting to the next available pupil velocity peak.
+% 	This strategy is not guaranteed to work, and it is recommended to review
+% 	the alignment results before proceeding. In case the automatic alignment
+% 	fails, it is usually possible to align the pupil timeseries by hand, as
+% 	the fixations periods can often be spotted by eye.
 %
-% INPUTS:
-%   pupilFileName - name of the pupil file for the current calibration
-%   glintFileName - name of the glint file for the current calibration
-%   targetsFileName - name of the targets file for the current calibration.
-%       must contain target location in screen coordinates, should contain
-%       target onset times (the routine will attempt to align target and
-%       pupil data with no onset times, but it is not guaranteed to work).
-%   gazeDataFileName - name of the mat file to save the gaze calibration
-%       data
-%
-%  Optional params:
-%   viewingDistance - distance of subject's eye from stimulus screen
-%   dataIsAligned: if false, the routine will attempt to align the fixation
-%       data automatically.
-%   frameRate - frameRate of the raw video data.
-%   medFilterOrder - order of the despiking filter applied to the pupil
-%       position timeseries. Should be above 100 to get a clean signal.
-%   saccadeDistance - estimate distance in frames between saccades. This is
-%       used to refine velocity peak extraction
-%   minDelay - minimum delay allowed for the alignement of pupil and target
-%       timeseries
-%  fixationWindowPct - percentage of the smallest fixation duration to
-%   consider for the moving median window.
-%
+% 
+% Inputs:
+%   pupilFileName 		- name of the pupil file for the current calibration
+%   glintFileName 		- name of the glint file for the current calibration
+%   targetsFileName 	- name of the targets file for the current calibration.
+%       				  must contain target location in screen coordinates, should contain
+%       				  target onset times (the routine will attempt to align target and
+%       				  pupil data with no onset times, but it is not guaranteed to work).
+%   gazeDataFileName 	- name of the mat file to save the gaze calibration
+%       				  data
 %
 % Optional key/value pairs (display and I/O)
-%  'verbosity' - level of verbosity. [none, full]
+%  'verbosity' 			- level of verbosity. [none, full]
 %
-% Options (environment)
-%   tbSnapshot - the passed tbSnapshot output that is to be saved along
-%      with the data
-%   timestamp / username / hostname - these are automatically derived and
-%      saved within the p.Results structure.
-
+% Optional key/value pairs (environment)
+%  'tbSnapshot'         - This should contain the output of the
+%                         tbDeploymentSnapshot performed upon the result
+%						  of the tbUse command. This documents the state
+%                         of the system at the time of analysis.
+%  'timestamp'          - AUTOMATIC; The current time and date
+%  'username'           - AUTOMATIC; The user
+%  'hostname'           - AUTOMATIC; The host
+%
+% Optional key/value pairs (analysis)
+%   'viewingDistance' 	- distance of subject's eye from stimulus screen
+%   'dataIsAligned' 	- if false, the routine will attempt to align the fixation
+%       				  data automatically.
+%   'frameRate' 		- frameRate of the raw video data.
+%   'medFilterOrder' 	- order of the despiking filter applied to the pupil
+%       				  position timeseries. Should be above 100 to get a clean signal.
+%   'saccadeDistance' 	- estimate distance in frames between saccades. This is
+%       				  used to refine velocity peak extraction
+%   'minDelay' 			- minimum delay allowed for the alignement of pupil and target
+%       				  timeseries
+%   'fixationWindowPct' - percentage of the smallest fixation duration to
+%   					  consider for the moving median window.
+%
+% Outputs (saved to file)
+%   gazeCalData     - structure saved to file composed as follows:
+%       
+%
 
 %% input parser
 
