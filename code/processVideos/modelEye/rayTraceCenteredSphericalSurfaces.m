@@ -95,6 +95,7 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
     % with those given on page 340, section C.
     clear coords
     clear theta
+    clear figureFlag
     coords = [0 0];
     theta = deg2rad(17.309724);
     figureFlag=true;
@@ -110,38 +111,42 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
     %% Example 2 - Pupil through cornea
     % A model of the passage of a point on the pupil perimeter through
     % the cornea (units in mm)
-    clear coords
-    clear theta
-    %  Obtain the eye parameters from the modelEyeParameters() function
-    eye = modelEyeParameters();
+    sceneGeometry = createSceneGeometry();
+    outputRay = rayTraceCenteredSphericalSurfaces([sceneGeometry.eye.pupilCenter(1) 2], deg2rad(-45), sceneGeometry.opticalSystem, true)
+%}
+%{
+    %% Example 3 - Pupil through cornea and spectacle, plot range limits
+    % A model of the passage of a point on the pupil perimeter through
+    % the cornea and spectacle lens (units in mm)
+    %  Create a myopic eye
+    sceneGeometry = createSceneGeometry('sphericalAmetropia',-2);
     pupilRadius = 2;
     theta = deg2rad(-45);
-    coords = [eye.pupilCenter(1) pupilRadius];
-    opticalSystem = [nan nan eye.aqueousRefractiveIndex; ...
-                     eye.corneaBackSurfaceCenter(1) -eye.corneaBackSurfaceRadius eye.corneaRefractiveIndex; ...
-                     eye.corneaFrontSurfaceCenter(1) -eye.corneaFrontSurfaceRadius 1.0];
-    figureFlag=true;
+    coords = [sceneGeometry.eye.pupilCenter(1) pupilRadius];
+    opticalSystem = sceneGeometry.opticalSystem;
+    % Add a -2 diopter lens for the correction of myopia
+    opticalSystem=addSpectacleLens(opticalSystem, -2);
+    % Define FigureFlag as a structure with limits on the plot range
+    clear figureFlag
+    figureFlag.zLim = [-20 20];
+    figureFlag.hLim = [-25 25];
     outputRay = rayTraceCenteredSphericalSurfaces(coords, theta, opticalSystem, figureFlag)
 %}
 %{
-    %% Example 3 - Pupil through cornea, multiple points and rays
+    %% Example 4 - Pupil through cornea, multiple points and rays
     clear coords
     clear theta
+    clear figureFlag
     eye = modelEyeParameters();
     pupilRadius = 2;
     opticalSystem = [nan nan eye.aqueousRefractiveIndex; ...
                      eye.corneaBackSurfaceCenter(1) -eye.corneaBackSurfaceRadius eye.corneaRefractiveIndex; ...
                      eye.corneaFrontSurfaceCenter(1) -eye.corneaFrontSurfaceRadius 1.0];
-    figure
-    clear figureFlag
     % Define FigureFlag as a structure, and set the new field to false so
     % that subsequent calls to the ray tracing routine will plot on the
     % same figure. Also, set the textLabels to false to reduce clutter
-    figureFlag.show = true;
+    figure
     figureFlag.new = false;
-    figureFlag.surfaces = true;
-    figureFlag.imageLines = true;
-    figureFlag.rayLines = true;
     figureFlag.textLabels = false;
     for theta = -35:70:35
         for pupilRadius = -2:4:2
@@ -150,7 +155,7 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
     end
 %}
 %{
-    %% Ex.4 - Pupil through cornea, symbolic variables
+    %% Example 5 - Pupil through cornea, symbolic variables
     % The ray tracing routine can be called with symbolic variables.
     % Compare the final values for thetas of the rays through the system
     % to the values for thetas returned by Example 2
@@ -172,13 +177,13 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
     double(subs(outputRay))
 %}
 %{
-    %% Example 5 - Pupil through cornea, symbolic variables, create function
+    %% Example 6 - Pupil through cornea, symbolic variables, create function
     % Demonstrates the creation of a function handle to allow rapid
     % evaluation of many values for the symbolic expression. The function
-    % unitRayFromPupilFunc returns a unitRay for a given pupil height and 
+    % unitRayFromPupilFunc returns a unitRay for a given pupil height and
     % theta. The function is then called for the pupil heights and thetas
     % that might reflect the position of a point on the pupil perimeter
-    % in the x and y dimensions, creating a zxRay and a zyRay. The zyRay 
+    % in the x and y dimensions, creating a zxRay and a zyRay. The zyRay
     % is then adjusted to share the same Z dimension point of origin.
     clear coords
     clear theta
@@ -203,7 +208,7 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
     zyRay(:,2)=zyRay(:,2)+(zOffset*slope)
 %}
 %{
-    %% Example 6 - Function behavior with a non-intersecting ray
+    %% Example 7 - Function behavior with a non-intersecting ray
     clear coords
     clear theta
     coords = [0 0];
@@ -235,9 +240,33 @@ if nargin==3
     figureFlag.imageLines = false;
     figureFlag.rayLines = false;
     figureFlag.textLabels = false;
+    figureFlag.legend = false;
 end
 
+% A value was passed for figureFlag
 if nargin==4
+    % if the passed figureFlag is a structure, set all fields to true, and
+    % then copy over the values of passed fields. This allows the use to
+    % just specify values for some fields and causes the remainder to have
+    % valid values.
+    if isstruct(figureFlag)
+        temp=figureFlag;
+        clear figureFlag
+        figureFlag.show = true;
+        figureFlag.new = true;
+        figureFlag.surfaces = true;
+        figureFlag.imageLines = true;
+        figureFlag.rayLines = true;
+        figureFlag.textLabels = true;
+        figureFlag.legend = true;
+        figureFlag.zLim = [];
+        figureFlag.hLim = [];
+        names = fieldnames(temp);
+        for nn = 1:length(names)
+            figureFlag.(names{nn})=temp.(names{nn});
+        end
+    end
+    % if figureFlag is logical, set all fields to true or false accordingly
     if islogical(figureFlag)
         if figureFlag
             clear figureFlag
@@ -247,6 +276,9 @@ if nargin==4
             figureFlag.imageLines = true;
             figureFlag.rayLines = true;
             figureFlag.textLabels = true;
+            figureFlag.legend = true;
+            figureFlag.zLim = [];
+            figureFlag.hLim = [];
         else
             clear figureFlag
             figureFlag.show = false;
@@ -255,6 +287,9 @@ if nargin==4
             figureFlag.imageLines = false;
             figureFlag.rayLines = false;
             figureFlag.textLabels = false;
+            figureFlag.legend = false;
+            figureFlag.zLim = [];
+            figureFlag.hLim = [];
         end
     end
 end
@@ -298,11 +333,27 @@ opticalSystem(2:nSurfaces,:)=opticalSystemIn(2:nSurfaces,:);
 % Initialize the figure
 if figureFlag.show
     if figureFlag.new
-        figure
+        if figureFlag.legend
+            figure
+            subplot(3,3,1:6);
+        else
+            figure
+        end
+    else
+        if figureFlag.legend
+            subplot(3,3,1:6);
+        else
+        end
     end
     hold on
     refline(0,0)
     axis equal
+    if ~isempty(figureFlag.zLim)
+        xlim(figureFlag.zLim);
+    end
+    if ~isempty(figureFlag.hLim)
+        ylim(figureFlag.hLim);
+    end
 end
 
 
@@ -421,6 +472,17 @@ if figureFlag.show
         text(opticalSystem(:,1),zeros(nSurfaces,1)-(diff(ylim)/50),strseq('c',[1:1:nSurfaces]),'HorizontalAlignment','center')
         plot(imageCoords(:,1),zeros(nSurfaces,1),'*r');
         text(imageCoords(:,1),zeros(nSurfaces,1)-(diff(ylim)/50),strseq('i',[1:1:nSurfaces]),'HorizontalAlignment','center')
+    end
+    % Add a legend
+    if figureFlag.legend
+        hSub = subplot(3,3,8);
+        plot(nan, nan,'-r');
+        hold on
+        plot(nan, nan,'--b');
+        plot(nan, nan,'-b');
+        plot(nan, nan,'-g');
+        set(hSub, 'Visible', 'off');
+        legend({'ray path','virtual ray','final virtual ray','output unit ray vector'},'Location','north', 'Orientation','vertical');
     end
     hold off
 end

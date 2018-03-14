@@ -80,9 +80,12 @@ ellipseArrayList = [1561 1555 1981 1860 1862  658  694  755 1602 1556 1946 1768 
 runVideoPipeline( pathParams, ...
     'nFrames',nFrames,'verbosity', verbosity, 'tbSnapshot',tbSnapshot, 'useParallel',true, ...
     'pupilRange', [40 200], 'pupilCircleThresh', 0.04, 'pupilGammaCorrection', 1.5, ...
-    'ellipseArrayList', ellipseArrayList, 'eyeLaterality', 'Right',...
+    'radialDistortionVector',[-0.3517 3.5353], ...
+    'intrinsicCameraMatrix',[2627.0 0 338.1; 0 2628.1 246.2; 0 0 1], ...
+    'eyeLaterality','right','axialLength',25.35,'sphericalAmetropia',-1.5,...
+    'ellipseArrayList', ellipseArrayList, ...
     'overwriteControlFile', true, 'catchErrors', false,...
-    'skipStageByNumber',[1:1:7],'makeFitVideoByNumber',[6 8]);
+    'skipStageByNumber',[1],'makeFitVideoByNumber',[6 8]);
 
 
 %% Plot some fits
@@ -109,12 +112,12 @@ ylabel('pupil area [pixels in plane]');
 hold off
 
 subplot(2,1,2)
-plot(temporalSupport,pupilData.sceneConstrained.eyeParams.values(:,4),'-k','LineWidth',2);
+plot(temporalSupport,pupilData.sceneConstrained.eyePoses.values(:,4),'-k','LineWidth',2);
 hold on
-plot(temporalSupport,pupilData.sceneConstrained.eyeParams.values(:,4),'-b');
-plot(temporalSupport,pupilData.sceneConstrained.eyeParams.values(:,4)-pupilData.sceneConstrained.eyeParams.splitsSD(:,4),'-','Color',[0 0 0.7])
-plot(temporalSupport,pupilData.sceneConstrained.eyeParams.values(:,4)+pupilData.sceneConstrained.eyeParams.splitsSD(:,4),'-','Color',[0 0 0.7])
-plot(temporalSupport,pupilData.radiusSmoothed.eyeParams.values(:,4),'-r','LineWidth',2)
+plot(temporalSupport,pupilData.sceneConstrained.eyePoses.values(:,4),'-b');
+plot(temporalSupport,pupilData.sceneConstrained.eyePoses.values(:,4)-pupilData.sceneConstrained.eyePoses.splitsSD(:,4),'-','Color',[0 0 0.7])
+plot(temporalSupport,pupilData.sceneConstrained.eyePoses.values(:,4)+pupilData.sceneConstrained.eyePoses.splitsSD(:,4),'-','Color',[0 0 0.7])
+plot(temporalSupport,pupilData.radiusSmoothed.eyePoses.values(:,4),'-r','LineWidth',2)
 xlim([0 max(temporalSupport)]);
 xlabel('time [mins]');
 ylabel('pupil radius [mm on eye]');

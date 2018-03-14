@@ -1,6 +1,9 @@
 function makeControlFile(controlFileName, perimeterFileName, glintFileName, varargin)
 % Create a control file of instructions for refinement of pupil perimeters
 %
+% Syntax:
+%  makeControlFile(controlFileName, perimeterFileName, glintFileName)
+%
 % Description:
 %   Creates and saves a "control file", which is a text (csv) file that
 %   instructs subsequent routines as to how a perimeter may be cleaned up
@@ -222,36 +225,10 @@ if exist(controlFileName, 'file') == 2 && (p.Results.overwriteControlFile)
     delete (controlFileName)
 end
 
+
 %% Set up the parallel pool
 if p.Results.useParallel
-    if strcmp(p.Results.verbosity,'full')
-        tic
-        fprintf(['Opening parallel pool. Started ' char(datetime('now')) '\n']);
-    end
-    if isempty(p.Results.nWorkers)
-        parpool;
-    else
-        parpool(p.Results.nWorkers);
-    end
-    poolObj = gcp;
-    if isempty(poolObj)
-        nWorkers=0;
-    else
-        nWorkers = poolObj.NumWorkers;
-        % Use TbTb to configure the workers.
-        if ~isempty(p.Results.tbtbRepoName)
-            spmd
-                tbUse(p.Results.tbtbRepoName,'reset','full','verbose',false,'online',false);
-            end
-            if strcmp(p.Results.verbosity,'full')
-                fprintf('CAUTION: Any TbTb messages from the workers will not be shown.\n');
-            end
-        end
-    end
-    if strcmp(p.Results.verbosity,'full')
-        toc
-        fprintf('\n');
-    end
+    nWorkers = startParpool( p.Results.nWorkers, p.Results.tbtbRepoName, p.Results.verbosity );
 else
     nWorkers=0;
 end
@@ -291,25 +268,49 @@ end
 %% Perform blink detection
 dataLoad = load(glintFileName);
 glintData = dataLoad.glintData;
+if size (glintData.X,2) == 2
+    glintsMainDirection = dataLoad.glintData.meta.glintsMainDirection;
+end
 clear dataLoad
 
 % locate all nans
-blinkFrames = find(isnan(glintData.X));
+blinkFrames = find(isnan(glintData.X(:,1)));
 
-% locate candidate glints outside the user defined glint zone
-% define center of glint zone
-if isempty(p.Results.glintZoneCenter)
-    glintZoneCenter = [nanmedian(glintData.X) nanmedian(glintData.Y)];
-else
-    glintZoneCenter = p.Results.glintZoneCenter;
+switch size (glintData.X,2)
+    case 1
+        % locate candidate glints outside the user defined glint zone
+        % define center of glint zone
+        if isempty(p.Results.glintZoneCenter)
+            glintZoneCenter = [nanmedian(glintData.X) nanmedian(glintData.Y)];
+        else
+            glintZoneCenter = p.Results.glintZoneCenter;
+        end
+        
+        % get distance of each glint from the glintZone center
+        glintDistance = sqrt((glintData.X - glintZoneCenter(1)).^2 +(glintData.Y - glintZoneCenter(2)).^2);
+        
+        tooFarGlints = find(glintDistance>p.Results.glintZoneRadius);
+        
+        blinkFrames = sort([blinkFrames; tooFarGlints]);
+    case 2
+        % find glintZone center
+        if isempty(p.Results.glintZoneCenter)
+            glintZoneCenter = [median(nanmedian(glintData.X)) median(nanmedian(glintData.Y))];
+        else
+            glintZoneCenter = p.Results.glintZoneCenter;
+        end
+        
+        % find mean location of each glint vector
+        meanGlintVector = [mean(glintData.X,2) mean(glintData.Y,2)];
+        
+        % get distance of each glint from the glintZone center
+        glintDistance = sqrt((meanGlintVector(:,1) - glintZoneCenter(1)).^2 +(meanGlintVector(:,2) - glintZoneCenter(2)).^2);
+        
+        tooFarGlints = find(glintDistance>p.Results.glintZoneRadius);
+        
+        blinkFrames = sort([blinkFrames; tooFarGlints]);
 end
 
-% get distance of each glint from the glintZone center
-glintDistance = sqrt((glintData.X - glintZoneCenter(1)).^2 +(glintData.Y - glintZoneCenter(2)).^2);
-
-tooFarGlints = find(glintDistance>p.Results.glintZoneRadius);
-
-blinkFrames = sort([blinkFrames; tooFarGlints]);
 
 % extend the frames identified as blinks to before and after blocks of
 % blink frames
@@ -361,9 +362,15 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 % get glintData ready for the parfor. This includes transposing the
-% variables 
-glintData_X = glintData.X';
-glintData_Y = glintData.Y';
+% variables
+switch size (glintData.X,2)
+    case 1
+        glintData_X = glintData.X';
+        glintData_Y = glintData.Y';
+    case 2
+        glintData_X = meanGlintVector(:,1)';
+        glintData_Y = meanGlintVector(:,2)';
+end
 
 % Recast perimeter.data into a sliced cell array to reduce par for
 % broadcast overhead
@@ -592,23 +599,6 @@ clear instruction
 instruction = ['%' ',' '%' ',' 'end of automatic instructions'];
 fprintf(fid,'%s\n',instruction);
 fclose(fid);
-
-
-%% Delete the parallel pool
-if p.Results.useParallel
-    if strcmp(p.Results.verbosity,'full')
-        tic
-        fprintf(['Closing parallel pool. Started ' char(datetime('now')) '\n']);
-    end
-    poolObj = gcp;
-    if ~isempty(poolObj)
-        delete(poolObj);
-    end
-    if strcmp(p.Results.verbosity,'full')
-        toc
-        fprintf('\n');
-    end
-end
 
 end % function
 

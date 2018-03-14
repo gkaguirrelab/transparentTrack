@@ -1,6 +1,6 @@
-% DEMO_eyeModel
+% DEMO_eyeModelVideo
 %
-% Demonstrate the forward model of the eye
+% Demonstrate the forward model of the eye by creating a video
 
 clear all
 
@@ -30,8 +30,8 @@ elevationFlip=1;
 for thisPupilRadius = 1:0.5:3
     for thisElevation = -25:5:25
         for thisAzimuth = -35:5:35
-            eyeParams=[thisAzimuth*azimuthFlip,thisElevation*elevationFlip,thisTorsion,thisPupilRadius];
-            pupilData.radiusSmoothed.eyeParams.values(idx,:)= eyeParams;
+            eyePoses=[thisAzimuth*azimuthFlip,thisElevation*elevationFlip,thisTorsion,thisPupilRadius];
+            pupilData.radiusSmoothed.eyePoses.values(idx,:)= eyePoses;
             idx = idx+1;
         end
         azimuthFlip = azimuthFlip*-1;
@@ -42,7 +42,7 @@ save(pupilFileName,'pupilData')
 
 
 %% Create and save the default sceneGeometry file
-sceneGeometry = estimateSceneGeometry('','');
+sceneGeometry = createSceneGeometry();
 save(sceneGeometryFileName,'sceneGeometry')
 
 %% Create the eyeModel video

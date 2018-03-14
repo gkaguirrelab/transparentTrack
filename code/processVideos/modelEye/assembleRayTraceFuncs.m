@@ -1,15 +1,15 @@
 function rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry )
-% Function handles to symbolic ray tracing equations through the cornea
+% Function handles to ray tracing equations
 %
 % Syntax:
 %  rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry )
 %
 % Description:
 %   This routine creates a structure of handles to functions that implement
-%   inverse ray-tracing of points through the cornea. The returned
-%   functions are:
+%   inverse ray-tracing of points through the cornea and corrective lenses.
+%   The returned functions are:
 %
-%       cornea
+%       traceOpticalSystem
 %       cameraNodeDistanceError2D
 %       cameraNodeDistanceError3D
 %       virtualImageRay
@@ -18,7 +18,7 @@ function rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry )
 %
 % Inputs:
 %   sceneGeometry         - A sceneGeometry structure. Critically, this
-%                           include the eye field.
+%                           includes the eye field.
 %
 % Outputs:
 %   rayTraceFuncs         - A structure that contains fields that in turn
@@ -26,26 +26,56 @@ function rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry )
 %
 % Examples:
 %{
-    % Obtain a default sceneGeometry
-    sceneGeometry = estimateSceneGeometry([],[]);
-    % Define the ray tracing functions
-    rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry )
+    % Basic example
+    sceneGeometry = createSceneGeometry();
+    rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
+%}
+%{
+    % Demonstrate how the time it takes to perform the symbolic variable
+    % calculations grows geometrically with the number of surfaces in the
+    % optical system.
+
+    % Obtain a default sceneGeometry. 
+    sceneGeometry = createSceneGeometry();
+    % Define the ray tracing functions 
+    tic
+    rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
+    t(1)=toc;
+    n(1)=size(sceneGeometry.opticalSystem,1);
+    % Add a contact lens (one additional surface)
+    sceneGeometry = createSceneGeometry('sphericalAmetropia',-2,'contactLens',-2);
+    % Define the ray tracing functions 
+    tic
+    rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
+    t(2)=toc;
+    n(2)=size(sceneGeometry.opticalSystem,1);
+    % Add a spectacle lens (two additional surfaces)
+    sceneGeometry = createSceneGeometry('sphericalAmetropia',-2,'spectacleLens',2);
+    % Define the ray tracing functions 
+    tic
+    rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
+    t(3)=toc;
+    n(3)=size(sceneGeometry.opticalSystem,1);
+    % Plot the timing results
+    plot(n,t,'*r');
+    xlabel('# of surfaces in optical model');
+    ylabel('time to assemble ray tracing funcs [secs]');
 %}
 
-%% cornea
-% 2D ray tracing through the cornea
+%% traceOpticalSystem
+% 2D ray tracing through the cornea and any corrective lenses
 % 
 % Syntax:
-%  outputRay = rayTraceFuncs.cornea(h, theta, z)
+%  outputRay = rayTraceFuncs.traceOpticalSystem(h, theta, z)
 %
 % Description:
-%   The sceneGeometry.eye field specifies the spatial arrangement
-%   refractive indices of a model of the optics of the cornea as a set of
-%   centered spherical surfaces. This routine uses these parameters to
-%   construct a ray-tracing function that takes as input coordinates and
-%   angle of a ray arising from a point object and returns as output the
-%   unit vector of the ray that emerges from a point on the corneal
-%   surface.
+%   The sceneGeometry.opticalSystem specifies the spatial arrangement and
+%   refractive indices of a model of the optics of the cornea and any
+%   corrective lenses as a set of centered spherical surfaces. This routine
+%   uses these parameters to construct a ray-tracing function that takes as
+%   input coordinates and angle of a ray arising from a point object and
+%   returns as output the unit vector of the ray that emerges from the last
+%   optical surface.
 %
 % Inputs:
 %   h                     - Scalar, units of mm. This is the height of 
@@ -73,7 +103,7 @@ function rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry )
 %
 % Outputs:
 %   outputRay             - A 2x2 matrix that describes the vector of the
-%                           ray emerging from the system at the corneal
+%                           ray emerging from the system at the last 
 %                           surface. outputRay(1,:) contains [position,
 %                           height] of the starting point of the output
 %                           ray, and outputRay(2,:) is the [position,
@@ -81,7 +111,7 @@ function rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry )
 %                           vector.
 %
 
-rayTraceFuncs.cornea = cornea(sceneGeometry);
+rayTraceFuncs.traceOpticalSystem = traceOpticalSystem(sceneGeometry.opticalSystem);
 
 
 %% cameraNodeDistanceError2D
@@ -127,8 +157,8 @@ rayTraceFuncs.cornea = cornea(sceneGeometry);
 %   eyeAzimuthRads
 %   eyeElevationRads
 %   eyeTorsionRads        - Each is a scalar in units of radians. These
-%                           are the first three values of the eyeParams
-%                           vector. Note that the eyeParams vector
+%                           are the first three values of the eyePoses
+%                           vector. Note that the eyePoses vector
 %                           specifies rotations in degrees. These values
 %                           must be converted to radians before being
 %                           passed to this function. This is necessary as
@@ -156,7 +186,7 @@ rayTraceFuncs.cornea = cornea(sceneGeometry);
 %                           camera.
 
 [rayTraceFuncs.cameraNodeDistanceError2D.p1p2, rayTraceFuncs.cameraNodeDistanceError2D.p1p3] = ...
-    cameraNodeDistanceError2D(rayTraceFuncs.cornea);
+    cameraNodeDistanceError2D(rayTraceFuncs.traceOpticalSystem);
 
 
 %% cameraNodeDistanceError3D
@@ -174,7 +204,7 @@ rayTraceFuncs.cornea = cornea(sceneGeometry);
 %
 
 rayTraceFuncs.cameraNodeDistanceError3D = ...
-    cameraNodeDistanceError3D(rayTraceFuncs.cornea);
+    cameraNodeDistanceError3D(rayTraceFuncs.traceOpticalSystem);
 
 
 %% virtualImageRay
@@ -210,7 +240,7 @@ rayTraceFuncs.cameraNodeDistanceError3D = ...
 %                           of the unit vector.
 %
 
-rayTraceFuncs.virtualImageRay = virtualImageRay(rayTraceFuncs.cornea);
+rayTraceFuncs.virtualImageRay = virtualImageRay(rayTraceFuncs.traceOpticalSystem);
 
 
 end
@@ -222,31 +252,21 @@ end
 % This is where the computations are actually performed
 
 
-%% cornea
-function corneaFunc = cornea(sceneGeometry)
-% 2D ray tracing through the cornea
 
 
-% Obtain the eye field of the sceneGeometry structure
-eye = sceneGeometry.eye;
+%% traceOpticalSystem
+function rayTraceFunc = traceOpticalSystem(opticalSystem)
+% 2D ray tracing through the cornea and any corrective lenses
+
 
 % Define some symbolic variables
 syms z h theta
-
-% Build an optical system of centered spherical surfaces using the
-% parameters for the cornea stored in the eye structure. Note that this
-% system assumes the camera resides in air (index of refraction is 1.0).
-% Details regarding the organization of the opticalSystem matrix can be
-% found in the function rayTraceCenteredSphericalSurfaces().
-opticalSystem = [nan nan eye.aqueousRefractiveIndex; ...
-    eye.corneaBackSurfaceCenter(1) -eye.corneaBackSurfaceRadius eye.corneaRefractiveIndex; ...
-    eye.corneaFrontSurfaceCenter(1) -eye.corneaFrontSurfaceRadius 1.0];
 
 % Pass the optical system and the symbolic variables to the ray tracer
 outputRay2D = rayTraceCenteredSphericalSurfaces([z h], theta, opticalSystem);
 
 % Convert the equation with symbolic variables into a function
-corneaFunc = matlabFunction(outputRay2D);
+rayTraceFunc = matlabFunction(outputRay2D);
 end
 
 
@@ -297,11 +317,6 @@ outputRayHeadWorld_p1p3(2,:)=outputRayHeadWorld_p1p3(2,:)+rotationCenterDepth;
 % world coordinate frame
 outputRaySceneWorld_p1p2 = outputRayHeadWorld_p1p2(:,[2 3 1]);
 outputRaySceneWorld_p1p3 = outputRayHeadWorld_p1p3(:,[2 3 1]);
-
-% We reverse the direction of the Y axis so that positive elevation of the
-% eye corresponds to a movement of the pupil upward in the image
-outputRaySceneWorld_p1p2(:,2) = outputRaySceneWorld_p1p2(:,2)*(-1);
-outputRaySceneWorld_p1p3(:,2) = outputRaySceneWorld_p1p3(:,2)*(-1);
 
 % Obtain an expression for X and Y distances between the nodal point of the camera in the sceneWorld plane and the
 % point at which the ray will strike the plane that contains the camera

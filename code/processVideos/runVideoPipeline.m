@@ -1,6 +1,9 @@
 function runVideoPipeline( pathParams, varargin )
 % A standard processing pipeline for eye tracking videos.
 %
+% Syntax:
+%  runVideoPipeline( pathParams )
+%
 % Description:
 %	The pipeline consists of the following stages:
 %       deinterlaceVideo
@@ -9,7 +12,7 @@ function runVideoPipeline( pathParams, varargin )
 %       makeControlFile
 %       applyControlFile
 %       fitPupilPerimeter -- with minimal constraints
-%       estimateSceneGeometry
+%       estimateCameraTranslation
 %       fitPupilPerimeter -- fit again with scene geometry constraints
 %       smoothPupilRadius
 %       refineIrisRadius
@@ -23,9 +26,9 @@ function runVideoPipeline( pathParams, varargin )
 %   to be correctly executed.
 %
 % Input:
-%   pathParams        - This structure has fields corresponding to the name
-%                       and location of the files to be processed. Fields
-%                       include:
+%	pathParams            - This structure has fields corresponding to the
+%                           name and location of the files to be processed.
+%                           Fields include:
 %                           dataSourceDirFull: full path to the directory
 %                               that contains the source file
 %                           dataOutputDirFull: full path to the directory
@@ -33,63 +36,74 @@ function runVideoPipeline( pathParams, varargin )
 %                               will be written
 %                           runName: the stem name for the source and
 %                               subsequent output files.
-%                       This structure may have other fields defined that
-%                       are used in routines prior to this one to assemble
-%                       the full paths to the source and output dirs.
+%                           This structure may have other fields defined
+%                           that are used in routines prior to this one to
+%                           assemble the full paths to the source and
+%                           output dirs.
 %
 % Optional key/value pairs (display and I/O):
-%   'lastStage'       - The last stage to be executed. By deafult ends with
-%                       the production of the fit video.
-%   'skipStageByName' - A cell array of function calls to be skipped during
-%                       execution of the pipeline.
-%   'skipStageByNumber' - An array of function calls numbers to be skipped
-%                       during execution of the pipeline.
-%   'displayAvailableStages' - Displays numbered list of the available
-%                       stages, to be used as reference for
-%                       skipStageByNumber. Note that if this is set to
-%                       true, no analysis will be perfomed.
-%   'rawVideoSuffix'  - Cell array of strings that contain possible
-%                       suffixes of raw video files to be processed. The
-%                       routine will search for raw videos sequentially in
-%                       the cell array until it finds a match
-%   'videoTypeChoice' - This key-value can be used to identify a set of
-%                       processing choices. There are three choices defined
-%                       here that are somewhat idiosyncratic to the data
-%                       being collected in the GKAguirre lab of the
-%                       University of Pennsylvania. Set this value to
-%                       'custom' to execute a set of parameters passed
-%                       using customFunCalls.
-%                           LiveTrackWithVTOP_sizeCal: used for the
+%  'lastStage'            - The last stage to be executed. By deafult ends 
+%                           with the production of the fit video.
+%  'skipStageByName'      - A cell array of function calls to be skipped 
+%                           during execution of the pipeline.
+%  'skipStageByNumber'    - An array of function calls numbers to be 
+%                           skipped during execution of the pipeline.
+%  'displayAvailableStages' - Displays numbered list of the available
+%                           stages, to be used as reference for
+%                           skipStageByNumber. Note that if this is set to
+%                           true, no analysis will be perfomed.
+%  'rawVideoSuffix'       - Cell array of strings that contain possible
+%                           suffixes of raw video files to be processed.
+%                           The routine will search for raw videos
+%                           sequentially in the cell array until it finds a
+%                           match
+%  'videoTypeChoice'      - This key-value can be used to identify a set of
+%                           processing choices. There are two choices
+%                           defined here that are somewhat idiosyncratic to
+%                           the data being collected in the GKAguirre lab
+%                           of the University of Pennsylvania. Set this
+%                           value to 'custom' to execute a set of
+%                           parameters passed using customFunCalls.
+%                               LiveTrackWithVTOP_sizeCal: used for the
 %                               analysis of size calibration videos of a
 %                               black circle on a calibration wand. Skips
 %                               tracking of the glint or production of a
 %                               control file, as no eyelid will be present
-%                           LiveTrackWithVTOP_eye: standard pipeline
-%   'customFunCalls'  - A cell array of functional calls and key values
-%                       that can be passed in lieu of hard-coding a
-%                       videoTypeChoice set here. This is used in concert
-%                       with passing 'custom' to videoTypeChoice.
-%   'catchErrors'     - Controls if the function calls take place within a
-%                       try-catch block. If set to true (the default) then
-%                       the routine will attempt to execute a function
-%                       three times before exiting with an error. After
-%                       each error within the try-catch block, the function
-%                       cleanupMatlabPrefs is called. This is thought to
-%                       correct a stochastic error that can occur in
-%                       parpool jobs and results in the corruption of the
-%                       matlab preference file, which is then deleted.
-%    'maxAttempts'    - The number of times that a given stage will be re-
-%                       tried in the event of an error.
-%    'makeFitVideoByName' - A cell array of stages for which a fit
-%                       video will be produced following completion of the
-%                       stage. The video file name is the run name,
-%                       followed by "_fitStageX.avi" where X is the idx of
-%                       the function call list.
-%    'makeFitVideoByNumber' - A cell array of stages for which a fit
-%                       video will be produced following completion of the
-%                       stage. The video file name is the run name,
-%                       followed by "_fitStageX.avi" where X is the idx of
-%                       the function call list.
+%                               LiveTrackWithVTOP_eye: standard pipeline
+%  'customFunCalls'       - A cell array of functional calls and key values
+%                           that can be passed in lieu of hard-coding a
+%                           videoTypeChoice set here. This is used in
+%                           concert with passing 'custom' to
+%                           videoTypeChoice.
+%  'customSceneGeometryFile' - When passed, this full path to a
+%                           sceneGeometry file is passed as input to stages
+%                           subsequent to estimateCameraTranslation. This
+%                           allows processing upon one acquisition to use
+%                           the scene Geometry derived from a different
+%                           run.
+%  'catchErrors'          - Controls if the function calls take place 
+%                           within a try-catch block. If set to true (the
+%                           default) then the routine will attempt to
+%                           execute a function 'maxAttempts' times before
+%                           exiting with an error. After each error within
+%                           the try-catch block, the function
+%                           cleanupMatlabPrefs is called. This is thought
+%                           to correct a stochastic error that can occur in
+%                           parpool jobs and results in the corruption of
+%                           the matlab preference file, which is then
+%                           deleted.
+%   'maxAttempts'         - The number of times that a given stage will be 
+%                           re-tried in the event of an error.
+%   'makeFitVideoByName'  - A cell array of stages for which a fit
+%                           video will be produced following completion of
+%                           the stage. The video file name is the run name,
+%                           followed by "_fitStageX.avi" where X is the idx
+%                           of the function call list.
+%   'makeFitVideoByNumber' - A cell array of stages for which a fit
+%                           video will be produced following completion of
+%                           the stage. The video file name is the run name,
+%                           followed by "_fitStageX.avi" where X is the idx
+%                           of the function call list.
 %
 % Output:
 %   None. The routine saves files but does not return variables.
@@ -110,6 +124,7 @@ p.addParameter('displayAvailableStages', false, @islogical)
 p.addParameter('rawVideoSuffix', {'_raw.mov' '.mov'}, @iscell);
 p.addParameter('videoTypeChoice', 'LiveTrackWithVTOP_eye', @ischar);
 p.addParameter('customFunCalls', {}, @iscell);
+p.addParameter('customSceneGeometryFile', [], @(x)(isempty(x) | ischar(x)));
 p.addParameter('catchErrors', true, @islogical);
 p.addParameter('maxAttempts',3,@isnueric);
 p.addParameter('makeFitVideoByName',{},@iscell);
@@ -162,7 +177,19 @@ perimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '
 controlFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_controlFile.csv']);
 correctedPerimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_correctedPerimeter.mat']);
 pupilFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_pupil.mat']);
-sceneGeometryFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sceneGeometry.mat']);
+
+% The sceneGeometryFileNameOutput is the name of the file created by the
+% estimateCameraTranslation routine
+sceneGeometryFileNameOutput = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sceneGeometry.mat']);
+
+% the sceneGeometryFileNameInput is the name of the file passed to the
+% fitPupilPerimeter, smoothPupilRadius, refineIrisRadius, and make fit
+% video routines. A custom value can be passed.
+if ~isempty(p.Results.customSceneGeometryFile)
+    sceneGeometryFileNameInput = p.Results.customSceneGeometryFile;
+else
+    sceneGeometryFileNameInput = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sceneGeometry.mat']);
+end
 sceneDiagnosticPlotFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sceneDiagnosticPlot.pdf']);
 finalFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_finalFit.avi']);
 eyeModelVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_eyeModel.avi']);
@@ -196,16 +223,16 @@ switch p.Results.videoTypeChoice
             'applyControlFile(perimeterFileName,controlFileName,correctedPerimeterFileName, varargin{:});' ...
             ['fitPupilPerimeter(correctedPerimeterFileName, pupilFileName,' ...
             '''nSplits'', 0, varargin{:});']...
-            ['estimateSceneGeometry(pupilFileName, sceneGeometryFileName,' ...
+            ['estimateCameraTranslation(pupilFileName, sceneGeometryFileNameOutput,' ...
             '''sceneDiagnosticPlotFileName'', sceneDiagnosticPlotFileName, varargin{:});']...
             ['fitPupilPerimeter(correctedPerimeterFileName, pupilFileName,' ...
-            '''sceneGeometryFileName'', sceneGeometryFileName, varargin{:});']...
-            'smoothPupilRadius(correctedPerimeterFileName, pupilFileName, sceneGeometryFileName, varargin{:});'...
+            '''sceneGeometryFileName'', sceneGeometryFileNameInput, varargin{:});']...
+            'smoothPupilRadius(correctedPerimeterFileName, pupilFileName, sceneGeometryFileNameInput, varargin{:});'...
             ['makeFitVideo(grayVideoName, finalFitVideoName,' ...
             '''glintFileName'', glintFileName, ''perimeterFileName'', correctedPerimeterFileName,'...
-            '''pupilFileName'', pupilFileName, ''sceneGeometryFileName'', sceneGeometryFileName,' ...
+            '''pupilFileName'', pupilFileName, ''sceneGeometryFileName'', sceneGeometryFileNameInput,' ...
             '''controlFileName'',controlFileName,varargin{:});']...
-            'makeEyeModelVideo(eyeModelVideoName, pupilFileName, sceneGeometryFileName, varargin{:});'...
+            'makeEyeModelVideo(eyeModelVideoName, pupilFileName, sceneGeometryFileNameInput, varargin{:});'...
             };
     case 'custom'
         funCalls = p.Results.customFunCalls;
@@ -354,13 +381,13 @@ switch funNames{ff}
         % plot the sceneConstrained ellipse fit, otherwise plot the
         % unconstrained
         varargin={varargin{:}, 'ellipseFitLabel', 'initial'};
-        sceneFunCallIdx=find(strcmp(funNames,'estimateSceneGeometry'));
+        sceneFunCallIdx=find(strcmp(funNames,'estimateCameraTranslation'));
         if ~isempty(sceneFunCallIdx)
             if sceneFunCallIdx < ff
                 varargin={varargin{:}, 'ellipseFitLabel', 'sceneConstrained'};
             end
         end
-    case 'estimateSceneGeometry'
+    case 'estimateCameraTranslation'
         if ~exist(glintFileName,'file')
             glintFileName = [];
         end

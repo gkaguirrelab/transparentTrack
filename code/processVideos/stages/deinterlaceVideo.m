@@ -1,6 +1,9 @@
 function deinterlaceVideo (videoInFileName, videoOutFileName, varargin)
 % Deinterlace NTSC DV 30Hz video
 %
+% Syntax:
+%  deinterlaceVideo (videoInFileName, videoOutFileName)
+%
 % Description:
 %   This function deinterlaces NTSC DV 30Hz videos, saving out
 %   progressive 60 Hz videos, using a "bob deinterlacing" strategy.

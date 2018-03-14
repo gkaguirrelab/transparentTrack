@@ -1,13 +1,17 @@
 function perimeter = applyControlFile(perimeterFileName, controlFileName, correctedPerimeterFileName, varargin)
 % Modify a perimeter file by applying instructions from a control File
 %
+% Syntax:
+%  perimeter = applyControlFile(perimeterFileName, controlFileName, correctedPerimeterFileName)
+%
 % Description:
-%   This routine applies the instructions from the control file
-%   to the pupil perimeter video. A new corrected perimeter video will be
-%   saved out in the specified file.
+%   This routine applies the instructions from the control file to the
+%   pupil perimeter video. A new corrected perimeter video will be saved
+%   out in the specified file.
 % 
 %   Each frame of the original perimeter video is loaded and elaborated
-%   according to the control file instructions (if any) for the given frame.
+%   according to the control file instructions (if any) for the given
+%   frame.
 % 
 %   Currently available instructions include:
 %     - blink: save out a black frame
@@ -21,11 +25,11 @@ function perimeter = applyControlFile(perimeterFileName, controlFileName, correc
 % 
 %   Note that each line of the control file is set of instructions for one
 %   specifical video frame, identified by the FrameNumber. If there is no
-%   instruction for a given frame, the frame will be saved as is. The control
-%   file may contain multiple instruction lines referred to the same frame
-%   (e.g. first do a vertical cut, then do an horizontal cut); in this case,
-%   the routine will process the instruction on the frame one after the other
-%   in the order they are presented.
+%   instruction for a given frame, the frame will be saved as is. The
+%   control file may contain multiple instruction lines referred to the
+%   same frame (e.g. first do a vertical cut, then do an horizontal cut);
+%   in this case, the routine will process the instruction on the frame one
+%   after the other in the order they are presented.
 % 
 %   Once the instructions have been applied the video will be saved out.
 % 
@@ -113,7 +117,6 @@ for ii = 1:nFrames
         fprintf('.');
     end
     
-    % Obtain this frame
     % get the data frame
     thisFrame = uint8(zeros(originalPerimeter.size));
     thisFrame(sub2ind(originalPerimeter.size,originalPerimeter.data{ii}.Yp,originalPerimeter.data{ii}.Xp))=255;
@@ -132,11 +135,12 @@ for ii = 1:nFrames
                     thisFrame=blankFrame;
                 case 'ellipse'
                     % get the instruction params
-                    [cx, cy, a, b, phi] = parseControlInstructions(instructions(instructionIdx(dd)));
-                    % start from back frame
+                    [p1, p2, p3, p4, p5] = parseControlInstructions(instructions(instructionIdx(dd)));
+                    pE = ellipse_transparent2ex(p1, p2, p3, p4, p5);
+                    % start from blank frame
                     thisFrame = blankFrame;
                     % find ellipse points
-                    [Xe,Ye] = ellipse(N, cx, cy, a, b, phi);
+                    [Xe,Ye] = ellipse(pE(1),pE(2),pE(3),pE(4),pE(5));
                     Xe = round(Xe);
                     Ye = round(Ye);
                     % draw ellipse in frame

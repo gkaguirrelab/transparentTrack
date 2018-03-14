@@ -1,6 +1,9 @@
 function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 % Identifies one or more glints in the frames of an IR video of the eye
 %
+% Syntax:
+%  [glintData] = findGlint(grayVideoName, glintFileName)
+%
 % Description:
 %   This function tracks one or more glints in an IR video using a simple
 %   thresholding and region property identification approach.
@@ -13,27 +16,43 @@ function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 %   function "regionprops". The centroid location is weighted with the
 %   actual brightness value of each pixel in the gray gamma-corrected
 %   image.
-%
+% 
 %   After all centroid locations are extracted, data is refined according
 %   to the expected number of glints and average centroid location
-%   throughout the video. Firstly, we calculate the median location of the
-%   glints from those frames that return as many centroids as the desired
-%   glints. For those frames in which more than the expected number of
-%   glints is found, we use the median value of the "good centroids"
-%   location to assess which of the regions identified are indeed the
-%   desired glints. In frames where less than the desired number of glints
-%   is located, the missing centroids locations will be set as NaNs.
+%   throughout the video. At the moment, the routine is able to process
+%   videos in which either 1 or 2 glints need to be tracked. 
+% 
+%   In the single glint case, we calculate the median location of the glint
+%   from those frames that return as just a single centroid. For the
+%   frames in which more than the expected number of glints is found, we
+%   use the median value of the "good centroids" location to assess which
+%   of the bright regions identified is indeed the desired glint.
+% 
+%   In the double glint case, we assume that the couple of glints has a
+%   "main direction" that the user needs to declare. That is: if the 2
+%   light sources that produce the glint are vertically spaced in the real
+%   world, the main direction will be 'y' on the video. Conversely, if they
+%   are horizontally spaced, the main direction will be 'x'. As in the
+%   single glint case, we start by locating the frames that present the
+%   desired number of bright spot (2).Assuming that in most of those frames
+%   we are tracking the correct glints, we compute a positive "glint
+%   vector" using the tracked centroids coordinate. That is to derive both
+%   an orientation (that is used to sort the glint couples consistently
+%   from one frame to the other) and a median glint vector length. In the
+%   subsequent step, the median glint vector lenght is used to narrow down
+%   the most likely candidates glint in frames where more than the desired
+%   number of centroids was tracked. 
+%   
+%   Both for the single and double glint case, in frames where less than
+%   the desired number of glints is located, we assume that no reliable
+%   glint information was available (e.g. subject was blinking) and the
+%   corresponding glint information will be set as NaNs.
 %
 % Notes:
 %   Coordinate system - the function "regionprops" will save the centroids
 %   in world coordinates (origin top left corner of the frame, xlim = [0
 %   horizontalRes], ylim = [0 verticalRes], therefore, the glint data will
 %   also be expressed in world coordinates.
-% 
-%   Development placeholder - if the expected nuber of glints is greater
-%   than 1, the centroids will be sorted in the N more likely glints
-%   subgroups, where N = number of expected glints. This has not yet been
-%   implemented.
 %
 % Inputs:
 %	grayVideoName         - Full path to the video in which to track the
@@ -48,6 +67,7 @@ function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 %
 % Optional key/value pairs (flow control)
 %  'nFrames'              - Analyze fewer than the total number of frames.
+%  'startFrame'           - First frame from which to start the analysis.
 %
 % Optional key/value pairs (environment)
 %  'tbSnapshot'           - This should contain the output of the
@@ -60,6 +80,9 @@ function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 %
 % Optional key/value pairs (analysis)
 %  'numberOfGlints'       - Desired number of glints to find
+%  'glintsMainDirection'  - In the two glints case, this is the main
+%                           direction in which the two glints are
+%                           consistently spaced.
 %  'glintGammaCorrection' - Gamma correction to be applied in current
 %                           frame. An extremely high value will make almost
 %                           all the frame black and only big bright spots
@@ -102,6 +125,7 @@ p.addParameter('displayMode',false,@islogical);
 
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
+p.addParameter('startFrame',1,@isnumeric);
 
 % Optional environment params
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
@@ -110,7 +134,8 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional analysis params
-p.addParameter('numberOfGlints', 1, @isnumeric); %% MORE THAN 1 TO BE DEVELOPED
+p.addParameter('numberOfGlints', 1, @isnumeric);
+p.addParameter('glintsMainDirection', 'y',@ischar);
 p.addParameter('glintGammaCorrection', 5, @isnumeric);
 p.addParameter('glintThreshold', 0.8, @isnumeric);
 p.addParameter('glintFrameMask',[] , @isnumeric);
@@ -137,10 +162,20 @@ videoSizeY = videoInObj.Height;
 grayVideo = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
 
 % read the video into memory, adjust gamma
-for ii = 1:nFrames
-    thisFrame = readFrame(videoInObj);
-    thisFrame = imadjust(thisFrame,[],[],p.Results.glintGammaCorrection);
-    grayVideo(:,:,ii) = rgb2gray (thisFrame);
+if ~p.Results.displayMode
+    for ii = 1:nFrames
+        thisFrame = readFrame(videoInObj);
+        thisFrame = imadjust(thisFrame,[],[],p.Results.glintGammaCorrection);
+        grayVideo(:,:,ii) = rgb2gray (thisFrame);
+    end
+else
+    cc = 0;
+    for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
+        cc = cc+1;
+        thisFrame = read(videoInObj,ii);
+        thisFrame = imadjust(thisFrame,[],[],p.Results.glintGammaCorrection);
+        grayVideo(:,:,cc) = rgb2gray (thisFrame);
+    end
 end
 % close the video object
 clear videoInObj
@@ -251,18 +286,67 @@ centroidsInEachFrame = sum(~isnan(centroidsByFrame_X),2);
 % first, save out data for the frames with the expected amount of glints
 framesWithExpectedCentroids = find (centroidsInEachFrame==p.Results.numberOfGlints);
 
-for ii = 1: length(framesWithExpectedCentroids)
-    switch p.Results.numberOfGlints
-        case 1 % this case is simple and does not require clustering of the centroids
+switch p.Results.numberOfGlints
+    case 1 % this case is simple and does not require clustering of the centroids
+        for ii = 1: length(framesWithExpectedCentroids)
             glintData_X(framesWithExpectedCentroids(ii)) = centroidsByFrame_X(framesWithExpectedCentroids(ii),1);
             glintData_Y(framesWithExpectedCentroids(ii)) = centroidsByFrame_Y(framesWithExpectedCentroids(ii),1);
+        end
+        
+    case 2
+        % generate an array with a glint-to-glint vector from the frames
+        % with expected glints.
+        for ii = 1: length(framesWithExpectedCentroids)
+            unsortedGlintVector(ii,1) = centroidsByFrame_X(framesWithExpectedCentroids(ii),1) - centroidsByFrame_X(framesWithExpectedCentroids(ii),2);
+            unsortedGlintVector(ii,2) = centroidsByFrame_Y(framesWithExpectedCentroids(ii),1) - centroidsByFrame_Y(framesWithExpectedCentroids(ii),2);
+        end
+        
+        % get median length components of the glint vector
+        medianGlintVector = [nanmedian(abs(unsortedGlintVector(:,1))) nanmedian(abs(unsortedGlintVector(:,2)))];
+        
+        % sort tracked glints according to the glint vector main direction:
+        % make main direction component positive by swapping the tracked
+        % centroid order if necessary
+        switch p.Results.glintsMainDirection
+            case 'y'
+                for ii = 1:length(unsortedGlintVector)
+                    if unsortedGlintVector(ii,2)>0
+                         glintData_X(framesWithExpectedCentroids(ii),1) = centroidsByFrame_X(framesWithExpectedCentroids(ii),1);
+                         glintData_X(framesWithExpectedCentroids(ii),2) = centroidsByFrame_X(framesWithExpectedCentroids(ii),2);
+                         
+                         glintData_Y(framesWithExpectedCentroids(ii),1) = centroidsByFrame_Y(framesWithExpectedCentroids(ii),1);
+                         glintData_Y(framesWithExpectedCentroids(ii),2) = centroidsByFrame_Y(framesWithExpectedCentroids(ii),2);
+                         
+                    else
+                        glintData_X(framesWithExpectedCentroids(ii),1) = centroidsByFrame_X(framesWithExpectedCentroids(ii),2);
+                         glintData_X(framesWithExpectedCentroids(ii),2) = centroidsByFrame_X(framesWithExpectedCentroids(ii),1);
+                         
+                         glintData_Y(framesWithExpectedCentroids(ii),1) = centroidsByFrame_Y(framesWithExpectedCentroids(ii),2);
+                         glintData_Y(framesWithExpectedCentroids(ii),2) = centroidsByFrame_Y(framesWithExpectedCentroids(ii),1);
+                    end
+                end
             
-        otherwise % MORE GLINTS CASE TO BE DEVELOPED
-            % if more than 1 glint is expected, data needs to be
-            % clustered so that Glint1, Glint2.. GlintN are correctly
-            % identified.
-            
-    end
+            case 'x'
+            for ii = 1:length(unsortedGlintVector)
+                    if unsortedGlintVector(ii,1)>0
+                         glintData_X(framesWithExpectedCentroids(ii),1) = centroidsByFrame_X(framesWithExpectedCentroids(ii),1);
+                         glintData_X(framesWithExpectedCentroids(ii),2) = centroidsByFrame_X(framesWithExpectedCentroids(ii),2);
+                         
+                         glintData_Y(framesWithExpectedCentroids(ii),1) = centroidsByFrame_Y(framesWithExpectedCentroids(ii),1);
+                         glintData_Y(framesWithExpectedCentroids(ii),2) = centroidsByFrame_Y(framesWithExpectedCentroids(ii),2);
+                         
+                    else
+                        glintData_X(framesWithExpectedCentroids(ii),1) = centroidsByFrame_X(framesWithExpectedCentroids(ii),2);
+                        glintData_X(framesWithExpectedCentroids(ii),2) = centroidsByFrame_X(framesWithExpectedCentroids(ii),1);
+                         
+                         glintData_Y(framesWithExpectedCentroids(ii),1) = centroidsByFrame_Y(framesWithExpectedCentroids(ii),2);
+                         glintData_Y(framesWithExpectedCentroids(ii),2) = centroidsByFrame_Y(framesWithExpectedCentroids(ii),1);
+                    end
+            end
+        end
+                   
+    otherwise 
+        error('Sorry, unable to track this many glints at the moment.')   
 end
 
 % now, find frames with more centroids than expected
@@ -286,11 +370,91 @@ if ~isempty(framesWithMoreCentroids)
                 glintData_X(framesWithMoreCentroids(ii)) = centroidsByFrame_X(framesWithMoreCentroids(ii),glintIDX);
                 glintData_Y(framesWithMoreCentroids(ii)) = centroidsByFrame_Y(framesWithMoreCentroids(ii),glintIDX);
             end
-
-        otherwise % MORE GLINTS CASE TO BE DEVELOPED
             
-    end
+        case 2
+            % loop through frames
+            for ii = 1:length(framesWithMoreCentroids)
+                
+                % get all possible combinations of glint vector main lenght,
+                % and select the couple of glints that generate a vector main
+                % lenght closest to the average.
+                switch p.Results.glintsMainDirection
+                    case 'y'
+                        theseCentroids = (centroidsByFrame_Y(framesWithMoreCentroids(ii),:));
+                        
+                    case 'x'
+                        theseCentroids = (centroidsByFrame_X(framesWithMoreCentroids(ii),:));
+                        
+                    otherwise
+                        error ('Main direction must be ''x'' or ''y'' for 2 glints case')
+                end
+                % compute all possible main lengths
+                mainLengths = pdist(theseCentroids',@(x,y) x-y);
+                
+                % find main length closest to the average
+                candidateGlintVectorIdx = find(min(abs(abs(mainLengths) - medianGlintVector(2))));
+                
+                % get the indexes of the appropriate centroids
+                if candidateGlintVectorIdx < length(theseCentroids)
+                    glintsTemp_Y = [(centroidsByFrame_Y(framesWithMoreCentroids(ii),1)) (centroidsByFrame_Y(framesWithMoreCentroids(ii),(candidateGlintVectorIdx+1)))];
+                    glintsTemp_X = [(centroidsByFrame_X(framesWithMoreCentroids(ii),1)) (centroidsByFrame_X(framesWithMoreCentroids(ii),(candidateGlintVectorIdx+1)))];
+                    
+                elseif p.Results.centroidsAllocation == 5 && (ismember(candidateGlintVectorIdx,[5 6 7]))
+                    glintsTemp_Y = [(centroidsByFrame_Y(framesWithMoreCentroids(ii),2)) (centroidsByFrame_Y(framesWithMoreCentroids(ii),(candidateGlintVectorIdx -2)))];
+                    glintsTemp_X = [(centroidsByFrame_X(framesWithMoreCentroids(ii),2)) (centroidsByFrame_X(framesWithMoreCentroids(ii),(candidateGlintVectorIdx -2)))];
+                    
+                elseif p.Results.centroidsAllocation == 5 && (ismember(candidateGlintVectorIdx,[8 9]))
+                    glintsTemp_Y = [(centroidsByFrame_Y(framesWithMoreCentroids(ii),3)) (centroidsByFrame_Y(framesWithMoreCentroids(ii),(candidateGlintVectorIdx -4)))];
+                    glintsTemp_X = [(centroidsByFrame_X(framesWithMoreCentroids(ii),3)) (centroidsByFrame_X(framesWithMoreCentroids(ii),(candidateGlintVectorIdx -4)))];
+                    
+                elseif p.Results.centroidsAllocation == 5 && candidateGlintVectorIdx == 10
+                    glintsTemp_Y = [(centroidsByFrame_Y(framesWithMoreCentroids(ii),4)) (centroidsByFrame_Y(framesWithMoreCentroids(ii),5))];
+                    glintsTemp_X = [(centroidsByFrame_X(framesWithMoreCentroids(ii),4)) (centroidsByFrame_X(framesWithMoreCentroids(ii),5))];
+                    
+                else
+                    error ('Option currently unavailable, please set centroidsAllocation = 5 and run again')
+                end
+                
+                % sort the glints
+                
+                switch p.Results.glintsMainDirection
+                    case 'y'
+                        glintsTemp = glintsTemp_Y;
+                        
+                    case 'x'
+                       glintsTemp = glintsTemp_X;
+                        
+                    otherwise
+                        error ('Main direction must be ''x'' or ''y'' for 2 glints case')
+                end
+                
+                if diff(glintsTemp) >0
+                    glintData_X(framesWithMoreCentroids(ii),1) = glintsTemp_X(2);
+                    glintData_X(framesWithMoreCentroids(ii),2) = glintsTemp_X(1);
+                    
+                    glintData_Y(framesWithMoreCentroids(ii),1) = glintsTemp_Y(2);
+                    glintData_Y(framesWithMoreCentroids(ii),2) = glintsTemp_Y(1);
+                else
+                    glintData_X(framesWithMoreCentroids(ii),2) = glintsTemp_X(2);
+                    glintData_X(framesWithMoreCentroids(ii),1) = glintsTemp_X(1);
+                    
+                    glintData_Y(framesWithMoreCentroids(ii),2) = glintsTemp_Y(2);
+                    glintData_Y(framesWithMoreCentroids(ii),1) = glintsTemp_Y(1);
+                end
+                
+                clear glintsTemp glintsTemp_Y glintsTemp_X theseCentroids
+            end
+            
+        otherwise
+            error('Sorry, unable to track this many glints at the moment.')
+    end %switch number of glints
 end
+
+% finally, in the case there are fewer centroids than expected, we assume
+% that the real glints are not visible in the frame (e.g. it is a blink
+% frame) and the centroids are picked up randomly from bright spots on the
+% image. We therefore leave those frames with NaN values for the glint
+% locations.
 
 
 %% save out all data in glintData struct

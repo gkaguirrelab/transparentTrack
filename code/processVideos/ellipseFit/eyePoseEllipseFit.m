@@ -1,30 +1,35 @@
-function [eyeParams, RMSE] = eyeParamEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs, varargin)
+function [eyePose, RMSE] = eyePoseEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs, varargin)
 % Fit an image plane ellipse by perspective projection of a pupil circle
 %
 % Syntax:
-%  [eyeParams, RMSE] = eyeParamEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs)
+%  [eyePose, RMSE] = eyePoseEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs)
 %
 % Description:
 %   The routine fits points on the image plane based upon the eye
 %   parameters (azimuth, elevation, pupil radius) that would produce the
 %   best fitting ellipse projected according to sceneGeometry.
 %
-%   The search is constrained by the upper and lower bounds of the
-%   eyeParams. The default values specified here represent the physical
-%   boundaries of the rotation model. Tighter, biologically informed 
-%   constraints may be passed by the calling function.
+%   The search is constrained by the upper and lower bounds of the eyePose.
+%   The default values specified here represent the physical boundaries of
+%   the rotation model. Tighter, biologically informed constraints may be
+%   passed by the calling function.
 %
 % Inputs:
 %   Xp, Yp                - Vector of points to be fit
 %
 % Optional key/value pairs:
-%  'x0'                   - Initial guess for the eyeParams
-%  'eyeParamsLB'          - Lower bound on the eyeParams
-%  'eyeParamsUB'          - Upper bound on the eyeParams
+%  'x0'                   - Initial guess for the eyePose. The initial
+%                           azimuth and elevation is slightly different
+%                           from zero, as the routines can become stuck in
+%                           local minima for rotation values exactly at
+%                           zero.
+%  'eyePoseLB'            - Lower bound on the eyePose
+%  'eyePoseUB'            - Upper bound on the eyePose
 %
 % Outputs:
-%   eyeParams             - A 1x4 matrix containing the best fitting eye
-%                           parameters (azimuth, elevation, torsion, pupil radius)
+%   eyePose               - A 1x4 matrix containing the best fitting eye
+%                           parameters (azimuth, elevation, torsion, pupil
+%                           radius)
 %   RMSE                  - Root mean squared error of the distance of
 %                           boundary point in the image to the fitted
 %                           ellipse
@@ -40,43 +45,54 @@ p.addRequired('Yp',@isnumeric);
 p.addRequired('sceneGeometry',@isstruct);
 p.addRequired('rayTraceFuncs',@(x)(isempty(x) | isstruct(x)));
 
-p.addParameter('x0',[0 0 0 2],@isnumeric);
-p.addParameter('eyeParamsLB',[-89,-89,0,0.1],@isnumeric);
-p.addParameter('eyeParamsUB',[89,89,0,4],@isnumeric);
+% Optional
+p.addParameter('x0',[1e-3 1e-3 0 2],@isnumeric);
+p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
+p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 
 % Parse and check the parameters
 p.parse(Xp, Yp, sceneGeometry, rayTraceFuncs, varargin{:});
 
-
-%% Define the objective function
-% This is the RMSE of the distance values of the boundary points to the
-% ellipse fit
-myFun = @(p) ...
-    sqrt(...
-        nanmean(...
-            ellipsefit_distance(...
-                Xp,...
-                Yp,...
-                ellipse_transparent2ex(...
-                    pupilProjection_fwd(p, sceneGeometry, rayTraceFuncs)...
-            	)...
-        	).^2 ...
-    	)...
-    );
-
+% Define an anonymous function for the objective
+myObj = @(x) objfun(x, Xp, Yp, sceneGeometry, rayTraceFuncs);
 
 % define some search options
 options = optimoptions(@fmincon,...
     'Display','off');
 
 % Perform the non-linear search
-[eyeParams, RMSE] = ...
-    fmincon(myFun, p.Results.x0, [], [], [], [], p.Results.eyeParamsLB, p.Results.eyeParamsUB, [], options);
+[eyePose, RMSE, exitFlag] = ...
+    fmincon(myObj, p.Results.x0, [], [], [], [], p.Results.eyePoseLB, p.Results.eyePoseUB, [], options);
+
+% If exitFlag==2, we might be in a local minimum; try again starting from
+% a position close to the point found by the prior search
+if exitFlag == 2
+    [eyePose, RMSE] = ...
+        fmincon(myObj, eyePose+[1e-6 1e-6 0 1e-6], [], [], [], [], p.Results.eyePoseLB, p.Results.eyePoseUB, [], options);
+end
+
 
 end % eyeParamEllipseFit
 
 
 %% LOCAL FUNCTIONS
+function fVal = objfun(x, Xp,Yp, sceneGeometry, rayTraceFuncs)
+% Define the objective function
+explicitEllipse = ellipse_transparent2ex(pupilProjection_fwd(x, sceneGeometry, rayTraceFuncs));
+% This is the RMSE of the distance values of the boundary points to
+% the ellipse fit. We check for the case in which the
+% explicitEllipse contains NAN values, which can happen when the
+% eye pose is such that the border of the pupil would not be
+% visible through the cornea. In this case, we return a realMax
+% value for the fVal.
+if any(isnan(explicitEllipse))
+    fVal = realmax;
+else
+    fVal = sqrt(nanmean(ellipsefit_distance(Xp,Yp,explicitEllipse).^2));
+end
+end % local objective function
+
+
 % Taken from the non-linear ellipse fitting routine found within the
 % "quadfit" matlab central toolbox
 
