@@ -183,7 +183,7 @@ if ~isempty(sceneGeometry)
 else
     rayTraceFuncs = [];
 end
-
+rayTraceFuncs = [];
 
 %% Set up the parallel pool
 if p.Results.useParallel

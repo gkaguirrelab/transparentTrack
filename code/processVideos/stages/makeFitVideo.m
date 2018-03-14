@@ -130,6 +130,7 @@ if ~isempty(p.Results.sceneGeometryFileName)
 else
     sceneGeometry=[];
 end
+rayTraceFuncs = [];
 
 % Open a video object for reading
 videoInObj = VideoReader(videoInFileName);
