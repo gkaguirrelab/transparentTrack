@@ -497,6 +497,55 @@ switch p.Results.species
         eye.corneaRefractiveIndex = returnRefractiveIndex( 'cornea', p.Results.spectralDomain );
         eye.aqueousRefractiveIndex = returnRefractiveIndex( 'aqueous', p.Results.spectralDomain );
         eye.lensRefractiveIndex = returnRefractiveIndex( 'lens', p.Results.spectralDomain );
+
+    case {'dog','Dog','canine','Canine'}
+        
+        % Murphy, Christopher J., K. Zadnik, and M. J. Mannis. "Myopia and refractive error in dogs." Investigative ophthalmology & visual science 33.8 (1992): 2459-2463.
+        eye.corneaFrontSurfaceR = 9.2;
+        eye.corneaFrontSurfaceQ = -0.15;        
+        a = eye.corneaFrontSurfaceR / ( eye.corneaFrontSurfaceQ + 1 );
+        b = eye.corneaFrontSurfaceR * sqrt(1/(eye.corneaFrontSurfaceQ+1)) ;
+        eye.corneaFrontSurfaceRadii(1) = a;
+        eye.corneaFrontSurfaceRadii(2:3) = b;
+        
+        % We set the axial apex of the corneal front surface at position
+        % [0, 0, 0]
+        eye.corneaFrontSurfaceCenter = [-eye.corneaFrontSurfaceRadii(1) 0 0];
+        
+        eye.corneaBackSurfaceR = 8;
+        eye.corneaBackSurfaceQ = -0.275;
+        
+        % Compute the radii of the ellipsoid
+        a = eye.corneaBackSurfaceR / ( eye.corneaBackSurfaceQ + 1 );
+        b = eye.corneaBackSurfaceR * sqrt(1/(eye.corneaBackSurfaceQ+1)) ;
+        eye.corneaBackSurfaceRadii(1) = a;
+        eye.corneaBackSurfaceRadii(2:3) = b;
+        
+        % The center of the cornea circle for the back surface is
+        % positioned so that there is 0.55 mm of corneal thickness between
+        % the front and back surface of the cornea at the apex, following
+        % Atchison 2006.
+        eye.corneaBackSurfaceCenter = [-0.64-eye.corneaBackSurfaceRadii(1) 0 0];
+        
+                eye.pupilCenter = [-4.2 0 0];
+        eye.irisRadius = 5.92;
+                        eye.irisCenter = [-4.2 0 0];
+
+        eye.posteriorChamberRadii = [ 8.25 8.25 8.25];
+        eye.axialLength = p.Results.axialLength;
+        
+        % Mutti, Donald O., Karla Zadnik, and Christopher J. Murphy. "Naturally occurring vitreous chamber-based myopia in the Labrador retriever." Investigative ophthalmology & visual science 40.7 (1999): 1577-1584.
+        % Set the depth of the center of the posterior chamber
+        eye.posteriorChamberCenter = ...
+            [(-4.2 - eye.posteriorChamberRadii(1)) 0 0];
+        
+        eye.rotationCenters.azi = [-10 0 0];
+        eye.rotationCenters.ele = [-10 0 0];
+        eye.rotationCenters.tor = [0 0 0];
+        eye.corneaRefractiveIndex = returnRefractiveIndex( 'cornea', p.Results.spectralDomain );
+        eye.aqueousRefractiveIndex = returnRefractiveIndex( 'aqueous', p.Results.spectralDomain );
+        eye.lensRefractiveIndex = returnRefractiveIndex( 'lens', p.Results.spectralDomain );
+
         
     otherwise
         error('Please specify a valid species for the eye model');
