@@ -124,7 +124,7 @@ for ii = 1:nFrames
     if ~any(isnan(eyePoses(ii,:)))
         
         % Obtain the pupilProjection of the model eye to the image plane
-        [pupilEllipseParams, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses(ii,:), sceneGeometry, rayTraceFuncs, 'fullEyeModelFlag', true);
+        [pupilEllipseParams, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses(ii,:), sceneGeometry, rayTraceFuncs, 'fullEyeModelFlag', true, 'removeObscuredPoints', false);
         
         % Loop through the point labels present in the eye model
         for pp = 1:length(p.Results.modelEyeLabelNames)
