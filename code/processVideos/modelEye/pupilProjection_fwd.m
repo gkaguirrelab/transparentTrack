@@ -119,7 +119,7 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePose,sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
     % Define some settings for display
     eyePartLabels = {'aziRotationCenter', 'eleRotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex'};
-    plotColors = {'+r' '+m' '.w' '.b' '*g' '.y' '*y'};
+    plotColors = {'>r' '^m' '.w' '.b' '*g' '.y' '*y'};
     blankFrame = zeros(480,640)+0.5;
     % Prepare a figure
     figure
