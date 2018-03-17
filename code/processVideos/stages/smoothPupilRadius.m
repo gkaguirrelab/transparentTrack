@@ -154,7 +154,6 @@ if strcmp(p.Results.verbosity,'full')
     fprintf('Assembling ray tracing functions.\n');
 end
 [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
-rayTraceFuncs = [];
 
 %% Set up the parallel pool
 if p.Results.useParallel

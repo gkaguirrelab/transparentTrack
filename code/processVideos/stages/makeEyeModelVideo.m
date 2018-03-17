@@ -74,7 +74,6 @@ clear dataLoad
 
 % Assemble the ray tracing functions
 [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
-rayTraceFuncs = [];
 
 % Open a video object for writing
 if p.Results.saveCompressedVideo
