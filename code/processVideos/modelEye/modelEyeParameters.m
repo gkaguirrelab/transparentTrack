@@ -500,8 +500,23 @@ switch p.Results.species
 
     case {'dog','Dog','canine','Canine'}
         
-        % Murphy, Christopher J., K. Zadnik, and M. J. Mannis. "Myopia and refractive error in dogs." Investigative ophthalmology & visual science 33.8 (1992): 2459-2463.
-        eye.corneaFrontSurfaceR = 9.2;
+        % Unless othewise stated, values taken from:
+        %	Coile, D. C., and L. P. O'Keefe. "Schematic eyes for domestic
+        %	animals." Ophthalmic and Physiological Optics 8.2 (1988):
+        %	215-219.
+        %
+        % and
+        %   Mutti, Donald O., Karla Zadnik, and Christopher J. Murphy.
+        %   "Naturally occurring vitreous chamber-based myopia in the
+        %   Labrador retriever." Investigative ophthalmology & visual
+        %   science 40.7 (1999): 1577-1584.
+        %
+        % Values are given for an emmetropic canine eye.
+
+        %% Cornea front surface
+        % I cannot find a value for the asphericity, so am using the human
+        % value
+        eye.corneaFrontSurfaceR = 8.375;
         eye.corneaFrontSurfaceQ = -0.15;        
         a = eye.corneaFrontSurfaceR / ( eye.corneaFrontSurfaceQ + 1 );
         b = eye.corneaFrontSurfaceR * sqrt(1/(eye.corneaFrontSurfaceQ+1)) ;
@@ -512,6 +527,8 @@ switch p.Results.species
         % [0, 0, 0]
         eye.corneaFrontSurfaceCenter = [-eye.corneaFrontSurfaceRadii(1) 0 0];
         
+        %% Cornea back surface
+        % Asphericity is the human value.
         eye.corneaBackSurfaceR = 8;
         eye.corneaBackSurfaceQ = -0.275;
         
@@ -521,20 +538,42 @@ switch p.Results.species
         eye.corneaBackSurfaceRadii(1) = a;
         eye.corneaBackSurfaceRadii(2:3) = b;
         
+        % The thickness of the canine cornea is given as 0.587 mm by:
+        %   Alario, Anthony F., and Christopher G. Pirie. "Central corneal
+        %   thickness measurements in normal dogs: a comparison between
+        %   ultrasound pachymetry and optical coherence tomography."
+        %   Veterinary ophthalmology 17.3 (2014): 207-211.
+        %
         % The center of the cornea circle for the back surface is
-        % positioned so that there is 0.55 mm of corneal thickness between
-        % the front and back surface of the cornea at the apex, following
-        % Atchison 2006.
-        eye.corneaBackSurfaceCenter = [-0.64-eye.corneaBackSurfaceRadii(1) 0 0];
+        % positioned to provide this thickness  between
+        % the front and back surface of the cornea at the apex. 
+        eye.corneaBackSurfaceCenter = [-0.587-eye.corneaBackSurfaceRadii(1) 0 0];
         
-                eye.pupilCenter = [-4.2 0 0];
-        eye.irisRadius = 5.92;
-                        eye.irisCenter = [-4.2 0 0];
+        %% Pupil
+        % We position the pupil plane at the depth of the anterior point of
+        % the lens. Table 3 of:
+        %
+        %   Thomasy, Sara M., et al. "Species differences in the geometry
+        %   of the anterior segment differentially affect anterior chamber
+        %   cell scoring systems in laboratory animals." Journal of Ocular
+        %   Pharmacology and Therapeutics 32.1 (2016): 28-37.
+        %
+        % gives an anterior chamber depth of 4.29 mm. We must then add
+        % corneal thickness to properly position the pupil plane.
+        eye.pupilCenter = [-4.877 0 0];
+        
+        
+        %% Iris
+        % Need values for this. Apparently the iris plane is tilted
+        % substantially in the dog, so some estimate of this will be
+        % needed.
+        eye.irisRadius = 7;
+       	eye.irisCenter = [-4.877 0 0];
 
+        %% Posterior chamber
         eye.posteriorChamberRadii = [ 8.25 8.25 8.25];
         eye.axialLength = p.Results.axialLength;
         
-        % Mutti, Donald O., Karla Zadnik, and Christopher J. Murphy. "Naturally occurring vitreous chamber-based myopia in the Labrador retriever." Investigative ophthalmology & visual science 40.7 (1999): 1577-1584.
         % Set the depth of the center of the posterior chamber
         eye.posteriorChamberCenter = ...
             [(-4.2 - eye.posteriorChamberRadii(1)) 0 0];
