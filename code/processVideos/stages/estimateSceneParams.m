@@ -298,18 +298,12 @@ end
 % Find the weighted mean and SD of the translation vector and rotation
 % scaling
 allFvalsNoRayTrace = cellfun(@(x) x.meta.estimateSceneParams.search.fVal,searchResults);
-allsceneParamVecsNoRayTrace = cellfun(@(x) x.extrinsicTranslationVector,searchResults,'UniformOutput',false);
+allsceneParamVecsNoRayTrace = cellfun(@(x) [x.extrinsicTranslationVector; x.eye.rotationCenters.scaling],searchResults,'UniformOutput',false);
 for dim = 1:3
     vals = cellfun(@(x) x(dim), allsceneParamVecsNoRayTrace);
     sceneParamVecMeanNoRayTrace(dim)=mean(vals.*(1./allFvalsNoRayTrace))/mean(1./allFvalsNoRayTrace);
     sceneParamVecSDNoRayTrace(dim)=std(vals,1./allFvalsNoRayTrace);
 end
-% Find the weighted mean and SD of the eye rotation joint and differential
-% scaling values
-sceneParamVecMeanNoRayTrace(4) = mean(cellfun(@(x) x.eye.rotationCenters.scaling(1),searchResults));
-sceneParamVecSDNoRayTrace(4) = std(cellfun(@(x) x.eye.rotationCenters.scaling(1),searchResults));
-sceneParamVecMeanNoRayTrace(5) = mean(cellfun(@(x) x.eye.rotationCenters.scaling(2),searchResults));
-sceneParamVecSDNoRayTrace(5) = std(cellfun(@(x) x.eye.rotationCenters.scaling(2),searchResults));
 sceneParamVecMeanNoRayTrace=sceneParamVecMeanNoRayTrace';
 sceneParamVecSDNoRayTrace=sceneParamVecSDNoRayTrace';
 
@@ -526,7 +520,7 @@ end
         end
         % Now compute objective function as the RMSE of the distance
         % between the taget and modeled ellipses in shape and area
-        fval = mean(((shapeErrorByEllipse+1).*(areaErrorByEllipse+1).*errorWeights).^2).^(1/2);
+        fval = mean(((shapeErrorByEllipse+1).*errorWeights + (areaErrorByEllipse+1).*errorWeights).^2).^(1/2);
         % We have to keep the fval non-infinite to keep BADS happy
         fval=min([fval realmax]);
     end
@@ -539,7 +533,7 @@ warning(warningState);
 % Assemble the sceneGeometry file to return
 sceneGeometry = initialSceneGeometry;
 sceneGeometry.extrinsicTranslationVector = x(1:3)';
-sceneGeometry.eye.rotationCenters.scaling = x(4:5);
+sceneGeometry.eye.rotationCenters.scaling = x(4:5)';
 sceneGeometry.eye.rotationCenters.azi = sceneGeometry.eye.rotationCenters.azi .* x(4) .* x(5);
 sceneGeometry.eye.rotationCenters.ele = sceneGeometry.eye.rotationCenters.ele .* x(4) ./ x(5);
 sceneGeometry.meta.estimateSceneParams.search.options = options;
