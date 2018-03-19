@@ -649,10 +649,10 @@ if ~isempty(Xedges)
     xPlotBounds = [Xedges(1)-binSpaceX Xedges(end)+binSpaceX];
     yPlotBounds = [Yedges(1)-binSpaceY Yedges(end)+binSpaceY];
 else
-    minX = min([projectedEllipses(:,1);ellipses(:,1)]);
-    maxX = max([projectedEllipses(:,1);ellipses(:,1)]);
-    minY = min([projectedEllipses(:,2);ellipses(:,2)]);
-    maxY = max([projectedEllipses(:,2);ellipses(:,2)]);
+    minX = min([projectedEllipses(:,1);ellipses(:,1);rotationCenterEllipse(1)]);
+    maxX = max([projectedEllipses(:,1);ellipses(:,1);rotationCenterEllipse(1)]);
+    minY = min([projectedEllipses(:,2);ellipses(:,2);rotationCenterEllipse(2)]);
+    maxY = max([projectedEllipses(:,2);ellipses(:,2);rotationCenterEllipse(2)]);
     xPlotBounds = [(minX - (maxX-minX)/10) (maxX + (maxX-minX)/10) ];
     yPlotBounds = [(minY - (maxY-minY)/10) (maxY + (maxY-minY)/10) ];
 end
