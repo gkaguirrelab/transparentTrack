@@ -322,13 +322,15 @@ options = optimoptions(@fmincon,...
         % the theta value is doubled prior to conversion to Cartesian
         % coordinates so that the space wraps at the 0 - pi transition
         % point. Eccentricity has a value ranging from zero (circular) to 1
-        % (a fully flattened ellipse). The ceq value is divided by 2, so
-        % that the largest possible error is unity.
+        % (a fully flattened ellipse). Because the eccentrity value is
+        % quite non-linear, we expand the effect of small eccentricity
+        % values to more heavily weight small differences. The ceq value is
+        % divided by 2, so that the largest possible error is unity.
         
         thetaT = targetEllipse(5)*2;
         thetaC = ellipseAtLast(5)*2;
-        rhoT = 1-sqrt(1-targetEllipse(4)^2);
-        rhoC = 1-sqrt(1-ellipseAtLast(4)^2);
+        rhoT = 1-(1-targetEllipse(4)^0.5).^2;
+        rhoC = 1-(1-ellipseAtLast(4)^0.5).^2;
         
         c = sqrt(rhoT^2 + rhoC^2 - 2*rhoT*rhoC*cos(thetaT-thetaC))/2;
         shapeErrorAtLast = c;
