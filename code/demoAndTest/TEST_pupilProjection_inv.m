@@ -87,8 +87,8 @@ for aziIdx = 1:15
 end
 
 %% Report the errors
-fprintf('The largest azimuth error is %f degrees.\n',max(max(abs(eyePoseErrorsWithRayTrace(:,:,1)))));
-fprintf('The largest elevation error is %f degrees.\n',max(max(abs(eyePoseErrorsWithRayTrace(:,:,2)))));
+fprintf('The largest absolute azimuth error is %f degrees.\n',max(max(abs(eyePoseErrorsWithRayTrace(:,:,1)))));
+fprintf('The largest absolute elevation error is %f degrees.\n',max(max(abs(eyePoseErrorsWithRayTrace(:,:,2)))));
 fprintf('The largest absolute radius error is %f.\n',max(max(abs(eyePoseErrorsWithRayTrace(:,:,4)))));
 fprintf('The largest proportion radius error is %f.\n',1-max(max(abs(eyePoseErrorsWithRayTrace(:,:,4)-pupilRadiusMM)./pupilRadiusMM)));
 
