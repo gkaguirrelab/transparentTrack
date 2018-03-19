@@ -118,8 +118,8 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     % Perform the projection and request the full eye model
     [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePose,sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
     % Define some settings for display
-    eyePartLabels = {'aziRotationCenter', 'eleRotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex'};
-    plotColors = {'>r' '^m' '.w' '.b' '*g' '.y' '*y'};
+    eyePartLabels = {'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber'};
+    plotColors = {'.w' '.b' '*g' '.y'};
     blankFrame = zeros(480,640)+0.5;
     % Prepare a figure
     figure
@@ -323,8 +323,8 @@ if p.Results.fullEyeModelFlag
     % Retain those points that are anterior to the iris plane and not at a
     % greater radius in the p2xp3 plane than the iris.
     retainIdx = logical(...
-        (anteriorChamberPoints(:,1) > sceneGeometry.eye.irisCenter(1)) .* ...
-        (sqrt(anteriorChamberPoints(:,2).^2+anteriorChamberPoints(:,3).^2) < sceneGeometry.eye.irisRadius) ...
+        (anteriorChamberPoints(:,1) >= sceneGeometry.eye.irisCenter(1)) .* ...
+        (sqrt(anteriorChamberPoints(:,2).^2+anteriorChamberPoints(:,3).^2) <= sceneGeometry.eye.irisRadius) ...
         );
     if all(~retainIdx)
         error('The pupil plane is set in front of the corneal apea');
@@ -360,12 +360,10 @@ if p.Results.fullEyeModelFlag
     
     % Retain those points that are posterior to the iris plane, and have a
     % distance from the optical axis in the p2xp3 plane of greater than the
-    % radius of the anterior chamber
-    anteriorChamberRadius = (max(anteriorChamberPoints(:,2)) - min(anteriorChamberPoints(:,2)))/2;
-    
+    % iris radius
     retainIdx = logical(...
         (posteriorChamberPoints(:,1) < sceneGeometry.eye.irisCenter(1)) .* ...
-        sqrt(posteriorChamberPoints(:,2).^2+posteriorChamberPoints(:,3).^2) > anteriorChamberRadius );
+        sqrt(posteriorChamberPoints(:,2).^2+posteriorChamberPoints(:,3).^2) > sceneGeometry.eye.irisRadius );
     if all(~retainIdx)
         error('The iris center is behind the center of the posterior chamber');
     end
