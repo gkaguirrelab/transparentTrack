@@ -1,24 +1,24 @@
-function sceneGeometry = estimateCameraTranslation(pupilFileName, sceneGeometryFileName, varargin)
-% Estimate camera translation given a set of image plane ellipses
+function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileName, varargin)
+% Estimate camera translation and eye rotation given image plane ellipses
 %
 % Syntax:
-%  sceneGeometry = estimateCameraTranslation(pupilFileName, sceneGeometryFileName)
+%  sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileName)
 %
 % Description:
 %   This function searches over a set of ellipses from the passed pupil
-%   file(s) to estimate the extrinsic camera translation vector. The search
-%   attempts to minimize the error associated with the prediction of the
-%   center of ellipses in the image plane while constraining the shape of
-%   these ellipses to match that predicted by the projection.
+%   file(s) to estimate the extrinsic camera translation vector and scaling
+%   values for the azimuthal and elevational eye rotation centers. The
+%   search attempts to minimize the error associated with the prediction of
+%   the shape of ellipses in the image plane while minimizing the error in
+%   prediction of the center of those ellipses in the image plane.
 %
-%   We are aware that the center of an ellipse on the image plane is not at
-%   the same location as the projection of the center of the pupil on the
-%   image plane (see, for example,  Ahn, Sung Joon, H. J. Warnecke, and
-%   Rüdiger Kotowski. "Systematic geometric image measurement errors of
-%   circular object targets: Mathematical formulation and correction." The
-%   Photogrammetric Record 16.93 (1999): 485-502.). The modeling solution
-%   implemented here accounts for this property, as we implement a full,
-%   forward projection of the pupil circle to the image plane.
+%   The search is conducted over 5 parameters, corresponding to three
+%   parameters of camera translation (horizontal, vertical, depth), a
+%   parameter for joint scaling of the centers of rotation of the eye
+%   (azimuthal and elevational rotations), and then a parameter for
+%   differential scaling of the eye rotation centers. For this last
+%   parameter, a value > 1 increases the azimuthal rotation center values
+%   and decreases the elevational.
 %
 % Inputs:
 %	pupilFileName         - Full path to a pupilData file, a cell array
@@ -56,9 +56,9 @@ function sceneGeometry = estimateCameraTranslation(pupilFileName, sceneGeometryF
 %  'hostname'             - AUTOMATIC; The host
 %
 % Optional key/value pairs (analysis)
-%  'translationLB/UB'     - 3x1 vector. Hard upper and lower bounds. Should
+%  'sceneParamsLB/UB'     - 5x1 vector. Hard upper and lower bounds. Should
 %                           reflect the physical limits of the measurement.
-%  'translationLBp/UBp'   - 3x1 vector. Plausible upper and lower bounds.
+%  'sceneParamsLBp/UBp'   - 5x1 vector. Plausible upper and lower bounds.
 %                           Where you think the translation vector solution
 %                           is likely to be.
 %  'eyePoseLB/UB'         - 1x4 vector. Upper / lower bounds on the eyePose
@@ -124,7 +124,7 @@ function sceneGeometry = estimateCameraTranslation(pupilFileName, sceneGeometryF
     end
     % Estimate the scene Geometry using the ellipses
     nBADSsearches = 4;
-    estimatedSceneGeometry = estimateCameraTranslation(pupilData,'','useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1,'nBADSsearches',nBADSsearches,'useRayTracing',false);
+    estimatedSceneGeometry = estimateSceneParams(pupilData,'','useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1,'nBADSsearches',nBADSsearches,'useRayTracing',false);
     % Report how well we did
     fprintf('Error in the recovered camera translation vector (x, y, depth] in mm: \n');
     veridicalSceneGeometry.extrinsicTranslationVector - estimatedSceneGeometry.extrinsicTranslationVector
@@ -153,10 +153,10 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional analysis params
-p.addParameter('translationLB',[-20; -20; 90],@isnumeric);
-p.addParameter('translationUB',[20; 20; 200],@isnumeric);
-p.addParameter('translationLBp',[-5; -5; 100],@isnumeric);
-p.addParameter('translationUBp',[5; 5; 160],@isnumeric);
+p.addParameter('sceneParamsLB',[-20; -20; 90; 0.75; .9],@isnumeric);
+p.addParameter('sceneParamsUB',[20; 20; 200; 1.25; 1.1],@isnumeric);
+p.addParameter('sceneParamsLBp',[-5; -5; 100; 0.85; 0.95],@isnumeric);
+p.addParameter('sceneParamsUBp',[5; 5; 160; 1.15; 1.05],@isnumeric);
 p.addParameter('eyePoseLB',[-35,-25,0,0.25],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('eyePoseUB',[35,25,0,4],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('fitLabel','initial',@ischar);
@@ -164,7 +164,6 @@ p.addParameter('ellipseArrayList',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nBinsPerDimension',4,@isnumeric);
 p.addParameter('useRayTracing',false,@islogical);
 p.addParameter('nBADSsearches',10,@isnumeric);
-p.addParameter('shapeErrorMultiplier',25,@isnumeric);
 
 % parse
 p.parse(pupilFileName, sceneGeometryFileName, varargin{:})
@@ -173,7 +172,7 @@ p.parse(pupilFileName, sceneGeometryFileName, varargin{:})
 %% Announce we are starting
 if strcmp(p.Results.verbosity,'full')
     tic
-    fprintf(['Estimating camera translation from pupil ellipses. Started ' char(datetime('now')) '\n']);
+    fprintf(['Estimating camera translation and eye rotation from pupil ellipses. Started ' char(datetime('now')) '\n']);
 end
 
 %% Create initial sceneGeometry structure and ray tracing functions
@@ -271,19 +270,18 @@ end
 % Peform the search without rayTracing
 searchResults = {};
 parfor (ss = 1:p.Results.nBADSsearches(1),nWorkers)
-%for ss = 1:p.Results.nBADSsearches(1)
+    %for ss = 1:p.Results.nBADSsearches(1)
     
     searchResults{ss} = ...
         performSceneSearch(initialSceneGeometry, [], ...
         ellipses(ellipseArrayList,:), ...
         errorWeights, ...
-        p.Results.translationLB, ...
-        p.Results.translationUB, ...
-        p.Results.translationLBp, ...
-        p.Results.translationUBp, ...
+        p.Results.sceneParamsLB, ...
+        p.Results.sceneParamsUB, ...
+        p.Results.sceneParamsLBp, ...
+        p.Results.sceneParamsUBp, ...
         p.Results.eyePoseLB, ...
-        p.Results.eyePoseUB, ...
-        p.Results.shapeErrorMultiplier);
+        p.Results.eyePoseUB);
     
     % update progress
     if strcmp(p.Results.verbosity,'full')
@@ -297,16 +295,23 @@ if strcmp(p.Results.verbosity,'full')
     fprintf('\n');
 end
 
-% Find the weighted mean and SD of the translation vector
-allFvalsNoRayTrace = cellfun(@(x) x.meta.estimateCameraTranslation.search.fVal,searchResults);
-allTranslationVecsNoRayTrace = cellfun(@(x) x.extrinsicTranslationVector,searchResults,'UniformOutput',false);
+% Find the weighted mean and SD of the translation vector and rotation
+% scaling
+allFvalsNoRayTrace = cellfun(@(x) x.meta.estimateSceneParams.search.fVal,searchResults);
+allsceneParamVecsNoRayTrace = cellfun(@(x) x.extrinsicTranslationVector,searchResults,'UniformOutput',false);
 for dim = 1:3
-    vals = cellfun(@(x) x(dim), allTranslationVecsNoRayTrace);
-    transVecMeanNoRayTrace(dim)=mean(vals.*(1./allFvalsNoRayTrace))/mean(1./allFvalsNoRayTrace);
-    transVecSDNoRayTrace(dim)=std(vals,1./allFvalsNoRayTrace);
+    vals = cellfun(@(x) x(dim), allsceneParamVecsNoRayTrace);
+    sceneParamVecMeanNoRayTrace(dim)=mean(vals.*(1./allFvalsNoRayTrace))/mean(1./allFvalsNoRayTrace);
+    sceneParamVecSDNoRayTrace(dim)=std(vals,1./allFvalsNoRayTrace);
 end
-transVecMeanNoRayTrace=transVecMeanNoRayTrace';
-transVecSDNoRayTrace=transVecSDNoRayTrace';
+% Find the weighted mean and SD of the eye rotation joint and differential
+% scaling values
+sceneParamVecMeanNoRayTrace(4) = mean(cellfun(@(x) x.eye.rotationCenters.scaling(1),searchResults));
+sceneParamVecSDNoRayTrace(4) = std(cellfun(@(x) x.eye.rotationCenters.scaling(1),searchResults));
+sceneParamVecMeanNoRayTrace(5) = mean(cellfun(@(x) x.eye.rotationCenters.scaling(2),searchResults));
+sceneParamVecSDNoRayTrace(5) = std(cellfun(@(x) x.eye.rotationCenters.scaling(2),searchResults));
+sceneParamVecMeanNoRayTrace=sceneParamVecMeanNoRayTrace';
+sceneParamVecSDNoRayTrace=sceneParamVecSDNoRayTrace';
 
 % If rayTraceFuncs is not empty, now repeat the search, using the initial
 % result to inform the bounds for the search with rayTracing
@@ -320,11 +325,11 @@ if ~isempty(rayTraceFuncs)
     % Peform the search with rayTracing, and with plausible upper and lower
     % boundaries informed by the initial search without ray tracing
     searchResults = {};
-    pLB = transVecMeanNoRayTrace-transVecSDNoRayTrace;
-    pUB = transVecMeanNoRayTrace+transVecSDNoRayTrace;
+    pLB = sceneParamVecMeanNoRayTrace-sceneParamVecSDNoRayTrace;
+    pUB = sceneParamVecMeanNoRayTrace+sceneParamVecSDNoRayTrace;
     
-    pLB = max([pLB p.Results.translationLB],[],2);
-    pUB = min([pUB p.Results.translationUB],[],2);
+    pLB = max([pLB p.Results.sceneParamsLB],[],2);
+    pUB = min([pUB p.Results.sceneParamsUB],[],2);
     
     % Check if there is a second value in nBADSsearches we should use
     if length(p.Results.nBADSsearches)>1
@@ -338,13 +343,12 @@ if ~isempty(rayTraceFuncs)
             performSceneSearch(initialSceneGeometry, rayTraceFuncs, ...
             ellipses(ellipseArrayList,:), ...
             errorWeights, ...
-            p.Results.translationLB, ...
-            p.Results.translationUB, ...
+            p.Results.sceneParamsLB, ...
+            p.Results.sceneParamsUB, ...
             pLB, ...
             pUB, ...
             p.Results.eyePoseLB, ...
-            p.Results.eyePoseUB, ...
-            p.Results.shapeErrorMultiplier);
+            p.Results.eyePoseUB);
         
         % update progress
         if strcmp(p.Results.verbosity,'full')
@@ -358,55 +362,30 @@ if ~isempty(rayTraceFuncs)
         fprintf('\n');
     end
     
-    % Find the weighted mean and SD of the translation vector
-    allFvalsWithRayTrace = cellfun(@(x) x.meta.estimateCameraTranslation.search.fVal,searchResults);
-    allTranslationVecsWithRayTrace = cellfun(@(x) x.extrinsicTranslationVector,searchResults,'UniformOutput',false);
-    for dim = 1:3
-        vals = cellfun(@(x) x(dim), allTranslationVecsWithRayTrace);
-        transVecMeanWithRayTrace(dim)=mean(vals.*(1./allFvalsWithRayTrace))/mean(1./allFvalsWithRayTrace);
-        transVecSDWithRayTrace(dim)=std(vals,1./allFvalsWithRayTrace);
-    end
-    transVecMeanWithRayTrace=transVecMeanWithRayTrace';
-    transVecSDWithRayTrace=transVecSDWithRayTrace';
 end
 
-% Repeat the search once more with the bounds fully constrained to the
-% solution that was closest to the weighted-mean value. This is to obtain
-% the error vectors to store in the final sceneGeometry
+% Find the solution with the best fVal.
 if isempty(rayTraceFuncs)
-    [~, idx]=min(cellfun(@(x) sqrt(sum((x-transVecMeanNoRayTrace).^2)), allTranslationVecsNoRayTrace));
-    transVecFinal = allTranslationVecsNoRayTrace{idx};
+    [~, idx]=min(allFvalsNoRayTrace);
+    sceneGeometry = searchResults{idx};
 else
-    [~, idx]=min(cellfun(@(x) sqrt(sum((x-transVecMeanWithRayTrace).^2)), allTranslationVecsWithRayTrace));
-    transVecFinal = allTranslationVecsWithRayTrace{idx};
+    [~, idx]=min(allFvalsWithRayTrace);
+    sceneGeometry = searchResults{idx};
 end
-sceneGeometry = ...
-    performSceneSearch(initialSceneGeometry, rayTraceFuncs, ...
-    ellipses(ellipseArrayList,:), ...
-    errorWeights, ...
-    transVecFinal, ...
-    transVecFinal, ...
-    transVecFinal, ...
-    transVecFinal, ...
-    p.Results.eyePoseLB, ...
-    p.Results.eyePoseUB, ...
-    p.Results.shapeErrorMultiplier);
 
-% add additional search and meta field info to sceneGeometry
-tmpHold=sceneGeometry.meta.estimateCameraTranslation.search;
-sceneGeometry.meta.estimateCameraTranslation = p.Results;
-sceneGeometry.meta.estimateCameraTranslation.search = tmpHold;
-sceneGeometry.meta.estimateCameraTranslation.search.ellipseArrayList = ellipseArrayList';
-sceneGeometry.meta.estimateCameraTranslation.search.allFvalsNoRayTrace = allFvalsNoRayTrace;
-sceneGeometry.meta.estimateCameraTranslation.search.allTranslationVecsNoRayTrace = allTranslationVecsNoRayTrace;
-sceneGeometry.meta.estimateCameraTranslation.search.transVecMeanNoRayTrace = transVecMeanNoRayTrace;
-sceneGeometry.meta.estimateCameraTranslation.search.transVecSDNoRayTrace = transVecSDNoRayTrace;
+% Add additional search and meta field info to sceneGeometry
+tmpHold=sceneGeometry.meta.estimateSceneParams.search;
+sceneGeometry.meta.estimateSceneParams = p.Results;
+sceneGeometry.meta.estimateSceneParams.search = tmpHold;
+sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList = ellipseArrayList';
+sceneGeometry.meta.estimateSceneParams.search.allFvalsNoRayTrace = allFvalsNoRayTrace;
+sceneGeometry.meta.estimateSceneParams.search.allsceneParamVecsNoRayTrace = allsceneParamVecsNoRayTrace;
+sceneGeometry.meta.estimateSceneParams.search.sceneParamVecMeanNoRayTrace = sceneParamVecMeanNoRayTrace;
+sceneGeometry.meta.estimateSceneParams.search.sceneParamVecSDNoRayTrace = sceneParamVecSDNoRayTrace;
 
 if ~isempty(rayTraceFuncs)
-    sceneGeometry.meta.estimateCameraTranslation.search.allFvalsWithRayTrace = allFvalsWithRayTrace;
-    sceneGeometry.meta.estimateCameraTranslation.search.allTranslationVecsWithRayTrace = allTranslationVecsWithRayTrace;
-    sceneGeometry.meta.estimateCameraTranslation.search.transVecMeanWithRayTrace = transVecMeanWithRayTrace;
-    sceneGeometry.meta.estimateCameraTranslation.search.transVecSDWithRayTrace = transVecSDWithRayTrace;
+    sceneGeometry.meta.estimateSceneParams.search.allFvalsWithRayTrace = allFvalsWithRayTrace;
+    sceneGeometry.meta.estimateSceneParams.search.allsceneParamVecsWithRayTrace = allsceneParamVecsWithRayTrace;
 end
 
 %% Save the sceneGeometry file
@@ -449,38 +428,35 @@ function sceneGeometry = performSceneSearch(initialSceneGeometry, rayTraceFuncs,
 %
 % Description:
 %   The routine searches for parameters of the extrinsic translation vector
-%   of the camera that best models the locations of the centers of ellipses
-%   found on the image plane, given the constraint that the ellipse shape
-%   (and area) must also match the prediction of the forward model. The
-%   passed sceneGeometry structure is used as the starting point for the
-%   search. Across each iteration of the search, a candidate sceneGeometry
-%   is assembled from the current values of the parameters. This
-%   sceneGeometry is then used in the inverse pupil projection model. The
-%   inverse projection searches for an eye azimuth, elevation, and pupil
-%   radius that, given the sceneGeometry, best accounts for the parameters
-%   of the target ellipse on the image plane. This inverse search attempts
-%   to minimize the distance bewteen the centers of the predicted and
-%   targeted ellipse on the image plane, while satisfying non-linear
-%   constraints upon matching the shape (eccentricity and theta) and area
-%   of the ellipses. Only when the translation vector is correctly
+%   of the camera and rotation centers of the eye that best model the
+%   shapes (and areas) of ellipses found on the image plane, while
+%   minimizing the distance between the modeled and observed ellipse
+%   centers. The passed sceneGeometry structure is used as the starting
+%   point for the search. Across each iteration of the search, a candidate
+%   sceneGeometry is assembled from the current values of the parameters.
+%   This sceneGeometry is then used in the inverse pupil projection model.
+%   The inverse projection searches for an eye azimuth, elevation, and
+%   pupil radius that, given the sceneGeometry, best accounts for the
+%   parameters of the target ellipse on the image plane. This inverse
+%   search attempts to minimize the distance bewteen the centers of the
+%   predicted and targeted ellipse on the image plane, while satisfying
+%   non-linear constraints upon matching the shape (eccentricity and theta)
+%   and area of the ellipses. Only when the translation vector is correctly
 %   specified will the inverse pupil projection model be able to
 %   simultaneouslty match the center and shape of the ellipse on the image
 %   plane.
 %
 %   The iterative search across sceneGeometry parameters attempts to
-%   minimize the L2 norm of the distances between the targeted and modeled
-%   centers of the ellipses. In the calculation of this objective functon,
-%   each distance error is weighted. The error weight is derived from the
-%   accuracy with which the boundary points of the pupil in the image plane
-%   are fit by an unconstrained ellipse.
+%   minimize the L2 norm of the shape and area errors between the targeted
+%   and modeled centers of the ellipses. In the calculation of this
+%   objective functon, each distance error is weighted. The error weight is
+%   derived from the accuracy with which the boundary points of the pupil
+%   in the image plane are fit by an unconstrained ellipse.
 %
 %   The search is performed using Bayesian Adaptive Direct Search (bads),
 %   as we find that it performs better than (e.g.) patternsearch. BADS only
 %   accepts row vectors, so there is much transposing ahead.
 %
-
-% Set the error form
-errorForm = 'RMSE';
 
 % Pick a random x0 from within the plausible bounds
 x0 = LBp + (UBp-LBp).*rand(numel(LBp),1);
@@ -513,7 +489,12 @@ end
     function fval = objfun(x)
         % Assemble a candidate sceneGeometry structure
         candidateSceneGeometry = initialSceneGeometry;
-        candidateSceneGeometry.extrinsicTranslationVector = x';
+        % Store the extrinsic camera translation vector
+        candidateSceneGeometry.extrinsicTranslationVector = x(1:3)';
+        % Scale the rotation center values by the joint parameter and
+        % differential parameters
+        candidateSceneGeometry.eye.rotationCenters.azi = candidateSceneGeometry.eye.rotationCenters.azi .* x(4) .* x(5);
+        candidateSceneGeometry.eye.rotationCenters.ele = candidateSceneGeometry.eye.rotationCenters.ele .* x(4) ./ x(5);
         % For each ellipse, perform the inverse projection from the ellipse
         % on the image plane to eyePose. We retain the errors from the
         % inverse projection and use these to assemble the objective
@@ -544,45 +525,39 @@ end
             recoveredEyePoses(ii,:)=eyePose;
         end
         % Now compute objective function as the RMSE of the distance
-        % between the taget and modeled ellipses
-        switch errorForm
-            case 'SSE'
-                fval=sum((centerDistanceErrorByEllipse.*(shapeErrorByEllipse.*shapeErrorMultiplier+1).*(areaErrorByEllipse.*shapeErrorMultiplier+1).*errorWeights).^2);
-                % We have to keep the fval non-infinite to keep bads happy
-                fval=min([fval realmax]);
-            case 'RMSE'
-                fval = mean((centerDistanceErrorByEllipse.*(shapeErrorByEllipse.*shapeErrorMultiplier+1).*(areaErrorByEllipse.*shapeErrorMultiplier+1).*errorWeights).^2).^(1/2);
-                % We have to keep the fval non-infinite to keep bads happy
-                fval=min([fval realmax]);
-            otherwise
-                error('I do not recognize that error form');
-        end
-        
+        % between the taget and modeled ellipses in shape and area
+        fval = mean(((shapeErrorByEllipse+1).*(areaErrorByEllipse+1).*errorWeights).^2).^(1/2);
+        % We have to keep the fval non-infinite to keep BADS happy
+        fval=min([fval realmax]);
     end
+
+
 
 % Restore the warning state
 warning(warningState);
 
 % Assemble the sceneGeometry file to return
 sceneGeometry = initialSceneGeometry;
-sceneGeometry.extrinsicTranslationVector = x';
-sceneGeometry.meta.estimateCameraTranslation.search.options = options;
-sceneGeometry.meta.estimateCameraTranslation.search.errorForm = errorForm;
-sceneGeometry.meta.estimateCameraTranslation.search.initialSceneGeometry = initialSceneGeometry;
-sceneGeometry.meta.estimateCameraTranslation.search.ellipses = ellipses;
-sceneGeometry.meta.estimateCameraTranslation.search.errorWeights = errorWeights;
-sceneGeometry.meta.estimateCameraTranslation.search.x0 = x0;
-sceneGeometry.meta.estimateCameraTranslation.search.LB = LB;
-sceneGeometry.meta.estimateCameraTranslation.search.UB = UB;
-sceneGeometry.meta.estimateCameraTranslation.search.LBp = LBp;
-sceneGeometry.meta.estimateCameraTranslation.search.UBp = UBp;
-sceneGeometry.meta.estimateCameraTranslation.search.eyePoseLB = eyePoseLB;
-sceneGeometry.meta.estimateCameraTranslation.search.eyePoseUB = eyePoseUB;
-sceneGeometry.meta.estimateCameraTranslation.search.fVal = fVal;
-sceneGeometry.meta.estimateCameraTranslation.search.centerDistanceErrorByEllipse = centerDistanceErrorByEllipse;
-sceneGeometry.meta.estimateCameraTranslation.search.shapeErrorByEllipse = shapeErrorByEllipse;
-sceneGeometry.meta.estimateCameraTranslation.search.areaErrorByEllipse = areaErrorByEllipse;
-sceneGeometry.meta.estimateCameraTranslation.search.recoveredEyePoses = recoveredEyePoses;
+sceneGeometry.extrinsicTranslationVector = x(1:3)';
+sceneGeometry.eye.rotationCenters.scaling = x(4:5);
+sceneGeometry.eye.rotationCenters.azi = sceneGeometry.eye.rotationCenters.azi .* x(4) .* x(5);
+sceneGeometry.eye.rotationCenters.ele = sceneGeometry.eye.rotationCenters.ele .* x(4) ./ x(5);
+sceneGeometry.meta.estimateSceneParams.search.options = options;
+sceneGeometry.meta.estimateSceneParams.search.initialSceneGeometry = initialSceneGeometry;
+sceneGeometry.meta.estimateSceneParams.search.ellipses = ellipses;
+sceneGeometry.meta.estimateSceneParams.search.errorWeights = errorWeights;
+sceneGeometry.meta.estimateSceneParams.search.x0 = x0;
+sceneGeometry.meta.estimateSceneParams.search.LB = LB;
+sceneGeometry.meta.estimateSceneParams.search.UB = UB;
+sceneGeometry.meta.estimateSceneParams.search.LBp = LBp;
+sceneGeometry.meta.estimateSceneParams.search.UBp = UBp;
+sceneGeometry.meta.estimateSceneParams.search.eyePoseLB = eyePoseLB;
+sceneGeometry.meta.estimateSceneParams.search.eyePoseUB = eyePoseUB;
+sceneGeometry.meta.estimateSceneParams.search.fVal = fVal;
+sceneGeometry.meta.estimateSceneParams.search.centerDistanceErrorByEllipse = centerDistanceErrorByEllipse;
+sceneGeometry.meta.estimateSceneParams.search.shapeErrorByEllipse = shapeErrorByEllipse;
+sceneGeometry.meta.estimateSceneParams.search.areaErrorByEllipse = areaErrorByEllipse;
+sceneGeometry.meta.estimateSceneParams.search.recoveredEyePoses = recoveredEyePoses;
 
 end % local search function
 
@@ -661,7 +636,7 @@ scatter(projectedEllipses(:,1),projectedEllipses(:,2),'o','filled', ...
     'MarkerFaceAlpha',2/8,'MarkerFaceColor',[0 0 1]);
 
 % connect the centers with lines
-errorWeightVec=sceneGeometry.meta.estimateCameraTranslation.search.errorWeights;
+errorWeightVec=sceneGeometry.meta.estimateSceneParams.search.errorWeights;
 for ii=1:size(ellipses,1)
     lineAlpha = errorWeightVec(ii)/max(errorWeightVec);
     lineWeight = 0.5 + (errorWeightVec(ii)/max(errorWeightVec));
@@ -725,7 +700,7 @@ end
 
 % Calculate a color for each plot point corresponding to the degree of
 % shape error
-shapeErrorVec = sceneGeometry.meta.estimateCameraTranslation.search.shapeErrorByEllipse;
+shapeErrorVec = sceneGeometry.meta.estimateSceneParams.search.shapeErrorByEllipse;
 shapeErrorVec = shapeErrorVec./sceneGeometry.constraintTolerance;
 colorMatrix = zeros(3,size(ellipses,1));
 colorMatrix(1,:)=1;
@@ -752,7 +727,7 @@ set(hSub, 'Visible', 'off');
 legend({'0',num2str(sceneGeometry.constraintTolerance/2), ['=> ' num2str(sceneGeometry.constraintTolerance)]},'Location','north', 'Orientation','vertical');
 
 % Add text to report the extrinsic translation vector
-myString = sprintf('Translation vector [mm] = %4.1f, %4.1f, %4.1f',sceneGeometry.extrinsicTranslationVector(1),sceneGeometry.extrinsicTranslationVector(2),sceneGeometry.extrinsicTranslationVector(3));
+myString = sprintf('Translation vector [mm] = %4.1f, %4.1f, %4.1f; rotation center scaling [joint, differential] = %4.2f, %4.2f',sceneGeometry.extrinsicTranslationVector(1),sceneGeometry.extrinsicTranslationVector(2),sceneGeometry.extrinsicTranslationVector(3),sceneGeometry.eye.rotationCenters.scaling(1),sceneGeometry.eye.rotationCenters.scaling(2));
 text(0.5,1.0,myString,'Units','normalized','HorizontalAlignment','center')
 
 %% Right panel -- area error
@@ -773,7 +748,7 @@ end
 
 % Calculate a color for each plot point corresponding to the degree of
 % shape error
-areaErrorVec = sceneGeometry.meta.estimateCameraTranslation.search.areaErrorByEllipse;
+areaErrorVec = sceneGeometry.meta.estimateSceneParams.search.areaErrorByEllipse;
 areaErrorVec = abs(areaErrorVec)./sceneGeometry.constraintTolerance;
 areaErrorVec = min([areaErrorVec ones(size(ellipses,1),1)],[],2);
 colorMatrix = zeros(3,size(ellipses,1));

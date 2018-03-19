@@ -1,4 +1,4 @@
-%% TEST_estimateCameraTranslation
+%% TEST_estimateSceneParams
 % Examine the ability of the routines to estimate an unknown scene geometry
 %
 % Description:
@@ -52,9 +52,9 @@
 thisComputer = computer;
 switch thisComputer
     case 'MACI64'
-        outputFileStem = fullfile('~','Dropbox (Aguirre-Brainard Lab)','TOME_analysis','gka_simulationTests','TEST_estimateCameraTranslation','sceneGeometry');
+        outputFileStem = fullfile('~','Dropbox (Aguirre-Brainard Lab)','TOME_analysis','gka_simulationTests','TEST_estimateSceneParams','sceneGeometry');
     case 'GLNXA64'
-        outputFileStem = fullfile('~','TEST_estimateCameraTranslation','sceneGeometry');
+        outputFileStem = fullfile('~','TEST_estimateSceneParams','sceneGeometry');
 end
 
 
@@ -112,13 +112,13 @@ for azi=-15:15:15
 end
 
 startTime=datetime('now');
-result = estimateCameraTranslation(pupilData,'','axialLength',defaultAxialLength, ...
+result = estimateSceneParams(pupilData,'','axialLength',defaultAxialLength, ...
     'useParallel',false,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1, ....
     'nBADSsearches',100,'useRayTracing',false, ...
-	'translationLB',[-20; -20; 40], ...
-	'translationUB',[20; 20; 200], ...
-	'translationLBp',[-5; -5; 80], ...
-	'translationUBp',[5; 5; 160]);
+	'sceneParamsLB',[-20; -20; 40; 1; 1], ...
+	'sceneParamsUB',[20; 20; 200; 1; 1], ...
+	'sceneParamsLBp',[-5; -5; 80; 1; 1], ...
+	'sceneParamsUBp',[5; 5; 160; 1; 1]);
 
 endTime=datetime('now');
 result.startTime = startTime;

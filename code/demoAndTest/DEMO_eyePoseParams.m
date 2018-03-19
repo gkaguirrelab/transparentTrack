@@ -24,9 +24,9 @@ sceneGeometry = createSceneGeometry('eyeLaterality','Right');
 rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
 
 % Define some variables for plotting the model eye
-eyePartLabels = {'rotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex' 'pupilCenter'};
-plotColors = {'+r' '.w' '.b' '*g' '.y' '*y' '+g'};
-blankFrame = zeros(480,640)+0.5;
+eyePartLabels = {'aziRotationCenter', 'eleRotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex' 'pupilCenter'};
+plotColors = {'>r' '^m' '.w' '.b' '*g' '.y' '*y' '+g'};
+blankFrame = zeros(480,620)+0.5;
 
 %% Present Figure 1
 figure(1)
@@ -41,7 +41,7 @@ for pose = 1:size(eyePoses,1)
     hold on
     axis off
     axis equal
-    xlim([0 640]);
+    xlim([0 620]);
     ylim([0 480]);
     % Plot each anatomical component
     for pp = 1:length(eyePartLabels)-1
