@@ -296,7 +296,7 @@ if strcmp(p.Results.verbosity,'full')
 end
 
 % Find the weighted mean and SD of the translation vector and rotation
-% scaler
+% scaling
 allFvalsNoRayTrace = cellfun(@(x) x.meta.estimateSceneParams.search.fVal,searchResults);
 allsceneParamVecsNoRayTrace = cellfun(@(x) x.extrinsicTranslationVector,searchResults,'UniformOutput',false);
 for dim = 1:3
@@ -306,10 +306,10 @@ for dim = 1:3
 end
 % Find the weighted mean and SD of the eye rotation joint and differential
 % scaling values
-sceneParamVecMeanNoRayTrace(4) = mean(cellfun(@(x) x.eye.rotationCenters.scaler(1),searchResults));
-sceneParamVecSDNoRayTrace(4) = std(cellfun(@(x) x.eye.rotationCenters.scaler(1),searchResults));
-sceneParamVecMeanNoRayTrace(5) = mean(cellfun(@(x) x.eye.rotationCenters.scaler(2),searchResults));
-sceneParamVecSDNoRayTrace(5) = std(cellfun(@(x) x.eye.rotationCenters.scaler(2),searchResults));
+sceneParamVecMeanNoRayTrace(4) = mean(cellfun(@(x) x.eye.rotationCenters.scaling(1),searchResults));
+sceneParamVecSDNoRayTrace(4) = std(cellfun(@(x) x.eye.rotationCenters.scaling(1),searchResults));
+sceneParamVecMeanNoRayTrace(5) = mean(cellfun(@(x) x.eye.rotationCenters.scaling(2),searchResults));
+sceneParamVecSDNoRayTrace(5) = std(cellfun(@(x) x.eye.rotationCenters.scaling(2),searchResults));
 sceneParamVecMeanNoRayTrace=sceneParamVecMeanNoRayTrace';
 sceneParamVecSDNoRayTrace=sceneParamVecSDNoRayTrace';
 
@@ -539,7 +539,7 @@ warning(warningState);
 % Assemble the sceneGeometry file to return
 sceneGeometry = initialSceneGeometry;
 sceneGeometry.extrinsicTranslationVector = x(1:3)';
-sceneGeometry.eye.rotationCenters.scaler = x(4:5);
+sceneGeometry.eye.rotationCenters.scaling = x(4:5);
 sceneGeometry.eye.rotationCenters.azi = sceneGeometry.eye.rotationCenters.azi .* x(4) .* x(5);
 sceneGeometry.eye.rotationCenters.ele = sceneGeometry.eye.rotationCenters.ele .* x(4) ./ x(5);
 sceneGeometry.meta.estimateSceneParams.search.options = options;
@@ -727,7 +727,7 @@ set(hSub, 'Visible', 'off');
 legend({'0',num2str(sceneGeometry.constraintTolerance/2), ['=> ' num2str(sceneGeometry.constraintTolerance)]},'Location','north', 'Orientation','vertical');
 
 % Add text to report the extrinsic translation vector
-myString = sprintf('Translation vector [mm] = %4.1f, %4.1f, %4.1f; rotation center scaler joint, differential = %4.2f  %4.2f',sceneGeometry.extrinsicTranslationVector(1),sceneGeometry.extrinsicTranslationVector(2),sceneGeometry.extrinsicTranslationVector(3),sceneGeometry.eye.rotationCenters.scaler(1),sceneGeometry.eye.rotationCenters.scaler(2));
+myString = sprintf('Translation vector [mm] = %4.1f, %4.1f, %4.1f; rotation center scaling [joint, differential] = %4.2f, %4.2f',sceneGeometry.extrinsicTranslationVector(1),sceneGeometry.extrinsicTranslationVector(2),sceneGeometry.extrinsicTranslationVector(3),sceneGeometry.eye.rotationCenters.scaling(1),sceneGeometry.eye.rotationCenters.scaling(2));
 text(0.5,1.0,myString,'Units','normalized','HorizontalAlignment','center')
 
 %% Right panel -- area error
