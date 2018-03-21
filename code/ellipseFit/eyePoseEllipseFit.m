@@ -46,12 +46,91 @@ p.addRequired('sceneGeometry',@isstruct);
 p.addRequired('rayTraceFuncs',@(x)(isempty(x) | isstruct(x)));
 
 % Optional
-p.addParameter('x0',[1e-3 1e-3 0 2],@isnumeric);
+p.addParameter('x0',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 
 % Parse and check the parameters
 p.parse(Xp, Yp, sceneGeometry, rayTraceFuncs, varargin{:});
+
+
+%% Set bounds and x0
+% Identify the center of projection.
+eyePoseLB = p.Results.eyePoseLB;
+eyePoseUB = p.Results.eyePoseUB;
+
+projectionMatrix = ...
+    sceneGeometry.intrinsicCameraMatrix * ...
+    [sceneGeometry.extrinsicRotationMatrix, ...
+    sceneGeometry.extrinsicTranslationVector];
+
+CoP = projectionMatrix*[0 0 0 1]';
+CoP(1:2)=CoP(1:2)./CoP(3);
+CoP=CoP(1:2);
+
+meanXp = mean(Xp);
+meanYp = mean(Yp);
+
+% Set the bounds on the eyePose based upon the quadrant of the ellipse
+% center. We provide half a degree of wiggle in the fit around zero.
+if meanXp < CoP(1)
+    eyePoseUB(1) = .5;
+else
+    eyePoseLB(1) = -.5;
+end
+if meanYp > CoP(2)
+    eyePoseUB(2) = .5;
+else
+    eyePoseLB(2) = -.5;
+end
+
+% If x0 is undefined, we make a guess based upon the location of the center
+% of the points to be fit
+if isempty(p.Results.x0)
+    % Probe the forward model to determine how many pixels of change in the
+    % location of the pupil ellipse correspond to one degree of rotation.
+    % Omit ray-tracing to save time as it has minimal effect upon the
+    % position of the center of the ellipse.
+    probeEllipse=pupilProjection_fwd([1 0 0 2],sceneGeometry, []);
+    pixelsPerDeg = probeEllipse(1)-CoP(1);
+    
+    % Estimate the eye azimuth and elevation by the X and Y displacement of
+    % the ellipse center from the center of projection. Torsion is set to
+    % zero
+    x0(1) = ((meanXp - CoP(1))/pixelsPerDeg);
+    x0(2) = ((CoP(2) - meanYp)/pixelsPerDeg);
+    x0(3) = 0;
+        
+    % Force the angles within bounds
+    x0=min([eyePoseUB(1:3); x0]);
+    x0=max([eyePoseLB(1:3); x0]);    
+    
+    % Estimate the pupil radius in pixels
+    pupilRadiusPixels = max([abs(max(Xp)-min(Xp)) abs(max(Yp)-min(Yp))])/2;
+    
+    % Probe the forward model at the estimated pose angles to
+    % estimate the pupil radius. Here we do need ray tracing as it
+    % has a substantial influence upon the area of the ellipse.
+    probeEllipse=pupilProjection_fwd([x0(1) x0(2) x0(3) 2], sceneGeometry, rayTraceFuncs);
+    pixelsPerMM = sqrt(probeEllipse(3)/pi)/2;
+    
+    % Set the initial value for pupil radius in mm
+    x0(4) = pupilRadiusPixels/pixelsPerMM;
+    
+    % If the absolute value of an estimated angle is less than 2 degrees,
+    % set the value to close to zero. This is done as fmincon seems to
+    % avoid solutions exactly at zero, and this kludge fixes that behavior.
+    x0(abs(x0(1:3))<2) = 1e-6;
+    
+    % Ensure that x0 lies within the bounds with a bit of headroom so that
+    % the solver does not get stuck up against a bound.
+    boundHeadroom = (eyePoseUB - eyePoseLB)*0.001;
+    x0=min([eyePoseUB-boundHeadroom; x0]);
+    x0=max([eyePoseLB+boundHeadroom; x0]);
+else
+    x0 = p.Results.x0;
+end
+
 
 % Define an anonymous function for the objective
 myObj = @(x) objfun(x, Xp, Yp, sceneGeometry, rayTraceFuncs);
@@ -67,7 +146,7 @@ warning('off','MATLAB:nearlySingularMatrix');
 warning('off','MATLAB:singularMatrix');
 
 [eyePose, RMSE, exitFlag] = ...
-    fmincon(myObj, p.Results.x0, [], [], [], [], p.Results.eyePoseLB, p.Results.eyePoseUB, [], options);
+    fmincon(myObj, x0, [], [], [], [], eyePoseLB, eyePoseUB, [], options);
 
 % If exitFlag==2, we might be in a local minimum; try again starting from
 % a position close to the point found by the prior search
