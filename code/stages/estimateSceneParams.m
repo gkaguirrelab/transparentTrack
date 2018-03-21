@@ -258,7 +258,7 @@ end
 errorWeights = ellipseFitSEM(ellipseArrayList);
 errorWeights = 1./errorWeights;
 errorWeights = errorWeights./mean(errorWeights);
-
+errorWeights = ones(size(errorWeights));
 
 %% Perform the search
 if strcmp(p.Results.verbosity,'full')
@@ -270,7 +270,7 @@ end
 % Peform the search without rayTracing
 searchResults = {};
 parfor (ss = 1:p.Results.nBADSsearches(1),nWorkers)
-    %for ss = 1:p.Results.nBADSsearches(1)
+%for ss = 1:p.Results.nBADSsearches(1)
     
     searchResults{ss} = ...
         performSceneSearch(initialSceneGeometry, [], ...
