@@ -72,6 +72,10 @@ function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, scene
 %  'initialFitLabel'      - The field in pupilData that contains the
 %                           initial, not scene constrained, ellipse fit to
 %                           the pupil perimeter.
+%  'useRayTracing'        - Logical; default false. Using ray tracing in
+%                           the camera translation search improves accuracy
+%                           slightly, but increases search time by about
+%                           25x.
 %
 % Outputs:
 %   pupilData             - A structure with multiple fields corresponding
@@ -110,6 +114,7 @@ p.addParameter('likelihoodErrorExponent',1.0,@isnumeric);
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
 p.addParameter('fitLabel','sceneConstrained',@ischar);
 p.addParameter('initialFitLabel','initial',@ischar);
+p.addParameter('useRayTracing',false,@islogical);
 
 
 %% Parse and check the parameters
@@ -135,6 +140,16 @@ dataLoad=load(p.Results.sceneGeometryFileName);
 sceneGeometry=dataLoad.sceneGeometry;
 clear dataLoad
 
+% Assemble the ray tracing functions
+if p.Results.useRayTracing
+    if strcmp(p.Results.verbosity,'full')
+        fprintf('Assembling ray tracing functions.\n');
+    end
+    [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
+else
+    rayTraceFuncs = [];
+end
+
 % determine how many frames we will process
 if p.Results.nFrames == Inf
     nFrames=size(perimeter.data,1);
@@ -153,11 +168,6 @@ if ~isfield(pupilData.(p.Results.fitLabel).eyePoses,'splitsSD')
     error('This fit field does not have the required subfield: eyePoses.splitsSD');
 end
 
-% Assemble the ray tracing functions
-if strcmp(p.Results.verbosity,'full')
-    fprintf('Assembling ray tracing functions.\n');
-end
-[rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
 
 %% Set up the parallel pool
 if p.Results.useParallel

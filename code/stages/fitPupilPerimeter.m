@@ -87,6 +87,13 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %                           sceneGeometry is available, fitting is
 %                           performed in terms of eye parameters instead of
 %                           ellipse parameters
+%  'fitLabel'             - The field name in the pupilData structure where
+%                           the results of the fitting will be stored.
+%  'useRayTracing'        - Logical; default false. Using ray tracing in
+%                           the camera translation search improves accuracy
+%                           slightly, but increases search time by about
+%                           25x.
+
 %
 % Outputs:
 %	pupilData             - A structure with multiple fields corresponding
@@ -126,6 +133,7 @@ p.addParameter('eyePoseUB',[35,25,0,4],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nSplits',2,@isnumeric);
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('fitLabel',[],@(x)(isempty(x) | ischar(x)));
+p.addParameter('useRayTracing',false,@islogical);
 
 
 %% Parse and check the parameters
@@ -152,6 +160,16 @@ else
     clear dataLoad
 end
 
+% If sceneGeometry is defined, prepare the ray tracing functions
+if ~isempty(sceneGeometry) && p.Results.useRayTracing
+    if strcmp(p.Results.verbosity,'full')
+        fprintf('Assembling ray tracing functions.\n');
+    end
+    [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
+else
+    rayTraceFuncs = [];
+end
+
 % Optionally load the pupilData file
 if exist(p.Results.pupilFileName, 'file') == 2
     dataLoad=load(pupilFileName);
@@ -173,16 +191,6 @@ end
 % Create an anonymous function to return a rotation matrix given theta in
 % radians
 returnRotMat = @(theta) [cos(theta) -sin(theta); sin(theta) cos(theta)];
-
-% If sceneGeometry is defined, prepare the ray tracing functions
-if ~isempty(sceneGeometry)
-    if strcmp(p.Results.verbosity,'full')
-        fprintf('Assembling ray tracing functions.\n');
-    end
-    [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
-else
-    rayTraceFuncs = [];
-end
 
 
 %% Set up the parallel pool
