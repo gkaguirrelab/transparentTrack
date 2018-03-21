@@ -226,6 +226,7 @@ end
 
 % Loop through the frames
 parfor (ii = 1:nFrames, nWorkers)
+%for ii = 311:nFrames
     
     % Update progress
     if strcmp(verbosity,'full')
@@ -262,9 +263,8 @@ parfor (ii = 1:nFrames, nWorkers)
             else
                 % Identify the best fitting eye parameters for the  the
                 % pupil perimeter
-                eyePose_x0 = [0 0 0 2];
                 [eyePose, eyePoseObjectiveError] = ...
-                    eyePoseEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs, 'x0', eyePose_x0, 'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB);
+                    eyePoseEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs, 'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB);
                 % Obtain the parameters of the ellipse
                 ellipseParamsTransparent = ...
                     pupilProjection_fwd(eyePose, sceneGeometry, rayTraceFuncs);
