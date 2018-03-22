@@ -236,8 +236,8 @@ else
     
     % Identify the ellipses with RMSE fits that are below the "bad"
     % threshold
-    goodFitIdx = ellipseFitRMSE < p.Results.badFrameErrorThreshold;
-    if ~any(goodFitIdx)
+    goodFitIdx = find(ellipseFitRMSE < p.Results.badFrameErrorThreshold);
+    if isempty(goodFitIdx)
         error('No initial ellipse fits are good enough to guide the search; try adjusting badFrameErrorThreshold');
     end
     
@@ -259,9 +259,9 @@ else
     filledBinIdx = find(~cellfun(@isempty, idxByBinPosition));
     
     % Identify the ellipse in each bin with the lowest fit RMSE
-    [~, idxMinErrorEllipseWithinBin] = arrayfun(@(x) nanmin(ellipseFitRMSE(idxByBinPosition{x})), filledBinIdx, 'UniformOutput', false);
+    [~, idxMinErrorEllipseWithinBin] = arrayfun(@(x) nanmin(ellipseFitRMSE(goodFitIdx(idxByBinPosition{x}))), filledBinIdx, 'UniformOutput', false);
     returnTheMin = @(binContents, x)  binContents(idxMinErrorEllipseWithinBin{x});
-    ellipseArrayList = cellfun(@(x) returnTheMin(idxByBinPosition{filledBinIdx(x)},x),num2cell(1:1:length(filledBinIdx)));
+    ellipseArrayList = cellfun(@(x) returnTheMin(goodFitIdx(idxByBinPosition{filledBinIdx(x)}),x),num2cell(1:1:length(filledBinIdx)));
 end
 
 
