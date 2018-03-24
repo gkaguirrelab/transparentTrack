@@ -181,9 +181,10 @@ end
 
 %% Create initial sceneGeometry structure and ray tracing functions
 initialSceneGeometry = createSceneGeometry(varargin{:});
+initialSceneGeometry.useRayTracing = p.Results.useRayTracing;
 
 % Assemble the ray tracing functions
-if p.Results.useRayTracing
+if initialSceneGeometry.useRayTracing
     if strcmp(p.Results.verbosity,'full')
         fprintf('Assembling ray tracing functions.\n');
     end

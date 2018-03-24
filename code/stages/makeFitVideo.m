@@ -26,10 +26,6 @@ function makeFitVideo(videoInFileName, videoOutFileName, varargin)
 %  'fitLabel'             - The field of the pupilData file that contains
 %                           ellipse fit params to be added to the video.
 %  'controlFileName'      - Full path to the control file to be included.
-%  'useRayTracing'        - Logical; default false. Using ray tracing in
-%                           the camera translation search improves accuracy
-%                           slightly, but increases search time by about
-%                           25x.
 %
 % Outputs:
 %   None
@@ -64,7 +60,6 @@ p.addParameter('modelEyeLabelNames', {'posteriorChamber' 'irisPerimeter' 'anteri
 p.addParameter('modelEyePlotColors', {'.w' 'ob' '.y'}, @iscell);
 p.addParameter('fitLabel', 'radiusSmoothed',@(x)(isempty(x) | ischar(x)));
 p.addParameter('controlFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('useRayTracing',false,@islogical);
 
 % parse
 p.parse(videoInFileName, videoOutFileName, varargin{:})
@@ -131,11 +126,15 @@ else
 end
 
 % If sceneGeometry is defined, prepare the ray tracing functions
-if ~isempty(sceneGeometry) && p.Results.useRayTracing
-    if strcmp(p.Results.verbosity,'full')
-        fprintf('Assembling ray tracing functions.\n');
+if ~isempty(sceneGeometry)
+    if sceneGeometry.useRayTracing
+        if strcmp(p.Results.verbosity,'full')
+            fprintf('Assembling ray tracing functions.\n');
+        end
+        [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
+    else
+        rayTraceFuncs = [];
     end
-    [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
 else
     rayTraceFuncs = [];
 end

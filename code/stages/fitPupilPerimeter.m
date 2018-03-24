@@ -89,11 +89,6 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %                           ellipse parameters
 %  'fitLabel'             - The field name in the pupilData structure where
 %                           the results of the fitting will be stored.
-%  'useRayTracing'        - Logical; default false. Using ray tracing in
-%                           the camera translation search improves accuracy
-%                           slightly, but increases search time by about
-%                           25x.
-
 %
 % Outputs:
 %	pupilData             - A structure with multiple fields corresponding
@@ -133,7 +128,6 @@ p.addParameter('eyePoseUB',[35,25,0,4],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nSplits',2,@isnumeric);
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('fitLabel',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('useRayTracing',false,@islogical);
 
 
 %% Parse and check the parameters
@@ -161,11 +155,15 @@ else
 end
 
 % If sceneGeometry is defined, prepare the ray tracing functions
-if ~isempty(sceneGeometry) && p.Results.useRayTracing
-    if strcmp(p.Results.verbosity,'full')
-        fprintf('Assembling ray tracing functions.\n');
+if ~isempty(sceneGeometry)
+    if sceneGeometry.useRayTracing
+        if strcmp(p.Results.verbosity,'full')
+            fprintf('Assembling ray tracing functions.\n');
+        end
+        [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
+    else
+        rayTraceFuncs = [];
     end
-    [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
 else
     rayTraceFuncs = [];
 end

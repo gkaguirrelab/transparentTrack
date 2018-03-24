@@ -26,10 +26,6 @@ function makeEyeModelVideo(videoOutFileName,pupilFileName, sceneGeometryFileName
 %  'modelEyePlotColors'   - The colors to be used for the plotting of each
 %                           of the model eye label names.
 %  'fitLabel'             - The field of the pupilData file to use
-%  'useRayTracing'        - Logical; default false. Using ray tracing in
-%                           the camera translation search improves accuracy
-%                           slightly, but increases search time by about
-%                           25x.
 %
 % Outputs:
 %   None
@@ -52,7 +48,6 @@ p.addParameter('videoSizeY', 480, @isnumeric);
 p.addParameter('modelEyeLabelNames', {'aziRotationCenter', 'eleRotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex'}, @iscell);
 p.addParameter('modelEyePlotColors', {'>r' '^m' '.w' 'ob' '*g' '.y' '*y'}, @iscell);
 p.addParameter('fitLabel', 'radiusSmoothed', @ischar);
-p.addParameter('useRayTracing',false,@islogical);
 
 % parse
 p.parse(videoOutFileName, pupilFileName, sceneGeometryFileName, varargin{:})
@@ -78,11 +73,15 @@ sceneGeometry = dataLoad.sceneGeometry;
 clear dataLoad
 
 % Assemble the ray tracing functions
-if p.Results.useRayTracing
-    if strcmp(p.Results.verbosity,'full')
-        fprintf('Assembling ray tracing functions.\n');
+if ~isempty(sceneGeometry)
+    if sceneGeometry.useRayTracing
+        if strcmp(p.Results.verbosity,'full')
+            fprintf('Assembling ray tracing functions.\n');
+        end
+        [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
+    else
+        rayTraceFuncs = [];
     end
-    [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
 else
     rayTraceFuncs = [];
 end
