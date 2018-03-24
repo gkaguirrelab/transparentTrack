@@ -18,16 +18,12 @@ function makeFitVideo(videoInFileName, videoOutFileName, varargin)
 %  'videoOutFrameRate'    - Frame rate (in Hz) of saved video [default 60]
 %  'saveCompressedVideo'  - Default value is true, resulting in a
 %                           a video with a 10x reduction in file size
-%
-% Optional key/value pairs (flow control)
 %  'nFrames'              - Analyze fewer than the total number of frames.
-%
-% Optional key/value pairs (video items)
 %  'glint/perimeter/pupil/sceneGeometry/FileName' - Full path to a file
 %                           to be included in the video. 
 %  'glint/perimeter/pupil/sceneGeometry/Color' - Text string that assigns
 %                           a color to the display of this item.
-%  'fitLabel'      - The field of the pupilData file that contains
+%  'fitLabel'             - The field of the pupilData file that contains
 %                           ellipse fit params to be added to the video.
 %  'controlFileName'      - Full path to the control file to be included.
 %
@@ -125,10 +121,22 @@ if ~isempty(p.Results.sceneGeometryFileName)
     dataLoad = load(p.Results.sceneGeometryFileName);
     sceneGeometry = dataLoad.sceneGeometry;
     clear dataLoad
-    % Define the ray tracing functions
-    rayTraceFuncs = assembleRayTraceFuncs(sceneGeometry);
 else
     sceneGeometry=[];
+end
+
+% If sceneGeometry is defined, prepare the ray tracing functions
+if ~isempty(sceneGeometry)
+    if sceneGeometry.useRayTracing
+        if strcmp(p.Results.verbosity,'full')
+            fprintf('Assembling ray tracing functions.\n');
+        end
+        [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
+    else
+        rayTraceFuncs = [];
+    end
+else
+    rayTraceFuncs = [];
 end
 
 % Open a video object for reading

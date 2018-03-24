@@ -82,6 +82,9 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
 %                           a list of ellipses will be generated.
 %  'nBinsPerDimension'    - Scalar. Defines the number of divisions with
 %                           which the ellipse centers are binned.
+%  'badFrameErrorThreshold' - Frames with RMSE fitting error above this
+%                           threshold will not be selected to guide the
+%                           scene parameter search.
 %  'useRayTracing'        - Logical; default false. Using ray tracing in
 %                           the camera translation search improves accuracy
 %                           slightly, but increases search time by about
@@ -162,6 +165,7 @@ p.addParameter('eyePoseUB',[35,25,0,4],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('fitLabel','initial',@ischar);
 p.addParameter('ellipseArrayList',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nBinsPerDimension',4,@isnumeric);
+p.addParameter('badFrameErrorThreshold',2, @isnumeric);
 p.addParameter('useRayTracing',false,@islogical);
 p.addParameter('nBADSsearches',10,@isnumeric);
 
@@ -177,9 +181,10 @@ end
 
 %% Create initial sceneGeometry structure and ray tracing functions
 initialSceneGeometry = createSceneGeometry(varargin{:});
+initialSceneGeometry.useRayTracing = p.Results.useRayTracing;
 
 % Assemble the ray tracing functions
-if p.Results.useRayTracing
+if initialSceneGeometry.useRayTracing
     if strcmp(p.Results.verbosity,'full')
         fprintf('Assembling ray tracing functions.\n');
     end
@@ -199,22 +204,22 @@ end
 %% Load pupil data
 if iscell(pupilFileName)
     ellipses = [];
-    ellipseFitSEM = [];
+    ellipseFitRMSE = [];
     for cc = 1:length(pupilFileName)
         load(pupilFileName{cc})
         ellipses = [ellipses; pupilData.(p.Results.fitLabel).ellipses.values];
-        ellipseFitSEM = [ellipseFitSEM; pupilData.(p.Results.fitLabel).ellipses.RMSE];
+        ellipseFitRMSE = [ellipseFitRMSE; pupilData.(p.Results.fitLabel).ellipses.RMSE];
     end
 end
 if ischar(pupilFileName)
     load(pupilFileName)
     ellipses = pupilData.(p.Results.fitLabel).ellipses.values;
-    ellipseFitSEM = pupilData.(p.Results.fitLabel).ellipses.RMSE;
+    ellipseFitRMSE = pupilData.(p.Results.fitLabel).ellipses.RMSE;
 end
 if isstruct(pupilFileName)
     pupilData = pupilFileName;
     ellipses = pupilData.(p.Results.fitLabel).ellipses.values;
-    ellipseFitSEM = pupilData.(p.Results.fitLabel).ellipses.RMSE;
+    ellipseFitRMSE = pupilData.(p.Results.fitLabel).ellipses.RMSE;
 end
 
 
@@ -230,10 +235,17 @@ else
         fprintf('Selecting ellipses to guide the search.\n');
     end
     
+    % Identify the ellipses with RMSE fits that are below the "bad"
+    % threshold
+    goodFitIdx = find(ellipseFitRMSE < p.Results.badFrameErrorThreshold);
+    if isempty(goodFitIdx)
+        error('No initial ellipse fits are good enough to guide the search; try adjusting badFrameErrorThreshold');
+    end
+    
     % First we divide the ellipse centers amongst a set of 2D bins across
     % image space.
     [ellipseCenterCounts,Xedges,Yedges,binXidx,binYidx] = ...
-        histcounts2(ellipses(:,1),ellipses(:,2),p.Results.nBinsPerDimension);
+        histcounts2(ellipses(goodFitIdx,1),ellipses(goodFitIdx,2),p.Results.nBinsPerDimension);
     
     % Anonymous functions for row and column identity given array position
     rowIdx = @(b) fix( (b-1) ./ (size(ellipseCenterCounts,2)) ) +1;
@@ -247,17 +259,11 @@ else
     % Identify which bins are not empty
     filledBinIdx = find(~cellfun(@isempty, idxByBinPosition));
     
-    % Identify the ellipse in each bin with the lowest fit SEM
-    [~, idxMinErrorEllipseWithinBin] = arrayfun(@(x) nanmin(ellipseFitSEM(idxByBinPosition{x})), filledBinIdx, 'UniformOutput', false);
+    % Identify the ellipse in each bin with the lowest fit RMSE
+    [~, idxMinErrorEllipseWithinBin] = arrayfun(@(x) nanmin(ellipseFitRMSE(goodFitIdx(idxByBinPosition{x}))), filledBinIdx, 'UniformOutput', false);
     returnTheMin = @(binContents, x)  binContents(idxMinErrorEllipseWithinBin{x});
-    ellipseArrayList = cellfun(@(x) returnTheMin(idxByBinPosition{filledBinIdx(x)},x),num2cell(1:1:length(filledBinIdx)));
+    ellipseArrayList = cellfun(@(x) returnTheMin(goodFitIdx(idxByBinPosition{filledBinIdx(x)}),x),num2cell(1:1:length(filledBinIdx)));
 end
-
-
-%% Generate the errorWeights
-errorWeights = ellipseFitSEM(ellipseArrayList);
-errorWeights = 1./errorWeights;
-errorWeights = errorWeights./mean(errorWeights);
 
 
 %% Perform the search
@@ -270,12 +276,11 @@ end
 % Peform the search without rayTracing
 searchResults = {};
 parfor (ss = 1:p.Results.nBADSsearches(1),nWorkers)
-    %for ss = 1:p.Results.nBADSsearches(1)
+%for ss = 1:p.Results.nBADSsearches(1)
     
     searchResults{ss} = ...
         performSceneSearch(initialSceneGeometry, [], ...
         ellipses(ellipseArrayList,:), ...
-        errorWeights, ...
         p.Results.sceneParamsLB, ...
         p.Results.sceneParamsUB, ...
         p.Results.sceneParamsLBp, ...
@@ -299,7 +304,7 @@ end
 % scaling
 allFvalsNoRayTrace = cellfun(@(x) x.meta.estimateSceneParams.search.fVal,searchResults);
 allsceneParamVecsNoRayTrace = cellfun(@(x) [x.extrinsicTranslationVector; x.eye.rotationCenters.scaling],searchResults,'UniformOutput',false);
-for dim = 1:3
+for dim = 1:5
     vals = cellfun(@(x) x(dim), allsceneParamVecsNoRayTrace);
     sceneParamVecMeanNoRayTrace(dim)=mean(vals.*(1./allFvalsNoRayTrace))/mean(1./allFvalsNoRayTrace);
     sceneParamVecSDNoRayTrace(dim)=std(vals,1./allFvalsNoRayTrace);
@@ -336,7 +341,6 @@ if ~isempty(rayTraceFuncs)
         searchResults{ss} = ...
             performSceneSearch(initialSceneGeometry, rayTraceFuncs, ...
             ellipses(ellipseArrayList,:), ...
-            errorWeights, ...
             p.Results.sceneParamsLB, ...
             p.Results.sceneParamsUB, ...
             pLB, ...
@@ -372,6 +376,7 @@ tmpHold=sceneGeometry.meta.estimateSceneParams.search;
 sceneGeometry.meta.estimateSceneParams = p.Results;
 sceneGeometry.meta.estimateSceneParams.search = tmpHold;
 sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList = ellipseArrayList';
+sceneGeometry.meta.estimateSceneParams.search.ellipseRMSE = ellipseFitRMSE(ellipseArrayList);
 sceneGeometry.meta.estimateSceneParams.search.allFvalsNoRayTrace = allFvalsNoRayTrace;
 sceneGeometry.meta.estimateSceneParams.search.allsceneParamVecsNoRayTrace = allsceneParamVecsNoRayTrace;
 sceneGeometry.meta.estimateSceneParams.search.sceneParamVecMeanNoRayTrace = sceneParamVecMeanNoRayTrace;
@@ -417,7 +422,7 @@ end % main function
 
 %% LOCAL FUNCTIONS
 
-function sceneGeometry = performSceneSearch(initialSceneGeometry, rayTraceFuncs, ellipses, errorWeights, LB, UB, LBp, UBp, eyePoseLB, eyePoseUB, shapeErrorMultiplier)
+function sceneGeometry = performSceneSearch(initialSceneGeometry, rayTraceFuncs, ellipses, LB, UB, LBp, UBp, eyePoseLB, eyePoseUB, shapeErrorMultiplier)
 % Pattern search for best fitting sceneGeometry parameters
 %
 % Description:
@@ -520,7 +525,7 @@ end
         end
         % Now compute objective function as the RMSE of the distance
         % between the taget and modeled ellipses in shape and area
-        fval = mean(((shapeErrorByEllipse+1).*errorWeights + (areaErrorByEllipse+1).*errorWeights).^2).^(1/2);
+        fval = mean(((shapeErrorByEllipse+1) + (areaErrorByEllipse+1)).^2).^(1/2);
         % We have to keep the fval non-infinite to keep BADS happy
         fval=min([fval realmax]);
     end
@@ -539,7 +544,6 @@ sceneGeometry.eye.rotationCenters.ele = sceneGeometry.eye.rotationCenters.ele .*
 sceneGeometry.meta.estimateSceneParams.search.options = options;
 sceneGeometry.meta.estimateSceneParams.search.initialSceneGeometry = initialSceneGeometry;
 sceneGeometry.meta.estimateSceneParams.search.ellipses = ellipses;
-sceneGeometry.meta.estimateSceneParams.search.errorWeights = errorWeights;
 sceneGeometry.meta.estimateSceneParams.search.x0 = x0;
 sceneGeometry.meta.estimateSceneParams.search.LB = LB;
 sceneGeometry.meta.estimateSceneParams.search.UB = UB;
@@ -630,10 +634,10 @@ scatter(projectedEllipses(:,1),projectedEllipses(:,2),'o','filled', ...
     'MarkerFaceAlpha',2/8,'MarkerFaceColor',[0 0 1]);
 
 % connect the centers with lines
-errorWeightVec=sceneGeometry.meta.estimateSceneParams.search.errorWeights;
+ellipseRMSE = sceneGeometry.meta.estimateSceneParams.search.ellipseRMSE;
 for ii=1:size(ellipses,1)
-    lineAlpha = errorWeightVec(ii)/max(errorWeightVec);
-    lineWeight = 0.5 + (errorWeightVec(ii)/max(errorWeightVec));
+    lineAlpha = ellipseRMSE(ii)/max(ellipseRMSE);
+    lineWeight = 0.5 + (ellipseRMSE(ii)/max(ellipseRMSE));
     ph=plot([projectedEllipses(ii,1) ellipses(ii,1)], ...
         [projectedEllipses(ii,2) ellipses(ii,2)], ...
         '-','Color',[1 0 0],'LineWidth', lineWeight);

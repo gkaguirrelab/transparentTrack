@@ -14,7 +14,7 @@ function makeEyeModelVideo(videoOutFileName,pupilFileName, sceneGeometryFileName
 %                           have an eyePoses field.
 %   sceneGeometryFileName - Full path to the sceneGeometry file
 %
-% Optional key/value pairs (display and I/O):
+% Optional key/value pairs:
 %  'verbosity'            - Level of verbosity. [none, full]
 %  'videoOutFrameRate'    - Frame rate (in Hz) of saved video [default 60]
 %  'saveCompressedVideo'  - Default value is true, resulting in a
@@ -73,7 +73,18 @@ sceneGeometry = dataLoad.sceneGeometry;
 clear dataLoad
 
 % Assemble the ray tracing functions
-[rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
+if ~isempty(sceneGeometry)
+    if sceneGeometry.useRayTracing
+        if strcmp(p.Results.verbosity,'full')
+            fprintf('Assembling ray tracing functions.\n');
+        end
+        [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
+    else
+        rayTraceFuncs = [];
+    end
+else
+    rayTraceFuncs = [];
+end
 
 % Open a video object for writing
 if p.Results.saveCompressedVideo

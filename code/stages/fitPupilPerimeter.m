@@ -87,6 +87,8 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %                           sceneGeometry is available, fitting is
 %                           performed in terms of eye parameters instead of
 %                           ellipse parameters
+%  'fitLabel'             - The field name in the pupilData structure where
+%                           the results of the fitting will be stored.
 %
 % Outputs:
 %	pupilData             - A structure with multiple fields corresponding
@@ -152,6 +154,20 @@ else
     clear dataLoad
 end
 
+% If sceneGeometry is defined, prepare the ray tracing functions
+if ~isempty(sceneGeometry)
+    if sceneGeometry.useRayTracing
+        if strcmp(p.Results.verbosity,'full')
+            fprintf('Assembling ray tracing functions.\n');
+        end
+        [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
+    else
+        rayTraceFuncs = [];
+    end
+else
+    rayTraceFuncs = [];
+end
+
 % Optionally load the pupilData file
 if exist(p.Results.pupilFileName, 'file') == 2
     dataLoad=load(pupilFileName);
@@ -173,16 +189,6 @@ end
 % Create an anonymous function to return a rotation matrix given theta in
 % radians
 returnRotMat = @(theta) [cos(theta) -sin(theta); sin(theta) cos(theta)];
-
-% If sceneGeometry is defined, prepare the ray tracing functions
-if ~isempty(sceneGeometry)
-    if strcmp(p.Results.verbosity,'full')
-        fprintf('Assembling ray tracing functions.\n');
-    end
-    [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
-else
-    rayTraceFuncs = [];
-end
 
 
 %% Set up the parallel pool
@@ -218,6 +224,7 @@ end
 
 % Loop through the frames
 parfor (ii = 1:nFrames, nWorkers)
+%for ii = 311:nFrames
     
     % Update progress
     if strcmp(verbosity,'full')
@@ -254,9 +261,8 @@ parfor (ii = 1:nFrames, nWorkers)
             else
                 % Identify the best fitting eye parameters for the  the
                 % pupil perimeter
-                eyePose_x0 = [0 0 0 2];
                 [eyePose, eyePoseObjectiveError] = ...
-                    eyePoseEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs, 'x0', eyePose_x0, 'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB);
+                    eyePoseEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs, 'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB);
                 % Obtain the parameters of the ellipse
                 ellipseParamsTransparent = ...
                     pupilProjection_fwd(eyePose, sceneGeometry, rayTraceFuncs);

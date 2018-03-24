@@ -99,6 +99,11 @@ function sceneGeometry = createSceneGeometry(varargin)
 %   m surfaces of the cornea and any corrective lenses into a format needed
 %   for ray tracing.
 %
+%   useRayTracing - A boolean flag that sets if ray tracing should be used
+%   when computing the forward and inverse model. Set to true by this
+%   function. Subsequent functions may modify the setting of this flag to
+%   control the behavior of model fitting.
+%
 % Inputs:
 %   none
 %
@@ -162,7 +167,7 @@ p.addParameter('radialDistortionVector',[0 0],@isnumeric);
 p.addParameter('extrinsicTranslationVector',[0; 0; 120],@isnumeric);
 p.addParameter('extrinsicRotationMatrix',[1 0 0; 0 1 0; 0 0 1],@isnumeric);
 p.addParameter('primaryPosition',[0 0 0],@isnumeric);
-p.addParameter('constraintTolerance',0.02,@isnumeric);
+p.addParameter('constraintTolerance',0.02,@isscalar);
 p.addParameter('contactLens',[], @(x)(isempty(x) | isnumeric(x)));
 p.addParameter('spectacleLens',[], @(x)(isempty(x) | isnumeric(x)));
 p.addParameter('medium','air',@ischar);
@@ -194,7 +199,7 @@ mediumRefractiveIndex = returnRefractiveIndex( p.Results.medium, p.Results.spect
 % radius of curvature, thus placing the apex of the front corneal surface
 % at a z position of zero. The back surface is shifted back to produce
 % the appropriate corneal thickness.
-cornealThickness = sceneGeometry.eye.corneaBackSurfaceCenter(1) - sceneGeometry.eye.corneaFrontSurfaceCenter(1);
+cornealThickness = -sceneGeometry.eye.corneaBackSurfaceCenter(1)-sceneGeometry.eye.corneaBackSurfaceRadii(1);
 opticalSystem = [nan, nan, sceneGeometry.eye.aqueousRefractiveIndex; ...
     -sceneGeometry.eye.corneaBackSurfaceR-cornealThickness, -sceneGeometry.eye.corneaBackSurfaceR, sceneGeometry.eye.corneaRefractiveIndex; ...
     -sceneGeometry.eye.corneaFrontSurfaceR, -sceneGeometry.eye.corneaFrontSurfaceR, mediumRefractiveIndex];
@@ -231,6 +236,7 @@ end
 
 % Store the optical system
 sceneGeometry.opticalSystem = opticalSystem;
+sceneGeometry.useRayTracing = true;
 
 % Save the meta data
 sceneGeometry.meta.createSceneGeometry = p.Results;

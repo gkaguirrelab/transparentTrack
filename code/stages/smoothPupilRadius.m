@@ -69,6 +69,9 @@ function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, scene
 %  'fitLabel'             - Identifies the field in pupilData that contains
 %                           the ellipse fit params for which the search
 %                           will be conducted.
+%  'initialFitLabel'      - The field in pupilData that contains the
+%                           initial, not scene constrained, ellipse fit to
+%                           the pupil perimeter.
 %
 % Outputs:
 %   pupilData             - A structure with multiple fields corresponding
@@ -106,6 +109,7 @@ p.addParameter('exponentialTauParam',3,@isnumeric);
 p.addParameter('likelihoodErrorExponent',1.0,@isnumeric);
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
 p.addParameter('fitLabel','sceneConstrained',@ischar);
+p.addParameter('initialFitLabel','initial',@ischar);
 
 
 %% Parse and check the parameters
@@ -131,6 +135,20 @@ dataLoad=load(p.Results.sceneGeometryFileName);
 sceneGeometry=dataLoad.sceneGeometry;
 clear dataLoad
 
+% Assemble the ray tracing functions
+if ~isempty(sceneGeometry)
+    if sceneGeometry.useRayTracing
+        if strcmp(p.Results.verbosity,'full')
+            fprintf('Assembling ray tracing functions.\n');
+        end
+        [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
+    else
+        rayTraceFuncs = [];
+    end
+else
+    rayTraceFuncs = [];
+end
+
 % determine how many frames we will process
 if p.Results.nFrames == Inf
     nFrames=size(perimeter.data,1);
@@ -149,11 +167,6 @@ if ~isfield(pupilData.(p.Results.fitLabel).eyePoses,'splitsSD')
     error('This fit field does not have the required subfield: eyePoses.splitsSD');
 end
 
-% Assemble the ray tracing functions
-if strcmp(p.Results.verbosity,'full')
-    fprintf('Assembling ray tracing functions.\n');
-end
-[rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
 
 %% Set up the parallel pool
 if p.Results.useParallel
@@ -174,6 +187,7 @@ eyePoseLB = p.Results.eyePoseLB;
 eyePoseUB = p.Results.eyePoseUB;
 badFrameErrorThreshold = p.Results.badFrameErrorThreshold;
 fitLabel = p.Results.fitLabel;
+initialFitLabel = p.Results.initialFitLabel;
 
 
 %% Conduct empirical Bayes smoothing
@@ -200,7 +214,7 @@ end
 
 % Loop through the frames
 parfor (ii = 1:nFrames, nWorkers)
-%for ii = 1:nFrames
+% for ii = 1:nFrames
     % update progress
     if strcmp(verbosity,'full')
         if mod(ii,round(nFrames/50))==0
@@ -244,12 +258,15 @@ parfor (ii = 1:nFrames, nWorkers)
         precisionVector = precisionVector.^(-1);
         precisionVector = precisionVector(rangeLowSignal:rangeHiSignal);
         
-        % Identify any time points within the window for which the fit RMSE
-        % was greater than threshold. We set the precision vector for these
-        % to zero, so that they do not contribute to the prior. We detect
-        % the edge case in which every frame in the window is "bad", in
-        % which case we retain them all.
-        rmseVector = pupilData.(fitLabel).ellipses.RMSE(rangeLowSignal:rangeHiSignal)';
+        % Identify any time points within the window for which the intial
+        % fit RMSE was greater than threshold. We use the initial fit (as
+        % opposed to a scene constrained fit) as we wish to identify pupil
+        % boundaries that are not elliptical, and not necessarily those
+        % that are poorly fit when constrained by sceneGeometry. We set the
+        % precision vector for these to zero, so that they do not
+        % contribute to the prior. We detect the edge case in which every
+        % frame in the window is "bad", in which case we retain them all.
+        rmseVector = pupilData.(initialFitLabel).ellipses.RMSE(rangeLowSignal:rangeHiSignal)';
         badFrameIdx = (rmseVector > badFrameErrorThreshold);
         nanFrameIdx = isnan(rmseVector);
         if sum(badFrameIdx+nanFrameIdx) > 0 && sum(badFrameIdx+nanFrameIdx) < length(badFrameIdx)
@@ -284,10 +301,10 @@ parfor (ii = 1:nFrames, nWorkers)
         % the current frame realtive to the prior
         likelihoodPupilRadiusSD = likelihoodPupilRadiusSD .^ likelihoodErrorExponent;
         
-        % Check if the RMSE for the likelihood fit was above the bad
+        % Check if the RMSE for the likelihood initial fit was above the bad
         % threshold. If so, inflate the SD for the likelihood so that the
         % prior dictates the value of the posterior
-        if pupilData.(fitLabel).ellipses.RMSE(ii) > badFrameErrorThreshold
+        if pupilData.(initialFitLabel).ellipses.RMSE(ii) > badFrameErrorThreshold
             likelihoodPupilRadiusSD = likelihoodPupilRadiusSD .* 1e20;
         end
         
