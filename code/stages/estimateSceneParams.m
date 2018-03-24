@@ -303,7 +303,7 @@ end
 % scaling
 allFvalsNoRayTrace = cellfun(@(x) x.meta.estimateSceneParams.search.fVal,searchResults);
 allsceneParamVecsNoRayTrace = cellfun(@(x) [x.extrinsicTranslationVector; x.eye.rotationCenters.scaling],searchResults,'UniformOutput',false);
-for dim = 1:3
+for dim = 1:5
     vals = cellfun(@(x) x(dim), allsceneParamVecsNoRayTrace);
     sceneParamVecMeanNoRayTrace(dim)=mean(vals.*(1./allFvalsNoRayTrace))/mean(1./allFvalsNoRayTrace);
     sceneParamVecSDNoRayTrace(dim)=std(vals,1./allFvalsNoRayTrace);
