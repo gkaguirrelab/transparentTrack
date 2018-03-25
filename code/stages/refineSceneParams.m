@@ -1,8 +1,8 @@
-function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileName, varargin)
+function sceneGeometry = refineSceneParams(pupilFileName, sceneGeometryFileName, varargin)
 % Estimate camera translation and eye rotation given image plane ellipses
 %
 % Syntax:
-%  sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileName)
+%  sceneGeometry = refineSceneParams(pupilFileName, sceneGeometryFileName)
 %
 % Description:
 %   This function searches over a set of ellipses from the passed pupil
@@ -138,6 +138,7 @@ p = inputParser; p.KeepUnmatched = true;
 
 % Required
 p.addRequired('pupilFileName',@(x)(isstruct(x) | iscell(x) | ischar(x)));
+p.addRequired('sceneGeometryFileName',@ischar);
 p.addRequired('sceneGeometryFileName',@ischar);
 
 % Optional display and I/O params
