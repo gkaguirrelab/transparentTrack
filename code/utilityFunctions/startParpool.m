@@ -1,17 +1,16 @@
-function [ nWorkers ] = startParpool( nWorkers, tbtbRepoName, verbosity )
+function [ nWorkers ] = startParpool( nWorkers, verbosity )
 % Open and configure the parpool
 %
 % Syntax:
-%  [ nWorkers ] = startParpool( nWorkers, tbtbRepoName, verbosity )
+%  [ nWorkers ] = startParpool( nWorkers, verbosity )
 %
 % Description:
 %   Several stages of transparentTrack make use of the parpool. This
-%   routine opens the par pool if it does not exit, configures it with
-%   tbBtb, and returns the number
+%   routine opens the par pool if it does not exit and returns the number
+%   of available workers.
 %
 % Inputs:
 %   nWorkers              - Scalar. The number of workers requested.
-%   tbtbRepoName          - String. The repository to call for tBtB.
 %   verbosity             - String. How verbose to be.
 %
 % Outputs:
@@ -40,15 +39,6 @@ if isempty(poolObj)
         nWorkers=0;
     else
         nWorkers = poolObj.NumWorkers;
-        % Use TbTb to configure the workers.
-        if ~isempty(tbtbRepoName)
-            spmd
-                tbUse(tbtbRepoName,'reset','full','verbose',false,'online',false);
-            end
-            if strcmp(verbosity,'full')
-                fprintf('CAUTION: Any TbTb messages from the workers will not be shown.\n');
-            end
-        end
     end
     if strcmp(verbosity,'full')
         toc
