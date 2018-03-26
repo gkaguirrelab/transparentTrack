@@ -131,12 +131,12 @@ if ~isempty(sceneGeometry)
         if strcmp(p.Results.verbosity,'full')
             fprintf('Assembling ray tracing functions.\n');
         end
-        [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
+        [virtualImageFuncPointer] = compileVirtualImageFunc( sceneGeometry );
     else
-        rayTraceFuncs = [];
+        virtualImageFuncPointer = [];
     end
 else
-    rayTraceFuncs = [];
+    virtualImageFuncPointer = [];
 end
 
 % Open a video object for reading
@@ -213,7 +213,7 @@ for ii = 1:nFrames
     if ~isempty(eyePoses) && p.Results.modelEyeAlpha~=0
         if ~any(isnan(eyePoses(ii,:)))
             % Obtain the pupilProjection of the model eye to the image plane
-            [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses(ii,:), sceneGeometry, rayTraceFuncs, 'fullEyeModelFlag', true);
+            [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses(ii,:), sceneGeometry, virtualImageFuncPointer, 'fullEyeModelFlag', true);
             
             % Loop through the point labels present in the eye model
             for pp = 1:length(p.Results.modelEyeLabelNames)

@@ -48,9 +48,6 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %  'nWorkers'             - Specify the number of workers in the parallel
 %                           pool. If undefined the default number will be
 %                           used.
-%  'tbtbProjectName'      - The workers in the parallel pool are configured
-%                           by issuing a tbUseProject command for the
-%                           project specified here.
 %
 % Optional key/value pairs (environment)
 %  'tbSnapshot'           - This should contain the output of the
@@ -112,7 +109,6 @@ p.addParameter('verbosity','none',@ischar);
 p.addParameter('nFrames',Inf,@isnumeric);
 p.addParameter('useParallel',false,@islogical);
 p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('tbtbRepoName','transparentTrack',@ischar);
 
 % Optional environment params
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
@@ -156,16 +152,12 @@ end
 
 % If sceneGeometry is defined, prepare the ray tracing functions
 if ~isempty(sceneGeometry)
-    if sceneGeometry.useRayTracing
-        if strcmp(p.Results.verbosity,'full')
-            fprintf('Assembling ray tracing functions.\n');
-        end
-        [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
-    else
-        rayTraceFuncs = [];
+    if strcmp(p.Results.verbosity,'full')
+        fprintf('Assembling ray tracing functions.\n');
     end
+    virtualImageFuncPointer = compileVirtualImageFunc( sceneGeometry );
 else
-    rayTraceFuncs = [];
+    virtualImageFuncPointer = [];
 end
 
 % Optionally load the pupilData file
@@ -262,10 +254,10 @@ parfor (ii = 1:nFrames, nWorkers)
                 % Identify the best fitting eye parameters for the  the
                 % pupil perimeter
                 [eyePose, eyePoseObjectiveError] = ...
-                    eyePoseEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs, 'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB);
+                    eyePoseEllipseFit(Xp, Yp, sceneGeometry, virtualImageFuncPointer, 'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB);
                 % Obtain the parameters of the ellipse
                 ellipseParamsTransparent = ...
-                    pupilProjection_fwd(eyePose, sceneGeometry, rayTraceFuncs);
+                    pupilProjection_fwd(eyePose, sceneGeometry, virtualImageFuncPointer);
             end
             
             % Re-calculate fit for splits of data points, if requested
