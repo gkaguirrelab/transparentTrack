@@ -44,10 +44,6 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
 %  'nWorkers'             - Specify the number of workers in the parallel
 %                           pool. If undefined the default number will be
 %                           used.
-%  'tbtbProjectName'      - The workers in the parallel pool are configured
-%                           by issuing a tbUseProject command for the
-%                           project specified here.
-%
 %
 % Optional key/value pairs (environment)
 %  'tbSnapshot'           - This should contain the output of the
@@ -142,7 +138,6 @@ p.addParameter('sceneDiagnosticPlotFileName', '', @(x)(isempty(x) || ischar(x)))
 % Optional flow control params
 p.addParameter('useParallel',false,@islogical);
 p.addParameter('nWorkers',[],@(x)(isempty(x) || isnumeric(x)));
-p.addParameter('tbtbRepoName','transparentTrack',@ischar);
 
 % Optional environment parameters
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) || isstruct(x)));
@@ -161,7 +156,7 @@ p.addParameter('fitLabel','initial',@ischar);
 p.addParameter('ellipseArrayList',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nBinsPerDimension',4,@isnumeric);
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
-p.addParameter('nBADSsearches',10,@isnumeric);
+p.addParameter('nBADSsearches',4,@isnumeric);
 p.addParameter('useRayTracing',true,@islogical);
 
 % parse
@@ -178,7 +173,7 @@ end
 initialSceneGeometry = createSceneGeometry(varargin{:});
 
 % Compile the ray tracing function
-if initialSceneGeometry.useRayTracing
+if p.Results.useRayTracing
     if strcmp(p.Results.verbosity,'full')
         fprintf('Assembling ray tracing function.\n');
     end
@@ -189,7 +184,7 @@ end
 
 %% Set up the parallel pool
 if p.Results.useParallel
-    nWorkers = startParpool( p.Results.nWorkers, p.Results.tbtbRepoName, p.Results.verbosity );
+    nWorkers = startParpool( p.Results.nWorkers, p.Results.verbosity );
 else
     nWorkers=0;
 end
@@ -269,8 +264,8 @@ end
 
 % Peform the search
 searchResults = {};
-%parfor (ss = 1:p.Results.nBADSsearches,nWorkers)
-for ss = 1:p.Results.nBADSsearches
+parfor (ss = 1:p.Results.nBADSsearches,nWorkers)
+%for ss = 1:p.Results.nBADSsearches
     
     searchResults{ss} = ...
         performSceneSearch(initialSceneGeometry, virtualImageFuncPointer, ...
@@ -294,10 +289,9 @@ if strcmp(p.Results.verbosity,'full')
     fprintf('\n');
 end
 
-% Find the weighted mean and SD of the translation vector and rotation
-% scaling
+% Find the weighted mean and SD of the solution parameters
 allFvals = cellfun(@(x) x.meta.estimateSceneParams.search.fVal,searchResults);
-allSceneParamResults = cellfun(@(x) [x.extrinsicTranslationVector; x.eye.rotationCenters.scaling],searchResults,'UniformOutput',false);
+allSceneParamResults = cellfun(@(thisSceneGeometry) thisSceneGeometry.meta.estimateSceneParams.search.x,searchResults,'UniformOutput',false);
 for dim = 1:5
     vals = cellfun(@(x) x(dim), allSceneParamResults);
     sceneParamResultsMean(dim)=mean(vals.*(1./allFvals))/mean(1./allFvals);
@@ -307,7 +301,7 @@ sceneParamResultsMean=sceneParamResultsMean';
 sceneParamResultsSD=sceneParamResultsSD';
 
 % Find the solution with the best fVal.
-[~, idx]=min(allFvalsWithRayTrace);
+[~, idx]=min(allFvals);
 sceneGeometry = searchResults{idx};
 
 % Add additional search and meta field info to sceneGeometry
@@ -460,7 +454,7 @@ end
         end
         % Now compute objective function as the RMSE of the distance
         % between the taget and modeled ellipses in shape and area
-        fval = mean(((shapeErrorByEllipse+1) + (areaErrorByEllipse+1)).^2).^(1/2);
+        fval = sqrt(mean(shapeErrorByEllipse.^2 + areaErrorByEllipse.^2));
         % We have to keep the fval non-infinite to keep BADS happy
         fval=min([fval realmax]);
     end
@@ -473,9 +467,9 @@ warning(warningState);
 % Assemble the sceneGeometry file to return
 sceneGeometry = initialSceneGeometry;
 sceneGeometry.extrinsicTranslationVector = x(1:3)';
-sceneGeometry.eye.rotationCenters.scaling = x(4:5)';
 sceneGeometry.eye.rotationCenters.azi = sceneGeometry.eye.rotationCenters.azi .* x(4) .* x(5);
 sceneGeometry.eye.rotationCenters.ele = sceneGeometry.eye.rotationCenters.ele .* x(4) ./ x(5);
+sceneGeometry.meta.estimateSceneParams.search.x = x';
 sceneGeometry.meta.estimateSceneParams.search.options = options;
 sceneGeometry.meta.estimateSceneParams.search.initialSceneGeometry = initialSceneGeometry;
 sceneGeometry.meta.estimateSceneParams.search.ellipses = ellipses;
@@ -660,7 +654,8 @@ set(hSub, 'Visible', 'off');
 legend({'0',num2str(sceneGeometry.constraintTolerance/2), ['=> ' num2str(sceneGeometry.constraintTolerance)]},'Location','north', 'Orientation','vertical');
 
 % Add text to report the extrinsic translation vector
-myString = sprintf('Translation vector [mm] = %4.1f, %4.1f, %4.1f; rotation center scaling [joint, differential] = %4.2f, %4.2f',sceneGeometry.extrinsicTranslationVector(1),sceneGeometry.extrinsicTranslationVector(2),sceneGeometry.extrinsicTranslationVector(3),sceneGeometry.eye.rotationCenters.scaling(1),sceneGeometry.eye.rotationCenters.scaling(2));
+xFinal = sceneGeometry.meta.estimateSceneParams.search.x;
+myString = sprintf('Translation vector [mm] = %4.1f, %4.1f, %4.1f; rotation center scaling [joint, differential] = %4.2f, %4.2f',xFinal(1),xFinal(2),xFinal(3),xFinal(4),xFinal(5));
 text(0.5,1.0,myString,'Units','normalized','HorizontalAlignment','center')
 
 %% Right panel -- area error
