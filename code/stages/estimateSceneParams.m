@@ -99,11 +99,12 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
 % Examples:
 %{
     %% Recover a veridical camera translation
-    % Create a veridical sceneGeometry with some arbitrary translation
+    % Create a default sceneGeometry
     veridicalSceneGeometry = createSceneGeometry();
+    % Compile the ray tracing functions
+    veridicalSceneGeometry.virtualImageFunc = compileVirtualImageFunc( veridicalSceneGeometry, 'functionDirPath', '/tmp/demo_virtualImageFunc' );
+    % Set some arbitrary extrinsic camera translation
     veridicalSceneGeometry.extrinsicTranslationVector = [-1.2; 0.9; 108];
-    % Assemble the ray tracing functions
-    virtualImageFuncPointer = compileVirtualImageFunc( veridicalSceneGeometry, 'functionDirPath', '/tmp/demo_virtualImageFunc' );
     % Create a set of ellipses using the veridical geometry and
     % randomly varying pupil radii.
     ellipseIdx=1;
@@ -116,8 +117,7 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
         end
     end
     % Estimate the scene Geometry using the ellipses
-    nBADSsearches = 4;
-    estimatedSceneGeometry = estimateSceneParams(pupilData,'','useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1,'nBADSsearches',nBADSsearches);
+    estimatedSceneGeometry = estimateSceneParams(pupilData,'','useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1);
     % Report how well we did
     fprintf('Error in the recovered camera translation vector (x, y, depth] in mm: \n');
     veridicalSceneGeometry.extrinsicTranslationVector - estimatedSceneGeometry.extrinsicTranslationVector
@@ -169,7 +169,7 @@ if strcmp(p.Results.verbosity,'full')
     fprintf(['Estimating camera translation and eye rotation from pupil ellipses. Started ' char(datetime('now')) '\n']);
 end
 
-%% Create initial sceneGeometry structure and ray tracing functions
+%% Create initial sceneGeometry structure and ray tracing function
 initialSceneGeometry = createSceneGeometry(varargin{:});
 
 % Compile the ray tracing function
@@ -177,10 +177,9 @@ if p.Results.useRayTracing
     if strcmp(p.Results.verbosity,'full')
         fprintf('Assembling ray tracing function.\n');
     end
-    virtualImageFuncPointer = compileVirtualImageFunc( initialSceneGeometry, 'functionDirPath', vitualImageFuncDir );
-else
-    virtualImageFuncPointer = [];
+    initialSceneGeometry.virtualImageFunc = compileVirtualImageFunc( initialSceneGeometry, 'functionDirPath', vitualImageFuncDir );
 end
+
 
 %% Set up the parallel pool
 if p.Results.useParallel
@@ -256,19 +255,19 @@ end
 
 
 %% Perform the search
+% Inform the user
 if strcmp(p.Results.verbosity,'full')
     fprintf(['Searching over camera translations without ray tracing.\n']);
     fprintf('| 0                      50                   100%% |\n');
     fprintf('.\n');
 end
 
-% Peform the search
+% Loop over the requested number of BADS searches
 searchResults = {};
 parfor (ss = 1:p.Results.nBADSsearches,nWorkers)
-%for ss = 1:p.Results.nBADSsearches
     
     searchResults{ss} = ...
-        performSceneSearch(initialSceneGeometry, virtualImageFuncPointer, ...
+        performSceneSearch(initialSceneGeometry, ...
         ellipses(ellipseArrayList,:), ...
         p.Results.sceneParamsLB, ...
         p.Results.sceneParamsUB, ...
@@ -333,7 +332,6 @@ if ~isempty(p.Results.sceneDiagnosticPlotFileName)
         p.Results.eyePoseLB, ...
         p.Results.eyePoseUB, ...
         sceneGeometry,...
-        virtualImageFuncPointer,...
         p.Results.sceneDiagnosticPlotFileName)
 end
 
@@ -351,7 +349,7 @@ end % main function
 
 %% LOCAL FUNCTIONS
 
-function sceneGeometry = performSceneSearch(initialSceneGeometry, virtualImageFuncPointer, ellipses, LB, UB, LBp, UBp, eyePoseLB, eyePoseUB)
+function sceneGeometry = performSceneSearch(initialSceneGeometry, ellipses, LB, UB, LBp, UBp, eyePoseLB, eyePoseUB)
 % Pattern search for best fitting sceneGeometry parameters
 %
 % Description:
@@ -433,7 +431,7 @@ end
             [eyePose, ~, centerDistanceErrorByEllipse(ii), shapeErrorByEllipse(ii), areaErrorByEllipse(ii), exitFlag] = ...
                 pupilProjection_inv(...
                 ellipses(ii,:),...
-                candidateSceneGeometry, virtualImageFuncPointer, ...
+                candidateSceneGeometry, ...
                 'eyePoseLB',eyePoseLB,...
                 'eyePoseUB',eyePoseUB...
                 );
@@ -444,7 +442,7 @@ end
                 [eyePose, ~, centerDistanceErrorByEllipse(ii), shapeErrorByEllipse(ii), areaErrorByEllipse(ii)] = ...
                     pupilProjection_inv(...
                     ellipses(ii,:),...
-                    candidateSceneGeometry, virtualImageFuncPointer, ...
+                    candidateSceneGeometry, ...
                     'eyePoseLB',eyePoseLB,...
                     'eyePoseUB',eyePoseUB,...
                     'x0',x0tmp...
@@ -489,7 +487,7 @@ sceneGeometry.meta.estimateSceneParams.search.recoveredEyePoses = recoveredEyePo
 end % local search function
 
 
-function [] = saveSceneDiagnosticPlot(ellipses, Xedges, Yedges, eyePoseLB, eyePoseUB, sceneGeometry, virtualImageFuncPointer, sceneDiagnosticPlotFileName)
+function [] = saveSceneDiagnosticPlot(ellipses, Xedges, Yedges, eyePoseLB, eyePoseUB, sceneGeometry, sceneDiagnosticPlotFileName)
 % Creates and saves a plot that illustrates the sceneGeometry results
 %
 % Inputs:
@@ -553,7 +551,6 @@ hold on
     (...
     ellipses(x,:),...
     sceneGeometry,...
-    virtualImageFuncPointer,...
     'eyePoseLB',eyePoseLB,'eyePoseUB',eyePoseUB),...
     1:1:size(ellipses,1),'UniformOutput',false);
 projectedEllipses=vertcat(projectedEllipses{:});
@@ -574,7 +571,7 @@ for ii=1:size(ellipses,1)
 end
 
 % plot the estimated center of rotation of the eye
-rotationCenterEllipse = pupilProjection_fwd([0 0 0 2], sceneGeometry, virtualImageFuncPointer);
+rotationCenterEllipse = pupilProjection_fwd([0 0 0 2], sceneGeometry);
 plot(rotationCenterEllipse(1),rotationCenterEllipse(2), '+g', 'MarkerSize', 5);
 
 % Calculate the plot limits
