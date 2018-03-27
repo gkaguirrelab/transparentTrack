@@ -126,20 +126,8 @@ dataLoad=load(pupilFileName);
 pupilData=dataLoad.pupilData;
 clear dataLoad
 
-% load the sceneGeometry structure
-dataLoad=load(p.Results.sceneGeometryFileName);
-sceneGeometry=dataLoad.sceneGeometry;
-clear dataLoad
-
-% If sceneGeometry is defined, prepare the ray tracing functions
-if ~isempty(sceneGeometry)
-    if strcmp(p.Results.verbosity,'full')
-        fprintf('Assembling ray tracing functions.\n');
-    end
-    virtualImageFuncPointer = compileVirtualImageFunc( sceneGeometry );
-else
-    virtualImageFuncPointer = [];
-end
+% Load the sceneGeometry file
+sceneGeometry = loadSceneGeometry(p.Results.sceneGeometryFileName, p.Results.verbosity);
 
 % determine how many frames we will process
 if p.Results.nFrames == Inf
@@ -326,8 +314,8 @@ parfor (ii = 1:nFrames, nWorkers)
         x0 = pupilData.(fitLabel).eyePoses.values(ii,:);
         x0(radiusIdx)=posteriorPupilRadius;
         [posteriorEyePose, posteriorEyePoseObjectiveError] = ...
-            eyePoseEllipseFit(Xp, Yp, sceneGeometry, virtualImageFuncPointer, 'eyePoseLB', lb_pin, 'eyePoseUB', ub_pin, 'x0', x0 );
-        posteriorEllipseParams = pupilProjection_fwd(posteriorEyePose, sceneGeometry, virtualImageFuncPointer);
+            eyePoseEllipseFit(Xp, Yp, sceneGeometry, 'eyePoseLB', lb_pin, 'eyePoseUB', ub_pin, 'x0', x0 );
+        posteriorEllipseParams = pupilProjection_fwd(posteriorEyePose, sceneGeometry);
         
     end % check if there are any perimeter points to fit
     

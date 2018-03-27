@@ -116,28 +116,8 @@ else
     instructions(1).params=[];
 end
 
-% Read in the sceneGeometry file if passed
-if ~isempty(p.Results.sceneGeometryFileName)
-    dataLoad = load(p.Results.sceneGeometryFileName);
-    sceneGeometry = dataLoad.sceneGeometry;
-    clear dataLoad
-else
-    sceneGeometry=[];
-end
-
-% If sceneGeometry is defined, prepare the ray tracing functions
-if ~isempty(sceneGeometry)
-    if sceneGeometry.useRayTracing
-        if strcmp(p.Results.verbosity,'full')
-            fprintf('Assembling ray tracing functions.\n');
-        end
-        [virtualImageFuncPointer] = compileVirtualImageFunc( sceneGeometry );
-    else
-        virtualImageFuncPointer = [];
-    end
-else
-    virtualImageFuncPointer = [];
-end
+% Load the sceneGeometry file
+sceneGeometry = loadSceneGeometry(p.Results.sceneGeometryFileName, p.Results.verbosity);
 
 % Open a video object for reading
 videoInObj = VideoReader(videoInFileName);
@@ -213,7 +193,7 @@ for ii = 1:nFrames
     if ~isempty(eyePoses) && p.Results.modelEyeAlpha~=0
         if ~any(isnan(eyePoses(ii,:)))
             % Obtain the pupilProjection of the model eye to the image plane
-            [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses(ii,:), sceneGeometry, virtualImageFuncPointer, 'fullEyeModelFlag', true);
+            [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses(ii,:), sceneGeometry, 'fullEyeModelFlag', true);
             
             % Loop through the point labels present in the eye model
             for pp = 1:length(p.Results.modelEyeLabelNames)
