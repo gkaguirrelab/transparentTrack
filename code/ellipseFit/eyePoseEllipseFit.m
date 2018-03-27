@@ -51,7 +51,7 @@ p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 
 % Parse and check the parameters
-p.parse(Xp, Yp, sceneGeometry, rayTraceFuncs, varargin{:});
+p.parse(Xp, Yp, sceneGeometry, varargin{:});
 
 
 %% Set bounds and x0
