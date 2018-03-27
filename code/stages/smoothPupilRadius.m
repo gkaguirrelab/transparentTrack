@@ -150,7 +150,7 @@ end
 
 %% Set up the parallel pool
 if p.Results.useParallel
-    nWorkers = startParpool( p.Results.nWorkers, p.Results.tbtbRepoName, p.Results.verbosity );
+    nWorkers = startParpool( p.Results.nWorkers, p.Results.verbosity );
 else
     nWorkers=0;
 end

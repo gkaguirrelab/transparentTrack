@@ -168,7 +168,7 @@ returnRotMat = @(theta) [cos(theta) -sin(theta); sin(theta) cos(theta)];
 
 %% Set up the parallel pool
 if p.Results.useParallel
-    nWorkers = startParpool( p.Results.nWorkers, p.Results.tbtbRepoName, p.Results.verbosity );
+    nWorkers = startParpool( p.Results.nWorkers, p.Results.verbosity );
 else
     nWorkers=0;
 end
@@ -199,7 +199,7 @@ end
 
 % Loop through the frames
 parfor (ii = 1:nFrames, nWorkers)
-%for ii = 311:nFrames
+%for ii = 1:nFrames
     
     % Update progress
     if strcmp(verbosity,'full')
