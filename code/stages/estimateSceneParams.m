@@ -156,7 +156,7 @@ p.addParameter('fitLabel','initial',@ischar);
 p.addParameter('ellipseArrayList',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nBinsPerDimension',4,@isnumeric);
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
-p.addParameter('nBADSsearches',4,@isnumeric);
+p.addParameter('nBADSsearches',10,@isnumeric);
 p.addParameter('useRayTracing',true,@islogical);
 
 % parse
