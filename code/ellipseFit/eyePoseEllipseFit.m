@@ -1,4 +1,4 @@
-function [eyePose, RMSE] = eyePoseEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs, varargin)
+function [eyePose, RMSE] = eyePoseEllipseFit(Xp, Yp, sceneGeometry, varargin)
 % Fit an image plane ellipse by perspective projection of a pupil circle
 %
 % Syntax:
@@ -16,6 +16,7 @@ function [eyePose, RMSE] = eyePoseEllipseFit(Xp, Yp, sceneGeometry, rayTraceFunc
 %
 % Inputs:
 %   Xp, Yp                - Vector of points to be fit
+%   sceneGeometry         - Structure. SEE: createSceneGeometry
 %
 % Optional key/value pairs:
 %  'x0'                   - Initial guess for the eyePose. The initial
@@ -43,7 +44,6 @@ p = inputParser;
 p.addRequired('Xp',@isnumeric);
 p.addRequired('Yp',@isnumeric);
 p.addRequired('sceneGeometry',@isstruct);
-p.addRequired('rayTraceFuncs',@(x)(isempty(x) | isstruct(x)));
 
 % Optional
 p.addParameter('x0',[],@(x)(isempty(x) | isnumeric(x)));
@@ -89,9 +89,7 @@ end
 if isempty(p.Results.x0)
     % Probe the forward model to determine how many pixels of change in the
     % location of the pupil ellipse correspond to one degree of rotation.
-    % Omit ray-tracing to save time as it has minimal effect upon the
-    % position of the center of the ellipse.
-    probeEllipse=pupilProjection_fwd([1 0 0 2],sceneGeometry, []);
+    probeEllipse=pupilProjection_fwd([1 0 0 2],sceneGeometry);
     pixelsPerDeg = probeEllipse(1)-CoP(1);
     
     % Estimate the eye azimuth and elevation by the X and Y displacement of
@@ -111,7 +109,7 @@ if isempty(p.Results.x0)
     % Probe the forward model at the estimated pose angles to
     % estimate the pupil radius. Here we do need ray tracing as it
     % has a substantial influence upon the area of the ellipse.
-    probeEllipse=pupilProjection_fwd([x0(1) x0(2) x0(3) 2], sceneGeometry, rayTraceFuncs);
+    probeEllipse=pupilProjection_fwd([x0(1) x0(2) x0(3) 2], sceneGeometry);
     pixelsPerMM = sqrt(probeEllipse(3)/pi)/2;
     
     % Set the initial value for pupil radius in mm
@@ -133,7 +131,7 @@ end
 
 
 % Define an anonymous function for the objective
-myObj = @(x) objfun(x, Xp, Yp, sceneGeometry, rayTraceFuncs);
+myObj = @(x) objfun(x, Xp, Yp, sceneGeometry);
 
 % define some search options
 options = optimoptions(@fmincon,...
@@ -164,9 +162,9 @@ end % eyeParamEllipseFit
 
 
 %% LOCAL FUNCTIONS
-function fVal = objfun(x, Xp,Yp, sceneGeometry, rayTraceFuncs)
+function fVal = objfun(x, Xp,Yp, sceneGeometry)
 % Define the objective function
-explicitEllipse = ellipse_transparent2ex(pupilProjection_fwd(x, sceneGeometry, rayTraceFuncs));
+explicitEllipse = ellipse_transparent2ex(pupilProjection_fwd(x, sceneGeometry));
 % This is the RMSE of the distance values of the boundary points to
 % the ellipse fit. We check for the case in which the
 % explicitEllipse contains NAN values, which can happen when the
