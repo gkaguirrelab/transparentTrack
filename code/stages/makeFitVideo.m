@@ -65,13 +65,7 @@ p.addParameter('controlFileName',[],@(x)(isempty(x) | ischar(x)));
 p.parse(videoInFileName, videoOutFileName, varargin{:})
 
 
-%% Alert the user and prepare variables
-if strcmp(p.Results.verbosity,'full')
-    tic
-    fprintf(['Creating and saving fit video. Started ' char(datetime('now')) '\n']);
-    fprintf('| 0                      50                   100%% |\n');
-    fprintf('.\n');
-end
+%% Prepare variables
 
 % Read in the glint file if passed
 if ~isempty(p.Results.glintFileName)
@@ -152,6 +146,14 @@ else
     videoOutObj.FrameRate = p.Results.videoOutFrameRate;
     videoOutObj.Colormap = cmap;
     open(videoOutObj);
+end
+
+% Alert the user
+if strcmp(p.Results.verbosity,'full')
+    tic
+    fprintf(['Creating and saving fit video. Started ' char(datetime('now')) '\n']);
+    fprintf('| 0                      50                   100%% |\n');
+    fprintf('.\n');
 end
 
 
@@ -260,7 +262,7 @@ for ii = 1:nFrames
     % add the center of rotation
     if ~isempty(p.Results.sceneGeometryFileName)
         % Obtain the pupilProjection of the model eye to the image plane
-        [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd([0 0 0 2], sceneGeometry, [], 'fullEyeModelFlag', true);
+        [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd([0 0 0 2], sceneGeometry, 'fullEyeModelFlag', true);
         idx = find(strcmp(pointLabels,'rotationCenter'));
         plot(imagePoints(idx,1),imagePoints(idx,2),['+' p.Results.sceneGeometryColor]);
     end

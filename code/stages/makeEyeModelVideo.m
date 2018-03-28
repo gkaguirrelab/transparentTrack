@@ -53,13 +53,7 @@ p.addParameter('fitLabel', 'radiusSmoothed', @ischar);
 p.parse(videoOutFileName, pupilFileName, sceneGeometryFileName, varargin{:})
 
 
-%% Alert the user and prepare variables
-if strcmp(p.Results.verbosity,'full')
-    tic
-    fprintf(['Creating and saving model video. Started ' char(datetime('now')) '\n']);
-    fprintf('| 0                      50                   100%% |\n');
-    fprintf('.\n');
-end
+%% Prepare variables
 
 % Read in the pupilData file
 dataLoad = load(p.Results.pupilFileName);
@@ -99,6 +93,15 @@ nFrames = size(eyePoses,1);
 
 % Open a figure
 frameFig = figure( 'Visible', 'off');
+
+% Alert the user
+if strcmp(p.Results.verbosity,'full')
+    tic
+    fprintf(['Creating and saving model video. Started ' char(datetime('now')) '\n']);
+    fprintf('| 0                      50                   100%% |\n');
+    fprintf('.\n');
+end
+
 
 %% Loop through the frames
 for ii = 1:nFrames
