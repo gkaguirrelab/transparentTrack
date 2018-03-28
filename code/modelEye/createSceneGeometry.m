@@ -99,10 +99,19 @@ function sceneGeometry = createSceneGeometry(varargin)
 %   m surfaces of the cornea and any corrective lenses into a format needed
 %   for ray tracing.
 %
-%   useRayTracing - A boolean flag that sets if ray tracing should be used
-%   when computing the forward and inverse model. Set to true by this
-%   function. Subsequent functions may modify the setting of this flag to
-%   control the behavior of model fitting.
+%   virtualImageFunc - A sub-structure with a handle to the function that
+%   computes the virtual image location of eyeWorldPoints subject to
+%   refraction by the optical system. This function creates the field but
+%   leaves it empty. To populate the field, the routine
+%   compileVirtualImageFunc is used. It will then have the sub-fields:
+%   	'handle'  - Handle for the function.
+%       'path'    - Full path to the stored mex file; set to empty if stored 
+%                   only in memory.
+%       'opticalSystem' - the optical system used to generate the function.
+%                   This is stored so that the routine can check for
+%                   consistency between the optical system currently stored
+%                   in sceneGeometry and that used to generate the
+%                   function.
 %
 % Inputs:
 %   none
@@ -236,10 +245,13 @@ end
 
 % Store the optical system
 sceneGeometry.opticalSystem = opticalSystem;
-sceneGeometry.useRayTracing = true;
+
+% Add the virtualImageFunc field, but for now it is empty.
+sceneGeometry.virtualImageFunc = [];
 
 % Save the meta data
 sceneGeometry.meta.createSceneGeometry = p.Results;
+
 
 %% Save the sceneGeometry file
 if ~isempty(p.Results.sceneGeometryFileName)

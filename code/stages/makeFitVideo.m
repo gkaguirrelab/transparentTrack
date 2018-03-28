@@ -65,13 +65,7 @@ p.addParameter('controlFileName',[],@(x)(isempty(x) | ischar(x)));
 p.parse(videoInFileName, videoOutFileName, varargin{:})
 
 
-%% Alert the user and prepare variables
-if strcmp(p.Results.verbosity,'full')
-    tic
-    fprintf(['Creating and saving fit video. Started ' char(datetime('now')) '\n']);
-    fprintf('| 0                      50                   100%% |\n');
-    fprintf('.\n');
-end
+%% Prepare variables
 
 % Read in the glint file if passed
 if ~isempty(p.Results.glintFileName)
@@ -116,28 +110,8 @@ else
     instructions(1).params=[];
 end
 
-% Read in the sceneGeometry file if passed
-if ~isempty(p.Results.sceneGeometryFileName)
-    dataLoad = load(p.Results.sceneGeometryFileName);
-    sceneGeometry = dataLoad.sceneGeometry;
-    clear dataLoad
-else
-    sceneGeometry=[];
-end
-
-% If sceneGeometry is defined, prepare the ray tracing functions
-if ~isempty(sceneGeometry)
-    if sceneGeometry.useRayTracing
-        if strcmp(p.Results.verbosity,'full')
-            fprintf('Assembling ray tracing functions.\n');
-        end
-        [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
-    else
-        rayTraceFuncs = [];
-    end
-else
-    rayTraceFuncs = [];
-end
+% Load the sceneGeometry file
+sceneGeometry = loadSceneGeometry(p.Results.sceneGeometryFileName, p.Results.verbosity);
 
 % Open a video object for reading
 videoInObj = VideoReader(videoInFileName);
@@ -172,6 +146,14 @@ else
     videoOutObj.FrameRate = p.Results.videoOutFrameRate;
     videoOutObj.Colormap = cmap;
     open(videoOutObj);
+end
+
+% Alert the user
+if strcmp(p.Results.verbosity,'full')
+    tic
+    fprintf(['Creating and saving fit video. Started ' char(datetime('now')) '\n']);
+    fprintf('| 0                      50                   100%% |\n');
+    fprintf('.\n');
 end
 
 
@@ -213,7 +195,7 @@ for ii = 1:nFrames
     if ~isempty(eyePoses) && p.Results.modelEyeAlpha~=0
         if ~any(isnan(eyePoses(ii,:)))
             % Obtain the pupilProjection of the model eye to the image plane
-            [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses(ii,:), sceneGeometry, rayTraceFuncs, 'fullEyeModelFlag', true);
+            [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses(ii,:), sceneGeometry, 'fullEyeModelFlag', true);
             
             % Loop through the point labels present in the eye model
             for pp = 1:length(p.Results.modelEyeLabelNames)
@@ -280,7 +262,7 @@ for ii = 1:nFrames
     % add the center of rotation
     if ~isempty(p.Results.sceneGeometryFileName)
         % Obtain the pupilProjection of the model eye to the image plane
-        [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd([0 0 0 2], sceneGeometry, [], 'fullEyeModelFlag', true);
+        [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd([0 0 0 2], sceneGeometry, 'fullEyeModelFlag', true);
         idx = find(strcmp(pointLabels,'rotationCenter'));
         plot(imagePoints(idx,1),imagePoints(idx,2),['+' p.Results.sceneGeometryColor]);
     end

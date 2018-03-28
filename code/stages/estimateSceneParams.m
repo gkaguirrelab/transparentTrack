@@ -1,4 +1,4 @@
-function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileName, varargin)
+function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileName, vitualImageFuncDir, varargin)
 % Estimate camera translation and eye rotation given image plane ellipses
 %
 % Syntax:
@@ -28,6 +28,9 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
 %                           pupilData file is loaded and concatenated.
 %   sceneGeometryFileName - Full path to the file in which the
 %                           sceneGeometry data should be saved
+%   vitualImageFuncDir    - Full path to the directory that should be
+%                           created to hold the ray tracing function for
+%                           the optical system in sceneGeometry.
 %
 % Optional key/value pairs (display and I/O):
 %  'verbosity'            - Level of verbosity. [none, full]
@@ -41,10 +44,6 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
 %  'nWorkers'             - Specify the number of workers in the parallel
 %                           pool. If undefined the default number will be
 %                           used.
-%  'tbtbProjectName'      - The workers in the parallel pool are configured
-%                           by issuing a tbUseProject command for the
-%                           project specified here.
-%
 %
 % Optional key/value pairs (environment)
 %  'tbSnapshot'           - This should contain the output of the
@@ -85,21 +84,12 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
 %  'badFrameErrorThreshold' - Frames with RMSE fitting error above this
 %                           threshold will not be selected to guide the
 %                           scene parameter search.
-%  'useRayTracing'        - Logical; default false. Using ray tracing in
-%                           the camera translation search improves accuracy
-%                           slightly, but increases search time by about
-%                           25x.
-%  'nBADSsearches'        - Scalar or 1x2 vector. We perform the search for
-%                           camera translation from a randomly selected
-%                           starting point within the plausible bounds.
-%                           This parameter sets how many random starting
-%                           points to try; the best result is retained.
-%                           Each search is run on a separate worker if the
-%                           parpool is available. If a two element vector
-%                           is passed, and if 'useRayTracing' is set to
-%                           true, then the first element sets the number of
-%                           non-ray-traced searches, and the second element
-%                           the number of ray-traced searches.
+%  'nBADSsearches'        - Scalar. We perform the search over scene params
+%                           from a randomly selected starting point within
+%                           the plausible bounds. This parameter sets how
+%                           many random starting points to try; the best
+%                           result is retained. Each search is run on a
+%                           separate worker if the parpool is available.
 %
 %
 % Outputs
@@ -109,25 +99,25 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
 % Examples:
 %{
     %% Recover a veridical camera translation
-    % Create a veridical sceneGeometry with some arbitrary translation
+    % Create a default sceneGeometry
     veridicalSceneGeometry = createSceneGeometry();
+    % Compile the ray tracing functions
+    veridicalSceneGeometry.virtualImageFunc = compileVirtualImageFunc( veridicalSceneGeometry, 'functionDirPath', '/tmp/demo_virtualImageFunc' );
+    % Set some arbitrary extrinsic camera translation
     veridicalSceneGeometry.extrinsicTranslationVector = [-1.2; 0.9; 108];
-    % Assemble the ray tracing functions
-    rayTraceFuncs = assembleRayTraceFuncs( veridicalSceneGeometry );
     % Create a set of ellipses using the veridical geometry and
     % randomly varying pupil radii.
     ellipseIdx=1;
     for azi=-15:15:15
     	for ele=-15:15:15
             eyePose=[azi, ele, 0, 2+(randn()./5)];
-            pupilData.initial.ellipses.values(ellipseIdx,:) = pupilProjection_fwd(eyePose, veridicalSceneGeometry, rayTraceFuncs);
+            pupilData.initial.ellipses.values(ellipseIdx,:) = pupilProjection_fwd(eyePose, veridicalSceneGeometry, virtualImageFuncPointer);
             pupilData.initial.ellipses.RMSE(ellipseIdx,:) = 1;
             ellipseIdx=ellipseIdx+1;
         end
     end
     % Estimate the scene Geometry using the ellipses
-    nBADSsearches = 4;
-    estimatedSceneGeometry = estimateSceneParams(pupilData,'','useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1,'nBADSsearches',nBADSsearches,'useRayTracing',false);
+    estimatedSceneGeometry = estimateSceneParams(pupilData,'','useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1);
     % Report how well we did
     fprintf('Error in the recovered camera translation vector (x, y, depth] in mm: \n');
     veridicalSceneGeometry.extrinsicTranslationVector - estimatedSceneGeometry.extrinsicTranslationVector
@@ -137,20 +127,20 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
 p = inputParser; p.KeepUnmatched = true;
 
 % Required
-p.addRequired('pupilFileName',@(x)(isstruct(x) | iscell(x) | ischar(x)));
+p.addRequired('pupilFileName',@(x)(isstruct(x) || iscell(x) || ischar(x)));
 p.addRequired('sceneGeometryFileName',@ischar);
+p.addRequired('vitualImageFuncFileName',@(x)(isempty(x) || ischar(x)));
 
 % Optional display and I/O params
 p.addParameter('verbosity', 'none', @isstr);
-p.addParameter('sceneDiagnosticPlotFileName', '', @(x)(isempty(x) | ischar(x)));
+p.addParameter('sceneDiagnosticPlotFileName', '', @(x)(isempty(x) || ischar(x)));
 
 % Optional flow control params
 p.addParameter('useParallel',false,@islogical);
-p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('tbtbRepoName','transparentTrack',@ischar);
+p.addParameter('nWorkers',[],@(x)(isempty(x) || isnumeric(x)));
 
 % Optional environment parameters
-p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
+p.addParameter('tbSnapshot',[],@(x)(isempty(x) || isstruct(x)));
 p.addParameter('timestamp',char(datetime('now')),@ischar);
 p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischar);
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
@@ -166,11 +156,11 @@ p.addParameter('fitLabel','initial',@ischar);
 p.addParameter('ellipseArrayList',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nBinsPerDimension',4,@isnumeric);
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
-p.addParameter('useRayTracing',false,@islogical);
 p.addParameter('nBADSsearches',10,@isnumeric);
+p.addParameter('useRayTracing',true,@islogical);
 
 % parse
-p.parse(pupilFileName, sceneGeometryFileName, varargin{:})
+p.parse(pupilFileName, sceneGeometryFileName, vitualImageFuncDir, varargin{:})
 
 
 %% Announce we are starting
@@ -179,23 +169,21 @@ if strcmp(p.Results.verbosity,'full')
     fprintf(['Estimating camera translation and eye rotation from pupil ellipses. Started ' char(datetime('now')) '\n']);
 end
 
-%% Create initial sceneGeometry structure and ray tracing functions
+%% Create initial sceneGeometry structure and ray tracing function
 initialSceneGeometry = createSceneGeometry(varargin{:});
-initialSceneGeometry.useRayTracing = p.Results.useRayTracing;
 
-% Assemble the ray tracing functions
-if initialSceneGeometry.useRayTracing
+% Compile the ray tracing function
+if p.Results.useRayTracing
     if strcmp(p.Results.verbosity,'full')
-        fprintf('Assembling ray tracing functions.\n');
+        fprintf('Assembling ray tracing function.\n');
     end
-    [rayTraceFuncs] = assembleRayTraceFuncs( initialSceneGeometry );
-else
-    rayTraceFuncs = [];
+    initialSceneGeometry.virtualImageFunc = compileVirtualImageFunc( initialSceneGeometry, 'functionDirPath', vitualImageFuncDir );
 end
+
 
 %% Set up the parallel pool
 if p.Results.useParallel
-    nWorkers = startParpool( p.Results.nWorkers, p.Results.tbtbRepoName, p.Results.verbosity );
+    nWorkers = startParpool( p.Results.nWorkers, p.Results.verbosity );
 else
     nWorkers=0;
 end
@@ -267,19 +255,19 @@ end
 
 
 %% Perform the search
+% Inform the user
 if strcmp(p.Results.verbosity,'full')
     fprintf(['Searching over camera translations without ray tracing.\n']);
     fprintf('| 0                      50                   100%% |\n');
     fprintf('.\n');
 end
 
-% Peform the search without rayTracing
+% Loop over the requested number of BADS searches
 searchResults = {};
-parfor (ss = 1:p.Results.nBADSsearches(1),nWorkers)
-%for ss = 1:p.Results.nBADSsearches(1)
+parfor (ss = 1:p.Results.nBADSsearches,nWorkers)
     
     searchResults{ss} = ...
-        performSceneSearch(initialSceneGeometry, [], ...
+        performSceneSearch(initialSceneGeometry, ...
         ellipses(ellipseArrayList,:), ...
         p.Results.sceneParamsLB, ...
         p.Results.sceneParamsUB, ...
@@ -300,76 +288,20 @@ if strcmp(p.Results.verbosity,'full')
     fprintf('\n');
 end
 
-% Find the weighted mean and SD of the translation vector and rotation
-% scaling
-allFvalsNoRayTrace = cellfun(@(x) x.meta.estimateSceneParams.search.fVal,searchResults);
-allsceneParamVecsNoRayTrace = cellfun(@(x) [x.extrinsicTranslationVector; x.eye.rotationCenters.scaling],searchResults,'UniformOutput',false);
+% Find the weighted mean and SD of the solution parameters
+allFvals = cellfun(@(x) x.meta.estimateSceneParams.search.fVal,searchResults);
+allSceneParamResults = cellfun(@(thisSceneGeometry) thisSceneGeometry.meta.estimateSceneParams.search.x,searchResults,'UniformOutput',false);
 for dim = 1:5
-    vals = cellfun(@(x) x(dim), allsceneParamVecsNoRayTrace);
-    sceneParamVecMeanNoRayTrace(dim)=mean(vals.*(1./allFvalsNoRayTrace))/mean(1./allFvalsNoRayTrace);
-    sceneParamVecSDNoRayTrace(dim)=std(vals,1./allFvalsNoRayTrace);
+    vals = cellfun(@(x) x(dim), allSceneParamResults);
+    sceneParamResultsMean(dim)=mean(vals.*(1./allFvals))/mean(1./allFvals);
+    sceneParamResultsSD(dim)=std(vals,1./allFvals);
 end
-sceneParamVecMeanNoRayTrace=sceneParamVecMeanNoRayTrace';
-sceneParamVecSDNoRayTrace=sceneParamVecSDNoRayTrace';
-
-% If rayTraceFuncs is not empty, now repeat the search, using the initial
-% result to inform the bounds for the search with rayTracing
-if ~isempty(rayTraceFuncs)
-    if strcmp(p.Results.verbosity,'full')
-        fprintf(['Searching over camera translations with ray tracing.\n']);
-        fprintf('| 0                      50                   100%% |\n');
-        fprintf('.\n');
-    end
-    
-    % Peform the search with rayTracing, and with plausible upper and lower
-    % boundaries informed by the initial search without ray tracing
-    searchResults = {};
-    pLB = sceneParamVecMeanNoRayTrace-sceneParamVecSDNoRayTrace;
-    pUB = sceneParamVecMeanNoRayTrace+sceneParamVecSDNoRayTrace;
-    
-    pLB = max([pLB p.Results.sceneParamsLB],[],2);
-    pUB = min([pUB p.Results.sceneParamsUB],[],2);
-    
-    % Check if there is a second value in nBADSsearches we should use
-    if length(p.Results.nBADSsearches)>1
-        nRayTracedSearches = p.Results.nBADSsearches(2);
-    else
-        nRayTracedSearches = p.Results.nBADSsearches(1);
-    end
-    parfor (ss = 1:nRayTracedSearches,nWorkers)
-        
-        searchResults{ss} = ...
-            performSceneSearch(initialSceneGeometry, rayTraceFuncs, ...
-            ellipses(ellipseArrayList,:), ...
-            p.Results.sceneParamsLB, ...
-            p.Results.sceneParamsUB, ...
-            pLB, ...
-            pUB, ...
-            p.Results.eyePoseLB, ...
-            p.Results.eyePoseUB);
-        
-        % update progress
-        if strcmp(p.Results.verbosity,'full')
-            for pp=1:floor(50/nRayTracedSearches)
-                fprintf('\b.\n');
-            end
-        end
-        
-    end
-    if strcmp(p.Results.verbosity,'full')
-        fprintf('\n');
-    end
-    
-end
+sceneParamResultsMean=sceneParamResultsMean';
+sceneParamResultsSD=sceneParamResultsSD';
 
 % Find the solution with the best fVal.
-if isempty(rayTraceFuncs)
-    [~, idx]=min(allFvalsNoRayTrace);
-    sceneGeometry = searchResults{idx};
-else
-    [~, idx]=min(allFvalsWithRayTrace);
-    sceneGeometry = searchResults{idx};
-end
+[~, idx]=min(allFvals);
+sceneGeometry = searchResults{idx};
 
 % Add additional search and meta field info to sceneGeometry
 tmpHold=sceneGeometry.meta.estimateSceneParams.search;
@@ -377,15 +309,11 @@ sceneGeometry.meta.estimateSceneParams = p.Results;
 sceneGeometry.meta.estimateSceneParams.search = tmpHold;
 sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList = ellipseArrayList';
 sceneGeometry.meta.estimateSceneParams.search.ellipseRMSE = ellipseFitRMSE(ellipseArrayList);
-sceneGeometry.meta.estimateSceneParams.search.allFvalsNoRayTrace = allFvalsNoRayTrace;
-sceneGeometry.meta.estimateSceneParams.search.allsceneParamVecsNoRayTrace = allsceneParamVecsNoRayTrace;
-sceneGeometry.meta.estimateSceneParams.search.sceneParamVecMeanNoRayTrace = sceneParamVecMeanNoRayTrace;
-sceneGeometry.meta.estimateSceneParams.search.sceneParamVecSDNoRayTrace = sceneParamVecSDNoRayTrace;
+sceneGeometry.meta.estimateSceneParams.search.allFvals = allFvals;
+sceneGeometry.meta.estimateSceneParams.search.allSceneParamResults = allSceneParamResults;
+sceneGeometry.meta.estimateSceneParams.search.sceneParamResultsMean = sceneParamResultsMean;
+sceneGeometry.meta.estimateSceneParams.search.sceneParamResultsSD = sceneParamResultsSD;
 
-if ~isempty(rayTraceFuncs)
-    sceneGeometry.meta.estimateSceneParams.search.allFvalsWithRayTrace = allFvalsWithRayTrace;
-    sceneGeometry.meta.estimateSceneParams.search.allsceneParamVecsWithRayTrace = allsceneParamVecsWithRayTrace;
-end
 
 %% Save the sceneGeometry file
 if ~isempty(sceneGeometryFileName)
@@ -404,7 +332,6 @@ if ~isempty(p.Results.sceneDiagnosticPlotFileName)
         p.Results.eyePoseLB, ...
         p.Results.eyePoseUB, ...
         sceneGeometry,...
-        rayTraceFuncs,...
         p.Results.sceneDiagnosticPlotFileName)
 end
 
@@ -422,7 +349,7 @@ end % main function
 
 %% LOCAL FUNCTIONS
 
-function sceneGeometry = performSceneSearch(initialSceneGeometry, rayTraceFuncs, ellipses, LB, UB, LBp, UBp, eyePoseLB, eyePoseUB, shapeErrorMultiplier)
+function sceneGeometry = performSceneSearch(initialSceneGeometry, ellipses, LB, UB, LBp, UBp, eyePoseLB, eyePoseUB)
 % Pattern search for best fitting sceneGeometry parameters
 %
 % Description:
@@ -468,6 +395,9 @@ options.UncertaintyHandling = 0;     % The objective is deterministic
 % Silence the mesh overflow warning from BADS
 warningState = warning;
 warning('off','bads:meshOverflow');
+% Silence the occasional bad ray tracing error during the search
+warning('off','pupilProjection_fwd:rayTracingError');
+
 
 % Define nested variables for within the search
 centerDistanceErrorByEllipse=zeros(size(ellipses,1),1);
@@ -504,7 +434,7 @@ end
             [eyePose, ~, centerDistanceErrorByEllipse(ii), shapeErrorByEllipse(ii), areaErrorByEllipse(ii), exitFlag] = ...
                 pupilProjection_inv(...
                 ellipses(ii,:),...
-                candidateSceneGeometry, rayTraceFuncs, ...
+                candidateSceneGeometry, ...
                 'eyePoseLB',eyePoseLB,...
                 'eyePoseUB',eyePoseUB...
                 );
@@ -515,7 +445,7 @@ end
                 [eyePose, ~, centerDistanceErrorByEllipse(ii), shapeErrorByEllipse(ii), areaErrorByEllipse(ii)] = ...
                     pupilProjection_inv(...
                     ellipses(ii,:),...
-                    candidateSceneGeometry, rayTraceFuncs, ...
+                    candidateSceneGeometry, ...
                     'eyePoseLB',eyePoseLB,...
                     'eyePoseUB',eyePoseUB,...
                     'x0',x0tmp...
@@ -525,7 +455,7 @@ end
         end
         % Now compute objective function as the RMSE of the distance
         % between the taget and modeled ellipses in shape and area
-        fval = mean(((shapeErrorByEllipse+1) + (areaErrorByEllipse+1)).^2).^(1/2);
+        fval = sqrt(mean(shapeErrorByEllipse.^2 + areaErrorByEllipse.^2));
         % We have to keep the fval non-infinite to keep BADS happy
         fval=min([fval realmax]);
     end
@@ -538,9 +468,9 @@ warning(warningState);
 % Assemble the sceneGeometry file to return
 sceneGeometry = initialSceneGeometry;
 sceneGeometry.extrinsicTranslationVector = x(1:3)';
-sceneGeometry.eye.rotationCenters.scaling = x(4:5)';
 sceneGeometry.eye.rotationCenters.azi = sceneGeometry.eye.rotationCenters.azi .* x(4) .* x(5);
 sceneGeometry.eye.rotationCenters.ele = sceneGeometry.eye.rotationCenters.ele .* x(4) ./ x(5);
+sceneGeometry.meta.estimateSceneParams.search.x = x';
 sceneGeometry.meta.estimateSceneParams.search.options = options;
 sceneGeometry.meta.estimateSceneParams.search.initialSceneGeometry = initialSceneGeometry;
 sceneGeometry.meta.estimateSceneParams.search.ellipses = ellipses;
@@ -560,7 +490,7 @@ sceneGeometry.meta.estimateSceneParams.search.recoveredEyePoses = recoveredEyePo
 end % local search function
 
 
-function [] = saveSceneDiagnosticPlot(ellipses, Xedges, Yedges, eyePoseLB, eyePoseUB, sceneGeometry, rayTraceFuncs, sceneDiagnosticPlotFileName)
+function [] = saveSceneDiagnosticPlot(ellipses, Xedges, Yedges, eyePoseLB, eyePoseUB, sceneGeometry, sceneDiagnosticPlotFileName)
 % Creates and saves a plot that illustrates the sceneGeometry results
 %
 % Inputs:
@@ -624,7 +554,6 @@ hold on
     (...
     ellipses(x,:),...
     sceneGeometry,...
-    rayTraceFuncs,...
     'eyePoseLB',eyePoseLB,'eyePoseUB',eyePoseUB),...
     1:1:size(ellipses,1),'UniformOutput',false);
 projectedEllipses=vertcat(projectedEllipses{:});
@@ -645,7 +574,7 @@ for ii=1:size(ellipses,1)
 end
 
 % plot the estimated center of rotation of the eye
-rotationCenterEllipse = pupilProjection_fwd([0 0 0 2], sceneGeometry, rayTraceFuncs);
+rotationCenterEllipse = pupilProjection_fwd([0 0 0 2], sceneGeometry);
 plot(rotationCenterEllipse(1),rotationCenterEllipse(2), '+g', 'MarkerSize', 5);
 
 % Calculate the plot limits
@@ -725,7 +654,8 @@ set(hSub, 'Visible', 'off');
 legend({'0',num2str(sceneGeometry.constraintTolerance/2), ['=> ' num2str(sceneGeometry.constraintTolerance)]},'Location','north', 'Orientation','vertical');
 
 % Add text to report the extrinsic translation vector
-myString = sprintf('Translation vector [mm] = %4.1f, %4.1f, %4.1f; rotation center scaling [joint, differential] = %4.2f, %4.2f',sceneGeometry.extrinsicTranslationVector(1),sceneGeometry.extrinsicTranslationVector(2),sceneGeometry.extrinsicTranslationVector(3),sceneGeometry.eye.rotationCenters.scaling(1),sceneGeometry.eye.rotationCenters.scaling(2));
+xFinal = sceneGeometry.meta.estimateSceneParams.search.x;
+myString = sprintf('Translation vector [mm] = %4.1f, %4.1f, %4.1f; rotation center scaling [joint, differential] = %4.2f, %4.2f',xFinal(1),xFinal(2),xFinal(3),xFinal(4),xFinal(5));
 text(0.5,1.0,myString,'Units','normalized','HorizontalAlignment','center')
 
 %% Right panel -- area error

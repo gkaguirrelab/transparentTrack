@@ -48,9 +48,6 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %  'nWorkers'             - Specify the number of workers in the parallel
 %                           pool. If undefined the default number will be
 %                           used.
-%  'tbtbProjectName'      - The workers in the parallel pool are configured
-%                           by issuing a tbUseProject command for the
-%                           project specified here.
 %
 % Optional key/value pairs (environment)
 %  'tbSnapshot'           - This should contain the output of the
@@ -112,7 +109,6 @@ p.addParameter('verbosity','none',@ischar);
 p.addParameter('nFrames',Inf,@isnumeric);
 p.addParameter('useParallel',false,@islogical);
 p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('tbtbRepoName','transparentTrack',@ischar);
 
 % Optional environment params
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
@@ -144,29 +140,8 @@ dataLoad=load(perimeterFileName);
 perimeter=dataLoad.perimeter;
 clear dataLoad
 
-% Optionally load a sceneGeometry file
-if isempty(p.Results.sceneGeometryFileName)
-    sceneGeometry=[];
-else
-    % load the sceneGeometry structure
-    dataLoad=load(p.Results.sceneGeometryFileName);
-    sceneGeometry=dataLoad.sceneGeometry;
-    clear dataLoad
-end
-
-% If sceneGeometry is defined, prepare the ray tracing functions
-if ~isempty(sceneGeometry)
-    if sceneGeometry.useRayTracing
-        if strcmp(p.Results.verbosity,'full')
-            fprintf('Assembling ray tracing functions.\n');
-        end
-        [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
-    else
-        rayTraceFuncs = [];
-    end
-else
-    rayTraceFuncs = [];
-end
+% Load a sceneGeometry file
+sceneGeometry = loadSceneGeometry(p.Results.sceneGeometryFileName, p.Results.verbosity);
 
 % Optionally load the pupilData file
 if exist(p.Results.pupilFileName, 'file') == 2
@@ -193,7 +168,7 @@ returnRotMat = @(theta) [cos(theta) -sin(theta); sin(theta) cos(theta)];
 
 %% Set up the parallel pool
 if p.Results.useParallel
-    nWorkers = startParpool( p.Results.nWorkers, p.Results.tbtbRepoName, p.Results.verbosity );
+    nWorkers = startParpool( p.Results.nWorkers, p.Results.verbosity );
 else
     nWorkers=0;
 end
@@ -224,7 +199,7 @@ end
 
 % Loop through the frames
 parfor (ii = 1:nFrames, nWorkers)
-%for ii = 311:nFrames
+%for ii = 1:nFrames
     
     % Update progress
     if strcmp(verbosity,'full')
@@ -262,10 +237,10 @@ parfor (ii = 1:nFrames, nWorkers)
                 % Identify the best fitting eye parameters for the  the
                 % pupil perimeter
                 [eyePose, eyePoseObjectiveError] = ...
-                    eyePoseEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs, 'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB);
+                    eyePoseEllipseFit(Xp, Yp, sceneGeometry, 'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB);
                 % Obtain the parameters of the ellipse
                 ellipseParamsTransparent = ...
-                    pupilProjection_fwd(eyePose, sceneGeometry, rayTraceFuncs);
+                    pupilProjection_fwd(eyePose, sceneGeometry);
             end
             
             % Re-calculate fit for splits of data points, if requested
@@ -317,15 +292,15 @@ parfor (ii = 1:nFrames, nWorkers)
                         % values of the fits, but instead just their
                         % variation.
                         pFitEyePoseSplit(1,ss,:) = ...
-                            eyePoseEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry, [], 'x0', eyePose, 'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB);
+                            eyePoseEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry, 'x0', eyePose, 'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB);
                         pFitEyePoseSplit(2,ss,:) = ...
-                            eyePoseEllipseFit(Xp(splitIdx2), Yp(splitIdx2), sceneGeometry, [], 'x0', eyePose, 'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB);
+                            eyePoseEllipseFit(Xp(splitIdx2), Yp(splitIdx2), sceneGeometry, 'x0', eyePose, 'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB);
                         % Obtain the ellipse parameeters that correspond
                         % the eyePose
                         pFitTransparentSplit(1,ss,:) = ...
-                            pupilProjection_fwd(pFitEyePoseSplit(1,ss,:), sceneGeometry, []);
+                            pupilProjection_fwd(pFitEyePoseSplit(1,ss,:), sceneGeometry);
                         pFitTransparentSplit(2,ss,:) = ...
-                            pupilProjection_fwd(pFitEyePoseSplit(2,ss,:), sceneGeometry, []);
+                            pupilProjection_fwd(pFitEyePoseSplit(2,ss,:), sceneGeometry);
                     end
                 end % loop through splits
                 

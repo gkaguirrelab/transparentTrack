@@ -53,13 +53,7 @@ p.addParameter('fitLabel', 'radiusSmoothed', @ischar);
 p.parse(videoOutFileName, pupilFileName, sceneGeometryFileName, varargin{:})
 
 
-%% Alert the user and prepare variables
-if strcmp(p.Results.verbosity,'full')
-    tic
-    fprintf(['Creating and saving model video. Started ' char(datetime('now')) '\n']);
-    fprintf('| 0                      50                   100%% |\n');
-    fprintf('.\n');
-end
+%% Prepare variables
 
 % Read in the pupilData file
 dataLoad = load(p.Results.pupilFileName);
@@ -67,24 +61,8 @@ pupilData = dataLoad.pupilData;
 clear dataLoad
 eyePoses = pupilData.(p.Results.fitLabel).eyePoses.values;
 
-% Read in the sceneGeometry file
-dataLoad = load(p.Results.sceneGeometryFileName);
-sceneGeometry = dataLoad.sceneGeometry;
-clear dataLoad
-
-% Assemble the ray tracing functions
-if ~isempty(sceneGeometry)
-    if sceneGeometry.useRayTracing
-        if strcmp(p.Results.verbosity,'full')
-            fprintf('Assembling ray tracing functions.\n');
-        end
-        [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
-    else
-        rayTraceFuncs = [];
-    end
-else
-    rayTraceFuncs = [];
-end
+% Load the sceneGeometry file
+sceneGeometry = loadSceneGeometry(p.Results.sceneGeometryFileName, p.Results.verbosity);
 
 % Open a video object for writing
 if p.Results.saveCompressedVideo
@@ -116,6 +94,15 @@ nFrames = size(eyePoses,1);
 % Open a figure
 frameFig = figure( 'Visible', 'off');
 
+% Alert the user
+if strcmp(p.Results.verbosity,'full')
+    tic
+    fprintf(['Creating and saving model video. Started ' char(datetime('now')) '\n']);
+    fprintf('| 0                      50                   100%% |\n');
+    fprintf('.\n');
+end
+
+
 %% Loop through the frames
 for ii = 1:nFrames
     
@@ -135,7 +122,7 @@ for ii = 1:nFrames
     if ~any(isnan(eyePoses(ii,:)))
         
         % Obtain the pupilProjection of the model eye to the image plane
-        [pupilEllipseParams, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses(ii,:), sceneGeometry, rayTraceFuncs, 'fullEyeModelFlag', true);
+        [pupilEllipseParams, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses(ii,:), sceneGeometry, 'fullEyeModelFlag', true);
         
         % Loop through the point labels present in the eye model
         for pp = 1:length(p.Results.modelEyeLabelNames)

@@ -43,14 +43,14 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
 %                           the axis.
 %   opticalSystemIn       - An mx3 matrix, where m is the number of
 %                           surfaces in the model, including the initial
-%                           position of the ray. Each row contains the
-%                           values [center, radius, refractiveIndex] that
-%                           define a spherical lens. The first row
-%                           corresponds to the initial conditions of the
-%                           ray. Thus, the refractive index value given in
-%                           the first row species the index of the medium
-%                           in which the raw arises. The center and radius
-%                           values for the first row are ignored.
+%                           state of the ray. Each row contains the values
+%                           [center, radius, refractiveIndex] that define a
+%                           spherical lens. The first row corresponds to
+%                           the initial conditions of the ray. Thus, the
+%                           refractive index value given in the first row
+%                           specifies the index of the medium in which the
+%                           ray arises. The center and radius values for
+%                           the first row are ignored.
 %   figureFlag            - Logical or structure. If logical, the true or
 %                           false value controls whether the default style
 %                           plot is created. If empty, it will be set to
@@ -385,7 +385,7 @@ for ii = 2:nSurfaces
     % are not working with symbolic variables
     if ~symbolicFlag
         if abs((aVals(ii)*relativeIndices(ii))) > 1
-            warning('Angle of incidence for surface %d greater than critical angle. Returning.',ii);
+            warning('rayTraceCenteredSphericalSurfaces:criticalAngle','Angle of incidence for surface %d greater than critical angle. Returning.',ii);
             return
         end
     end
@@ -425,7 +425,7 @@ for ii = 2:nSurfaces
         try
             [xout,yout] = linecirc(slope,intercept,opticalSystem(ii,1),0,abs(opticalSystem(ii,2)));
         catch
-            warning('The ray is either tangential to or misses surface %d. Returning.',ii);
+            warning('rayTraceCenteredSphericalSurfaces:rayMissesSurface','The ray is either tangential to or misses surface %d. Returning.',ii);
             return
         end
         % This next bit of logic figures out which of the two coordinates

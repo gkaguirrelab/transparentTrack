@@ -39,9 +39,6 @@ function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, scene
 %  'nWorkers'             - Specify the number of workers in the parallel
 %                           pool. If undefined the default number will be
 %                           used.
-%  'tbtbProjectName'      - The workers in the parallel pool are configured
-%                           by issuing a tbUseProject command for the
-%                           project specified here.
 %
 % Optional key/value pairs (environment)
 %  'tbSnapshot'           - This should contain the output of the
@@ -94,7 +91,6 @@ p.addParameter('verbosity','none',@ischar);
 p.addParameter('nFrames',Inf,@isnumeric);
 p.addParameter('useParallel',false,@islogical);
 p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('tbtbRepoName','transparentTrack',@ischar);
 
 % Optional environment parameters
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
@@ -130,24 +126,8 @@ dataLoad=load(pupilFileName);
 pupilData=dataLoad.pupilData;
 clear dataLoad
 
-% load the sceneGeometry structure
-dataLoad=load(p.Results.sceneGeometryFileName);
-sceneGeometry=dataLoad.sceneGeometry;
-clear dataLoad
-
-% Assemble the ray tracing functions
-if ~isempty(sceneGeometry)
-    if sceneGeometry.useRayTracing
-        if strcmp(p.Results.verbosity,'full')
-            fprintf('Assembling ray tracing functions.\n');
-        end
-        [rayTraceFuncs] = assembleRayTraceFuncs( sceneGeometry );
-    else
-        rayTraceFuncs = [];
-    end
-else
-    rayTraceFuncs = [];
-end
+% Load the sceneGeometry file
+sceneGeometry = loadSceneGeometry(p.Results.sceneGeometryFileName, p.Results.verbosity);
 
 % determine how many frames we will process
 if p.Results.nFrames == Inf
@@ -170,7 +150,7 @@ end
 
 %% Set up the parallel pool
 if p.Results.useParallel
-    nWorkers = startParpool( p.Results.nWorkers, p.Results.tbtbRepoName, p.Results.verbosity );
+    nWorkers = startParpool( p.Results.nWorkers, p.Results.verbosity );
 else
     nWorkers=0;
 end
@@ -334,8 +314,8 @@ parfor (ii = 1:nFrames, nWorkers)
         x0 = pupilData.(fitLabel).eyePoses.values(ii,:);
         x0(radiusIdx)=posteriorPupilRadius;
         [posteriorEyePose, posteriorEyePoseObjectiveError] = ...
-            eyePoseEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs, 'eyePoseLB', lb_pin, 'eyePoseUB', ub_pin, 'x0', x0 );
-        posteriorEllipseParams = pupilProjection_fwd(posteriorEyePose, sceneGeometry, rayTraceFuncs);
+            eyePoseEllipseFit(Xp, Yp, sceneGeometry, 'eyePoseLB', lb_pin, 'eyePoseUB', ub_pin, 'x0', x0 );
+        posteriorEllipseParams = pupilProjection_fwd(posteriorEyePose, sceneGeometry);
         
     end % check if there are any perimeter points to fit
     
