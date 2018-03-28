@@ -1,4 +1,4 @@
-%% TEST_entrancePupilShape
+%% TEST_Mathur2013
 % Compare our model to results of Mathur 2013
 %
 % Description:
@@ -36,10 +36,11 @@
 sceneGeometry = createSceneGeometry( ...
     'extrinsicTranslationVector',[0; 0; 100],...
     'eyeLaterality','Right');
-sceneGeometry.eye.rotationCenter(1)= 0;
+sceneGeometry.eye.rotationCenters.azi = [0 0 0];
+sceneGeometry.eye.rotationCenters.ele = [0 0 0];
 
-% Assemble the ray tracing functions
-rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
+% Compile the ray tracing functions; save as a mex file
+sceneGeometry.virtualImageFunc = compileVirtualImageFunc(sceneGeometry,'functionDirPath','/tmp/demo_virtualImageFunc');
 
 % Assume a 6 mm true exit pupil diamter, as Mathur 2013 used
 % pharmacological dilation for their subjects. The observed entrance pupil
@@ -73,7 +74,7 @@ azimuthsDeg = (-viewingAngleDeg)-sceneGeometry.eye.kappaAngle(1);
 elevationsDeg = zeros(size(viewingAngleDeg))-sceneGeometry.eye.kappaAngle(2);
 
 % Calculate the diameter ratios and thetas
-[diamRatios, thetas] = calcPupilDiameterRatio(azimuthsDeg,elevationsDeg,pupilDiam,sceneGeometry,rayTraceFuncs);
+[diamRatios, thetas] = calcPupilDiameterRatio(azimuthsDeg,elevationsDeg,pupilDiam,sceneGeometry);
 
 % Reverse the thetas to match the Mathur convention, in which a theta of
 % zero corresponds to a pupil ellipse with the major axis aligned with the
@@ -108,9 +109,8 @@ ylabel('Oblique component of the pupil ellipticity')
 title('Mathur 2013 Figure 6, component C')
 
 
-
 %% LOCAL FUNCTION
-function [diamRatios, thetas] = calcPupilDiameterRatio(azimuthsDeg,elevationsDeg,pupilDiam,sceneGeometry,rayTraceFuncs)
+function [diamRatios, thetas] = calcPupilDiameterRatio(azimuthsDeg,elevationsDeg,pupilDiam,sceneGeometry)
 horizDiam=[];
 vertDiam=[];
 thetas=[];
@@ -118,19 +118,18 @@ for ii = 1:length(azimuthsDeg)
     eyePose=[azimuthsDeg(ii) elevationsDeg(ii) 0 pupilDiam/2];
     % First, perform the forward projection to determine where the center
     % of the pupil is located in the sceneWorld coordinates
-    [~, ~, sceneWorldPoints, ~, pointLabels] = pupilProjection_fwd(eyePose, sceneGeometry, rayTraceFuncs, 'fullEyeModelFlag', true, 'removeObscuredPoints', false);
+    [~, ~, sceneWorldPoints] = pupilProjection_fwd(eyePose, sceneGeometry, 'nPupilPerimPoints',50);
     % Adjust the sceneGeometry to translate the camera to be centered on
-    % center of the pupil. This is not exactly right, as the center of the
-    % pupil in the sceneWorld would not exactly correspond to the center of
-    % the elliptical entrance pupil seen by the examiner who adjusted the
-    % camera, but it is the closest I can get to Atchison's arrangement.
-    pupilCenterIdx = find(strcmp(pointLabels,'pupilCenter'));
+    % geometric center of the pupil center in the sceneWorld space. This is
+    % an attempt to match the arrangement of the Mathur study, in which the
+    % examiner adjusted the camera to be centered on the pupil.
+    geometricPupilCenter = mean(sceneWorldPoints);
     adjustedSceneGeometry = sceneGeometry;
-    adjustedSceneGeometry.extrinsicTranslationVector(1) = adjustedSceneGeometry.extrinsicTranslationVector(1)+sceneWorldPoints(pupilCenterIdx,1);
-    adjustedSceneGeometry.extrinsicTranslationVector(2) = adjustedSceneGeometry.extrinsicTranslationVector(2)+sceneWorldPoints(pupilCenterIdx,2);
+    adjustedSceneGeometry.extrinsicTranslationVector(1) = adjustedSceneGeometry.extrinsicTranslationVector(1)+geometricPupilCenter(1);
+    adjustedSceneGeometry.extrinsicTranslationVector(2) = adjustedSceneGeometry.extrinsicTranslationVector(2)+geometricPupilCenter(2);
     % Now, measure the horizontal and vertical width of the image of the
     % pupil
-    [pupilEllipseOnImagePlane, imagePoints] = pupilProjection_fwd(eyePose, adjustedSceneGeometry, rayTraceFuncs, 'nPupilPerimPoints',50);
+    [pupilEllipseOnImagePlane, imagePoints] = pupilProjection_fwd(eyePose, adjustedSceneGeometry, 'nPupilPerimPoints',50);
     horizDiam =[horizDiam max(imagePoints(:,1)')-min(imagePoints(:,1)')];
     vertDiam  =[vertDiam max(imagePoints(:,2)')-min(imagePoints(:,2)')];
     thetas = [thetas, pupilEllipseOnImagePlane(5)];
