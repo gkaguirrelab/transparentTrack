@@ -38,13 +38,14 @@ for dd = 1:length(lensRefractionDiopters)
     
     % Obtain the sceneGeometry and ray tracing functions
     sceneGeometry{dd} = createSceneGeometry('sphericalAmetropia',0,'spectacleLens',lensRefractionDiopters(dd));
-    rayTraceFuncs{dd} = assembleRayTraceFuncs( sceneGeometry{dd} );
+    % Compile the ray tracing functions
+    sceneGeometry{dd}.virtualImageFunc = compileVirtualImageFunc(sceneGeometry{dd},'functionDirPath','/tmp/demo_virtualImageFunc');
     
     for pose = 1:size(eyePoses,1)
         % Perform the projection and request the full eye model
-        [pupilEllipseOnImagePlane, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses(pose,:),sceneGeometry{dd},rayTraceFuncs{dd},'fullEyeModelFlag',true);
+        [pupilEllipseOnImagePlane, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses(pose,:),sceneGeometry{dd},'fullEyeModelFlag',true);
         % Obtain the 
-        eyePoseRecovered = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry{1}, rayTraceFuncs{1});
+        eyePoseRecovered = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry{1});
         apparentPupilRadius(dd,pose)=eyePoseRecovered(4);
         % plot
         subplot(1,3,pose);

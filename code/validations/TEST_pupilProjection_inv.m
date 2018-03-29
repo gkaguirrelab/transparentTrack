@@ -22,8 +22,8 @@
 % createSceneGeometry returns a default sceneGeometry structure
 sceneGeometry = createSceneGeometry();
 
-%% Obtain the ray tracing functions
-rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
+% Compile the ray tracing functions
+sceneGeometry.virtualImageFunc = compileVirtualImageFunc(sceneGeometry,'functionDirPath','/tmp/demo_virtualImageFunc');
 
 %% Define some variables
 pupilRadiusMM = 2;
@@ -47,7 +47,7 @@ for aziIdx = 1:15
         eyePose=[eyePoses; thisAzimuth,thisElevation,thisTorsion,pupilRadiusMM];
         
         % Forward projection from eyePoses to image ellipse
-        pupilEllipseOnImagePlane = pupilProjection_fwd(eyePose, sceneGeometry, rayTraceFuncs);
+        pupilEllipseOnImagePlane = pupilProjection_fwd(eyePose, sceneGeometry);
         pupilEllipseAreas(aziIdx,eleIdx) = pupilEllipseOnImagePlane(3);
         
         % Inverse projection from image ellipse to eyePoses. Note that we
@@ -56,13 +56,13 @@ for aziIdx = 1:15
         % following Listing's Law.
         tic
         [inverseEyePose, ~, ~, ~, ~, exitFlag] = ...
-            pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4]);
+            pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4]);
         % If the exitFlag is 2, we may be in a local minimum. Repeat the
         % search, supplying the initial solution as x0.
         if exitFlag == 2
             x0 = inverseEyePose + [1e-3 1e-3 0 1e-3];
             [inverseEyePose] = ...
-                pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, rayTraceFuncs,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4],'x0',x0);
+                pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4],'x0',x0);
         end
         toc
         % Save the error
@@ -70,15 +70,17 @@ for aziIdx = 1:15
         
         
         % Perform the search again, this time without ray tracing.
+        modSceneGeom = sceneGeometry;
+        modSceneGeom.virtualImageFunc = [];
         tic
         [inverseEyePose, ~, ~, ~, ~, exitFlag] = ...
-            pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, [],'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4]);
+            pupilProjection_inv(pupilEllipseOnImagePlane, modSceneGeom,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4]);
         % If the exitFlag is 2, we may be in a local minimum. Repeat the
         % search, supplying the initial solution as x0.
         if exitFlag == 2
             x0 = inverseEyePose + [1e-3 1e-3 0 1e-3];
             [inverseEyePose] = ...
-                pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, [],'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4],'x0',x0);
+                pupilProjection_inv(pupilEllipseOnImagePlane, modSceneGeom,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4],'x0',x0);
         end
         toc
         % Save the error
