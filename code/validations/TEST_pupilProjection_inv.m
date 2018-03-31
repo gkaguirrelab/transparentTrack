@@ -25,13 +25,15 @@ sceneGeometry = createSceneGeometry();
 % Compile the ray tracing functions
 sceneGeometry.virtualImageFunc = compileVirtualImageFunc(sceneGeometry,'functionDirPath','/tmp/demo_virtualImageFunc');
 
+
 %% Define some variables
 pupilRadiusMM = 2;
 eyePoses = [];
 pupilEllipseAreas = zeros(15,11);
 eyePoseErrorsWithRayTrace = zeros(15,11,4);
 eyePoseErrorsWithoutRayTrace = zeros(15,11,4);
-
+eyePoseLB = [-40,-35,0,0.5];
+eyePoseUB = [40,35,0,4];
 
 %% Loop over aimuths and elevations
 % The range of values used here corresponds to the biological limits of the
@@ -55,36 +57,20 @@ for aziIdx = 1:15
         % is otherwise underdetermined. We constrain torsion to be zero,
         % following Listing's Law.
         tic
-        [inverseEyePose, ~, ~, ~, ~, exitFlag] = ...
-            pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4]);
-        % If the exitFlag is 2, we may be in a local minimum. Repeat the
-        % search, supplying the initial solution as x0.
-        if exitFlag == 2
-            x0 = inverseEyePose + [1e-3 1e-3 0 1e-3];
-            [inverseEyePose] = ...
-                pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4],'x0',x0);
-        end
+        eyePoseRecovered = inverseSearchWrapper( pupilEllipseOnImagePlane, sceneGeometry, eyePoseLB, eyePoseUB );
         toc
         % Save the error
-        eyePoseErrorsWithRayTrace(aziIdx,eleIdx,:) = eyePose-inverseEyePose;
+        eyePoseErrorsWithRayTrace(aziIdx,eleIdx,:) = eyePose-eyePoseRecovered;
         
         
         % Perform the search again, this time without ray tracing.
         modSceneGeom = sceneGeometry;
         modSceneGeom.virtualImageFunc = [];
         tic
-        [inverseEyePose, ~, ~, ~, ~, exitFlag] = ...
-            pupilProjection_inv(pupilEllipseOnImagePlane, modSceneGeom,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4]);
-        % If the exitFlag is 2, we may be in a local minimum. Repeat the
-        % search, supplying the initial solution as x0.
-        if exitFlag == 2
-            x0 = inverseEyePose + [1e-3 1e-3 0 1e-3];
-            [inverseEyePose] = ...
-                pupilProjection_inv(pupilEllipseOnImagePlane, modSceneGeom,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4],'x0',x0);
-        end
+        eyePoseRecovered = inverseSearchWrapper( pupilEllipseOnImagePlane, modSceneGeom, eyePoseLB, eyePoseUB );
         toc
         % Save the error
-        eyePoseErrorsWithoutRayTrace(aziIdx,eleIdx,:) = eyePose-inverseEyePose;
+        eyePoseErrorsWithoutRayTrace(aziIdx,eleIdx,:) = eyePose-eyePoseRecovered;
     end
 end
 
@@ -96,7 +82,7 @@ fprintf('The largest proportion radius error is %f.\n',1-max(max(abs(eyePoseErro
 
 fprintf('The median azimuth error is %f degrees.\n',median(median(abs(eyePoseErrorsWithRayTrace(:,:,1)))));
 fprintf('The median elevation error is %f degrees.\n',median(median(abs(eyePoseErrorsWithRayTrace(:,:,2)))));
-fprintf('The largest absolute radius error is %f.\n',median(median(abs(eyePoseErrorsWithRayTrace(:,:,4)))));
+fprintf('The median absolute radius error is %f.\n',median(median(abs(eyePoseErrorsWithRayTrace(:,:,4)))));
 fprintf('The median proportion radius error is %f.\n',1-median(median(abs(eyePoseErrorsWithRayTrace(:,:,4)-pupilRadiusMM)./pupilRadiusMM)));
 
 %% Create some figures
@@ -139,7 +125,7 @@ end
 
 % Error in the inverse model without ray tracing
 idxToPlot = [1,2,4];
-plotRange = [-5 5; -5 5; -0.05 0.05];
+plotRange = [-5 5; -5 5; -.1 .1];
 titleStrings = {'azimuth error','elevation error','-proportion pupil radius error'};
 
 figure
