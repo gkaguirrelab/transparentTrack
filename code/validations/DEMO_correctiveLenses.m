@@ -14,8 +14,6 @@ clc
 
 
 % Define some variables for plotting the model eye
-eyePartLabels = {'rotationCenter'};
-plotColors = {'+w'};
 diopterColors = {'g','r','b'};
 blankFrame = zeros(480,640)+0.5;
 
@@ -38,15 +36,13 @@ for dd = 1:length(lensRefractionDiopters)
     
     % Obtain the sceneGeometry and ray tracing functions
     sceneGeometry{dd} = createSceneGeometry('sphericalAmetropia',0,'spectacleLens',lensRefractionDiopters(dd));
-    rayTraceFuncs{dd} = assembleRayTraceFuncs( sceneGeometry{dd} );
+    % Compile the ray tracing functions
+    sceneGeometry{dd}.virtualImageFunc = compileVirtualImageFunc(sceneGeometry{dd},'functionDirPath','/tmp/demo_virtualImageFunc');
     
     for pose = 1:size(eyePoses,1)
         % Perform the projection and request the full eye model
-        [pupilEllipseOnImagePlane, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses(pose,:),sceneGeometry{dd},rayTraceFuncs{dd},'fullEyeModelFlag',true);
-        % Obtain the 
-        eyePoseRecovered = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry{1}, rayTraceFuncs{1});
-        apparentPupilRadius(dd,pose)=eyePoseRecovered(4);
-        % plot
+        [pupilEllipseOnImagePlane, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses(pose,:),sceneGeometry{dd});
+        % plot the pupil ellipse
         subplot(1,3,pose);
         if dd==1
             imshow(blankFrame, 'Border', 'tight');
@@ -56,11 +52,6 @@ for dd = 1:length(lensRefractionDiopters)
         axis equal
         xlim([0 640]);
         ylim([0 480]);
-        % Plot each anatomical component
-        for pp = 1:length(eyePartLabels)
-            idx = strcmp(pointLabels,eyePartLabels{pp});
-            plot(imagePoints(idx,1), imagePoints(idx,2), plotColors{pp})
-        end
         % Plot the pupil ellipse
         pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(pupilEllipseOnImagePlane));
         fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
@@ -70,25 +61,3 @@ for dd = 1:length(lensRefractionDiopters)
     end
     drawnow
 end
-
-%% Present Figure 2 -- Spectacle lens magnification
-fprintf(['As Figure 2 illustrates, there is a also a magnification effect.\n' ...
-    'We recovered the pupil radius by inverse projection for each of the \n' ...
-    'ellipses in Figure 1, but each cases used a model that did not \n' ...
-    'include the spectacle lens. The veridial pupil radius is 3mm, but \n' ...
-    'appears smaller when viewed through a negative spectacle lens, and \n' ...
-    'larger when viewed through a positive lens. Accurate modeling of \n' ...
-    'corrective lenses in the optical path avoid this error.\n\n']);
-
-figure(2)
-for dd = 1:3
-    plot([-20 0 20],apparentPupilRadius(dd,:),['-*' diopterColors{dd}]);
-    hold on
-end
-ylim([0 4]);
-xlim([-25 25]);
-xlabel('eye azimuth [deg]');
-ylabel('recovered pupil radius [mm]');
-title('Image magnification by spectacle lens');
-legend({'no corrective lens in path','-4 spectacle lens not modeled','+4 spectacle lens not modeled'},'Location','southeast');
-

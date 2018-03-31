@@ -8,7 +8,7 @@
 % Here we demonstrate the interpretation of these parameters
 %
 
-clear all
+clear vars
 close all
 clc
 
@@ -21,7 +21,7 @@ fprintf(['The pose of the eye is described by the parameters:\n\n' ...
 
 % Obtain the sceneGeometry and ray tracing functions
 sceneGeometry = createSceneGeometry('eyeLaterality','Right');
-rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
+sceneGeometry.virtualImageFunc = compileVirtualImageFunc(sceneGeometry);
 
 % Define some variables for plotting the model eye
 eyePartLabels = {'aziRotationCenter', 'eleRotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex' 'pupilCenter'};
@@ -34,7 +34,7 @@ eyePoses=[-20 20 0 3; 0 20 0 3; 20 20 0 3; -20 0 0 3; 0 0 0 3; 20 0 0 3; -20 -20
 
 for pose = 1:size(eyePoses,1)
     % Perform the projection and request the full eye model
-    [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses(pose,:),sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
+    [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses(pose,:),sceneGeometry,'fullEyeModelFlag',true);
     % plot
     subplot(3,3,pose);
     imshow(blankFrame, 'Border', 'tight');
@@ -62,14 +62,14 @@ eyeSides = {'right','left'};
 for laterality = 1:2
     % prepare the model eye for this laterality
     sceneGeometry = createSceneGeometry('eyeLaterality',eyeSides{laterality});
-    rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
+    sceneGeometry.virtualImageFunc = compileVirtualImageFunc(sceneGeometry);
     [pupilEllipseOnImagePlane, imagePoints, ~, ~, pointLabels] = ...
-        pupilProjection_fwd([0 0 0 3],sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true,'nIrisPerimPoints',50);
+        pupilProjection_fwd([0 0 0 3],sceneGeometry,'fullEyeModelFlag',true,'nIrisPerimPoints',50);
     
     % Obtain the point that corresponds to the visual axis at the pupil
     % plane
     [~, imagePointsVisualAxis, ~, ~, pointLabelsVisualAxis] = ...
-        pupilProjection_fwd([sceneGeometry.eye.kappaAngle 0 3],sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
+        pupilProjection_fwd([sceneGeometry.eye.kappaAngle 0 3],sceneGeometry,'fullEyeModelFlag',true);
     
     % setup the figure
     subplot(1,2,laterality);
@@ -102,26 +102,25 @@ drawnow
 fprintf(['Figure 2 top shows just the perimeter of the pupil (green) and\n' ...
     'iris (blue) for eyePoses [0 0 0 3] for the right and left eye. The\n' ...
     'axis of the camera is aligned with the pupil axis of the model eye. \n' ...
-    'The center of the iris is displaced upwards and temporally\n' ...
-    'with respect to the pupil axis of each eye [ES Bennett (2005) Clinical\n'...
-    'contact lens practice]. The white point indicates the location on the\n' ...
-    'pupil plane of the visual axis of the eye. It is displaced nasally and\n' ...
-    'superiorly.\n\n']);
+    'The white point indicates the location on the pupil plane of the\n' ...
+    'visual axis of the eye. It is displaced nasally and superiorly.\n\n']);
 
 
 %% Present Figure 3
 figure(3)
 sceneGeometry = createSceneGeometry();
-rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
+sceneGeometry.virtualImageFunc = compileVirtualImageFunc(sceneGeometry);
+noRayTraceSG = sceneGeometry;
+noRayTraceSG.virtualImageFunc = [];
 
 % Plot the values for eyePose [0 0 0 x]
 subplot(1,2,1);
 entrancePupilRadiusRayTrace = [];
 entrancePupilRadiusNoRayTrace = [];
 for radius = 0.5:0.5:4
-    pupilEllipseOnImagePlane = pupilProjection_fwd([0 0 0 radius],sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
+    pupilEllipseOnImagePlane = pupilProjection_fwd([0 0 0 radius],sceneGeometry,'fullEyeModelFlag',true);
     entrancePupilRadiusRayTrace = [entrancePupilRadiusRayTrace sqrt(pupilEllipseOnImagePlane(3)/pi)];
-    pupilEllipseOnImagePlane = pupilProjection_fwd([0 0 0 radius],sceneGeometry,[],'fullEyeModelFlag',true);
+    pupilEllipseOnImagePlane = pupilProjection_fwd([0 0 0 radius],noRayTraceSG,'fullEyeModelFlag',true);
     entrancePupilRadiusNoRayTrace = [entrancePupilRadiusNoRayTrace sqrt(pupilEllipseOnImagePlane(3)/pi)];
 end
 plot(0.5:0.5:4,entrancePupilRadiusNoRayTrace,'*k');
@@ -141,9 +140,9 @@ subplot(1,2,2);
 entrancePupilRadiusRayTrace = [];
 entrancePupilRadiusNoRayTrace = [];
 for radius = 0.5:0.5:4
-    pupilEllipseOnImagePlane = pupilProjection_fwd([15 15 0 radius],sceneGeometry,rayTraceFuncs,'fullEyeModelFlag',true);
+    pupilEllipseOnImagePlane = pupilProjection_fwd([15 15 0 radius],sceneGeometry,'fullEyeModelFlag',true);
     entrancePupilRadiusRayTrace = [entrancePupilRadiusRayTrace sqrt(pupilEllipseOnImagePlane(3)/pi)];
-    pupilEllipseOnImagePlane = pupilProjection_fwd([15 15 0 radius],sceneGeometry,[],'fullEyeModelFlag',true);
+    pupilEllipseOnImagePlane = pupilProjection_fwd([15 15 0 radius],noRayTraceSG,'fullEyeModelFlag',true);
     entrancePupilRadiusNoRayTrace = [entrancePupilRadiusNoRayTrace sqrt(pupilEllipseOnImagePlane(3)/pi)];
 end
 plot(0.5:0.5:4,entrancePupilRadiusNoRayTrace,'*k');

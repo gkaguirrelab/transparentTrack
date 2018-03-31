@@ -10,8 +10,8 @@
 % createSceneGeometry returns a default sceneGeometry structure
 sceneGeometry = createSceneGeometry();
 
-%% Obtain the ray tracing functions
-rayTraceFuncs = assembleRayTraceFuncs( sceneGeometry );
+% Compile the ray tracing functions
+sceneGeometry.virtualImageFunc = compileVirtualImageFunc(sceneGeometry,'functionDirPath','/tmp/demo_virtualImageFunc');
 
 %% Define some variables
 pupilRadiusMM = 2;
@@ -31,7 +31,7 @@ for thisAzimuth = -35:5:35
         eyePoses=[eyePoses; thisAzimuth,thisElevation,thisTorsion,pupilRadiusMM];
         
         % Forward projection from eyePoses to image ellipse
-        pupilEllipseOnImagePlane = pupilProjection_fwd(eyePoses(end,:), sceneGeometry, rayTraceFuncs);
+        pupilEllipseOnImagePlane = pupilProjection_fwd(eyePoses(end,:), sceneGeometry);
         
         % Obtain boundary points for this ellipse
         [ Xp, Yp ] = ellipsePerimeterPoints( pupilEllipseOnImagePlane );
@@ -41,7 +41,7 @@ for thisAzimuth = -35:5:35
         % is otherwise underdetermined. We constrain torsion to be zero,
         % following Listing's Law.
         tic
-        [inverseEyePose, RMSE] = eyePoseEllipseFit(Xp, Yp, sceneGeometry, rayTraceFuncs,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4]);
+        [inverseEyePose, RMSE] = eyePoseEllipseFit(Xp, Yp, sceneGeometry,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4]);
         toc
         
         reconstructedEyePoses = [reconstructedEyePoses; inverseEyePose];

@@ -14,6 +14,7 @@ acquisitionName = 'eyeModelDemo';
 
 pupilFileName = fullfile(sandboxDir,[acquisitionName '_pupil.mat']);
 sceneGeometryFileName = fullfile(sandboxDir,[acquisitionName '_sceneGeometry.mat']);
+functionDirPath = fullfile(sandboxDir,[acquisitionName '_virtualImageFunc']);
 videoOutFileName = fullfile(sandboxDir,[acquisitionName '_eyeModel.avi']);
 
 % define full paths for input and output
@@ -43,6 +44,7 @@ save(pupilFileName,'pupilData')
 
 %% Create and save the default sceneGeometry file
 sceneGeometry = createSceneGeometry();
+sceneGeometry.virtualImageFunc = compileVirtualImageFunc(sceneGeometry,'functionDirPath',functionDirPath);
 save(sceneGeometryFileName,'sceneGeometry')
 
 %% Create the eyeModel video
