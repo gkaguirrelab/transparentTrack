@@ -99,15 +99,47 @@ for laterality = 1:2
     hold off
 end
 drawnow
-fprintf(['Figure 2 top shows just the perimeter of the pupil (green) and\n' ...
+fprintf(['Figure 2 top shows the perimeter of the pupil (green) and\n' ...
     'iris (blue) for eyePoses [0 0 0 3] for the right and left eye. The\n' ...
     'axis of the camera is aligned with the pupil axis of the model eye. \n' ...
+    'Note that the pupil is slight ellipitical, with a vertical axis. \n' ...
     'The white point indicates the location on the pupil plane of the\n' ...
     'visual axis of the eye. It is displaced nasally and superiorly.\n\n']);
 
 
 %% Present Figure 3
 figure(3)
+sceneGeometry = createSceneGeometry();
+sceneGeometry.virtualImageFunc = compileVirtualImageFunc(sceneGeometry);
+blankFrame = zeros(480,620)+0.5;
+imshow(blankFrame, 'Border', 'tight');
+hold on
+axis off
+axis equal
+xlim([0 620]);
+ylim([0 480]);
+
+for radius = 0.5:2.5:3
+    eyePose = [0 0 0 radius];
+    pupilEllipseOnImagePlane = pupilProjection_fwd([0 0 0 radius],sceneGeometry);
+    pupilEllipseOnImagePlane(3) = 100000;
+    pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(pupilEllipseOnImagePlane));
+    fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
+    fimplicit(fh,[1, 640, 1, 480],'Color', round([radius/2.5 1-radius/2.5 0]),'LineWidth',1);
+    hold on
+    axis off;
+end
+legend({'0.5 mm radius','3 mm radius'});
+drawnow
+fprintf(['Figure 3 presents the shape of the entrance pupil for\n' ...
+    'radius values of 0.5 to 3, with the area normalized to be equal.\n' ...
+    'The pupil transitions from being slightly elliptical with a \n' ...
+    'horizontal axis when small (green), to being more notably elliptical\n' ...
+    'with a vertical orientation when dilated (red).\n\n']);
+
+
+%% Present Figure 4
+figure(4)
 sceneGeometry = createSceneGeometry();
 sceneGeometry.virtualImageFunc = compileVirtualImageFunc(sceneGeometry);
 noRayTraceSG = sceneGeometry;
@@ -135,6 +167,8 @@ ylabel('entrance pupil radius in image [pixels]');
 legend({'Without corneal refraction','With corneal refraction'},'Location','southeast');
 title('eyePose [0 0 0 x]');
 
+pupilRadiusMagFactor = nanmean(entrancePupilRadiusRayTrace ./ entrancePupilRadiusNoRayTrace);
+
 % Plot the values for eyePose [15 15 0 x]
 subplot(1,2,2);
 entrancePupilRadiusRayTrace = [];
@@ -158,10 +192,13 @@ legend({'Without corneal refraction','With corneal refraction'},'Location','sout
 title('eyePose [30 25 0 x]');
 drawnow
 
-fprintf(['Figure 3 shows the radius of the entrance pupil in the image\n' ...
+fprintf(['Figure 4 shows the radius of the entrance pupil in the image\n' ...
     'as a function of the modeled radius of the physical pupil for an\n' ...
     'eye in two different poses. The black points are the values for \n' ...
     'a model in which the refractive effects of the cornea are not modeled \n' ...
     'while the red points do include this component. Corneal refraction \n' ...
     'magnifies the image of the pupil and, depending upon eye rotation, \n' ...
-    'will also alter the elliptical shape of the pupil on the image plane.\n']);
+    'will also alter the elliptical shape of the pupil on the image plane.\n\n']);
+
+fprintf(['In the primary position [azimuth 0, elevation 0], the pupil radius\n' ...
+    'is magnified x %4.2f \n\n'],pupilRadiusMagFactor);

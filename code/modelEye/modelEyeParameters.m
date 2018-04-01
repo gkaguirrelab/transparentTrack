@@ -47,7 +47,7 @@ function eye = modelEyeParameters( varargin )
 %  'kappaAngle'           - 1x2 matrix. This is the angle of the visual
 %                           axis in degrees w.r.t. to pupil axis. The
 %                           values are [azimuth, elevation]. An eyePose of:
-%                               [-kappa(1), -kappa(2), 0, radius]
+%                             [-kappaAngle(1), -kappaAngle(2), 0, radius]
 %                           aligns the visual axis of the eye with the
 %                           optical axis of the camera
 %  'eyeLaterality'        - A text string that specifies which eye (left,
@@ -170,6 +170,96 @@ switch p.Results.species
         % respect to the center of the pupil, so the p2 and p3 values are
         % zero
         eye.pupilCenter = [-3.7 0 0];
+        
+        % The exit pupil of the eye is elliptical. Further, the
+        % eccentricity and theta of the exit pupil ellipse changes with
+        % pupil dilation:
+        %
+        %   Wyatt, Harry J. "The form of the human pupil." Vision Research
+        %   35.14 (1995): 2021-2036.
+        %
+        % Wyatt reported the average ellipse parameters for the entrance
+        % pupil (witht the visual axis aligned with camera axis) under dim
+        % and bright light conditions. We calculate the corresponding
+        % parameters of the exit pupil on the optical axis. We then fit a
+        % hyperbolic tangent (sigmoidal) function to the the eccentricity
+        % of the exit pupil as a function of the exit pupil radius. The
+        % theta values observed by Wyatt were very close to vertically
+        % orientated in the dark, and horizontally oriented in the light,
+        % so we round to these values. We the exit pupil eccentricity is
+        % below zero, the theta is set to zero (horizontal), and above zero
+        % value it is set to pi/2 (vertical). In the forward model, we take
+        % the absolute value of the eccentricity returned by the parameters
+        % for the exit pupil eccentrivity.
+        %{
+            % Observed entrance pupil diameters reported in Wyatt 1995.
+            entranceRadius = [3.09/2 4.93/2];
+            % Wyatt reported an eccentricity of the pupil of 0.21 under
+            % dark conditions. We find that using that value produces
+            % model results that disagree with Malthur 2013. We have
+            % adopted an upper value of 0.17 instead. We also use the 
+            % convention of a negative eccentricity for a horizontal major
+            % axis and a positive eccentricity for vertical.
+            entranceEccen = [-0.12 0.17];
+            % Prepare scene geometry and eye pose aligned with visual axis
+            sceneGeometry = createSceneGeometry();
+            virtualImageFunc = compileVirtualImageFunc(sceneGeometry);
+            % Fix the exit pupil eccentricity at 0
+            sceneGeometry.eye.exitPupilEccenFcnString = '@(x) 0';
+            sceneGeometry.eye.exitPupilThetaValues = [0, 0];
+            % Obtain the pupil area in the image for each entrance radius
+            % assuming no ray tracing
+            sceneGeometry.virtualImageFunc = [];
+            pupilImage = pupilProjection_fwd([-sceneGeometry.eye.kappaAngle(1), -sceneGeometry.eye.kappaAngle(2), 0, entranceRadius(1)],sceneGeometry);
+            exitArea(1) = pupilImage(3);
+            pupilImage = pupilProjection_fwd([-sceneGeometry.eye.kappaAngle(1), -sceneGeometry.eye.kappaAngle(2), 0, entranceRadius(2)],sceneGeometry);
+            exitArea(2) = pupilImage(3);
+            % Add the ray tracing function to the sceneGeometry
+            sceneGeometry.virtualImageFunc = virtualImageFunc;
+            % Search across exit pupil radii to find the values that match
+            % the observed entrance areas.
+            myPupilEllipse = @(radius) pupilProjection_fwd([-sceneGeometry.eye.kappaAngle(1), -sceneGeometry.eye.kappaAngle(2), 0, radius],sceneGeometry);
+            myArea = @(ellipseParams) ellipseParams(3);
+            myObj = @(radius) (myArea(myPupilEllipse(radius))-exitArea(1)).^2;
+            exitRadius(1) = fminunc(myObj, entranceRadius(1));
+            myObj = @(radius) (myArea(myPupilEllipse(radius))-exitArea(2)).^2;
+            exitRadius(2) = fminunc(myObj, entranceRadius(2));
+            % Now find the exit pupil eccentricity that produces the
+            % observed entrance pupil eccentricity
+            place = {'eye' 'exitPupilEccenFcnString'};
+            sceneGeometry.eye.exitPupilThetaValues = [0, 0];
+            mySceneGeom = @(eccen) setfield(sceneGeometry,place{:},['@(x) ' num2str(eccen)]);
+            myPupilEllipse = @(eccen) pupilProjection_fwd([-sceneGeometry.eye.kappaAngle(1), -sceneGeometry.eye.kappaAngle(2), 0, exitRadius(1)],mySceneGeom(eccen));
+            myEccen = @(ellipseParams) ellipseParams(4);
+            myObj = @(eccen) 1e4*(myEccen(myPupilEllipse(eccen))-abs(entranceEccen(1))).^2;
+            exitEccen(1) = -fminsearch(myObj, 0.1);
+            sceneGeometry.eye.exitPupilThetaValues = [pi/2, pi/2];
+            mySceneGeom = @(eccen) setfield(sceneGeometry,place{:},['@(x) ' num2str(eccen)]);
+            myPupilEllipse = @(eccen) pupilProjection_fwd([-sceneGeometry.eye.kappaAngle(1), -sceneGeometry.eye.kappaAngle(2), 0, exitRadius(2)],mySceneGeom(eccen));
+            myEccen = @(ellipseParams) ellipseParams(4);
+            myObj = @(eccen) 1e4*(myEccen(myPupilEllipse(eccen))-abs(entranceEccen(2))).^2;
+            exitEccen(2) = fminsearch(myObj, 0.2);        
+            % We then interpolate the observed values, assuming that the
+            % observed values are close to asymptote
+            exitRadiusInterp = [exitRadius(1)-.5 exitRadius(1) mean(exitRadius) exitRadius(2) exitRadius(2)+.5];
+            exitEccenInterp = [exitEccen(1)/0.96 exitEccen(1) mean(exitEccen) exitEccen(2) exitEccen(2)/0.96];
+            % Fit a hand-tuned sigmoidal function
+            sigFit = @(scaleX, shiftY, scaleY, x) (tanh((x-mean(exitRadius)).*scaleX)+shiftY)*scaleY;
+            fitEccen = fit(exitRadiusInterp',exitEccenInterp',sigFit);
+            fprintf('eye.exitPupilEccenParams = [-%4.3f %4.3f %4.3f %4.3f];\n',mean(exitRadius),fitEccen.scaleX,fitEccen.shiftY,fitEccen.scaleY);
+            % Plot the fit
+            figure
+            plot(exitRadiusInterp,exitEccenInterp,'kx');
+            hold on
+            plot(0.5:.1:3,fitEccen(0.5:.1:3),'-r');        
+        %}
+        % Specify the params and equation that defines the exit pupil
+        % ellipse. This can be invoked as a function using str2func.
+        eye.exitPupilEccenParams = [-1.765 4.759 0.111 0.149]; 
+        eye.exitPupilEccenFcnString = sprintf('@(x) (tanh((x+%f).*%f)+%f)*%f',eye.exitPupilEccenParams(1),eye.exitPupilEccenParams(2),eye.exitPupilEccenParams(3),eye.exitPupilEccenParams(4)); 
+        % The theta values of the exit pupil ellipse for eccentricities
+        % less than and greater than zero.
+        eye.exitPupilThetaValues = [0  pi/2];
         
         
         %% Iris
@@ -426,6 +516,7 @@ switch p.Results.species
             eye.rotationCenters.ele(dim) = eye.rotationCenters.ele(dim) .* (eye.posteriorChamberRadii(dim)/emmetropicPostChamberRadii(dim));
             eye.rotationCenters.tor(dim) = eye.rotationCenters.tor(dim) .* (eye.posteriorChamberRadii(dim)/emmetropicPostChamberRadii(dim));
         end
+
         
         %% Kappa
         % We now calculate kappa, which is the angle (in degrees) between
@@ -446,7 +537,7 @@ switch p.Results.species
         %
         % They measured the shape of the entrance pupil as a function of
         % viewing angle relative to the fixation point of the eye. Their
-        % data is well fit by a kappa of [5, -2.5] degrees (see
+        % data is well fit by a kappa of [5, -2.15] degrees (see
         % TEST_Mathur2013.m).
         %
         % Measured kappa has been found to depend upon axial length:
@@ -462,7 +553,7 @@ switch p.Results.species
         % 23.592. The equation implemented below is adjusted so that an
         % emmetropic eye of 23.5924 mm has a horizontal (nasal directed)
         % kappa of 5 degrees and a vertical (inferiorly directed) kappa of
-        % -2 degrees.
+        % -2.15 degrees.
         %
         % While a horizontal kappa of ~5 degrees is a consistent finding,
         % measurements of vertical kappa differ:
@@ -478,7 +569,7 @@ switch p.Results.species
         % We note that there is evidence that the vertical kappa value can
         % vary based upon the subject being in a sittng or supine position.
         % Until better evidene is available, we adopt a vertical kappa of
-        % -2.5 degrees for the emmetropic model eye.        
+        % -2.15 degrees for the emmetropic model eye.        
         if isempty(p.Results.kappaAngle)
             switch eyeLaterality
                 case 'Right'
@@ -486,7 +577,7 @@ switch p.Results.species
                 case 'Left'
                     eye.kappaAngle(1) = -atand((15.0924/(eye.axialLength-8.5000))*tand(5));
             end
-            eye.kappaAngle(2) = atand((15.0924/(eye.axialLength-8.5000))*tand(2.5));
+            eye.kappaAngle(2) = atand((15.0924/(eye.axialLength-8.5000))*tand(2.15));
         else
             eye.kappaAngle = p.Results.kappaAngle;
         end
@@ -584,6 +675,9 @@ switch p.Results.species
         eye.rotationCenters.azi = [-10 0 0];
         eye.rotationCenters.ele = [-10 0 0];
         eye.rotationCenters.tor = [0 0 0];
+
+        %% Refractive indices
+        % Using the human values for now
         eye.corneaRefractiveIndex = returnRefractiveIndex( 'cornea', p.Results.spectralDomain );
         eye.aqueousRefractiveIndex = returnRefractiveIndex( 'aqueous', p.Results.spectralDomain );
         eye.lensRefractiveIndex = returnRefractiveIndex( 'lens', p.Results.spectralDomain );

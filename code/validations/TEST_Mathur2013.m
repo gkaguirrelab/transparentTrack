@@ -2,14 +2,21 @@
 % Compare our model to results of Mathur 2013
 %
 % Description:
-%   The visual axis of the eye is displaced from the optical (and pupil)
-%   axis. Further, the cornea refracts the image of the pupil, causing it
-%   to appear magnified and (depending upon viewing angle) shifted. The
-%   appearance of the pupil in the image plane is referred to as the
-%   "entrance pupil". The shape and size of the entrance pupil will vary as
-%   a function of angle with which the eye is viewed. This function has
-%   been measured by Spring & Stiles (1948) and Jay (1962), and more
-%   recently by Mathur and colleagues:
+%   The appearance of the pupil in the image plane is referred to as the
+%   "entrance pupil", and can have a size and shape different from that of
+%   the physical "exit pupil". The appearance of the entrance pupil is
+%   influenced by:
+%
+%    1) The misalignment of the visual and optical (and pupil)
+%       axes of the eye.
+%    2) The shape of the exit pupil, which is slightly elliptical with the
+%       major axis oriented vertically when the pupil is dilated.
+%    3) The refraction of the pupil by the cornea
+%
+%   Therefore, the shape and size of the entrance pupil will vary as a
+%   function of angle with which the eye is viewed. This function has been
+%   measured by Spring & Stiles (1948) and Jay (1962), and more recently by
+%   Mathur and colleagues:
 %
 %       Mathur, Ankit, Julia Gehrmann, and David A. Atchison. "Pupil shape
 %       as viewed along the horizontal visual field." Journal of vision
@@ -76,12 +83,6 @@ elevationsDeg = zeros(size(viewingAngleDeg))-sceneGeometry.eye.kappaAngle(2);
 % Calculate the diameter ratios and thetas
 [diamRatios, thetas] = calcPupilDiameterRatio(azimuthsDeg,elevationsDeg,pupilDiam,sceneGeometry);
 
-% Calculate the diameter ratios and thetas
-modSceneGeom = sceneGeometry;
-modSceneGeom.virtualImageFunc = [];
-[diamRatiosNoRayTrace, thetas] = calcPupilDiameterRatio(azimuthsDeg,elevationsDeg,pupilDiam,modSceneGeom);
-
-
 % Reverse the thetas to match the Mathur convention, in which a theta of
 % zero corresponds to a pupil ellipse with the major axis aligned with the
 % horizontal meridian, and positive values of theta are in the
@@ -94,9 +95,8 @@ C = (1-diamRatios).*sin(2.*(thetas-pi/2));
 % Plot Figure 10 of Mathur 2013 with our model output.
 figure
 subplot(1,2,1);
-plot(viewingAngleDeg,diamRatios ,'.k');
+plot(viewingAngleDeg,diamRatios ,'-k');
 hold on
-plot(viewingAngleDeg,diamRatiosNoRayTrace ,'.b');
 plot(viewingAngleDeg,cosd(viewingAngleDeg),'--k');
 plot(viewingAngleDeg,mathurEq9(viewingAngleDeg),'-r');
 xlim([-90 90]);
@@ -106,7 +106,7 @@ ylabel('Pupil Diameter Ratio')
 title('Mathur 2013 Figure 6, component A')
 
 subplot(1,2,2)
-plot(viewingAngleDeg,C ,'.k');
+plot(viewingAngleDeg,C ,'-k');
 hold on
 plot(viewingAngleDeg,mathurEq11(viewingAngleDeg),'-r');
 xlim([-90 90]);
