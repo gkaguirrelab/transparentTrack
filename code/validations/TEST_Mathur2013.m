@@ -2,14 +2,21 @@
 % Compare our model to results of Mathur 2013
 %
 % Description:
-%   The visual axis of the eye is displaced from the optical (and pupil)
-%   axis. Further, the cornea refracts the image of the pupil, causing it
-%   to appear magnified and (depending upon viewing angle) shifted. The
-%   appearance of the pupil in the image plane is referred to as the
-%   "entrance pupil". The shape and size of the entrance pupil will vary as
-%   a function of angle with which the eye is viewed. This function has
-%   been measured by Spring & Stiles (1948) and Jay (1962), and more
-%   recently by Mathur and colleagues:
+%   The appearance of the pupil in the image plane is referred to as the
+%   "entrance pupil", and can have a size and shape different from that of
+%   the physical "exit pupil". The appearance of the entrance pupil is
+%   influenced by:
+%
+%    1) The misalignment of the visual and optical (and pupil)
+%       axes of the eye.
+%    2) The shape of the exit pupil, which is slightly elliptical with the
+%       major axis oriented vertically when the pupil is dilated.
+%    3) The refraction of the pupil by the cornea
+%
+%   Therefore, the shape and size of the entrance pupil will vary as a
+%   function of angle with which the eye is viewed. This function has been
+%   measured by Spring & Stiles (1948) and Jay (1962), and more recently by
+%   Mathur and colleagues:
 %
 %       Mathur, Ankit, Julia Gehrmann, and David A. Atchison. "Pupil shape
 %       as viewed along the horizontal visual field." Journal of vision
@@ -45,7 +52,7 @@ sceneGeometry.virtualImageFunc = compileVirtualImageFunc(sceneGeometry,'function
 % Assume a 6 mm true exit pupil diamter, as Mathur 2013 used
 % pharmacological dilation for their subjects. The observed entrance pupil
 % would have been about 7 mm.
-pupilDiam = 4;
+pupilDiam = 6;
 
 % This is Eq 9 from Mathur 2013, which specifies the horizontal to vertical
 % ratio of the entrance pupil from different viewing angles relative to
