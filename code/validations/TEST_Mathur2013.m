@@ -106,7 +106,7 @@ ylabel('Pupil Diameter Ratio')
 title('Mathur 2013 Figure 6, component A')
 
 subplot(1,2,2)
-plot(viewingAngleDeg,C ,'.k');
+plot(viewingAngleDeg,C ,'-k');
 hold on
 plot(viewingAngleDeg,mathurEq11(viewingAngleDeg),'-r');
 xlim([-90 90]);
