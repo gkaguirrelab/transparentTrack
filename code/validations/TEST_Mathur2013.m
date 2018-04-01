@@ -83,12 +83,6 @@ elevationsDeg = zeros(size(viewingAngleDeg))-sceneGeometry.eye.kappaAngle(2);
 % Calculate the diameter ratios and thetas
 [diamRatios, thetas] = calcPupilDiameterRatio(azimuthsDeg,elevationsDeg,pupilDiam,sceneGeometry);
 
-% Calculate the diameter ratios and thetas
-modSceneGeom = sceneGeometry;
-modSceneGeom.virtualImageFunc = [];
-[diamRatiosNoRayTrace, thetas] = calcPupilDiameterRatio(azimuthsDeg,elevationsDeg,pupilDiam,modSceneGeom);
-
-
 % Reverse the thetas to match the Mathur convention, in which a theta of
 % zero corresponds to a pupil ellipse with the major axis aligned with the
 % horizontal meridian, and positive values of theta are in the
@@ -103,7 +97,6 @@ figure
 subplot(1,2,1);
 plot(viewingAngleDeg,diamRatios ,'.k');
 hold on
-plot(viewingAngleDeg,diamRatiosNoRayTrace ,'.b');
 plot(viewingAngleDeg,cosd(viewingAngleDeg),'--k');
 plot(viewingAngleDeg,mathurEq9(viewingAngleDeg),'-r');
 xlim([-90 90]);
