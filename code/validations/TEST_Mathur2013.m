@@ -95,7 +95,7 @@ C = (1-diamRatios).*sin(2.*(thetas-pi/2));
 % Plot Figure 10 of Mathur 2013 with our model output.
 figure
 subplot(1,2,1);
-plot(viewingAngleDeg,diamRatios ,'.k');
+plot(viewingAngleDeg,diamRatios ,'-k');
 hold on
 plot(viewingAngleDeg,cosd(viewingAngleDeg),'--k');
 plot(viewingAngleDeg,mathurEq9(viewingAngleDeg),'-r');
