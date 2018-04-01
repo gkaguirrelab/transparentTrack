@@ -45,7 +45,7 @@ sceneGeometry.virtualImageFunc = compileVirtualImageFunc(sceneGeometry,'function
 % Assume a 6 mm true exit pupil diamter, as Mathur 2013 used
 % pharmacological dilation for their subjects. The observed entrance pupil
 % would have been about 7 mm.
-pupilDiam = 6;
+pupilDiam = 3.5;
 
 % This is Eq 9 from Mathur 2013, which specifies the horizontal to vertical
 % ratio of the entrance pupil from different viewing angles relative to
