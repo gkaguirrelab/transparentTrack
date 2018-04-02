@@ -59,14 +59,9 @@ p.parse(Xp, Yp, sceneGeometry, varargin{:});
 eyePoseLB = p.Results.eyePoseLB;
 eyePoseUB = p.Results.eyePoseUB;
 
-projectionMatrix = ...
-    sceneGeometry.intrinsicCameraMatrix * ...
-    [sceneGeometry.extrinsicRotationMatrix, ...
-    sceneGeometry.extrinsicTranslationVector];
-
-CoP = projectionMatrix*[0 0 0 1]';
-CoP(1:2)=CoP(1:2)./CoP(3);
-CoP=CoP(1:2);
+% Identify the center of projection
+rotationCenterEllipse = pupilProjection_fwd([0 0 0 2], sceneGeometry);
+CoP = [rotationCenterEllipse(1),rotationCenterEllipse(2)];
 
 meanXp = mean(Xp);
 meanYp = mean(Yp);
