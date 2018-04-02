@@ -291,7 +291,7 @@ end
 % Find the weighted mean and SD of the solution parameters
 allFvals = cellfun(@(x) x.meta.estimateSceneParams.search.fVal,searchResults);
 allSceneParamResults = cellfun(@(thisSceneGeometry) thisSceneGeometry.meta.estimateSceneParams.search.x,searchResults,'UniformOutput',false);
-for dim = 1:5
+for dim = 1:length(p.Results.sceneParamsLB)
     vals = cellfun(@(x) x(dim), allSceneParamResults);
     sceneParamResultsMean(dim)=mean(vals.*(1./allFvals))/mean(1./allFvals);
     sceneParamResultsSD(dim)=std(vals,1./allFvals);
