@@ -6,19 +6,21 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
 %
 % Description:
 %   This function searches over a set of ellipses from the passed pupil
-%   file(s) to estimate the extrinsic camera translation vector and scaling
-%   values for the azimuthal and elevational eye rotation centers. The
-%   search attempts to minimize the error associated with the prediction of
-%   the shape of ellipses in the image plane while minimizing the error in
-%   prediction of the center of those ellipses in the image plane.
+%   file(s) to estimate the extrinsic camera rotation and translation
+%   vector and scaling values for the azimuthal and elevational eye
+%   rotation centers. The search attempts to minimize the error associated
+%   with the prediction of the shape of ellipses in the image plane while
+%   minimizing the error in prediction of the center of those ellipses in
+%   the image plane.
 %
-%   The search is conducted over 5 parameters, corresponding to three
-%   parameters of camera translation (horizontal, vertical, depth), a
-%   parameter for joint scaling of the centers of rotation of the eye
-%   (azimuthal and elevational rotations), and then a parameter for
-%   differential scaling of the eye rotation centers. For this last
-%   parameter, a value > 1 increases the azimuthal rotation center values
-%   and decreases the elevational.
+%   The search is conducted over 6 parameters, corresponding to camera
+%   rotation about the Z (depth) axis, three parameters of camera
+%   translation (horizontal, vertical, depth), a parameter for joint
+%   scaling of the centers of rotation of the eye (azimuthal and
+%   elevational rotations), and then a parameter for differential scaling
+%   of the eye rotation centers. For this last parameter, a value > 1
+%   increases the azimuthal rotation center values and decreases the
+%   elevational.
 %
 % Inputs:
 %	pupilFileName         - Full path to a pupilData file, a cell array
@@ -55,9 +57,9 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
 %  'hostname'             - AUTOMATIC; The host
 %
 % Optional key/value pairs (analysis)
-%  'sceneParamsLB/UB'     - 5x1 vector. Hard upper and lower bounds. Should
+%  'sceneParamsLB/UB'     - 6x1 vector. Hard upper and lower bounds. Should
 %                           reflect the physical limits of the measurement.
-%  'sceneParamsLBp/UBp'   - 5x1 vector. Plausible upper and lower bounds.
+%  'sceneParamsLBp/UBp'   - 6x1 vector. Plausible upper and lower bounds.
 %                           Where you think the translation vector solution
 %                           is likely to be.
 %  'eyePoseLB/UB'         - 1x4 vector. Upper / lower bounds on the eyePose
@@ -146,10 +148,10 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional analysis params
-p.addParameter('sceneParamsLB',[-20; -20; 90; 0.75; .9],@isnumeric);
-p.addParameter('sceneParamsUB',[20; 20; 200; 1.25; 1.1],@isnumeric);
-p.addParameter('sceneParamsLBp',[-5; -5; 100; 0.85; 0.95],@isnumeric);
-p.addParameter('sceneParamsUBp',[5; 5; 160; 1.15; 1.05],@isnumeric);
+p.addParameter('sceneParamsLB',[-30; -20; -20; 90; 0.75; .9],@isnumeric);
+p.addParameter('sceneParamsUB',[30; 20; 20; 200; 1.25; 1.1],@isnumeric);
+p.addParameter('sceneParamsLBp',[-15; -5; -5; 100; 0.85; 0.95],@isnumeric);
+p.addParameter('sceneParamsUBp',[15; 5; 5; 160; 1.15; 1.05],@isnumeric);
 p.addParameter('eyePoseLB',[-35,-25,0,0.25],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('eyePoseUB',[35,25,0,4],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('fitLabel','initial',@ischar);
@@ -429,12 +431,14 @@ end
     function fval = objfun(x)
         % Assemble a candidate sceneGeometry structure
         candidateSceneGeometry = initialSceneGeometry;
+        % Store the camera rotation in Z
+        candidateSceneGeometry.cameraRotationZ = x(1);
         % Store the extrinsic camera translation vector
-        candidateSceneGeometry.extrinsicTranslationVector = x(1:3)';
+        candidateSceneGeometry.extrinsicTranslationVector = x(2:4)';
         % Scale the rotation center values by the joint parameter and
         % differential parameters
-        candidateSceneGeometry.eye.rotationCenters.azi = candidateSceneGeometry.eye.rotationCenters.azi .* x(4) .* x(5);
-        candidateSceneGeometry.eye.rotationCenters.ele = candidateSceneGeometry.eye.rotationCenters.ele .* x(4) ./ x(5);
+        candidateSceneGeometry.eye.rotationCenters.azi = candidateSceneGeometry.eye.rotationCenters.azi .* x(5) .* x(6);
+        candidateSceneGeometry.eye.rotationCenters.ele = candidateSceneGeometry.eye.rotationCenters.ele .* x(5) ./ x(6);
         % For each ellipse, perform the inverse projection from the ellipse
         % on the image plane to eyePose. We retain the errors from the
         % inverse projection and use these to assemble the objective
@@ -461,9 +465,10 @@ warning(warningState);
 
 % Assemble the sceneGeometry file to return
 sceneGeometry = initialSceneGeometry;
-sceneGeometry.extrinsicTranslationVector = x(1:3)';
-sceneGeometry.eye.rotationCenters.azi = sceneGeometry.eye.rotationCenters.azi .* x(4) .* x(5);
-sceneGeometry.eye.rotationCenters.ele = sceneGeometry.eye.rotationCenters.ele .* x(4) ./ x(5);
+sceneGeometry.cameraRotationZ = x(1);
+sceneGeometry.extrinsicTranslationVector = x(2:4)';
+sceneGeometry.eye.rotationCenters.azi = sceneGeometry.eye.rotationCenters.azi .* x(5) .* x(6);
+sceneGeometry.eye.rotationCenters.ele = sceneGeometry.eye.rotationCenters.ele .* x(5) ./ x(6);
 sceneGeometry.meta.estimateSceneParams.search.x = x';
 sceneGeometry.meta.estimateSceneParams.search.options = options;
 sceneGeometry.meta.estimateSceneParams.search.initialSceneGeometry = initialSceneGeometry;
@@ -649,7 +654,7 @@ legend({'0',num2str(sceneGeometry.constraintTolerance/2), ['=> ' num2str(sceneGe
 
 % Add text to report the extrinsic translation vector
 xFinal = sceneGeometry.meta.estimateSceneParams.search.x;
-myString = sprintf('Translation vector [mm] = %4.1f, %4.1f, %4.1f; rotation center scaling [joint, differential] = %4.2f, %4.2f',xFinal(1),xFinal(2),xFinal(3),xFinal(4),xFinal(5));
+myString = sprintf('Z rotation [deg] %4.1f; Translation vector [mm] = %4.1f, %4.1f, %4.1f; rotation center scaling [joint, differential] = %4.2f, %4.2f',xFinal(1),xFinal(2),xFinal(3),xFinal(4),xFinal(5),xFinal(6));
 text(0.5,1.0,myString,'Units','normalized','HorizontalAlignment','center')
 
 %% Right panel -- area error
