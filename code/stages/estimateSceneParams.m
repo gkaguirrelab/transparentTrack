@@ -168,7 +168,7 @@ p.parse(pupilFileName, sceneGeometryFileName, vitualImageFuncDir, varargin{:})
 %% Announce we are starting
 if strcmp(p.Results.verbosity,'full')
     tic
-    fprintf(['Estimating camera translation and eye rotation from pupil ellipses. Started ' char(datetime('now')) '\n']);
+    fprintf(['Estimating camera position and eye rotation from pupil ellipses. Started ' char(datetime('now')) '\n']);
 end
 
 %% Create initial sceneGeometry structure and ray tracing function
@@ -259,7 +259,7 @@ end
 %% Perform the search
 % Inform the user
 if strcmp(p.Results.verbosity,'full')
-    fprintf(['Searching over camera translations without ray tracing.\n']);
+    fprintf(['Searching over scene geometry parameters.\n']);
     fprintf('| 0                      50                   100%% |\n');
     fprintf('.\n');
 end
@@ -578,8 +578,14 @@ plot(rotationCenterEllipse(1),rotationCenterEllipse(2), '+g', 'MarkerSize', 5);
 
 % Calculate the plot limits
 if ~isempty(Xedges)
-    xPlotBounds = [Xedges(1)-binSpaceX Xedges(end)+binSpaceX];
-    yPlotBounds = [Yedges(1)-binSpaceY Yedges(end)+binSpaceY];
+    % xPlotBounds = [Xedges(1)-binSpaceX Xedges(end)+binSpaceX];
+    % yPlotBounds = [Yedges(1)-binSpaceY Yedges(end)+binSpaceY];
+    minX = min([projectedEllipses(:,1);ellipses(:,1);rotationCenterEllipse(1)]);
+    maxX = max([projectedEllipses(:,1);ellipses(:,1);rotationCenterEllipse(1)]);
+    minY = min([projectedEllipses(:,2);ellipses(:,2);rotationCenterEllipse(2)]);
+    maxY = max([projectedEllipses(:,2);ellipses(:,2);rotationCenterEllipse(2)]);
+    xPlotBounds = [(minX - (maxX-minX)/10) (maxX + (maxX-minX)/10) ];
+    yPlotBounds = [(minY - (maxY-minY)/10) (maxY + (maxY-minY)/10) ];
 else
     minX = min([projectedEllipses(:,1);ellipses(:,1);rotationCenterEllipse(1)]);
     maxX = max([projectedEllipses(:,1);ellipses(:,1);rotationCenterEllipse(1)]);
