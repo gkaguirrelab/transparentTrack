@@ -15,7 +15,7 @@ function sceneGeometry = loadSceneGeometry(sceneGeometryFileName, verbosity)
 %
 % Outputs:
 %   sceneGeometry         - The sceneGeometry structure
-%   
+%
 
 if isempty(sceneGeometryFileName)
     sceneGeometry=[];
@@ -42,10 +42,18 @@ else
                 % Determine if the function exists
                 if exist(func2str(sceneGeometry.virtualImageFunc.handle))==0
                     % We need to add the function back to the path
-                    addpath(fileparts(sceneGeometry.virtualImageFunc.path))
+                    addpath(fileparts(sceneGeometry.virtualImageFunc.path),'-BEGIN')
                     % Check to make sure that it is now available
                     if exist(func2str(sceneGeometry.virtualImageFunc.handle))==0
                         error('Unable to re-instantiate the ray tracing function')
+                    end
+                else
+                    % If we have a compiled function, make sure that it is
+                    % the right compiled function.
+                    if exist(func2str(sceneGeometry.virtualImageFunc.handle))==3
+                        if ~strcmp(which(func2str(sceneGeometry.virtualImageFunc.handle)), sceneGeometry.virtualImageFunc.path)
+                                error('The available virtualImageFunc does not match that in sceneGeometry')
+                        end
                     end
                 end
                 if strcmp(verbosity,'full')
