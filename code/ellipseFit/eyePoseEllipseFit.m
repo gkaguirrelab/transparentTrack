@@ -159,16 +159,17 @@ end % eyeParamEllipseFit
 %% LOCAL FUNCTIONS
 function fVal = objfun(x, Xp,Yp, sceneGeometry)
 % Define the objective function
-explicitEllipse = ellipse_transparent2ex(pupilProjection_fwd(x, sceneGeometry));
-% This is the RMSE of the distance values of the boundary points to
-% the ellipse fit. We check for the case in which the
-% explicitEllipse contains NAN values, which can happen when the
-% eye pose is such that the border of the pupil would not be
-% visible through the cornea. In this case, we return a realMax
-% value for the fVal.
-if any(isnan(explicitEllipse))
+transparentEllipse = pupilProjection_fwd(x, sceneGeometry);
+% Check for the case in which the transparentEllipse contains NAN values,
+% which can happen when the eye pose is such that the border of the pupil
+% would not be visible through the cornea. In this case, we return a
+% realMax value for the fVal.
+if any(isnan(transparentEllipse))
     fVal = realmax;
 else
+    % This is the RMSE of the distance values of the boundary points to
+    % the ellipse fit.
+    explicitEllipse = ellipse_transparent2ex(transparentEllipse);
     fVal = sqrt(nanmean(ellipsefit_distance(Xp,Yp,explicitEllipse).^2));
 end
 end % local objective function
