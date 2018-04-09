@@ -52,7 +52,16 @@ else
                     % the right compiled function.
                     if exist(func2str(sceneGeometry.virtualImageFunc.handle))==3
                         if ~strcmp(which(func2str(sceneGeometry.virtualImageFunc.handle)), sceneGeometry.virtualImageFunc.path)
-                                error('The available virtualImageFunc does not match that in sceneGeometry')
+                            % Attempt to remove the currently prioritized
+                            % function
+                            rmpath(fileparts(which(func2str(sceneGeometry.virtualImageFunc.handle))))
+                            % Check if we now have the correct function on
+                            % the path
+                            if ~strcmp(which(func2str(sceneGeometry.virtualImageFunc.handle)), sceneGeometry.virtualImageFunc.path)
+                                % all set
+                            else
+                                error('Unable to re-instantiate the ray tracing function')
+                            end
                         end
                     end
                 end
