@@ -44,7 +44,7 @@ save(pupilFileName,'pupilData')
 
 %% Create and save the default sceneGeometry file
 sceneGeometry = createSceneGeometry();
-sceneGeometry.virtualImageFunc = compileVirtualImageFunc(sceneGeometry,'functionDirPath',functionDirPath);
+sceneGeometry.virtualImageFunc = compileVirtualImageFunc(sceneGeometry,functionDirPath);
 save(sceneGeometryFileName,'sceneGeometry')
 
 %% Create the eyeModel video
