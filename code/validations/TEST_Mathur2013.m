@@ -77,8 +77,8 @@ viewingAngleDeg = -60:1:60;
 % the eye. The coordinates of our model eye are based around the pupil
 % axis. Therfore, we need to calculate a rotation that accounts for the
 % Mathur viewing angle and kappa.
-azimuthsDeg = (-viewingAngleDeg)-sceneGeometry.eye.kappaAngle(1);
-elevationsDeg = zeros(size(viewingAngleDeg))-sceneGeometry.eye.kappaAngle(2);
+azimuthsDeg = (-viewingAngleDeg)-sceneGeometry.eye.kappa(1);
+elevationsDeg = zeros(size(viewingAngleDeg))-sceneGeometry.eye.kappa(2);
 
 % Calculate the diameter ratios and thetas
 [diamRatios, thetas] = calcPupilDiameterRatio(azimuthsDeg,elevationsDeg,pupilDiam,sceneGeometry);
@@ -132,8 +132,8 @@ for ii = 1:length(azimuthsDeg)
     % examiner adjusted the camera to be centered on the pupil.
     geometricPupilCenter = mean(sceneWorldPoints);
     adjustedSceneGeometry = sceneGeometry;
-    adjustedSceneGeometry.extrinsicTranslationVector(1) = adjustedSceneGeometry.extrinsicTranslationVector(1)+geometricPupilCenter(1);
-    adjustedSceneGeometry.extrinsicTranslationVector(2) = adjustedSceneGeometry.extrinsicTranslationVector(2)+geometricPupilCenter(2);
+    adjustedSceneGeometry.cameraExtrinsic.translation(1) = adjustedSceneGeometry.cameraExtrinsic.translation(1)+geometricPupilCenter(1);
+    adjustedSceneGeometry.cameraExtrinsic.translation(2) = adjustedSceneGeometry.cameraExtrinsic.translation(2)+geometricPupilCenter(2);
     % Now, measure the horizontal and vertical width of the image of the
     % pupil
     [pupilEllipseOnImagePlane, imagePoints] = pupilProjection_fwd(eyePose, adjustedSceneGeometry, 'nPupilPerimPoints',50);
