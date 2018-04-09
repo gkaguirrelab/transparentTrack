@@ -19,8 +19,6 @@ function makeEyeModelVideo(videoOutFileName,pupilFileName, sceneGeometryFileName
 %  'videoOutFrameRate'    - Frame rate (in Hz) of saved video [default 60]
 %  'saveCompressedVideo'  - Default value is true, resulting in a
 %                           a video with a 10x reduction in file size
-%  'videoSizeX'           - Size of the video in the X dimension
-%  'videoSizeY'           - Size of the video in the Y dimension
 %  'modelEyeLabelNames'   - A cell array of the classes of eye model points
 %                           to be displayed.
 %  'modelEyePlotColors'   - The colors to be used for the plotting of each
@@ -43,8 +41,6 @@ p.addRequired('sceneGeometryFileName', @ischar);
 p.addParameter('verbosity','none', @ischar);
 p.addParameter('videoOutFrameRate', 60, @isnumeric);
 p.addParameter('saveCompressedVideo', true, @islogical);
-p.addParameter('videoSizeX', 640, @isnumeric);
-p.addParameter('videoSizeY', 480, @isnumeric);
 p.addParameter('modelEyeLabelNames', {'aziRotationCenter', 'eleRotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex'}, @iscell);
 p.addParameter('modelEyePlotColors', {'>r' '^m' '.w' 'ob' '*g' '.y' '*y'}, @iscell);
 p.addParameter('fitLabel', 'radiusSmoothed', @ischar);
@@ -85,8 +81,11 @@ else
     open(videoOutObj);
 end
 
+videoSizeX = sceneGeometry.cameraIntrinsic.sensorResolution(1);
+videoSizeY = sceneGeometry.cameraIntrinsic.sensorResolution(2);
+
 % A blank frame to initialize each frame
-blankFrame = zeros(p.Results.videoSizeY,p.Results.videoSizeX)+0.5;
+blankFrame = zeros(videoSizeY,videoSizeX)+0.5;
 
 % Obtain the number of frames
 nFrames = size(eyePoses,1);
@@ -135,7 +134,7 @@ for ii = 1:nFrames
                 % superimpose the ellipse using fimplicit or ezplot (ezplot
                 % is the fallback option for older Matlab versions)
                 if exist('fimplicit','file')==2
-                    fimplicit(fh,[1, p.Results.videoSizeX, 1, p.Results.videoSizeY],'Color', 'g','LineWidth',1);
+                    fimplicit(fh,[1, videoSizeX, 1, videoSizeY],'Color', 'g','LineWidth',1);
                     set(gca,'position',[0 0 1 1],'units','normalized')
                     axis off;
                 else
