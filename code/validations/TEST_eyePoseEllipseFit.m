@@ -11,7 +11,7 @@
 sceneGeometry = createSceneGeometry();
 
 % Compile the ray tracing functions
-sceneGeometry.virtualImageFunc = compileVirtualImageFunc(sceneGeometry,'functionDirPath','/tmp/demo_virtualImageFunc');
+sceneGeometry.virtualImageFunc = compileVirtualImageFunc(sceneGeometry,'/tmp/demo_virtualImageFunc');
 
 %% Define some variables
 pupilRadiusMM = 2;

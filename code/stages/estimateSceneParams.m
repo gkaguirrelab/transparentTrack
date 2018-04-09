@@ -179,7 +179,7 @@ if p.Results.useRayTracing
     if strcmp(p.Results.verbosity,'full')
         fprintf('Assembling ray tracing function.\n');
     end
-    initialSceneGeometry.virtualImageFunc = compileVirtualImageFunc( initialSceneGeometry, 'functionDirPath', vitualImageFuncDir );
+    initialSceneGeometry.virtualImageFunc = compileVirtualImageFunc( initialSceneGeometry, vitualImageFuncDir );
 end
 
 

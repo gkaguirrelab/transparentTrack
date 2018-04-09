@@ -166,8 +166,8 @@ function sceneGeometry = createSceneGeometry(varargin)
     sceneGeometry = createSceneGeometry('sphericalAmetropia',-2,'spectacleLens',2,'medium','water');
     % Plot a figure that traces a ray arising from the optical axis at the
     % pupil plane, departing at 15 degrees.    
-    figureFlag.zLim = [-10 20]; figureFlag.hLim = [-10 10];
-    rayTraceCenteredSphericalSurfaces([sceneGeometry.eye.pupilCenter(1) 0], deg2rad(15), sceneGeometry.opticalSystem,figureFlag);
+    figureFlag.zLim = [-15 20]; figureFlag.hLim = [-10 10];
+    rayTraceCenteredSurfaces([-3.7 2], deg2rad(15), sceneGeometry.virtualImageFunc.opticalSystem.p1p2,figureFlag);
 %}
 
 
@@ -177,10 +177,10 @@ p = inputParser; p.KeepUnmatched = true;
 % Optional analysis params
 p.addParameter('sceneGeometryFileName','', @(x)(isempty(x) | ischar(x)));
 p.addParameter('intrinsicCameraMatrix',[2600 0 320; 0 2600 240; 0 0 1],@isnumeric);
+p.addParameter('sensorResolution',[640 480],@isnumeric);
 p.addParameter('radialDistortionVector',[0 0],@isnumeric);
 p.addParameter('extrinsicTranslationVector',[0; 0; 120],@isnumeric);
 p.addParameter('cameraRotationZ',0,@isnumeric);
-p.addParameter('primaryPosition',[0 0 0],@isnumeric);
 p.addParameter('constraintTolerance',0.02,@isscalar);
 p.addParameter('contactLens',[], @(x)(isempty(x) | isnumeric(x)));
 p.addParameter('spectacleLens',[], @(x)(isempty(x) | isnumeric(x)));
@@ -191,45 +191,60 @@ p.addParameter('spectralDomain','nir',@ischar);
 p.parse(varargin{:})
 
 
-%% assemble the sceneGeometry structure
-% Values defined locally
-sceneGeometry.intrinsicCameraMatrix = p.Results.intrinsicCameraMatrix;
-sceneGeometry.radialDistortionVector = p.Results.radialDistortionVector;
-sceneGeometry.extrinsicTranslationVector = p.Results.extrinsicTranslationVector;
-sceneGeometry.cameraRotationZ = p.Results.cameraRotationZ;
-sceneGeometry.primaryPosition = p.Results.primaryPosition;
+%% Assemble the camera and geometry components
+sceneGeometry.cameraIntrinsic.matrix = p.Results.intrinsicCameraMatrix;
+sceneGeometry.cameraIntrinsic.radialDistortion = p.Results.radialDistortionVector;
+sceneGeometry.cameraIntrinsic.sensorResolution = p.Results.sensorResolution;
+sceneGeometry.cameraExtrinsic.translation = p.Results.extrinsicTranslationVector;
+sceneGeometry.cameraExtrinsic.rotationZ = p.Results.cameraRotationZ;
 sceneGeometry.constraintTolerance = p.Results.constraintTolerance;
 
-% Values returned by the modelEyeParameters() routine
+
+%% Add the modelEyeParameters
 sceneGeometry.eye = modelEyeParameters('spectralDomain',p.Results.spectralDomain,varargin{:});
 
-% Generate the opticalSystem matrix through the cornea. Note that we model
-% the corneal surfaces as spheres, with a radius equal to the radius of
-% curvature value R. To create a more accurate model, we would need to
-% update rayTraceCenteredSphericalSurfaces() to model aspherical surfaces.
+
+%% Add the ray tracing components
+
+% Identify the MATLAB (non compiled) virtualImageFunc.
+sceneGeometry.virtualImageFunc.handle = @virtualImageFunc;
+sceneGeometry.virtualImageFunc.path = which('virtualImageFunc');
+
+% Assemble the opticalSystem. First get the refractive index of the medium
+% between the eye and the camera
 mediumRefractiveIndex = returnRefractiveIndex( p.Results.medium, p.Results.spectralDomain );
 
 % The center of the cornea front surface is at a position equal to its
 % radius of curvature, thus placing the apex of the front corneal surface
 % at a z position of zero. The back surface is shifted back to produce
 % the appropriate corneal thickness.
-cornealThickness = -sceneGeometry.eye.corneaBackSurfaceCenter(1)-sceneGeometry.eye.corneaBackSurfaceRadii(1);
-opticalSystem = [nan, nan, sceneGeometry.eye.aqueousRefractiveIndex; ...
-    -sceneGeometry.eye.corneaBackSurfaceR-cornealThickness, -sceneGeometry.eye.corneaBackSurfaceR, sceneGeometry.eye.corneaRefractiveIndex; ...
-    -sceneGeometry.eye.corneaFrontSurfaceR, -sceneGeometry.eye.corneaFrontSurfaceR, mediumRefractiveIndex];
+cornealThickness = -sceneGeometry.eye.cornea.back.center(1)-sceneGeometry.eye.cornea.back.radii(1);
+
+% Build the system matrix for the p1p2 and p1p3 planes. We require both as
+% the cornea is not radially symmetric. The p1p2 system is for the
+% horizontal (axial) plane of the eye, and the p1p3 system for the vertical
+% (sagittal) plane of the eye.
+sceneGeometry.virtualImageFunc.opticalSystem.p1p2 = [nan, nan, nan, sceneGeometry.eye.index.aqueous; ...
+    -sceneGeometry.eye.cornea.back.radii(1)-cornealThickness, -sceneGeometry.eye.cornea.back.radii(1), -sceneGeometry.eye.cornea.back.radii(2),  sceneGeometry.eye.index.cornea; ...
+    -sceneGeometry.eye.cornea.front.radii(1), -sceneGeometry.eye.cornea.front.radii(1), -sceneGeometry.eye.cornea.front.radii(2), mediumRefractiveIndex];
+sceneGeometry.virtualImageFunc.opticalSystem.p1p3 = [nan, nan, nan, sceneGeometry.eye.index.aqueous; ...
+    -sceneGeometry.eye.cornea.back.radii(1)-cornealThickness, -sceneGeometry.eye.cornea.back.radii(1), -sceneGeometry.eye.cornea.back.radii(3),  sceneGeometry.eye.index.cornea; ...
+    -sceneGeometry.eye.cornea.front.radii(1), -sceneGeometry.eye.cornea.front.radii(1), -sceneGeometry.eye.cornea.front.radii(3), mediumRefractiveIndex];
 
 % Add a contact lens if requested
 if ~isempty(p.Results.contactLens)
     switch length(p.Results.contactLens)
         case 1
             lensRefractiveIndex=returnRefractiveIndex( 'hydrogel', p.Results.spectralDomain );
-            [opticalSystem, pOutFun] = addContactLens(opticalSystem, p.Results.contactLens, 'lensRefractiveIndex', lensRefractiveIndex);
+            [sceneGeometry.virtualImageFunc.opticalSystem.p1p2, ~] = addContactLens(sceneGeometry.virtualImageFunc.opticalSystem.p1p2, p.Results.contactLens, 'lensRefractiveIndex', lensRefractiveIndex);
+            [sceneGeometry.virtualImageFunc.opticalSystem.p1p3, pOutFun] = addContactLens(sceneGeometry.virtualImageFunc.opticalSystem.p1p3, p.Results.contactLens, 'lensRefractiveIndex', lensRefractiveIndex);
         case 2
-            [opticalSystem, pOutFun] = addContactLens(opticalSystem, p.Results.contactLens(1), 'lensRefractiveIndex', p.Results.contactLens(2));
+            [sceneGeometry.virtualImageFunc.opticalSystem.p1p2, ~] = addContactLens(sceneGeometry.virtualImageFunc.opticalSystem.p1p2, p.Results.contactLens(1), 'lensRefractiveIndex', p.Results.contactLens(2));
+            [sceneGeometry.virtualImageFunc.opticalSystem.p1p3, pOutFun] = addContactLens(sceneGeometry.virtualImageFunc.opticalSystem.p1p3, p.Results.contactLens(1), 'lensRefractiveIndex', p.Results.contactLens(2));
         otherwise
             error('The key-value pair contactLens is limited to two elements: [refractionDiopters, refractionIndex]');
     end
-    sceneGeometry.contactLens = pOutFun.Results;
+    sceneGeometry.lenses.contact = pOutFun.Results;
 end
 
 % Add a spectacle lens if requested
@@ -237,24 +252,30 @@ if ~isempty(p.Results.spectacleLens)
     switch length(p.Results.spectacleLens)
         case 1
             lensRefractiveIndex=returnRefractiveIndex( 'polycarbonate', p.Results.spectralDomain );
-            [opticalSystem, pOutFun] = addSpectacleLens(opticalSystem, p.Results.spectacleLens, 'lensRefractiveIndex', lensRefractiveIndex);
+            [sceneGeometry.virtualImageFunc.opticalSystem.p1p2, ~] = addSpectacleLens(sceneGeometry.virtualImageFunc.opticalSystem.p1p2, p.Results.spectacleLens, 'lensRefractiveIndex', lensRefractiveIndex);
+            [sceneGeometry.virtualImageFunc.opticalSystem.p1p3, pOutFun] = addSpectacleLens(sceneGeometry.virtualImageFunc.opticalSystem.p1p3, p.Results.spectacleLens, 'lensRefractiveIndex', lensRefractiveIndex);
         case 2
-            [opticalSystem, pOutFun] = addSpectacleLens(opticalSystem, p.Results.spectacleLens(1), 'lensRefractiveIndex', p.Results.spectacleLens(2));
+            [sceneGeometry.virtualImageFunc.opticalSystem.p1p2, ~] = addSpectacleLens(sceneGeometry.virtualImageFunc.opticalSystem.p1p2, p.Results.spectacleLens, 'lensRefractiveIndex', p.Results.spectacleLens(2));
+            [sceneGeometry.virtualImageFunc.opticalSystem.p1p3, pOutFun] = addSpectacleLens(sceneGeometry.virtualImageFunc.opticalSystem.p1p3, p.Results.spectacleLens, 'lensRefractiveIndex', p.Results.spectacleLens(2));
         case 3
-            [opticalSystem, pOutFun] = addSpectacleLens(opticalSystem, p.Results.spectacleLens(1), 'lensRefractiveIndex', p.Results.spectacleLens(2),'lensVertexDistance', p.Results.spectacleLens(3));
+            [sceneGeometry.virtualImageFunc.opticalSystem.p1p2, ~] = addSpectacleLens(sceneGeometry.virtualImageFunc.opticalSystem.p1p2, p.Results.spectacleLens, 'lensRefractiveIndex', p.Results.spectacleLens(2),'lensVertexDistance', p.Results.spectacleLens(3));
+            [sceneGeometry.virtualImageFunc.opticalSystem.p1p3, pOutFun] = addSpectacleLens(sceneGeometry.virtualImageFunc.opticalSystem.p1p3, p.Results.spectacleLens, 'lensRefractiveIndex', p.Results.spectacleLens(2),'lensVertexDistance', p.Results.spectacleLens(3));
         otherwise
             error('The key-value pair spectacleLens is limited to three elements: [refractionDiopters, refractionIndex, vertexDistance]');
     end
-    sceneGeometry.spectacleLens = pOutFun.Results;
+    sceneGeometry.lenses.spectacle = pOutFun.Results;
 end
 
-% Store the optical system
-sceneGeometry.opticalSystem = opticalSystem;
+% Assemble an args field that has these components to simplify calling the
+% virtualImageFunc routine
+sceneGeometry.virtualImageFunc.args = {...
+    sceneGeometry.cameraExtrinsic.translation, ...
+    sceneGeometry.eye.rotationCenters, ...
+    sceneGeometry.virtualImageFunc.opticalSystem.p1p2, ...
+    sceneGeometry.virtualImageFunc.opticalSystem.p1p3};
 
-% Add the virtualImageFunc field, but for now it is empty.
-sceneGeometry.virtualImageFunc = [];
 
-% Save the meta data
+%% Save the meta data
 sceneGeometry.meta.createSceneGeometry = p.Results;
 
 

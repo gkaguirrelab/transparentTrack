@@ -12,11 +12,12 @@ function [opticalSystemOut, p] = addSpectacleLens(opticalSystemIn, lensRefractio
 %	curvature for rayTraceCenteredSphericalSurfaces().
 %
 % Inputs:
-%   opticalSystemIn       - An mx3 matrix, where m is the number of
+%   opticalSystemIn       - An mx4 matrix, where m is the number of
 %                           surfaces in the model, including the initial
 %                           position of the ray. Each row contains the
-%                           values [center, radius, refractiveIndex] that
-%                           define a spherical lens.
+%                           values:
+%                               [center, radiusZ, radiusH, refractiveIndex]
+%                           that define an elliptical lens.
 %   lensRefractionDiopters - Scalar. Refractive power in units of 
 %                           diopters. A negative value specifies a lens
 %                           that would be worn by someone with myopia to
@@ -35,7 +36,7 @@ function [opticalSystemOut, p] = addSpectacleLens(opticalSystemIn, lensRefractio
 %                           plano face of the lens.
 %
 % Outputs:
-%   opticalSystemOut      - An (m+2)x3 matrix, corresponding to the
+%   opticalSystemOut      - An (m+2)x4 matrix, corresponding to the
 %                           opticalSystemIn with the addition of the
 %                           spectacle lens
 %   p                     - The parameters returned by the input parser.
@@ -46,10 +47,10 @@ function [opticalSystemOut, p] = addSpectacleLens(opticalSystemIn, lensRefractio
     % Obtain the eye parameters from the modelEyeParameters() function
     eye = modelEyeParameters('sphericalAmetropia',-2);
     % Define an optical system
-    cornealThickness = eye.corneaBackSurfaceCenter(1) - eye.corneaFrontSurfaceCenter(1);
-    opticalSystem = [nan, nan, eye.aqueousRefractiveIndex; ...
-        -eye.corneaBackSurfaceR-cornealThickness, -eye.corneaBackSurfaceR, eye.corneaRefractiveIndex; ...
-        -eye.corneaFrontSurfaceR, -eye.corneaFrontSurfaceR, 1.0];
+    cornealThickness = -eye.cornea.back.center(1)-eye.cornea.back.radii(1);
+    opticalSystem = [nan, nan, nan, eye.index.aqueous; ...
+        -eye.cornea.back.radii(1)-cornealThickness, -eye.cornea.back.radii(1), -eye.cornea.back.radii(2),  eye.index.cornea; ...
+        -eye.cornea.front.radii(1), -eye.cornea.front.radii(1), -eye.cornea.front.radii(2), 1];
     % Add a minus lens for the correction of myopia
     opticalSystem=addSpectacleLens(opticalSystem, -2);
     % Define FigureFlag as a structure so we can provide plot limits
@@ -61,9 +62,9 @@ function [opticalSystemOut, p] = addSpectacleLens(opticalSystemIn, lensRefractio
     clear coords
     clear theta
     theta = deg2rad(-30);
-    coords = [eye.pupilCenter(1) pupilRadius];
+    coords = [eye.pupil.center(1) pupilRadius];
     % Perform the ray tracing
-    outputRay = rayTraceCenteredSphericalSurfaces(coords, theta, opticalSystem, figureFlag);
+    outputRay = rayTraceCenteredSurfaces(coords, theta, opticalSystem, figureFlag);
 %}
 
 %% input parser
@@ -94,7 +95,7 @@ opticalSystemOut = opticalSystemIn;
 % a specified index of refraction. We store the index of refraction of
 % the ambient medium (which will typically be air and thus 1.0) to apply to
 % the final exit ray.
-mediumRefractiveIndex = opticalSystemIn(end,3);
+mediumRefractiveIndex = opticalSystemIn(end,end);
 
 % The lens equations do not perform properly for corrections of less that
 % 0.25 diopters, and we don't bother trying to model so small a correction.
@@ -112,7 +113,7 @@ if lensRefractionDiopters > 0
     % We first add the near-plano back surface to the optical system
     backCurvature = nearPlanoCurvature;
     backCenter = lensVertexDistance+backCurvature;
-    opticalSystemOut(end+1,:)=[backCenter backCurvature lensRefractiveIndex];
+    opticalSystemOut(end+1,:)=[backCenter backCurvature backCurvature lensRefractiveIndex];
     backDiopters = (mediumRefractiveIndex-lensRefractiveIndex)/(backCurvature/1000);
  
     % How many diopters of correction do we need from the front surface?
@@ -150,7 +151,7 @@ if lensRefractionDiopters > 0
     clear x
     
     % Store the lens front surface in the optical system
-    opticalSystemOut(end+1,:)=[frontCurvature+lensVertexDistance+thickness frontCurvature mediumRefractiveIndex];
+    opticalSystemOut(end+1,:)=[frontCurvature+lensVertexDistance+thickness frontCurvature frontCurvature mediumRefractiveIndex];
 else
     % This is a minus lens for the correction of myopia. It has a
     % relatively flat front surface and a more curved back surface. It will
@@ -174,9 +175,9 @@ else
     frontCenter = lensVertexDistance+frontCurvature+p.Results.minimumLensThickness;
     
     % Add the surfaces to the optical system
-    opticalSystemOut(end+1,:)=[backCenter backCurvature lensRefractiveIndex];
-    opticalSystemOut(end+1,:)=[frontCenter frontCurvature mediumRefractiveIndex];
+    opticalSystemOut(end+1,:)=[backCenter backCurvature backCurvature lensRefractiveIndex];
+    opticalSystemOut(end+1,:)=[frontCenter frontCurvature frontCurvature mediumRefractiveIndex];
 
-end
+end % positive or negative lens
 
-end % function - addSpectacle
+end % function - addSpectacleLens

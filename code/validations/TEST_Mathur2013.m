@@ -47,12 +47,12 @@ sceneGeometry.eye.rotationCenters.azi = [0 0 0];
 sceneGeometry.eye.rotationCenters.ele = [0 0 0];
 
 % Compile the ray tracing functions; save as a mex file
-sceneGeometry.virtualImageFunc = compileVirtualImageFunc(sceneGeometry,'functionDirPath','/tmp/demo_virtualImageFunc');
+sceneGeometry.virtualImageFunc = compileVirtualImageFunc(sceneGeometry,'/tmp/demo_virtualImageFunc');
 
-% Assume a 6 mm true exit pupil diamter, as Mathur 2013 used
+% Assume a 5 mm true exit pupil diamter, as Mathur 2013 used
 % pharmacological dilation for their subjects. The observed entrance pupil
 % would have been about 7 mm.
-pupilDiam = 6;
+pupilDiam = 5;
 
 % This is Eq 9 from Mathur 2013, which specifies the horizontal to vertical
 % ratio of the entrance pupil from different viewing angles relative to
@@ -77,8 +77,8 @@ viewingAngleDeg = -60:1:60;
 % the eye. The coordinates of our model eye are based around the pupil
 % axis. Therfore, we need to calculate a rotation that accounts for the
 % Mathur viewing angle and kappa.
-azimuthsDeg = (-viewingAngleDeg)-sceneGeometry.eye.kappaAngle(1);
-elevationsDeg = zeros(size(viewingAngleDeg))-sceneGeometry.eye.kappaAngle(2);
+azimuthsDeg = (-viewingAngleDeg)-sceneGeometry.eye.kappa(1);
+elevationsDeg = zeros(size(viewingAngleDeg))-sceneGeometry.eye.kappa(2);
 
 % Calculate the diameter ratios and thetas
 [diamRatios, thetas] = calcPupilDiameterRatio(azimuthsDeg,elevationsDeg,pupilDiam,sceneGeometry);
@@ -132,8 +132,8 @@ for ii = 1:length(azimuthsDeg)
     % examiner adjusted the camera to be centered on the pupil.
     geometricPupilCenter = mean(sceneWorldPoints);
     adjustedSceneGeometry = sceneGeometry;
-    adjustedSceneGeometry.extrinsicTranslationVector(1) = adjustedSceneGeometry.extrinsicTranslationVector(1)+geometricPupilCenter(1);
-    adjustedSceneGeometry.extrinsicTranslationVector(2) = adjustedSceneGeometry.extrinsicTranslationVector(2)+geometricPupilCenter(2);
+    adjustedSceneGeometry.cameraExtrinsic.translation(1) = adjustedSceneGeometry.cameraExtrinsic.translation(1)+geometricPupilCenter(1);
+    adjustedSceneGeometry.cameraExtrinsic.translation(2) = adjustedSceneGeometry.cameraExtrinsic.translation(2)+geometricPupilCenter(2);
     % Now, measure the horizontal and vertical width of the image of the
     % pupil
     [pupilEllipseOnImagePlane, imagePoints] = pupilProjection_fwd(eyePose, adjustedSceneGeometry, 'nPupilPerimPoints',50);

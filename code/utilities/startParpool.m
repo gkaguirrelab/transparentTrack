@@ -6,8 +6,8 @@ function [ nWorkers ] = startParpool( nWorkers, verbosity )
 %
 % Description:
 %   Several stages of transparentTrack make use of the parpool. This
-%   routine opens the par pool if it does not exit and returns the number
-%   of available workers.
+%   routine opens the parpool (if it does not currently exist) and returns
+%   the number of available workers.
 %
 % Inputs:
 %   nWorkers              - Scalar. The number of workers requested.
