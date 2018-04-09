@@ -432,9 +432,9 @@ end
         % Assemble a candidate sceneGeometry structure
         candidateSceneGeometry = initialSceneGeometry;
         % Store the camera rotation in Z
-        candidateSceneGeometry.cameraRotationZ = x(1);
+        candidateSceneGeometry.cameraExtrinsic.rotationZ = x(1);
         % Store the extrinsic camera translation vector
-        candidateSceneGeometry.extrinsicTranslationVector = x(2:4)';
+        candidateSceneGeometry.cameraExtrinsic.translation = x(2:4)';
         % Scale the rotation center values by the joint parameter and
         % differential parameters
         candidateSceneGeometry.eye.rotationCenters.azi = candidateSceneGeometry.eye.rotationCenters.azi .* x(5) .* x(6);
@@ -465,8 +465,8 @@ warning(warningState);
 
 % Assemble the sceneGeometry file to return
 sceneGeometry = initialSceneGeometry;
-sceneGeometry.cameraRotationZ = x(1);
-sceneGeometry.extrinsicTranslationVector = x(2:4)';
+sceneGeometry.cameraExtrinsic.rotationZ = x(1);
+sceneGeometry.cameraExtrinsic.translation = x(2:4)';
 sceneGeometry.eye.rotationCenters.azi = sceneGeometry.eye.rotationCenters.azi .* x(5) .* x(6);
 sceneGeometry.eye.rotationCenters.ele = sceneGeometry.eye.rotationCenters.ele .* x(5) ./ x(6);
 sceneGeometry.meta.estimateSceneParams.search.x = x';
