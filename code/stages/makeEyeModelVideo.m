@@ -115,8 +115,8 @@ for ii = 1:nFrames
     hold on
     axis off
     axis equal
-    xlim([0 p.Results.videoSizeX]);
-    ylim([0 p.Results.videoSizeY]);
+    xlim([0 videoSizeX]);
+    ylim([0 videoSizeY]);
     
     if ~any(isnan(eyePoses(ii,:)))
         
