@@ -99,8 +99,8 @@ p.addParameter('hostname',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional fitting params
-p.addParameter('eyePoseLB',[-35,-25,0,0.5],@isnumeric);
-p.addParameter('eyePoseUB',[35,25,0,4],@isnumeric);
+p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
+p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 p.addParameter('exponentialTauParam',3,@isnumeric);
 p.addParameter('likelihoodErrorExponent',1.0,@isnumeric);
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
@@ -192,9 +192,13 @@ if strcmp(p.Results.verbosity,'full')
     fprintf('.\n');
 end
 
+% Store the warning state
+warnState = warning();
+
 % Loop through the frames
 parfor (ii = 1:nFrames, nWorkers)
 % for ii = 1:nFrames
+
     % update progress
     if strcmp(verbosity,'full')
         if mod(ii,round(nFrames/50))==0
@@ -313,9 +317,18 @@ parfor (ii = 1:nFrames, nWorkers)
         ub_pin(radiusIdx)=posteriorPupilRadius;
         x0 = pupilData.(fitLabel).eyePoses.values(ii,:);
         x0(radiusIdx)=posteriorPupilRadius;
+        
+        % Turn off warnings that can arise when fitting bad frames
+        warning('off','pupilProjection_fwd:rayTracingError');
+        warning('off','pupilProjection_fwd:ellipseFitFailed');
+        
+        % Perform the fit
         [posteriorEyePose, posteriorEyePoseObjectiveError] = ...
             eyePoseEllipseFit(Xp, Yp, sceneGeometry, 'eyePoseLB', lb_pin, 'eyePoseUB', ub_pin, 'x0', x0 );
         posteriorEllipseParams = pupilProjection_fwd(posteriorEyePose, sceneGeometry);
+        
+        % Restore the warning state
+        warning(warnState);
         
     end % check if there are any perimeter points to fit
     
