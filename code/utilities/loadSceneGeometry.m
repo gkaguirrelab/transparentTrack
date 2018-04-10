@@ -53,8 +53,12 @@ else
                     if exist(func2str(sceneGeometry.virtualImageFunc.handle))==3
                         if ~strcmp(which(func2str(sceneGeometry.virtualImageFunc.handle)), sceneGeometry.virtualImageFunc.path)
                             % Attempt to remove the currently prioritized
-                            % function
+                            % function. Silence a warning about it not
+                            % existing, which can occur.
+                            warnState=warning();
+                            warning('off','MATLAB:rmpath:DirNotFound');
                             rmpath(fileparts(which(func2str(sceneGeometry.virtualImageFunc.handle))))
+                            warning(warnState);
                             % Check if we now have the correct function on
                             % the path
                             if ~strcmp(which(func2str(sceneGeometry.virtualImageFunc.handle)), sceneGeometry.virtualImageFunc.path)
