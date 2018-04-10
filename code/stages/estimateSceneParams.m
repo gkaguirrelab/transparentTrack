@@ -67,7 +67,7 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
 %                           The torsion value is unusued and is bounded to
 %                           zero. Biological limits in eye rotation and
 %                           pupil size would suggest boundaries of [±35,
-%                           ±25, 0, 0.25-5]. Note, however, that these
+%                           ±25, 0, 0.25-4]. Note, however, that these
 %                           angles are relative to the center of
 %                           projection, not the primary position of the
 %                           eye. Therefore, in circumstances in which the
@@ -152,8 +152,8 @@ p.addParameter('sceneParamsLB',[-30; -20; -20; 90; 0.75; .9],@isnumeric);
 p.addParameter('sceneParamsUB',[30; 20; 20; 200; 1.25; 1.1],@isnumeric);
 p.addParameter('sceneParamsLBp',[-15; -5; -5; 100; 0.85; 0.95],@isnumeric);
 p.addParameter('sceneParamsUBp',[15; 5; 5; 160; 1.15; 1.05],@isnumeric);
-p.addParameter('eyePoseLB',[-35,-25,0,0.25],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('eyePoseUB',[35,25,0,4],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
+p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 p.addParameter('fitLabel','initial',@ischar);
 p.addParameter('ellipseArrayList',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nBinsPerDimension',4,@isnumeric);
@@ -301,11 +301,8 @@ end
 sceneParamResultsMean=sceneParamResultsMean';
 sceneParamResultsSD=sceneParamResultsSD';
 
-% % Find the solution with the best fVal.
-% [~, idx]=min(allFvals);
-% sceneGeometry = searchResults{idx};
-
-% Perform the search using the mean parameters to obtain the error values
+% Perform the search using the mean parameters as absolute bounds to obtain
+% the error values
 sceneGeometry = ...
     performSceneSearch(initialSceneGeometry, ...
     ellipses(ellipseArrayList,:), ...
@@ -435,8 +432,8 @@ end
         candidateSceneGeometry.cameraExtrinsic.rotationZ = x(1);
         % Store the extrinsic camera translation vector
         candidateSceneGeometry.cameraExtrinsic.translation = x(2:4)';
-        % Scale the rotation center values by the joint parameter and
-        % differential parameters
+        % Scale the rotation center values by the joint and differential
+        % parameters
         candidateSceneGeometry.eye.rotationCenters.azi = candidateSceneGeometry.eye.rotationCenters.azi .* x(5) .* x(6);
         candidateSceneGeometry.eye.rotationCenters.ele = candidateSceneGeometry.eye.rotationCenters.ele .* x(5) ./ x(6);
         % For each ellipse, perform the inverse projection from the ellipse
@@ -449,8 +446,7 @@ end
                     ellipses(ii,:),...
                     candidateSceneGeometry, ...
                     'eyePoseLB',eyePoseLB,...
-                    'eyePoseUB',eyePoseUB...
-                );
+                    'eyePoseUB',eyePoseUB);
         end
         % Now compute objective function as the RMSE of the distance
         % between the taget and modeled ellipses in shape and area
@@ -639,6 +635,10 @@ colorMatrix(1,:)=1;
 colorMatrix(2,:)= shapeErrorVec;
 scatter(ellipses(:,1),ellipses(:,2),[],colorMatrix','o','filled');
 
+% plot the estimated center of rotation of the eye
+rotationCenterEllipse = pupilProjection_fwd([0 0 0 2], sceneGeometry);
+plot(rotationCenterEllipse(1),rotationCenterEllipse(2), '+g', 'MarkerSize', 5);
+
 % label and clean up the plot
 axis equal
 set(gca,'Ydir','reverse')
@@ -660,7 +660,7 @@ legend({'0',num2str(sceneGeometry.constraintTolerance/2), ['=> ' num2str(sceneGe
 
 % Add text to report the extrinsic translation vector
 xFinal = sceneGeometry.meta.estimateSceneParams.search.x;
-myString = sprintf('Z rotation [deg] %4.1f; Translation vector [mm] = %4.1f, %4.1f, %4.1f; rotation center scaling [joint, differential] = %4.2f, %4.2f',xFinal(1),xFinal(2),xFinal(3),xFinal(4),xFinal(5),xFinal(6));
+myString = sprintf('Z rotation [deg] %4.1f; Translation vector [mm] = %4.1f, %4.1f, %4.1f; Rotation center scaling [joint, differential] = %4.2f, %4.2f',xFinal(1),xFinal(2),xFinal(3),xFinal(4),xFinal(5),xFinal(6));
 text(0.5,1.0,myString,'Units','normalized','HorizontalAlignment','center')
 
 %% Right panel -- area error
@@ -688,6 +688,10 @@ colorMatrix = zeros(3,size(ellipses,1));
 colorMatrix(1,:)=1;
 colorMatrix(2,:)= areaErrorVec;
 scatter(ellipses(:,1),ellipses(:,2),[],colorMatrix','o','filled');
+
+% plot the estimated center of rotation of the eye
+rotationCenterEllipse = pupilProjection_fwd([0 0 0 2], sceneGeometry);
+plot(rotationCenterEllipse(1),rotationCenterEllipse(2), '+g', 'MarkerSize', 5);
 
 % label and clean up the plot
 axis equal
