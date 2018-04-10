@@ -160,6 +160,8 @@ end
 % Load a sceneGeometry file
 if ~isempty(p.Results.sceneGeometryFileName)
     sceneGeometry = loadSceneGeometry(p.Results.sceneGeometryFileName, p.Results.verbosity);
+else
+    sceneGeometry = [];
 end
 
 
