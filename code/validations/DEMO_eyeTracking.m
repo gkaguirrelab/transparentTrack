@@ -77,20 +77,20 @@ radialDistortionVector = [-0.3517 3.5353];
 eyeLaterality = 'right';
 axialLength = 25.35;
 sphericalAmetropia = -1.5;
+maxIrisDiamPixels = 267;
 
 % Estimate camera distance from iris diameter in pixels
-observedIrisDiamPixels = 267;
 sceneGeometry = createSceneGeometry(...
     'radialDistortionVector',radialDistortionVector, ...
     'intrinsicCameraMatrix',intrinsicCameraMatrix, ...
     'constraintTolerance',0.02);
-[cameraDepthMean, cameraDepthSD] = depthFromIrisDiameter( sceneGeometry, observedIrisDiamPixels );
+[cameraDepthMean, cameraDepthSD] = depthFromIrisDiameter( sceneGeometry, maxIrisDiamPixels );
 
 % Assemble the scene parameter bounds
 sceneParamsLB = [-5; -5; -5; cameraDepthMean-cameraDepthSD*2; 0.75; 0.9];
-sceneParamsUB = [5; 5; 5; cameraDepthMean+cameraDepthSD*2; 1.25; 1.1];
 sceneParamsLBp = [-3; -2; -2; cameraDepthMean-cameraDepthSD*1; 0.85; 0.95];
 sceneParamsUBp = [3; 2; 2; cameraDepthMean+cameraDepthSD*1; 1.15; 1.05];
+sceneParamsUB = [5; 5; 5; cameraDepthMean+cameraDepthSD*2; 1.25; 1.1];
 
 % Run the analysis pipeline
 runVideoPipeline( pathParams, ...
@@ -102,7 +102,7 @@ runVideoPipeline( pathParams, ...
     'sceneParamsLB',sceneParamsLB,'sceneParamsUB',sceneParamsUB,...
     'sceneParamsLBp',sceneParamsLBp,'sceneParamsUBp',sceneParamsUBp,...
     'overwriteControlFile', true, 'catchErrors', false,...
-    'skipStageByNumber',[1:5],'makeFitVideoByNumber',[6 8]);
+    'skipStageByNumber',[],'makeFitVideoByNumber',[6 8]);
 
 
 %% Plot some fits
