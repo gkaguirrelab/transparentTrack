@@ -42,7 +42,7 @@ p.addParameter('verbosity','none', @ischar);
 p.addParameter('videoOutFrameRate', 60, @isnumeric);
 p.addParameter('saveCompressedVideo', true, @islogical);
 p.addParameter('modelEyeLabelNames', {'aziRotationCenter', 'eleRotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex'}, @iscell);
-p.addParameter('modelEyePlotColors', {'>r' '^m' '.w' 'ob' '*g' '.y' '*y'}, @iscell);
+p.addParameter('modelEyePlotColors', {'>r' '^m' '.w' '.b' '*g' '.y' '*y'}, @iscell);
 p.addParameter('fitLabel', 'radiusSmoothed', @ischar);
 
 % parse
@@ -121,7 +121,7 @@ for ii = 1:nFrames
     if ~any(isnan(eyePoses(ii,:)))
         
         % Obtain the pupilProjection of the model eye to the image plane
-        [pupilEllipseParams, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses(ii,:), sceneGeometry, 'fullEyeModelFlag', true);
+        [pupilEllipseParams, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses(ii,:), sceneGeometry, 'fullEyeModelFlag', true, 'nIrisPerimPoints',20);
         
         % Loop through the point labels present in the eye model
         for pp = 1:length(p.Results.modelEyeLabelNames)
