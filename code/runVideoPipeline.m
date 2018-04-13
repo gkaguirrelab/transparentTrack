@@ -151,8 +151,12 @@ end
 
 
 %% Define input filenames
+
+% Test if there are instructions to skip the deinterlaceVideo stage. If
+% not, try to identify the raw video, which may be in one of several video
+% formats or with different suffix forms.
 if ~any(strcmp(p.Results.skipStageByName,'deinterlaceVideo')) && ~any(p.Results.skipStageByNumber == 1) 
-    % Create a cell array of candidate raw video nmaes with the runName and
+    % Create a cell array of candidate raw video names with the runName and
     % each of the rawVideoSuffix choices
     candidateRawVideoNames = ...
         cellfun(@(x) fullfile(pathParams.dataSourceDirFull,[pathParams.runName x]),p.Results.rawVideoSuffix,'uniformoutput',false);
@@ -171,7 +175,11 @@ if ~any(strcmp(p.Results.skipStageByName,'deinterlaceVideo')) && ~any(p.Results.
 end
 
 %% Define output filenames
-grayVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_gray.avi']);
+if isfield(pathParams,'grayVideoName')
+    grayVideoName = pathParams.grayVideoName;
+else
+    grayVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_gray.avi']);
+end
 glintFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_glint.mat']);
 perimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_perimeter.mat']);
 controlFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_controlFile.csv']);
