@@ -405,8 +405,9 @@ options.UncertaintyHandling = 0;     % The objective is deterministic
 % Silence the mesh overflow warning from BADS
 warningState = warning;
 warning('off','bads:meshOverflow');
-% Silence the occasional bad ray tracing error during the search
+% Silence some errors that can arise during the forward projection
 warning('off','pupilProjection_fwd:rayTracingError');
+warning('off','pupilProjection_fwd:ellipseFitFailed');
 
 
 % Define nested variables for within the search
