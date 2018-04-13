@@ -30,7 +30,7 @@ function deinterlaceVideo (videoInFileName, videoOutFileName, varargin)
 %   videoOutFileName      - Full path to the output .avi file
 %
 % Optional key/value pairs (display and I/O):
-%  'verbosity'            - Level of verbosity. [none, full]
+%  'verbose'              - Boolean. Default false.
 %
 % Optional key/value pairs (flow control):
 %  'nFrames'              - Analyze fewer than the total number of frames
@@ -53,7 +53,7 @@ p.addRequired('videoInFileName',@isstr);
 p.addRequired('videoOutFileName',@isstr);
 
 % Optional display and I/O params
-p.addParameter('verbosity', 'none', @isstr);
+p.addParameter('verbose',false,@islogical);
 
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
@@ -84,7 +84,7 @@ Bob.FrameRate = inObj.FrameRate * 2;
 Bob.Quality = 100;
 
 % Alert the user
-if strcmp(p.Results.verbosity,'full')
+if p.Results.verbose
     tic
     fprintf(['Deinterlacing video. Started ' char(datetime('now')) '\n']);
     fprintf('| 0                      50                   100%% |\n');
@@ -96,7 +96,7 @@ open(Bob)
 for ii = p.Results.startFrame:nFrames
     
     % update progressbar
-    if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
+    if p.Results.verbose && mod(ii,round(nFrames/50))==0
         fprintf('.');
     end
     
@@ -169,7 +169,7 @@ end
 clear Bob inObj
 
 % report completion of analysis
-if strcmp(p.Results.verbosity,'full')
+if p.Results.verbose
     fprintf('\n');
     toc
     fprintf('\n');

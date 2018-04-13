@@ -35,7 +35,7 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
 %                           the optical system in sceneGeometry.
 %
 % Optional key/value pairs (display and I/O):
-%  'verbosity'            - Level of verbosity. [none, full]
+%  'verbose'              - Boolean. Default false.
 %  'sceneDiagnosticPlotFileName' - Full path (including suffix) to the
 %                           location where a diagnostic plot of the
 %                           sceneGeometry calculation is to be saved. If
@@ -119,7 +119,7 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
         end
     end
     % Estimate the scene Geometry using the ellipses
-    estimatedSceneGeometry = estimateSceneParams(pupilData,'','useParallel',true,'verbosity','full','ellipseArrayList',1:1:ellipseIdx-1);
+    estimatedSceneGeometry = estimateSceneParams(pupilData,'','useParallel',true,'verbose',true,'ellipseArrayList',1:1:ellipseIdx-1);
     % Report how well we did
     fprintf('Error in the recovered camera translation vector (x, y, depth] in mm: \n');
     veridicalSceneGeometry.extrinsicTranslationVector - estimatedSceneGeometry.extrinsicTranslationVector
@@ -134,7 +134,7 @@ p.addRequired('sceneGeometryFileName',@ischar);
 p.addRequired('vitualImageFuncFileName',@(x)(isempty(x) || ischar(x)));
 
 % Optional display and I/O params
-p.addParameter('verbosity', 'none', @isstr);
+p.addParameter('verbose',false,@islogical);
 p.addParameter('sceneDiagnosticPlotFileName', '', @(x)(isempty(x) || ischar(x)));
 
 % Optional flow control params
@@ -159,14 +159,13 @@ p.addParameter('ellipseArrayList',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nBinsPerDimension',4,@isnumeric);
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
 p.addParameter('nBADSsearches',10,@isnumeric);
-p.addParameter('useRayTracing',true,@islogical);
 
 % parse
 p.parse(pupilFileName, sceneGeometryFileName, vitualImageFuncDir, varargin{:})
 
 
 %% Announce we are starting
-if strcmp(p.Results.verbosity,'full')
+if p.Results.verbose
     tic
     fprintf(['Estimating camera position and eye rotation from pupil ellipses. Started ' char(datetime('now')) '\n']);
 end
@@ -175,17 +174,15 @@ end
 initialSceneGeometry = createSceneGeometry(varargin{:});
 
 % Compile the ray tracing function
-if p.Results.useRayTracing
-    if strcmp(p.Results.verbosity,'full')
-        fprintf('Assembling ray tracing function.\n');
-    end
-    initialSceneGeometry.virtualImageFunc = compileVirtualImageFunc( initialSceneGeometry, vitualImageFuncDir );
+if p.Results.verbose
+    fprintf('Assembling ray tracing function.\n');
 end
+initialSceneGeometry.virtualImageFunc = compileVirtualImageFunc( initialSceneGeometry, vitualImageFuncDir );
 
 
 %% Set up the parallel pool
 if p.Results.useParallel
-    nWorkers = startParpool( p.Results.nWorkers, p.Results.verbosity );
+    nWorkers = startParpool( p.Results.nWorkers, p.Results.verbose );
 else
     nWorkers=0;
 end
@@ -221,7 +218,7 @@ if ~isempty(p.Results.ellipseArrayList)
     Xedges = [];
     Yedges = [];
 else
-    if strcmp(p.Results.verbosity,'full')
+    if p.Results.verbose
         fprintf('Selecting ellipses to guide the search.\n');
     end
     
@@ -258,7 +255,7 @@ end
 
 %% Perform the search
 % Inform the user
-if strcmp(p.Results.verbosity,'full')
+if p.Results.verbose
     fprintf(['Searching over scene geometry parameters.\n']);
     fprintf('| 0                      50                   100%% |\n');
     fprintf('.\n');
@@ -279,14 +276,14 @@ parfor (ss = 1:p.Results.nBADSsearches,nWorkers)
         p.Results.eyePoseUB);
     
     % update progress
-    if strcmp(p.Results.verbosity,'full')
+    if p.Results.verbose
         for pp=1:floor(50/p.Results.nBADSsearches(1))
             fprintf('\b.\n');
         end
     end
     
 end
-if strcmp(p.Results.verbosity,'full')
+if p.Results.verbose
     fprintf('\n');
 end
 
@@ -333,7 +330,7 @@ end
 
 %% Create a sceneGeometry plot
 if ~isempty(p.Results.sceneDiagnosticPlotFileName)
-    if strcmp(p.Results.verbosity,'full')
+    if p.Results.verbose
         fprintf('Creating a sceneGeometry diagnostic plot.\n');
     end
     saveSceneDiagnosticPlot(...
@@ -347,7 +344,7 @@ end
 
 
 %% alert the user that we are done with the routine
-if strcmp(p.Results.verbosity,'full')
+if p.Results.verbose
     toc
     fprintf('\n');
 end

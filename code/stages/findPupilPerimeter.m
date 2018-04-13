@@ -16,7 +16,7 @@ function perimeter = findPupilPerimeter(grayVideoName, perimeterFileName, vararg
 %	perimeterFileName     - Full path to the output .mat file
 %
 % Optional key/value pairs (display and I/O):
-%  'verbosity'            - Level of verbosity [none, full]
+%  'verbose'              - Boolean. Default false.
 %  'displayMode'          - When set to true, displays the results of the
 %                           boundary extraction and does not save a video
 %
@@ -96,7 +96,7 @@ p.addRequired('grayVideoName',@isstr);
 p.addRequired('perimeterFileName',@isstr);
 
 % Optional display and I/O params
-p.addParameter('verbosity','none',@ischar);
+p.addParameter('verbose',false,@islogical);
 p.addParameter('displayMode',false,@islogical);
 
 % Optional flow control params
@@ -174,7 +174,7 @@ if p.Results.displayMode
 end
 
 % alert the user
-if strcmp(p.Results.verbosity,'full')
+if p.Results.verbose
     tic
     fprintf(['Extracting pupil perimeter. Started ' char(datetime('now')) '\n']);
     fprintf('| 0                      50                   100%% |\n');
@@ -199,7 +199,7 @@ for ii = 1:nFrames
     end
     
     % increment the progress bar
-    if strcmp(p.Results.verbosity,'full') && mod(ii-p.Results.startFrame+1,round(nFrames/50))==0
+    if p.Results.verbose && mod(ii-p.Results.startFrame+1,round(nFrames/50))==0
         fprintf('.');
     end
     
@@ -342,7 +342,7 @@ else
 end
 
 % report completion of analysis
-if strcmp(p.Results.verbosity,'full')
+if p.Results.verbose
     fprintf('\n');
     toc
     fprintf('\n');

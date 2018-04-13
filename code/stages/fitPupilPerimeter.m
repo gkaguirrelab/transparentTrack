@@ -40,7 +40,7 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %                           the results of the ellipse fitting.
 %
 % Optional key/value pairs (display and I/O):
-%  'verbosity'            - Level of verbosity. [none, full]
+%  'verbose'              - Boolean. Default false.
 %
 % Optional key/value pairs (flow control)
 %  'nFrames'              - Analyze fewer than the total number of frames.
@@ -93,7 +93,7 @@ p.addRequired('perimeterFileName',@ischar);
 p.addRequired('pupilFileName',@ischar);
 
 % Optional display and I/O params
-p.addParameter('verbosity','none',@ischar);
+p.addParameter('verbose',false,@islogical);
 
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
@@ -152,14 +152,14 @@ returnRotMat = @(theta) [cos(theta) -sin(theta); sin(theta) cos(theta)];
 
 %% Set up the parallel pool
 if p.Results.useParallel
-    nWorkers = startParpool( p.Results.nWorkers, p.Results.verbosity );
+    nWorkers = startParpool( p.Results.nWorkers, p.Results.verbose );
 else
     nWorkers=0;
 end
 
 % Load a sceneGeometry file
 if ~isempty(p.Results.sceneGeometryFileName)
-    sceneGeometry = loadSceneGeometry(p.Results.sceneGeometryFileName, p.Results.verbosity);
+    sceneGeometry = loadSceneGeometry(p.Results.sceneGeometryFileName, p.Results.verbose);
 else
     sceneGeometry = [];
 end
@@ -173,13 +173,13 @@ frameCellArray = perimeter.data(1:nFrames);
 clear perimeter
 
 % Set-up other variables to be non-broadcast
-verbosity = p.Results.verbosity;
+verbose = p.Results.verbose;
 ellipseTransparentLB = p.Results.ellipseTransparentLB;
 ellipseTransparentUB = p.Results.ellipseTransparentUB;
 nSplits = p.Results.nSplits;
 
 % Alert the user
-if strcmp(p.Results.verbosity,'full')
+if p.Results.verbose
     tic
     fprintf(['Ellipse fitting to pupil perimeter. Started ' char(datetime('now')) '\n']);
     fprintf('| 0                      50                   100%% |\n');
@@ -194,7 +194,7 @@ parfor (ii = 1:nFrames, nWorkers)
     %for ii = 1:nFrames
 
     % Update progress
-    if strcmp(verbosity,'full')
+    if verbose
         if mod(ii,round(nFrames/50))==0
             fprintf('\b.\n');
         end
@@ -321,7 +321,7 @@ parfor (ii = 1:nFrames, nWorkers)
 end % loop over frames
 
 % alert the user that we are done with the fit loop
-if strcmp(p.Results.verbosity,'full')
+if p.Results.verbose
     toc
     fprintf('\n');
 end

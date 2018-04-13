@@ -31,7 +31,7 @@ function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, scene
 %                           sceneGeometry to be used.
 %
 % Optional key/value pairs (display and I/O):
-%  'verbosity'            - Level of verbosity. [none, full]
+%  'verbose'              - Boolean. Default false.
 %
 % Optional key/value pairs (flow control)
 %  'nFrames'              - Analyze fewer than the total number of frames.
@@ -85,7 +85,7 @@ p.addRequired('pupilFileName',@ischar);
 p.addRequired('sceneGeometryFileName',@ischar);
 
 % Optional display and I/O params
-p.addParameter('verbosity','none',@ischar);
+p.addParameter('verbose',false,@islogical);
 
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
@@ -127,7 +127,7 @@ pupilData=dataLoad.pupilData;
 clear dataLoad
 
 % Load the sceneGeometry file
-sceneGeometry = loadSceneGeometry(p.Results.sceneGeometryFileName, p.Results.verbosity);
+sceneGeometry = loadSceneGeometry(p.Results.sceneGeometryFileName, p.Results.verbose);
 
 % determine how many frames we will process
 if p.Results.nFrames == Inf
@@ -150,7 +150,7 @@ end
 
 %% Set up the parallel pool
 if p.Results.useParallel
-    nWorkers = startParpool( p.Results.nWorkers, p.Results.verbosity );
+    nWorkers = startParpool( p.Results.nWorkers, p.Results.verbose );
 else
     nWorkers=0;
 end
@@ -161,7 +161,7 @@ frameCellArray = perimeter.data(1:nFrames);
 clear perimeter
 
 % Set-up other variables to be non-broadcast
-verbosity = p.Results.verbosity;
+verbose = p.Results.verbose;
 likelihoodErrorExponent = p.Results.likelihoodErrorExponent;
 eyePoseLB = p.Results.eyePoseLB;
 eyePoseUB = p.Results.eyePoseUB;
@@ -185,7 +185,7 @@ baseExpFunc=exp(-1/p.Results.exponentialTauParam*windowSupport);
 exponentialWeights=[fliplr(baseExpFunc) NaN baseExpFunc];
 
 % Alert the user
-if strcmp(p.Results.verbosity,'full')
+if p.Results.verbose
     tic
     fprintf(['Bayesian smoothing. Started ' char(datetime('now')) '\n']);
     fprintf('| 0                      50                   100%% |\n');
@@ -200,7 +200,7 @@ parfor (ii = 1:nFrames, nWorkers)
 % for ii = 1:nFrames
 
     % update progress
-    if strcmp(verbosity,'full')
+    if verbose
         if mod(ii,round(nFrames/50))==0
             fprintf('\b.\n');
         end
@@ -341,7 +341,7 @@ parfor (ii = 1:nFrames, nWorkers)
 end % loop over frames to calculate the posterior
 
 % report completion of Bayesian analysis
-if strcmp(p.Results.verbosity,'full')
+if p.Results.verbose
     toc
     fprintf('\n');
 end

@@ -48,4 +48,4 @@ sceneGeometry.virtualImageFunc = compileVirtualImageFunc(sceneGeometry,functionD
 save(sceneGeometryFileName,'sceneGeometry')
 
 %% Create the eyeModel video
-makeEyeModelVideo(videoOutFileName,pupilFileName, sceneGeometryFileName, 'verbosity','full')
+makeEyeModelVideo(videoOutFileName,pupilFileName, sceneGeometryFileName, 'verbose',true)
