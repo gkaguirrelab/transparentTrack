@@ -40,7 +40,7 @@ function perimeter = applyControlFile(perimeterFileName, controlFileName, correc
 %   correctedPerimeterFileName - Full path to the corrected perimeter file
 %
 % Optional key/value pairs (display and I/O):
-%  'verbosity'            - Level of verbosity. [none, full]
+%  'verbose'              - Boolean. Default false.
 %
 % Optional key/value pairs (environment)
 %  'tbSnapshot'           - This should contain the output of the
@@ -64,7 +64,7 @@ p.addRequired('controlFileName',@isstr);
 p.addRequired('correctedPerimeterFileName',@isstr);
 
 % Optional display and I/O params
-p.addParameter('verbosity','none',@ischar);
+p.addParameter('verbose',false,@islogical);
 
 % Optional environment params
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
@@ -101,7 +101,7 @@ perimeter.data = cell(nFrames,1);
 blankFrame = uint8(zeros(perimeter.size));
 
 % alert the user
-if strcmp(p.Results.verbosity,'full')
+if p.Results.verbose
     tic
     fprintf(['Correcting the perimeter file. Started ' char(datetime('now')) '\n']);
     fprintf('| 0                      50                   100%% |\n');
@@ -113,7 +113,7 @@ end
 for ii = 1:nFrames
 
     % Update progress
-    if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
+    if p.Results.verbose && mod(ii,round(nFrames/50))==0
         fprintf('.');
     end
     
@@ -173,7 +173,7 @@ perimeter.meta = p.Results;
 save(correctedPerimeterFileName,'perimeter');
 
 % report completion of analysis
-if strcmp(p.Results.verbosity,'full')
+if p.Results.verbose
     fprintf('\n');
     toc
     fprintf('\n');

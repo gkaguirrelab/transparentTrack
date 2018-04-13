@@ -14,7 +14,7 @@ function makeFitVideo(videoInFileName, videoOutFileName, varargin)
 %   videoOutFileName      - Full path to the output .avi file
 %
 % Optional key/value pairs (display and I/O):
-%  'verbosity'            - Level of verbosity. [none, full]
+%  'verbose'              - Boolean. Default false.
 %  'videoOutFrameRate'    - Frame rate (in Hz) of saved video [default 60]
 %  'saveCompressedVideo'  - Default value is true, resulting in a
 %                           a video with a 10x reduction in file size
@@ -39,7 +39,7 @@ p.addRequired('videoInFileName', @ischar);
 p.addRequired('videoOutFileName', @ischar);
 
 % Optional display and I/O params
-p.addParameter('verbosity','none', @ischar);
+p.addParameter('verbose',false,@islogical);
 p.addParameter('videoOutFrameRate', 60, @isnumeric);
 p.addParameter('saveCompressedVideo', true, @islogical);
 
@@ -111,7 +111,7 @@ else
 end
 
 % Load the sceneGeometry file
-sceneGeometry = loadSceneGeometry(p.Results.sceneGeometryFileName, p.Results.verbosity);
+sceneGeometry = loadSceneGeometry(p.Results.sceneGeometryFileName, p.Results.verbose);
 
 % Open a video object for reading
 videoInObj = VideoReader(videoInFileName);
@@ -149,7 +149,7 @@ else
 end
 
 % Alert the user
-if strcmp(p.Results.verbosity,'full')
+if p.Results.verbose
     tic
     fprintf(['Creating and saving fit video. Started ' char(datetime('now')) '\n']);
     fprintf('| 0                      50                   100%% |\n');
@@ -161,7 +161,7 @@ end
 for ii = 1:nFrames
     
     % Update the progress display
-    if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
+    if p.Results.verbose && mod(ii,round(nFrames/50))==0
         fprintf('\b.\n');
     end
     
@@ -289,7 +289,7 @@ end % Loop over frames
 clear videoOutObj videoInObj
 
 % report completion of fit video generation
-if strcmp(p.Results.verbosity,'full')
+if p.Results.verbose
     toc
     fprintf('\n');
 end

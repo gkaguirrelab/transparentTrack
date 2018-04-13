@@ -42,7 +42,7 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 %   glintFileName         - Full path to the glint file
 %
 % Optional key/value pairs (display and I/O):
-%  'verbosity'            - Level of verbosity. [none, full]
+%  'verbose'              - Boolean. Default false.
 %
 % Optional key/value pairs (flow control)
 %  'nFrames'              - Analyze fewer than the total number of frames.
@@ -171,7 +171,7 @@ p.addRequired('perimeterFileName',@isstr);
 p.addRequired('glintFileName',@isstr);
 
 % Optional display and I/O params
-p.addParameter('verbosity','none',@ischar);
+p.addParameter('verbose',false,@islogical);
 
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
@@ -228,7 +228,7 @@ end
 
 %% Set up the parallel pool
 if p.Results.useParallel
-    nWorkers = startParpool( p.Results.nWorkers, p.Results.verbosity );
+    nWorkers = startParpool( p.Results.nWorkers, p.Results.verbose );
 else
     nWorkers=0;
 end
@@ -354,7 +354,7 @@ frameBads=nan(nFrames,1);
 frameErrors=nan(nFrames,1);
 
 % alert the user
-if strcmp(p.Results.verbosity,'full')
+if p.Results.verbose
     tic
     fprintf(['Guessing pupil cuts. Started ' char(datetime('now')) '\n']);
     fprintf('| 0                      50                   100%% |\n');
@@ -382,7 +382,7 @@ clear perimeter
 parfor (ii = 1:nFrames, nWorkers)
     
     % Update progress
-    if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
+    if p.Results.verbose && mod(ii,round(nFrames/50))==0
         fprintf('\b.\n');
     end
     
@@ -504,7 +504,7 @@ parfor (ii = 1:nFrames, nWorkers)
 end % parloop over frames
 
 % report completion of preliminary control file generation
-if strcmp(p.Results.verbosity,'full')
+if p.Results.verbose
     toc
     fprintf('\n');
 end

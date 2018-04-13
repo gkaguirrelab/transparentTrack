@@ -1,4 +1,4 @@
-function [ nWorkers ] = startParpool( nWorkers, verbosity )
+function [ nWorkers ] = startParpool( nWorkers, verbose )
 % Open and configure the parpool
 %
 % Syntax:
@@ -11,11 +11,16 @@ function [ nWorkers ] = startParpool( nWorkers, verbosity )
 %
 % Inputs:
 %   nWorkers              - Scalar. The number of workers requested.
-%   verbosity             - String. How verbose to be.
+%   verbose               - Boolean. Defaults to false if not passed.
 %
 % Outputs:
 %   nWorkers              - Scalar. The number of workers available.
 %
+
+% Set the verbose flag to false if not passed
+if nargin==1
+    verbose = false;
+end
 
 % Silence the timezone warning
 warningState = warning;
@@ -25,7 +30,7 @@ warning('off','MATLAB:datetime:NonstandardSystemTimeZone');
 % If a parallel pool does not exist, attempt to create one
 poolObj = gcp('nocreate');
 if isempty(poolObj)
-    if strcmp(verbosity,'full')
+    if verbose
         tic
         fprintf(['Opening parallel pool. Started ' char(datetime('now')) '\n']);
     end
@@ -40,7 +45,7 @@ if isempty(poolObj)
     else
         nWorkers = poolObj.NumWorkers;
     end
-    if strcmp(verbosity,'full')
+    if verbose
         toc
         fprintf('\n');
     end

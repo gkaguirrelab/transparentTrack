@@ -60,7 +60,7 @@ function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 %   glintFileName         - Full path to the glint file
 %
 % Optional key/value pairs (display and I/O):
-%  'verbosity'            - Level of verbosity. [none, full]
+%  'verbose'              - Boolean. Default false.
 %  'displayMode'          - If set to true, a continuously updated video
 %                           displays the glint fitting. This is slow but
 %                           may be useful while setting analysis params.
@@ -120,7 +120,7 @@ p.addRequired('grayVideoName',@isstr);
 p.addRequired('glintFileName',@isstr);
 
 % Optional display and I/O params
-p.addParameter('verbosity','none',@ischar);
+p.addParameter('verbose',false,@islogical);
 p.addParameter('displayMode',false,@islogical);
 
 % Optional flow control params
@@ -206,7 +206,7 @@ if p.Results.displayMode
 end
 
 % alert the user
-if strcmp(p.Results.verbosity,'full')
+if p.Results.verbose
     tic
     fprintf(['Tracking the glint. Started ' char(datetime('now')) '\n']);
     fprintf('| 0                      50                   100%% |\n');
@@ -222,7 +222,7 @@ for   ii = 1:nFrames
     end
     
     % increment the progress bar
-    if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
+    if p.Results.verbose && mod(ii,round(nFrames/50))==0
         fprintf('\b.\n');
     end
     
@@ -474,7 +474,7 @@ else
 end
 
 % report completion of analysis
-if strcmp(p.Results.verbosity,'full')
+if p.Results.verbose
     toc
     fprintf('\n');
 end

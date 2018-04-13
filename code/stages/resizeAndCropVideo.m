@@ -18,7 +18,7 @@ function resizeAndCropVideo(inputVideoName, outputVideoName, varargin)
 %   videoOutFileName      - Full path to the output .avi file
 %
 % Optional key/value pairs (display and I/O):
-%  'verbosity'            - Level of verbosity. [none, full]
+%  'verbose'              - Boolean. Default false.
 %
 % Optional key/value pairs (flow control):
 %  'nFrames'              - Analyze fewer than the total number of frames
@@ -48,7 +48,7 @@ p.addRequired('inputVideoName',@isstr);
 p.addRequired('outputVideoName',@isstr);
 
 % Optional display and I/O params
-p.addParameter('verbosity', 'none', @isstr);
+p.addParameter('verbose',false,@islogical);
 
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
@@ -86,7 +86,7 @@ else
 end
 
 % alert the user
-if strcmp(p.Results.verbosity,'full')
+if p.Results.verbose
     tic
     fprintf(['Resizing and cropping video. Started ' char(datetime('now')) '\n']);
     fprintf('| 0                      50                   100%% |\n');
@@ -96,7 +96,7 @@ end
 % Resize and crop, save
 for ii = p.Results.startFrame:nFrames
     % increment the progress bar
-    if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
+    if p.Results.verbose && mod(ii,round(nFrames/50))==0
         fprintf('.');
     end
     thisFrame = readFrame(inObj);
@@ -113,7 +113,7 @@ end
 clear inObj outObj
 
 % report completion of analysis
-if strcmp(p.Results.verbosity,'full')
+if p.Results.verbose
     fprintf('\n');
     toc
     fprintf('\n');

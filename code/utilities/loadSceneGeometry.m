@@ -1,4 +1,4 @@
-function sceneGeometry = loadSceneGeometry(sceneGeometryFileName, verbosity)
+function sceneGeometry = loadSceneGeometry(sceneGeometryFileName, verbose)
 % Load sceneGeometry and instantiate the ray tracing function
 %
 % Syntax:
@@ -11,11 +11,17 @@ function sceneGeometry = loadSceneGeometry(sceneGeometryFileName, verbosity)
 % Inputs:
 %   sceneGeometryFileName - Full path to the sceneGeometry file. If left
 %                           empty, then an empty variable will be returned.
-%   verbosity             - Character vector. A valid value is "full".
+%   verbose               - Boolean. Defaults false if not passed.
 %
 % Outputs:
 %   sceneGeometry         - The sceneGeometry structure
 %
+
+% Set the verbose flag to false if not passed
+if nargin==1
+    verbose = false;
+end
+
 
 if isempty(sceneGeometryFileName)
     sceneGeometry=[];
@@ -35,7 +41,7 @@ else
         switch funResult.type
             case 'anonymous'
                 % No further action needed
-                if strcmp(verbosity,'full')
+                if verbose
                     fprintf('Anonymous ray trace function available\n');
                 end
             case 'simple'
@@ -69,7 +75,7 @@ else
                         end
                     end
                 end
-                if strcmp(verbosity,'full')
+                if verbose
                     fprintf('Compiled ray trace function available\n');
                 end
             otherwise
