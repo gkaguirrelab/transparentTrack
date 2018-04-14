@@ -173,12 +173,6 @@ end
 %% Create initial sceneGeometry structure and ray tracing function
 initialSceneGeometry = createSceneGeometry(varargin{:});
 
-% Compile the ray tracing function
-if p.Results.verbose
-    fprintf('Assembling ray tracing function.\n');
-end
-initialSceneGeometry.virtualImageFunc = compileVirtualImageFunc( initialSceneGeometry, vitualImageFuncDir );
-
 
 %% Set up the parallel pool
 if p.Results.useParallel
