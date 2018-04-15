@@ -10,10 +10,10 @@ function eye = modelEyeParameters( varargin )
 %
 %   The parameters returned by this routine correspond to the eyeWorld
 %   coordinate space used in pupilProjection_fwd, which is relative to the
-%   pupil axis, with the apex of the cornea set as zero in depth. The space
-%   has the dimensions [depth, horizontal, vertical]; negative values of
-%   depth are towards the back of the eye. The model assumes the optical
-%   and pupil axis of the eye are algined.
+%   optic / pupil axis, with the apex of the cornea set as zero in depth.
+%   The space has the dimensions [depth, horizontal, vertical]; negative
+%   values of depth are towards the back of the eye. The model assumes the
+%   optical and pupil axis of the eye are algined.
 %
 % Inputs:
 %   none
@@ -35,10 +35,10 @@ function eye = modelEyeParameters( varargin )
 %                           the posterior chamber are scaled to fit the
 %                           proportions predicted by the Atchison model for
 %                           the specified degree of ametropia.
-%  'kappaAngle'           - 1x4 vector. This is the angle of the visual
-%                           axis in degrees w.r.t. to pupillary axis. The
+%  'gammaAngle'           - 1x4 vector. This is the angle of the fixation
+%                           axis in degrees w.r.t. to optical axis. The
 %                           values are [azimuth, elevation]. An eyePose of:
-%                             [-kappa(1), -kappa(2), 0, radius]
+%                             [-gamma(1), -gamma(2), 0, radius]
 %                           aligns the visual axis of the eye with the
 %                           optical axis of the camera.
 %  'eyeLaterality'        - A text string that specifies which eye (left,
@@ -73,7 +73,7 @@ p = inputParser; p.KeepUnmatched = true;
 % Optional
 p.addParameter('sphericalAmetropia',0,@isscalar);
 p.addParameter('axialLength',[],@(x)(isempty(x) || isscalar(x)));
-p.addParameter('kappaAngle',[],@(x)(isempty(x) || isnumeric(x)));
+p.addParameter('gammaAngle',[],@(x)(isempty(x) || isnumeric(x)));
 p.addParameter('eyeLaterality','Right',@ischar);
 p.addParameter('species','Human',@ischar);
 p.addParameter('spectralDomain','nir',@ischar);
@@ -199,12 +199,39 @@ switch p.Results.species
         % surface of the cornea at the apex, following Atchison 2006.
         eye.cornea.back.center = [-0.55-eye.cornea.back.radii(1) 0 0];
         
+        % Navarro 2006 measured the angle of rotation of the axes of the
+        % corneal ellipsoid relative to the keratometric axis, which is the
+        % axis that connects a fixation point with the center of curvature
+        % of the cornea. We convert those angles here to be relative to the
+        % optic axis of the eye. To do so, we first assume that the
+        % keratometric axis is equal to the fixation axis [MAY WANT TO ADD
+        % A CONVERSION STEP FOR THIS]. Next, we add the Navarro
+        % measurements to the gamma angle values that we have for the
+        % model.
+        %{
+            % Navarro values for the displacement of the corneal axis from
+            % keratometric axis for the right eye (in degrees)
+            keratometricAxisWRTcornealAxis = [2.35 0.85 0.02];
+            % assume that the fixation and keratometric axes are equal
+            fixationAxisWRTcornealAxis = [2.35 0.85 0.02];
+            % specify our gamma angles
+            eye = modelEyeParameters();
+            fixationAxisWRTopticalAxis = eye.gamma;
+            % Now obtain the corneal axes relative to optical axis
+            cornealAxisWRTopticalAxis = fixationAxisWRTopticalAxis - fixationAxisWRTcornealAxis            
+        %}
+        switch eyeLaterality
+            case 'Right'
+                eye.cornea.axis = [2.6539    1.3017   -0.0200];
+            case 'Left'
+                eye.cornea.axis = [-2.6539    1.3017   0.0200];
+        end
+
         
         %% Pupil
         % We position the pupil plane at the depth of the anterior point of
-        % the lens. The coordinate space of the model eye is define with
-        % respect to the center of the pupil, so the p2 and p3 values are
-        % zero
+        % the lens. The coordinate space of the model eye is defined w.r.t.
+        % the center of the pupil, so the p2 and p3 values are zero
         eye.pupil.center = [-3.7 0 0];
         
         % The exit pupil of the eye is elliptical. Further, the
@@ -233,28 +260,27 @@ switch p.Results.species
             % Wyatt reported an eccentricity of the pupil of 0.21 under
             % dark conditions. We find that using that value produces
             % model results that disagree with Malthur 2013. We have
-            % adopted an upper value of 0.12 instead. We also use the 
+            % adopted an upper value of 0.15 instead. We also use the 
             % convention of a negative eccentricity for a horizontal major
             % axis and a positive eccentricity for vertical.
-            entranceEccen = [-0.12 0.12];
+            entranceEccen = [-0.12 0.15];
             % Prepare scene geometry and eye pose aligned with visual axis
             sceneGeometry = createSceneGeometry();
-            virtualImageFunc = compileVirtualImageFunc(sceneGeometry);
             % Fix the exit pupil eccentricity at 0
-            sceneGeometry.eye.exitPupilEccenFcnString = '@(x) 0';
-            sceneGeometry.eye.exitPupilThetaValues = [0, 0];
+            sceneGeometry.eye.pupil.eccenFcnString = '@(x) 0';
+            sceneGeometry.eye.pupil.thetas = [0, 0];
             % Obtain the pupil area in the image for each entrance radius
             % assuming no ray tracing
-            sceneGeometry.virtualImageFunc = [];
-            pupilImage = pupilProjection_fwd([-sceneGeometry.eye.kappaAngle(1), -sceneGeometry.eye.kappaAngle(2), 0, entranceRadius(1)],sceneGeometry);
+            sceneGeometry.refraction = [];
+            pupilImage = pupilProjection_fwd([-sceneGeometry.eye.gamma(1), -sceneGeometry.eye.gamma(2), 0, entranceRadius(1)],sceneGeometry);
             exitArea(1) = pupilImage(3);
-            pupilImage = pupilProjection_fwd([-sceneGeometry.eye.kappaAngle(1), -sceneGeometry.eye.kappaAngle(2), 0, entranceRadius(2)],sceneGeometry);
+            pupilImage = pupilProjection_fwd([-sceneGeometry.eye.gamma(1), -sceneGeometry.eye.gamma(2), 0, entranceRadius(2)],sceneGeometry);
             exitArea(2) = pupilImage(3);
             % Add the ray tracing function to the sceneGeometry
-            sceneGeometry.virtualImageFunc = virtualImageFunc;
+            sceneGeometry = createSceneGeometry();
             % Search across exit pupil radii to find the values that match
             % the observed entrance areas.
-            myPupilEllipse = @(radius) pupilProjection_fwd([-sceneGeometry.eye.kappaAngle(1), -sceneGeometry.eye.kappaAngle(2), 0, radius],sceneGeometry);
+            myPupilEllipse = @(radius) pupilProjection_fwd([-sceneGeometry.eye.gamma(1), -sceneGeometry.eye.gamma(2), 0, radius],sceneGeometry);
             myArea = @(ellipseParams) ellipseParams(3);
             myObj = @(radius) (myArea(myPupilEllipse(radius))-exitArea(1)).^2;
             exitRadius(1) = fminunc(myObj, entranceRadius(1));
@@ -262,16 +288,16 @@ switch p.Results.species
             exitRadius(2) = fminunc(myObj, entranceRadius(2));
             % Now find the exit pupil eccentricity that produces the
             % observed entrance pupil eccentricity
-            place = {'eye' 'exitPupilEccenFcnString'};
-            sceneGeometry.eye.exitPupilThetaValues = [0, 0];
+            place = {'eye' 'pupil' 'eccenFcnString'};
+            sceneGeometry.eye.pupil.thetas = [0, 0];
             mySceneGeom = @(eccen) setfield(sceneGeometry,place{:},['@(x) ' num2str(eccen)]);
-            myPupilEllipse = @(eccen) pupilProjection_fwd([-sceneGeometry.eye.kappaAngle(1), -sceneGeometry.eye.kappaAngle(2), 0, exitRadius(1)],mySceneGeom(eccen));
+            myPupilEllipse = @(eccen) pupilProjection_fwd([-sceneGeometry.eye.gamma(1), -sceneGeometry.eye.gamma(2), 0, exitRadius(1)],mySceneGeom(eccen));
             myEccen = @(ellipseParams) ellipseParams(4);
             myObj = @(eccen) 1e4*(myEccen(myPupilEllipse(eccen))-abs(entranceEccen(1))).^2;
             exitEccen(1) = -fminsearch(myObj, 0.1);
-            sceneGeometry.eye.exitPupilThetaValues = [pi/2, pi/2];
+            sceneGeometry.eye.pupil.thetas = [pi/2, pi/2];
             mySceneGeom = @(eccen) setfield(sceneGeometry,place{:},['@(x) ' num2str(eccen)]);
-            myPupilEllipse = @(eccen) pupilProjection_fwd([-sceneGeometry.eye.kappaAngle(1), -sceneGeometry.eye.kappaAngle(2), 0, exitRadius(2)],mySceneGeom(eccen));
+            myPupilEllipse = @(eccen) pupilProjection_fwd([-sceneGeometry.eye.gamma(1), -sceneGeometry.eye.gamma(2), 0, exitRadius(2)],mySceneGeom(eccen));
             myEccen = @(ellipseParams) ellipseParams(4);
             myObj = @(eccen) 1e4*(myEccen(myPupilEllipse(eccen))-abs(entranceEccen(2))).^2;
             exitEccen(2) = fminsearch(myObj, 0.2);        
@@ -291,8 +317,9 @@ switch p.Results.species
         %}
         % Specify the params and equation that defines the exit pupil
         % ellipse. This can be invoked as a function using str2func.
-        eye.pupil.eccenParams = [-1.723 4.796 0.976 0.047]; 
+        eye.pupil.eccenParams = [-1.766 4.716 0.290 0.087]; 
         eye.pupil.eccenFcnString = sprintf('@(x) (tanh((x+%f).*%f)+%f)*%f',eye.pupil.eccenParams(1),eye.pupil.eccenParams(2),eye.pupil.eccenParams(3),eye.pupil.eccenParams(4)); 
+
         % The theta values of the exit pupil ellipse for eccentricities
         % less than, and greater than, zero. We have structure here to add
         % a bit of tilt from vertical by laterality, but are not currently
@@ -439,8 +466,15 @@ switch p.Results.species
         Qzy = 0.25+0.017*p.Results.sphericalAmetropia;
         eye.posteriorChamber.radii = [ -(Rzx/(Qzx+1)) -(Rzx*sqrt(1/(Qzx+1))) -(Rzy*sqrt(1/(Qzy+1)))];
 
-        % The model holds the depth of the anterior chamber constant. To
-        % position the posterior chamber, we need to know the distance
+        % Our model holds the depth of the anterior chamber constant.
+        % Atchison found that anterior chamber depth does not vary with
+        % spherical ametropia, although this is not a consistent finding:
+        %
+        %   Hosny, Mohamed, et al. "Relationship between anterior chamber
+        %   depth, refractive state, corneal diameter, and axial length."
+        %   Journal of Refractive Surgery 16.3 (2000): 336-340.
+        %
+        % To position the posterior chamber, we need to know the distance
         % between the apex of the anterior chamber and the apex of the
         % posterior chamber. The value for this fixed distance is derived
         % from the Atchison 2006 model eye. The total interior depth of the
@@ -451,12 +485,12 @@ switch p.Results.species
         % The axial length of the posterior chamber ellipsoid in an
         % emmetrope is:
         %
-        %   10.165 * 2 = 20.33
+        %   10.1654 * 2 = 20.3308
         %
         % Therefore, the apex of the posterior ellipsoid is:
-        %   23.5800 - 20.33 = 3.2964 mm
+        %   23.5800 - 20.3308 = 3.2492 mm
         % behind the corneal apex.
-        posteriorChamberApexDepth = 3.25;
+        posteriorChamberApexDepth = 3.2492;
         
         % Compute and store axial length
         if isempty(p.Results.axialLength)
@@ -583,12 +617,12 @@ switch p.Results.species
         end
 
         
-        %% Kappa
-        % We now calculate kappa, which is the angle (in degrees) between
-        % the pupil and visual axes of the eye. A related measurement is
-        % gamma, which is the angle between the optical axis and the
-        % fixation axis of the eye. We use the names and greek letter
-        % designations for eye axes from Atchison & Smith:
+        %% Gamma
+        % We now calculate gamma, which is the angle (in degrees) between
+        % the optical and fixation axes of the eye. A related measurement
+        % is kappa, which is the angle between the pupil and visual axes.
+        % We use the names and greek letter designations for eye axes from
+        % Atchison & Smith:
         %
         %   Atchison, David A., George Smith, and George Smith. "Optics of
         %   the human eye." (2000): 34-35.
@@ -623,23 +657,8 @@ switch p.Results.species
         %
         % They measured the shape of the entrance pupil as a function of
         % viewing angle relative to the fixation point of the eye. Their
-        % data from the right eye is well fit by a kappa of [5, -2.15]
+        % data from the right eye is well fit by a horizontal kappa of 5.3
         % degrees (see TEST_Mathur2013.m).
-        %
-        % Measured kappa has been found to depend upon axial length:
-        %
-        %   Tabernero, Juan, et al. "Mechanism of compensation of
-        %   aberrations in the human eye." JOSA A 24.10 (2007): 3274-3283.
-        %
-        % Tabernero 2007 report a mean horizontal kappa of 5 degrees in
-        % emmetropes, and their Equation 6 expresses kappa (technically
-        % alpha, the angle w.r.t. the optical axis) as a function of axial
-        % length. Their formula assumes an emmetropic model eye of 24 mm,
-        % while the model eye used here has an emmetropic axial length of
-        % 23.592. The equation implemented below is adjusted so that an
-        % emmetropic eye of 23.5924 mm has a horizontal (nasal directed)
-        % kappa of 5 degrees and a vertical (inferiorly directed) kappa of
-        % -2.15 degrees.
         %
         % While a horizontal kappa of ~5 degrees is a consistent finding,
         % measurements of vertical kappa differ:
@@ -662,23 +681,37 @@ switch p.Results.species
         %   Vision. Keystone Publishing Company, 1920.
         %
         % Until better evidene is available, we adopt a vertical kappa of
-        % -2.15 degrees for the emmetropic model eye.        
-        if isempty(p.Results.kappaAngle)
+        % -2.15 degrees for the emmetropic model eye, as this value best
+        % fits the Mathur 2013 data.
+        %
+        % Measured kappa has been found to depend upon axial length:
+        %
+        %   Tabernero, Juan, et al. "Mechanism of compensation of
+        %   aberrations in the human eye." JOSA A 24.10 (2007): 3274-3283.
+        %
+        % Tabernero 2007 report a mean horizontal kappa of 5 degrees in
+        % emmetropes, and their Equation 6 expresses kappa (technically
+        % alpha, the angle w.r.t. the optical axis) as a function of axial
+        % length. Their formula assumes an emmetropic model eye of 24 mm,
+        % while the model eye used here has an emmetropic axial length of
+        % 23.592. The equation implemented below is adjusted so that an
+        % emmetropic eye of 23.5924 mm has a horizontal (nasal directed)
+        % kappa of 5.3 degrees and a vertical (inferiorly directed) kappa
+        % of -2.15 degrees.
+        %
+        if isempty(p.Results.gammaAngle)
             switch eyeLaterality
                 case 'Right'
-                    eye.kappa(1) = atand((15.0924/(eye.axialLength-8.5000))*tand(5));
+                    eye.gamma(1) = atand((15.0924/(eye.axialLength-8.5000))*tand(5.3));
                 case 'Left'
-                    eye.kappa(1) = -atand((15.0924/(eye.axialLength-8.5000))*tand(5));
+                    eye.gamma(1) = -atand((15.0924/(eye.axialLength-8.5000))*tand(5.3));
             end
-            eye.kappa(2) = atand((15.0924/(eye.axialLength-8.5000))*tand(2.15));
-            % We place values of zero into the final two elements of the
-            % kappa vector. This way, the vector can simply be subtracted
-            % from an eyePose to determine the pose of the eye for the
-            % visual axis.
-            eye.kappa(3:4)=0;
+            eye.gamma(2) = atand((15.0924/(eye.axialLength-8.5000))*tand(2.15));
+            eye.gamma(3)=0;
         else
-            eye.kappa = p.Results.kappaAngle;
+            eye.gamma = p.Results.gammaAngle;
         end
+        
         
         %% Refractive indices
         % Obtain refractive index values for this spectral domain.
@@ -686,6 +719,7 @@ switch p.Results.species
         eye.index.aqueous = returnRefractiveIndex( 'aqueous', p.Results.spectralDomain );
         eye.index.lens = returnRefractiveIndex( 'lens', p.Results.spectralDomain );
 
+        
     %% Dog eye
     case {'dog','Dog','canine','Canine'}
         
@@ -814,7 +848,7 @@ eye.meta.p = p.Results;
 eye.meta.units = 'mm';
 eye.meta.coordinates = 'eyeWorld';
 eye.meta.dimensions = {'depth (axial)' 'horizontal' 'vertical'};
-eye.meta.kappa = 'Degrees angle of visual axis w.r.t. pupil axis.';
+eye.meta.gamma = 'Degrees angle of fixation axis w.r.t. optical axis.';
 
 end % function
 

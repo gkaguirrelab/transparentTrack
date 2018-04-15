@@ -60,7 +60,7 @@ function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 %   glintFileName         - Full path to the glint file
 %
 % Optional key/value pairs (display and I/O):
-%  'verbose'              - Boolean. Default false.
+%  'verbose'              - Logical. Default false.
 %  'displayMode'          - If set to true, a continuously updated video
 %                           displays the glint fitting. This is slow but
 %                           may be useful while setting analysis params.

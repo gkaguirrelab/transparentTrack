@@ -95,10 +95,6 @@ function sceneGeometry = createSceneGeometry(varargin)
 %                           for optical surfaces having a different
 %                           elliptical cross section in the axial and
 %                           sagittal dimension.
-%          'args'         - A cell array of variables extracted from the
-%                           sceneGeometry that are to be passed to the
-%                           virtualImageFunc. Stored here to simplify the
-%                           calling of the routine.
 %
 %  'lenses' - An optional structure that describes the properties of 
 %       refractive lenses that are present between the eye and the camera.
@@ -156,7 +152,7 @@ function sceneGeometry = createSceneGeometry(varargin)
 %                           This is the light domain within which imaging
 %                           is being performed. The refractive indices vary
 %                           based upon this choice.
-%  'forceUncompiledVirtualImageFunc' - Logical, default false. If set to
+%  'forceMATLABVirtualImageFunc' - Logical, default false. If set to
 %                           true, the native MATLAB code for the
 %                           virtualImageFunc is used for refraction,
 %                           instead of a compiled MEX file. This is used
@@ -198,7 +194,7 @@ p.addParameter('contactLens',[], @(x)(isempty(x) | isnumeric(x)));
 p.addParameter('spectacleLens',[], @(x)(isempty(x) | isnumeric(x)));
 p.addParameter('medium','air',@ischar);
 p.addParameter('spectralDomain','nir',@ischar);
-p.addParameter('forceUncompiledVirtualImageFunc',false,@islogical);
+p.addParameter('forceMATLABVirtualImageFunc',false,@islogical);
 
 % parse
 p.parse(varargin{:})
@@ -219,7 +215,7 @@ sceneGeometry.eye = modelEyeParameters('spectralDomain',p.Results.spectralDomain
 
 %% refraction - handle and path
 % Handle to the function; use the MEX version if available
-if exist('virtualImageFuncMex')==3 && ~p.Results.forceUncompiledVirtualImageFunc
+if exist('virtualImageFuncMex')==3 && ~p.Results.forceMATLABVirtualImageFunc
     sceneGeometry.refraction.handle = @virtualImageFuncMex;
     sceneGeometry.refraction.path = which('virtualImageFuncMex');
 else
@@ -228,6 +224,7 @@ else
 end
 
 %% refraction - optical system
+
 % Assemble the opticalSystem. First get the refractive index of the medium
 % between the eye and the camera
 mediumRefractiveIndex = returnRefractiveIndex( p.Results.medium, p.Results.spectralDomain );
@@ -238,16 +235,23 @@ mediumRefractiveIndex = returnRefractiveIndex( p.Results.medium, p.Results.spect
 % the appropriate corneal thickness.
 cornealThickness = -sceneGeometry.eye.cornea.back.center(1)-sceneGeometry.eye.cornea.back.radii(1);
 
+% The axis of the cornea is rotated w.r.t. the optical axis of the eye.
+% Here, we derive the radii for the ellipse that is the intersection of the
+% p1p2 and p1p3 planes with the ellipsoids for the back and front corneal
+% surfaces
+corneaBackRotRadii=ellipsesFromEllipsoid(sceneGeometry.eye.cornea.back.radii,sceneGeometry.eye.cornea.axis);
+corneaFrontRotRadii=ellipsesFromEllipsoid(sceneGeometry.eye.cornea.front.radii,sceneGeometry.eye.cornea.axis);
+
 % Build the optical system matrix for the p1p2 and p1p3 planes. We require
 % both as the cornea is not radially symmetric. The p1p2 system is for the
 % horizontal (axial) plane of the eye, and the p1p3 system for the vertical
 % (sagittal) plane of the eye.
 sceneGeometry.refraction.opticalSystem.p1p2 = [nan, nan, nan, sceneGeometry.eye.index.aqueous; ...
-    -sceneGeometry.eye.cornea.back.radii(1)-cornealThickness, -sceneGeometry.eye.cornea.back.radii(1), -sceneGeometry.eye.cornea.back.radii(2),  sceneGeometry.eye.index.cornea; ...
-    -sceneGeometry.eye.cornea.front.radii(1), -sceneGeometry.eye.cornea.front.radii(1), -sceneGeometry.eye.cornea.front.radii(2), mediumRefractiveIndex];
+    -sceneGeometry.eye.cornea.back.radii(1)-cornealThickness, -corneaBackRotRadii(1), -corneaBackRotRadii(2),  sceneGeometry.eye.index.cornea; ...
+    -sceneGeometry.eye.cornea.front.radii(1), -corneaFrontRotRadii(1), -corneaFrontRotRadii(2), mediumRefractiveIndex];
 sceneGeometry.refraction.opticalSystem.p1p3 = [nan, nan, nan, sceneGeometry.eye.index.aqueous; ...
-    -sceneGeometry.eye.cornea.back.radii(1)-cornealThickness, -sceneGeometry.eye.cornea.back.radii(1), -sceneGeometry.eye.cornea.back.radii(3),  sceneGeometry.eye.index.cornea; ...
-    -sceneGeometry.eye.cornea.front.radii(1), -sceneGeometry.eye.cornea.front.radii(1), -sceneGeometry.eye.cornea.front.radii(3), mediumRefractiveIndex];
+    -sceneGeometry.eye.cornea.back.radii(1)-cornealThickness, -corneaBackRotRadii(1), -corneaBackRotRadii(3),  sceneGeometry.eye.index.cornea; ...
+    -sceneGeometry.eye.cornea.front.radii(1), -corneaFrontRotRadii(1), -corneaFrontRotRadii(3), mediumRefractiveIndex];
 
 %% Lenses
 % Add a contact lens if requested
@@ -292,15 +296,6 @@ sceneGeometry.refraction.opticalSystem.p1p3 = [sceneGeometry.refraction.opticalS
     nan(10-size(sceneGeometry.refraction.opticalSystem.p1p3,1),4)];
 
 
-%% refraction - args
-% Assemble an args field that has these components to simplify calling the
-% virtualImageFunc routine
-sceneGeometry.refraction.args = {...
-    sceneGeometry.cameraExtrinsic.translation, ...
-    sceneGeometry.eye.rotationCenters, ...
-    sceneGeometry.refraction.opticalSystem.p1p2, ...
-    sceneGeometry.refraction.opticalSystem.p1p3};
-
 %% constraintTolerance
 sceneGeometry.constraintTolerance = p.Results.constraintTolerance;
 
@@ -315,3 +310,45 @@ end
 
 end % createSceneGeometry
 
+
+%% LOCAL FUNCTIONS
+
+function rotRadii = ellipsesFromEllipsoid(radii,angles)
+% Returns ellipse radii that are derived from a rotated ellipsoid
+%
+% Syntax:
+%  rotRadii = ellipsesFromEllipsoid(radii,angles)
+%
+% Description:
+%   The ellipsoids that describe the back and front surface of the cornea
+%   are rotated with respect to the optical axis of the eye. Here, we
+%   calculate the ellipse radii that correspond to the p1p2 and p1p3 axes
+%   as they intersect with the rotated ellipsoid.
+%
+
+
+% The angles specify the rotation of the corneal ellipsoid w.r.t. the
+% optical axis of the eye. As we are rotating the axes here, we need to
+% take the negative of the angles.
+angles = -angles;
+
+R.azi = [cosd(angles(1)) -sind(angles(1)) 0; sind(angles(1)) cosd(angles(1)) 0; 0 0 1];
+R.ele = [cosd(angles(2)) 0 sind(angles(2)); 0 1 0; -sind(angles(2)) 0 cosd(angles(2))];
+R.tor = [1 0 0; 0 cosd(angles(3)) -sind(angles(3)); 0 sind(angles(3)) cosd(angles(3))];
+
+rotMat = R.tor * R.ele * R.azi;
+
+% Obtain the semi-axes of the ellipses in each of the planes p1p2 and p1p3
+
+% p1p2
+rotPlane = rotMat * [0; 0; 1];
+[Aye,Bye]=EllipsoidPlaneIntersection(rotPlane(1),rotPlane(2),rotPlane(3),0,radii(1),radii(2),radii(3));
+rotRadii(1:2) = [Aye,Bye];
+
+% p1p3
+rotPlane = rotMat * [0; 1; 0];
+[Aye,Bye]=EllipsoidPlaneIntersection(rotPlane(1),rotPlane(2),rotPlane(3),0,radii(1),radii(2),radii(3));
+
+rotRadii(3) = Bye;
+
+end

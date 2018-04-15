@@ -32,27 +32,38 @@
 %   Mathur 2013.
 %
 
+% Make sure a compiled virtualImageFunc is available
+compileVirtualImageFunc;
 
 % Obtain the default sceneGeometry with the following modifications:
 % - camera distance to 100 mm
 % - center of rotation at the corneal apex
 %
 % By having the eye rotate around the corneal apex, we match the conditions
-% of Mathur et al in which the camera was maintained at a constant
-% distance from the corneal apex.
+% of Mathur et al in which the camera was maintained at a constant distance
+% from the corneal apex.
 sceneGeometry = createSceneGeometry( ...
     'extrinsicTranslationVector',[0; 0; 100],...
     'eyeLaterality','Right');
 sceneGeometry.eye.rotationCenters.azi = [0 0 0];
 sceneGeometry.eye.rotationCenters.ele = [0 0 0];
 
-% Compile the ray tracing functions; save as a mex file
-sceneGeometry.virtualImageFunc = compileVirtualImageFunc(sceneGeometry,'/tmp/demo_virtualImageFunc');
 
-% Assume a 5 mm true exit pupil diamter, as Mathur 2013 used
-% pharmacological dilation for their subjects. The observed entrance pupil
-% would have been about 7 mm.
-pupilDiam = 5;
+% Mathur 2013 used 1% cyclopentolate to produce pharmacological dilation
+% for their subjects. A study of the this mydriatic upon pupil size in
+% children (age 1-7) found a mean dilated pupil size of 6.19 mm:
+%
+%   Hug, Timothy, and Scott Olitsky. "Dilation efficacy: is 1%
+%   cyclopentolate enough?." Optometry-Journal of the American Optometric
+%   Association 78.3 (2007): 119-121.
+%
+% While this is a measurement in children, the image of an example subject
+% that accompanies the Mathur paper does appear consistent with an ~ 6mm
+% diameter pupil. Corneal refraction magnifies the exit pupil by 1.13x when
+% the eye is in the primary position (SEE: DEMO_eyePoseParams.m), so we
+% make that adjustment here in our specification of the exit pupil
+% diameter.
+pupilDiam = 6.19/1.13;
 
 % This is Eq 9 from Mathur 2013, which specifies the horizontal to vertical
 % ratio of the entrance pupil from different viewing angles relative to
@@ -77,8 +88,8 @@ viewingAngleDeg = -60:1:60;
 % the eye. The coordinates of our model eye are based around the pupil
 % axis. Therfore, we need to calculate a rotation that accounts for the
 % Mathur viewing angle and kappa.
-azimuthsDeg = (-viewingAngleDeg)-sceneGeometry.eye.kappa(1);
-elevationsDeg = zeros(size(viewingAngleDeg))-sceneGeometry.eye.kappa(2);
+azimuthsDeg = (-viewingAngleDeg)-sceneGeometry.eye.gamma(1);
+elevationsDeg = zeros(size(viewingAngleDeg))-sceneGeometry.eye.gamma(2);
 
 % Calculate the diameter ratios and thetas
 [diamRatios, thetas] = calcPupilDiameterRatio(azimuthsDeg,elevationsDeg,pupilDiam,sceneGeometry);
@@ -115,6 +126,7 @@ xlabel('Viewing angle [deg]')
 ylabel('Oblique component of the pupil ellipticity')
 title('Mathur 2013 Figure 6, component C')
 
+viewingAngleDeg(find(diamRatios==max(diamRatios)))
 
 %% LOCAL FUNCTION
 function [diamRatios, thetas] = calcPupilDiameterRatio(azimuthsDeg,elevationsDeg,pupilDiam,sceneGeometry)

@@ -15,7 +15,6 @@ function runVideoPipeline( pathParams, varargin )
 %       estimateSceneParams
 %       fitPupilPerimeter -- fit again with scene geometry constraints
 %       smoothPupilRadius
-%       refineIrisRadius
 %       makeFitVideo
 %       makeEyeModelVideo
 %

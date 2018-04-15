@@ -15,7 +15,7 @@ function makeEyeModelVideo(videoOutFileName,pupilFileName, sceneGeometryFileName
 %   sceneGeometryFileName - Full path to the sceneGeometry file
 %
 % Optional key/value pairs:
-%  'verbosity'            - Level of verbosity. [none, full]
+%  'verbose'              - Logical. Default false.
 %  'videoOutFrameRate'    - Frame rate (in Hz) of saved video [default 60]
 %  'saveCompressedVideo'  - Default value is true, resulting in a
 %                           a video with a 10x reduction in file size
@@ -38,7 +38,7 @@ p.addRequired('pupilFileName', @ischar);
 p.addRequired('sceneGeometryFileName', @ischar);
 
 % Optional display and I/O params
-p.addParameter('verbosity','none', @ischar);
+p.addParameter('verbose',false, @islogical);
 p.addParameter('videoOutFrameRate', 60, @isnumeric);
 p.addParameter('saveCompressedVideo', true, @islogical);
 p.addParameter('modelEyeLabelNames', {'aziRotationCenter', 'eleRotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex'}, @iscell);
@@ -58,7 +58,7 @@ clear dataLoad
 eyePoses = pupilData.(p.Results.fitLabel).eyePoses.values;
 
 % Load the sceneGeometry file
-sceneGeometry = loadSceneGeometry(p.Results.sceneGeometryFileName, p.Results.verbosity);
+sceneGeometry = loadSceneGeometry(p.Results.sceneGeometryFileName, p.Results.verbose);
 
 % Open a video object for writing
 if p.Results.saveCompressedVideo
@@ -94,7 +94,7 @@ nFrames = size(eyePoses,1);
 frameFig = figure( 'Visible', 'off');
 
 % Alert the user
-if strcmp(p.Results.verbosity,'full')
+if p.Results.verbose
     tic
     fprintf(['Creating and saving model video. Started ' char(datetime('now')) '\n']);
     fprintf('| 0                      50                   100%% |\n');
@@ -106,7 +106,7 @@ end
 for ii = 1:nFrames
     
     % Update the progress display
-    if strcmp(p.Results.verbosity,'full') && mod(ii,round(nFrames/50))==0
+    if p.Results.verbose && mod(ii,round(nFrames/50))==0
         fprintf('\b.\n');
     end
     
@@ -175,7 +175,7 @@ close(frameFig);
 clear videoOutObj videoInObj
 
 % report completion of fit video generation
-if strcmp(p.Results.verbosity,'full')
+if p.Results.verbose
     toc
     fprintf('\n');
 end

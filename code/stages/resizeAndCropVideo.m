@@ -18,7 +18,7 @@ function resizeAndCropVideo(inputVideoName, outputVideoName, varargin)
 %   videoOutFileName      - Full path to the output .avi file
 %
 % Optional key/value pairs (display and I/O):
-%  'verbose'              - Boolean. Default false.
+%  'verbose'              - Logical. Default false.
 %
 % Optional key/value pairs (flow control):
 %  'nFrames'              - Analyze fewer than the total number of frames

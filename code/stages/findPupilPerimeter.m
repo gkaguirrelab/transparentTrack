@@ -16,7 +16,7 @@ function perimeter = findPupilPerimeter(grayVideoName, perimeterFileName, vararg
 %	perimeterFileName     - Full path to the output .mat file
 %
 % Optional key/value pairs (display and I/O):
-%  'verbose'              - Boolean. Default false.
+%  'verbose'              - Logical. Default false.
 %  'displayMode'          - When set to true, displays the results of the
 %                           boundary extraction and does not save a video
 %
