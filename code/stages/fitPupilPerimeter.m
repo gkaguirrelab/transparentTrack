@@ -40,7 +40,7 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %                           the results of the ellipse fitting.
 %
 % Optional key/value pairs (display and I/O):
-%  'verbose'              - Boolean. Default false.
+%  'verbose'              - Logical. Default false.
 %
 % Optional key/value pairs (flow control)
 %  'nFrames'              - Analyze fewer than the total number of frames.

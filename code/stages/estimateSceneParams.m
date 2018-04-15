@@ -1,4 +1,4 @@
-function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileName, vitualImageFuncDir, varargin)
+wfunction sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileName, vitualImageFuncDir, varargin)
 % Estimate camera translation and eye rotation given image plane ellipses
 %
 % Syntax:
@@ -35,7 +35,7 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
 %                           the optical system in sceneGeometry.
 %
 % Optional key/value pairs (display and I/O):
-%  'verbose'              - Boolean. Default false.
+%  'verbose'              - Logical. Default false.
 %  'sceneDiagnosticPlotFileName' - Full path (including suffix) to the
 %                           location where a diagnostic plot of the
 %                           sceneGeometry calculation is to be saved. If

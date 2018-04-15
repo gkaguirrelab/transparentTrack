@@ -40,7 +40,7 @@ function perimeter = applyControlFile(perimeterFileName, controlFileName, correc
 %   correctedPerimeterFileName - Full path to the corrected perimeter file
 %
 % Optional key/value pairs (display and I/O):
-%  'verbose'              - Boolean. Default false.
+%  'verbose'              - Logical. Default false.
 %
 % Optional key/value pairs (environment)
 %  'tbSnapshot'           - This should contain the output of the

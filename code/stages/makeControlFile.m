@@ -42,7 +42,7 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 %   glintFileName         - Full path to the glint file
 %
 % Optional key/value pairs (display and I/O):
-%  'verbose'              - Boolean. Default false.
+%  'verbose'              - Logical. Default false.
 %
 % Optional key/value pairs (flow control)
 %  'nFrames'              - Analyze fewer than the total number of frames.

@@ -14,7 +14,7 @@ function makeFitVideo(videoInFileName, videoOutFileName, varargin)
 %   videoOutFileName      - Full path to the output .avi file
 %
 % Optional key/value pairs (display and I/O):
-%  'verbose'              - Boolean. Default false.
+%  'verbose'              - Logical. Default false.
 %  'videoOutFrameRate'    - Frame rate (in Hz) of saved video [default 60]
 %  'saveCompressedVideo'  - Default value is true, resulting in a
 %                           a video with a 10x reduction in file size
