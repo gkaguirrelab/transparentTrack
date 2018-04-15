@@ -23,8 +23,8 @@ fprintf(['The pose of the eye is described by the parameters:\n\n' ...
 sceneGeometry = createSceneGeometry('eyeLaterality','Right');
 
 % Define some variables for plotting the model eye
-eyePartLabels = {'aziRotationCenter', 'eleRotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex' 'pupilCenter'};
-plotColors = {'>r' '^m' '.w' '.b' '*g' '.y' '*y' '+g'};
+eyePartLabels = {'aziRotationCenter', 'eleRotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'opticalAxisOrigin' 'cornealApex' 'pupilCenter'};
+plotColors = {'>r' '^m' '.w' '.b' '*g' '.y' '+w' '+y' '+g'};
 blankFrame = zeros(480,620)+0.5;
 
 %% Present Figure 1
@@ -58,17 +58,17 @@ fprintf(['Figure 1 shows the pose of the eye across positive and negative values
 %% Present Figure 2
 figure(2)
 eyeSides = {'right','left'};
+partsToPlot = [3 4 7 8 9];
 for laterality = 1:2
     % prepare the model eye for this laterality
     sceneGeometry = createSceneGeometry('eyeLaterality',eyeSides{laterality});
-    sceneGeometry.virtualImageFunc = compileVirtualImageFunc(sceneGeometry);
     [pupilEllipseOnImagePlane, imagePoints, ~, ~, pointLabels] = ...
         pupilProjection_fwd([0 0 0 3],sceneGeometry,'fullEyeModelFlag',true,'nIrisPerimPoints',50);
-    
+
     % Obtain the point that corresponds to the visual axis at the pupil
     % plane
-    [~, imagePointsVisualAxis, ~, ~, pointLabelsVisualAxis] = ...
-        pupilProjection_fwd([sceneGeometry.eye.kappa(1) sceneGeometry.eye.kappa(2) 0 3],sceneGeometry,'fullEyeModelFlag',true);
+    [~, imagePointsFixationAxis, ~, ~, pointLabelsFixationAxis] = ...
+        pupilProjection_fwd([sceneGeometry.eye.gamma(1) sceneGeometry.eye.gamma(2) 0 3],sceneGeometry,'fullEyeModelFlag',true);
     
     % setup the figure
     subplot(1,2,laterality);
@@ -85,31 +85,30 @@ for laterality = 1:2
     fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
     fimplicit(fh,[1, 640, 1, 480],'Color', 'g','LineWidth',1);
     axis off;
-    idx = strcmp(pointLabels,eyePartLabels{3});
-    plot(imagePoints(idx,1), imagePoints(idx,2), plotColors{3})
-    idx = strcmp(pointLabels,eyePartLabels{4});
-    plot(imagePoints(idx,1), imagePoints(idx,2), plotColors{4})
-    idx = strcmp(pointLabels,eyePartLabels{7});
-    plot(imagePoints(idx,1), imagePoints(idx,2), plotColors{7})
-
+    for jj = 1:length(partsToPlot)
+        idx = strcmp(pointLabels,eyePartLabels{partsToPlot(jj)});
+        plot(imagePoints(idx,1), imagePoints(idx,2), plotColors{partsToPlot(jj)})
+    end
+    
     % Add the visual axis point
-    idx = strcmp(pointLabelsVisualAxis,eyePartLabels{7});
-    plot(imagePointsVisualAxis(idx,1), imagePointsVisualAxis(idx,2), '+w')
+    idx = strcmp(pointLabelsFixationAxis,eyePartLabels{9});
+    plot(imagePointsFixationAxis(idx,1), imagePointsFixationAxis(idx,2), '+c')
+    
     hold off
 end
 drawnow
+hold off
 fprintf(['Figure 2 top shows the perimeter of the pupil (green) and\n' ...
     'iris (blue) for eyePoses [0 0 0 3] for the right and left eye. The\n' ...
     'axis of the camera is aligned with the pupil axis of the model eye. \n' ...
     'Note that the pupil is slight ellipitical, with a vertical axis. \n' ...
-    'The white point indicates the location on the pupil plane of the\n' ...
+    'The cyan point indicates the location on the pupil plane of the\n' ...
     'visual axis of the eye. It is displaced nasally and superiorly.\n\n']);
 
 
 %% Present Figure 3
 figure(3)
 sceneGeometry = createSceneGeometry();
-sceneGeometry.virtualImageFunc = compileVirtualImageFunc(sceneGeometry);
 blankFrame = zeros(480,620)+0.5;
 imshow(blankFrame, 'Border', 'tight');
 hold on
@@ -140,9 +139,8 @@ fprintf(['Figure 3 presents the shape of the entrance pupil for\n' ...
 %% Present Figure 4
 figure(4)
 sceneGeometry = createSceneGeometry();
-sceneGeometry.virtualImageFunc = compileVirtualImageFunc(sceneGeometry);
 noRayTraceSG = sceneGeometry;
-noRayTraceSG.virtualImageFunc = [];
+noRayTraceSG.refraction = [];
 
 % Plot the values for eyePose [0 0 0 x]
 subplot(1,2,1);

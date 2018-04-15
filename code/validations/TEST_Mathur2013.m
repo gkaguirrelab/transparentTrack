@@ -49,10 +49,21 @@ sceneGeometry.eye.rotationCenters.azi = [0 0 0];
 sceneGeometry.eye.rotationCenters.ele = [0 0 0];
 
 
-% Assume a 5 mm true exit pupil diamter, as Mathur 2013 used
-% pharmacological dilation for their subjects. The observed entrance pupil
-% would have been about 7 mm.
-pupilDiam = 5;
+% Mathur 2013 used 1% cyclopentolate to produce pharmacological dilation
+% for their subjects. A study of the this mydriatic upon pupil size in
+% children (age 1-7) found a mean dilated pupil size of 6.19 mm:
+%
+%   Hug, Timothy, and Scott Olitsky. "Dilation efficacy: is 1%
+%   cyclopentolate enough?." Optometry-Journal of the American Optometric
+%   Association 78.3 (2007): 119-121.
+%
+% While this is a measurement in children, the image of an example subject
+% that accompanies the Mathur paper does appear consistent with an ~ 6mm
+% diameter pupil. Corneal refraction magnifies the exit pupil by 1.13x when
+% the eye is in the primary position (SEE: DEMO_eyePoseParams.m), so we
+% make that adjustment here in our specification of the exit pupil
+% diameter.
+pupilDiam = 6.19/1.13;
 
 % This is Eq 9 from Mathur 2013, which specifies the horizontal to vertical
 % ratio of the entrance pupil from different viewing angles relative to
