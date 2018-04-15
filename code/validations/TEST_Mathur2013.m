@@ -33,21 +33,20 @@
 %
 
 % Make sure a compiled virtualImageFunc is available
-compileVirtualImageFunc();
+compileVirtualImageFunc;
 
 % Obtain the default sceneGeometry with the following modifications:
 % - camera distance to 100 mm
 % - center of rotation at the corneal apex
 %
 % By having the eye rotate around the corneal apex, we match the conditions
-% of Mathur et al in which the camera was maintained at a constant
-% distance from the corneal apex.
+% of Mathur et al in which the camera was maintained at a constant distance
+% from the corneal apex.
 sceneGeometry = createSceneGeometry( ...
     'extrinsicTranslationVector',[0; 0; 100],...
     'eyeLaterality','Right');
 sceneGeometry.eye.rotationCenters.azi = [0 0 0];
 sceneGeometry.eye.rotationCenters.ele = [0 0 0];
-sceneGeometry.refraction.args{2} = sceneGeometry.eye.rotationCenters;
 
 
 % Assume a 5 mm true exit pupil diamter, as Mathur 2013 used
@@ -136,7 +135,6 @@ for ii = 1:length(azimuthsDeg)
     adjustedSceneGeometry = sceneGeometry;
     adjustedSceneGeometry.cameraExtrinsic.translation(1) = adjustedSceneGeometry.cameraExtrinsic.translation(1)+geometricPupilCenter(1);
     adjustedSceneGeometry.cameraExtrinsic.translation(2) = adjustedSceneGeometry.cameraExtrinsic.translation(2)+geometricPupilCenter(2);
-    adjustedSceneGeometry.refraction.args{1}=adjustedSceneGeometry.cameraExtrinsic.translation;
     % Now, measure the horizontal and vertical width of the image of the
     % pupil
     [pupilEllipseOnImagePlane, imagePoints] = pupilProjection_fwd(eyePose, adjustedSceneGeometry, 'nPupilPerimPoints',50);
