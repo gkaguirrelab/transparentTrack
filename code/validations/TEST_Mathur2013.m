@@ -47,6 +47,8 @@ sceneGeometry = createSceneGeometry( ...
     'eyeLaterality','Right');
 sceneGeometry.eye.rotationCenters.azi = [0 0 0];
 sceneGeometry.eye.rotationCenters.ele = [0 0 0];
+sceneGeometry.refraction.args{2} = sceneGeometry.eye.rotationCenters;
+
 
 % Assume a 5 mm true exit pupil diamter, as Mathur 2013 used
 % pharmacological dilation for their subjects. The observed entrance pupil
@@ -114,6 +116,7 @@ xlabel('Viewing angle [deg]')
 ylabel('Oblique component of the pupil ellipticity')
 title('Mathur 2013 Figure 6, component C')
 
+viewingAngleDeg(find(diamRatios==max(diamRatios)))
 
 %% LOCAL FUNCTION
 function [diamRatios, thetas] = calcPupilDiameterRatio(azimuthsDeg,elevationsDeg,pupilDiam,sceneGeometry)
@@ -133,6 +136,7 @@ for ii = 1:length(azimuthsDeg)
     adjustedSceneGeometry = sceneGeometry;
     adjustedSceneGeometry.cameraExtrinsic.translation(1) = adjustedSceneGeometry.cameraExtrinsic.translation(1)+geometricPupilCenter(1);
     adjustedSceneGeometry.cameraExtrinsic.translation(2) = adjustedSceneGeometry.cameraExtrinsic.translation(2)+geometricPupilCenter(2);
+    adjustedSceneGeometry.refraction.args{1}=adjustedSceneGeometry.cameraExtrinsic.translation;
     % Now, measure the horizontal and vertical width of the image of the
     % pupil
     [pupilEllipseOnImagePlane, imagePoints] = pupilProjection_fwd(eyePose, adjustedSceneGeometry, 'nPupilPerimPoints',50);
