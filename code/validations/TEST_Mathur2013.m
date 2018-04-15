@@ -32,6 +32,8 @@
 %   Mathur 2013.
 %
 
+% Make sure a compiled virtualImageFunc is available
+compileVirtualImageFunc();
 
 % Obtain the default sceneGeometry with the following modifications:
 % - camera distance to 100 mm
@@ -45,9 +47,6 @@ sceneGeometry = createSceneGeometry( ...
     'eyeLaterality','Right');
 sceneGeometry.eye.rotationCenters.azi = [0 0 0];
 sceneGeometry.eye.rotationCenters.ele = [0 0 0];
-
-% Compile the ray tracing functions; save as a mex file
-sceneGeometry.virtualImageFunc = compileVirtualImageFunc(sceneGeometry,'/tmp/demo_virtualImageFunc');
 
 % Assume a 5 mm true exit pupil diamter, as Mathur 2013 used
 % pharmacological dilation for their subjects. The observed entrance pupil
@@ -77,8 +76,8 @@ viewingAngleDeg = -60:1:60;
 % the eye. The coordinates of our model eye are based around the pupil
 % axis. Therfore, we need to calculate a rotation that accounts for the
 % Mathur viewing angle and kappa.
-azimuthsDeg = (-viewingAngleDeg)-sceneGeometry.eye.kappa(1);
-elevationsDeg = zeros(size(viewingAngleDeg))-sceneGeometry.eye.kappa(2);
+azimuthsDeg = (-viewingAngleDeg)-sceneGeometry.eye.gamma(1);
+elevationsDeg = zeros(size(viewingAngleDeg))-sceneGeometry.eye.gamma(2);
 
 % Calculate the diameter ratios and thetas
 [diamRatios, thetas] = calcPupilDiameterRatio(azimuthsDeg,elevationsDeg,pupilDiam,sceneGeometry);
