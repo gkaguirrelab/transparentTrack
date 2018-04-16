@@ -344,7 +344,11 @@ function makeFitVideoForThisStage(pathParams, sceneGeometryFileNameInput, funNam
 fitVideoFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_fitStage' num2str(ff) '.avi']);
 
 % Assemble the entire list of potential files to include in the video
-grayVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_gray.avi']);
+if isfield(pathParams,'grayVideoName')
+    grayVideoName = pathParams.grayVideoName;
+else
+    grayVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_gray.avi']);
+end
 glintFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_glint.mat']);
 initialPerimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_perimeter.mat']);
 controlFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_controlFile.csv']);
