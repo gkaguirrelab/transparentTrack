@@ -19,11 +19,7 @@ function [eyePose, RMSE] = eyePoseEllipseFit(Xp, Yp, sceneGeometry, varargin)
 %   sceneGeometry         - Structure. SEE: createSceneGeometry
 %
 % Optional key/value pairs:
-%  'x0'                   - Initial guess for the eyePose. The initial
-%                           azimuth and elevation is slightly different
-%                           from zero, as the routines can become stuck in
-%                           local minima for rotation values exactly at
-%                           zero.
+%  'x0'                   - Initial guess for the eyePose.
 %  'eyePoseLB'            - Lower bound on the eyePose
 %  'eyePoseUB'            - Upper bound on the eyePose
 %
