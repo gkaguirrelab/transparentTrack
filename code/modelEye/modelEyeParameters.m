@@ -35,10 +35,10 @@ function eye = modelEyeParameters( varargin )
 %                           the posterior chamber are scaled to fit the
 %                           proportions predicted by the Atchison model for
 %                           the specified degree of ametropia.
-%  'gammaAngle'           - 1x4 vector. This is the angle of the fixation
-%                           axis in degrees w.r.t. to optical axis. The
-%                           values are [azimuth, elevation]. An eyePose of:
-%                             [-gamma(1), -gamma(2), 0, radius]
+%  'alphaAngle'           - 1x4 vector. This is the angle of the visual
+%                           axis w.r.t. to optical axis. The values are
+%                           [azimuth, elevation, torsion]. An eyePose of:
+%                             [-alpha(1), -alpha(2), -alpha(3), radius]
 %                           aligns the visual axis of the eye with the
 %                           optical axis of the camera.
 %  'eyeLaterality'        - A text string that specifies which eye (left,
@@ -73,7 +73,8 @@ p = inputParser; p.KeepUnmatched = true;
 % Optional
 p.addParameter('sphericalAmetropia',0,@isscalar);
 p.addParameter('axialLength',[],@(x)(isempty(x) || isscalar(x)));
-p.addParameter('gammaAngle',[],@(x)(isempty(x) || isnumeric(x)));
+p.addParameter('alphaAngle',[],@(x)(isempty(x) || isnumeric(x)));
+p.addParameter('foveaAngle',[],@(x)(isempty(x) || isnumeric(x)));
 p.addParameter('eyeLaterality','Right',@ischar);
 p.addParameter('species','Human',@ischar);
 p.addParameter('spectralDomain','nir',@ischar);
@@ -207,7 +208,7 @@ switch p.Results.species
         % optic axis of the eye. To do so, we first assume that the
         % keratometric axis is equal to the fixation axis [MAY WANT TO ADD
         % A CONVERSION STEP FOR THIS]. Next, we add the Navarro
-        % measurements to the gamma angle values that we have for the
+        % measurements to the alpha angle values that we have for the
         % model.
         %{
             % Navarro values for the displacement of the corneal axis from
@@ -215,17 +216,17 @@ switch p.Results.species
             keratometricAxisWRTcornealAxis = [2.35 0.85 0.02];
             % assume that the fixation and keratometric axes are equal
             fixationAxisWRTcornealAxis = [2.35 0.85 0.02];
-            % specify our gamma angles
+            % specify our alpha angles
             eye = modelEyeParameters();
-            fixationAxisWRTopticalAxis = eye.gamma;
+            fixationAxisWRTopticalAxis = eye.alpha;
             % Now obtain the corneal axes relative to optical axis
             cornealAxisWRTopticalAxis = fixationAxisWRTopticalAxis - fixationAxisWRTcornealAxis            
         %}
         switch eyeLaterality
             case 'Right'
-                eye.cornea.axis = [2.6539    1.3017   -0.0200];
+                eye.cornea.axis = [3.4582    1.4499   -0.0200];
             case 'Left'
-                eye.cornea.axis = [-2.6539    1.3017   0.0200];
+                eye.cornea.axis = [-3.4582    1.4499   -0.0200];
         end
 
         
@@ -249,22 +250,24 @@ switch p.Results.species
         % hyperbolic tangent (sigmoidal) function to the the eccentricity
         % of the exit pupil as a function of the exit pupil radius. The
         % theta values observed by Wyatt were close to vertically
-        % orientated in the dark, and horizontally oriented in the light,
-        % so we round to these values. When the exit pupil eccentricity is
-        % below zero, the theta is set to zero (horizontal), and above zero
-        % value it is set to pi/2 (vertical). In the forward model, we take
-        % the absolute value of the eccentricity returned by the parameters
-        % for the exit pupil eccentrivity.
+        % orientated in the dark, and horizontally oriented in the light.
+        % We find that a slight tilt away from vertical for the dilated
+        % pupil allows our model to fit the Mathur 2013 obliquity component
+        % perfectly. When the exit pupil eccentricity is below zero, the
+        % theta is set to zero (horizontal), and above zero value it is set
+        % to ~pi/2 (vertical). In the forward model, we take the absolute
+        % value of the eccentricity returned by the parameters for the exit
+        % pupil eccentrivity.
         %{
             % Observed entrance pupil diameters reported in Wyatt 1995.
             entranceRadius = [3.09/2 4.93/2];
             % Wyatt reported an eccentricity of the pupil of 0.21 under
             % dark conditions. We find that using that value produces
             % model results that disagree with Malthur 2013. We have
-            % adopted an upper value of 0.15 instead. We also use the 
+            % adopted an upper value of 0.21 instead. We also use the 
             % convention of a negative eccentricity for a horizontal major
             % axis and a positive eccentricity for vertical.
-            entranceEccen = [-0.12 0.15];
+            entranceEccen = [-0.12 0.16];
             % Prepare scene geometry and eye pose aligned with visual axis
             sceneGeometry = createSceneGeometry();
             % Fix the exit pupil eccentricity at 0
@@ -273,15 +276,15 @@ switch p.Results.species
             % Obtain the pupil area in the image for each entrance radius
             % assuming no ray tracing
             sceneGeometry.refraction = [];
-            pupilImage = pupilProjection_fwd([-sceneGeometry.eye.gamma(1), -sceneGeometry.eye.gamma(2), 0, entranceRadius(1)],sceneGeometry);
+            pupilImage = pupilProjection_fwd([-sceneGeometry.eye.alpha(1), -sceneGeometry.eye.alpha(2), 0, entranceRadius(1)],sceneGeometry);
             exitArea(1) = pupilImage(3);
-            pupilImage = pupilProjection_fwd([-sceneGeometry.eye.gamma(1), -sceneGeometry.eye.gamma(2), 0, entranceRadius(2)],sceneGeometry);
+            pupilImage = pupilProjection_fwd([-sceneGeometry.eye.alpha(1), -sceneGeometry.eye.alpha(2), 0, entranceRadius(2)],sceneGeometry);
             exitArea(2) = pupilImage(3);
             % Add the ray tracing function to the sceneGeometry
             sceneGeometry = createSceneGeometry();
             % Search across exit pupil radii to find the values that match
             % the observed entrance areas.
-            myPupilEllipse = @(radius) pupilProjection_fwd([-sceneGeometry.eye.gamma(1), -sceneGeometry.eye.gamma(2), 0, radius],sceneGeometry);
+            myPupilEllipse = @(radius) pupilProjection_fwd([-sceneGeometry.eye.alpha(1), -sceneGeometry.eye.alpha(2), 0, radius],sceneGeometry);
             myArea = @(ellipseParams) ellipseParams(3);
             myObj = @(radius) (myArea(myPupilEllipse(radius))-exitArea(1)).^2;
             exitRadius(1) = fminunc(myObj, entranceRadius(1));
@@ -292,13 +295,13 @@ switch p.Results.species
             place = {'eye' 'pupil' 'eccenFcnString'};
             sceneGeometry.eye.pupil.thetas = [0, 0];
             mySceneGeom = @(eccen) setfield(sceneGeometry,place{:},['@(x) ' num2str(eccen)]);
-            myPupilEllipse = @(eccen) pupilProjection_fwd([-sceneGeometry.eye.gamma(1), -sceneGeometry.eye.gamma(2), 0, exitRadius(1)],mySceneGeom(eccen));
+            myPupilEllipse = @(eccen) pupilProjection_fwd([-sceneGeometry.eye.alpha(1), -sceneGeometry.eye.alpha(2), 0, exitRadius(1)],mySceneGeom(eccen));
             myEccen = @(ellipseParams) ellipseParams(4);
             myObj = @(eccen) 1e4*(myEccen(myPupilEllipse(eccen))-abs(entranceEccen(1))).^2;
             exitEccen(1) = -fminsearch(myObj, 0.1);
             sceneGeometry.eye.pupil.thetas = [pi/2, pi/2];
             mySceneGeom = @(eccen) setfield(sceneGeometry,place{:},['@(x) ' num2str(eccen)]);
-            myPupilEllipse = @(eccen) pupilProjection_fwd([-sceneGeometry.eye.gamma(1), -sceneGeometry.eye.gamma(2), 0, exitRadius(2)],mySceneGeom(eccen));
+            myPupilEllipse = @(eccen) pupilProjection_fwd([-sceneGeometry.eye.alpha(1), -sceneGeometry.eye.alpha(2), 0, exitRadius(2)],mySceneGeom(eccen));
             myEccen = @(ellipseParams) ellipseParams(4);
             myObj = @(eccen) 1e4*(myEccen(myPupilEllipse(eccen))-abs(entranceEccen(2))).^2;
             exitEccen(2) = fminsearch(myObj, 0.2);        
@@ -318,18 +321,16 @@ switch p.Results.species
         %}
         % Specify the params and equation that defines the exit pupil
         % ellipse. This can be invoked as a function using str2func.
-        eye.pupil.eccenParams = [-1.767 4.714 0.134 0.140]; 
+        eye.pupil.eccenParams = [-1.766 4.713 0.154 0.145]; 
         eye.pupil.eccenFcnString = sprintf('@(x) (tanh((x+%f).*%f)+%f)*%f',eye.pupil.eccenParams(1),eye.pupil.eccenParams(2),eye.pupil.eccenParams(3),eye.pupil.eccenParams(4)); 
 
         % The theta values of the exit pupil ellipse for eccentricities
-        % less than, and greater than, zero. We have structure here to add
-        % a bit of tilt from vertical by laterality, but are not currently
-        % using it.
+        % less than, and greater than, zero.
         switch eyeLaterality
             case 'Right'
-                eye.pupil.thetas = [0  pi/2];
+                eye.pupil.thetas = [0  pi*4/7];
             case 'Left'
-                eye.pupil.thetas = [0  pi/2];
+                eye.pupil.thetas = [0  pi*3/7];
         end
         
         
@@ -398,15 +399,22 @@ switch p.Results.species
         %{
         switch eyeLaterality
             case 'Right'
-                eye.iris.center = [-3.7 -0.15 0.1];
+                eye.iris.center = [-3.7 0.15 -0.1];
             case 'Left'
-                eye.iris.center = [-3.7 0.15 0.1];
+                eye.iris.center = [-3.7 -0.15 -0.1];
         end
         %}
         %
         % We model an eye with zero iris angle, and thus set the depth of
-        % the iris plane equal to the pupil plane.
-        eye.iris.center = [-3.7 0 0];
+        % the iris plane equal to the pupil plane. We adjust the position
+        % of the iris so that it is centered within the rotated corneal
+        % ellipse.
+        switch eyeLaterality
+            case 'Right'
+                eye.iris.center = [-3.7 0.3 0.25];
+            case 'Left'
+                eye.iris.center = [-3.7 -0.3 0.25];
+        end
         
         
         %% Lens
@@ -553,22 +561,62 @@ switch p.Results.species
             aziFoveaFromOpticAxisRetDeg = cosd(angleVisualToOpticalAxis)*distanceDegRetinaVisualToOpticalAxis
             eleFoveaFromOpticAxisRetDeg = sind(angleVisualToOpticalAxis)*distanceDegRetinaVisualToOpticalAxis
         %}
-
-        % Location of the fovea in degrees of retina w.r.t. optical axis,
-        % adjusted for the laterality of the eye
-        switch eyeLaterality
-            case 'Right'
-                aziFoveaFromOpticAxisRetDeg = 7.1310;
-                aziFoveaFromOpticAxisRetDeg = 8.6;
-            case 'Left'
-                aziFoveaFromOpticAxisRetDeg = -7.1310;
-        end        
-        eleFoveaFromOpticAxisRetDeg = 2.5728;
-        eleFoveaFromOpticAxisRetDeg = 3.42;
-
+        % This computation yields a displacement of the fovea from the
+        % intersection of the optical axis of 7.13 deg azimuth and 2.57
+        % deg elevation. The computation relies upon the assumption of a
+        % spherical posterior chamber with a radius of 11.95 mm.
+        %
+        % An alternative approach to setting the foveal position is to
+        % identify the location of the fovea that yields a visual axis that
+        % is at an angle alpha w.r.t. the optical axis such that this angle
+        % is equivalent to that measured empirically. We assume an azimuth
+        % alpha of 5.8 degrees for an emmetropic eye (Figure 8 of Mathur
+        % 2013). We assume an elevation alpha of 2.3 degrees, as this
+        % value, when adjusted to account for the longer axial length of
+        % the subjects in the Mathur study, best fits the Mathur data.
+        % Given these angles, we then calculate the corresponding position
+        % of the fovea w.r.t. the the optical axis of the eye (adjusted for
+        % eye laterality).
+        %{
+            % These are the alpha angles that we wish to hit for emmetropia
+            targetAlphaAngle = [5.8, 2.3];
+            myComputedAlphaAzi = @(eye) eye.alpha(1);
+            myObj = @(x) (targetAlphaAngle(1) - myComputedAlphaAzi(modelEyeParameters('foveaAngle',[x,0])))^2;
+            aziFoveaEmmetropic = fminsearch(myObj,9)
+            myComputedAlphaEle = @(eye) eye.alpha(2);
+            myObj = @(x) (targetAlphaAngle(2) - myComputedAlphaEle(modelEyeParameters('foveaAngle',[aziFoveaEmmetropic,x])))^2;
+            eleFoveaEmmetropic = fminsearch(myObj,2)
+        %}
+        if isempty(p.Results.foveaAngle)
+            switch eyeLaterality
+                case 'Right'
+                    aziFoveaEmmetropic = 9.1542;
+                case 'Left'
+                    aziFoveaEmmetropic = -9.1542;
+            end
+            eleFoveaEmmetropic = 3.6480;
+        else
+            aziFoveaEmmetropic = p.Results.foveaAngle(1);
+            eleFoveaEmmetropic = p.Results.foveaAngle(2);
+        end
+        
+        % Taberno 2007 finds that alpha varies as a function of eye axial
+        % length, suggesting that the position of the fovea is a fixed
+        % distance (in mm) from the optical axis of the eye:
+        %
+        %	Tabernero, Juan, et al. "Mechanism of compensation of
+        %   aberrations in the human eye." JOSA A 24.10 (2007): 3274-3283.
+        %
+        % We use the Taberno equation 6 to adjust the position of the fovea
+        % in units of degrees of distance from the optical axis as the size
+        % of the posterior chamber changes. The fixed value of 10.1654 is
+        % axial radius of the posterior chamber in the emmetropic eye.
+        aziFoveaEmmetropic = atand( (10.1654/eye.posteriorChamber.radii(1))*tand(aziFoveaEmmetropic) );
+        eleFoveaEmmetropic = atand( (10.1654/eye.posteriorChamber.radii(1))*tand(eleFoveaEmmetropic) );
+        
         % Rotation matrix to bring the eyeWorld (p1p2p3) axes to be w.r.t.
         % the fovea
-        angles = -[aziFoveaFromOpticAxisRetDeg, eleFoveaFromOpticAxisRetDeg, 0];
+        angles = -[aziFoveaEmmetropic, eleFoveaEmmetropic, 0];
         R3 = [cosd(angles(1)) -sind(angles(1)) 0; sind(angles(1)) cosd(angles(1)) 0; 0 0 1];
         R2 = [cosd(angles(2)) 0 sind(angles(2)); 0 1 0; -sind(angles(2)) 0 cosd(angles(2))];
         R1 = [1 0 0; 0 cosd(angles(3)) -sind(angles(3)); 0 sind(angles(3)) cosd(angles(3))];
@@ -583,8 +631,10 @@ switch p.Results.species
         [~, Bye]=EllipsoidPlaneIntersection(rotPlane(1),rotPlane(2),rotPlane(3),0,p1p2_Bye, p1p2_Aye,eye.posteriorChamber.radii(3));
         foveaCoordRotFrame = [-Bye 0 0];
 
-        % Now rotate this coordinate location back to the original axes
-        angles = [aziFoveaFromOpticAxisRetDeg, eleFoveaFromOpticAxisRetDeg, 0];
+        % Now rotate this coordinate location back to the original axes.
+        % This gives us the coordinates of the fovea in the canonical
+        % eyeWorld coordinates space.
+        angles = [aziFoveaEmmetropic, eleFoveaEmmetropic, 0];
         R3 = [cosd(angles(1)) -sind(angles(1)) 0; sind(angles(1)) cosd(angles(1)) 0; 0 0 1];
         R2 = [cosd(angles(2)) 0 sind(angles(2)); 0 1 0; -sind(angles(2)) 0 cosd(angles(2))];
         R1 = [1 0 0; 0 cosd(angles(3)) -sind(angles(3)); 0 sind(angles(3)) cosd(angles(3))];
@@ -692,37 +742,25 @@ switch p.Results.species
         end
 
         
-        %% Gamma
-        % We now calculate gamma, which is the angle (in degrees) between
-        % the optical and fixation axes of the eye. A related measurement
-        % is kappa, which is the angle between the pupil and visual axes.
-        % We use the names and greek letter designations for eye axes from
-        % Atchison & Smith:
+        %% Alpha
+        % We now calculate alpha, which is the angle (in degrees) between
+        % the optical and visual axes of the eye. We use the names
+        % and greek letter designations for eye axes from Atchison & Smith:
         %
         %   Atchison, David A., George Smith, and George Smith. "Optics of
         %   the human eye." (2000): 34-35.
         %
-        % The optical and pupil axes of the our model eye are aligned. The
-        % fixation axis of the eye is the line that connects the fixation
-        % point to the center of rotation of the eye. The visual axis of
-        % the eye connects the fixation point to the fovea via nodal points
-        % through the eye optics. The visual axis lies within 1% of the
-        % fixation axis when the fixation target is greater than 50 cm away
-        % (Atchison & Smith, 2000, p.37). Because the visual and fixation
-        % axes are closely aligned, and because our model equates the pupil
-        % and optical axes, we treat empirical measurements of kappa
-        % (visual to pupillary axis) as if they were the same as gamma
-        % (fixation to optical axis). A related angle (equivalent to kappa
-        % and gamma in our model) is alpha, which relates the visual and
-        % optical axes.
+        % A related measurement is kappa, which is the angle between the
+        % pupil and visual axes. As the optical and pupil axes of the our
+        % model eye are aligned, we can use kappa and alpha values
+        % interchangably.
         % 
-        % The visual axis is displaced nasally and inferiorly within the
-        % visual field relative to the optical axis. Horizontal kappa is
-        % usually defined with positive values being more nasal. We adopt a
-        % different convention in which kappa is defined in head-fixed
-        % coordinates. Thus, positive values for the right eye, and
-        % negative values for the left eye, are more nasal. Positive values
-        % for vertical kappa are upward.
+        % The visual axis is displaced nasally and superiorly within the
+        % visual field relative to the optical axis. We adopt the
+        % convention that alpha is defined in head-fixed coordinates. Thus,
+        % positive values for the right eye, and negative values for the
+        % left eye, are more nasal. Positive values for vertical alpha are
+        % upward.
         %
         % A source for an estimate of kappa comes from Mathur 2013:
         %
@@ -732,7 +770,7 @@ switch p.Results.species
         %
         % They measured the shape of the entrance pupil as a function of
         % viewing angle relative to the fixation point of the eye. Their
-        % data from the right eye is well fit by a horizontal kappa of 5.5
+        % data from the right eye is well fit by a horizontal kappa of 5.3
         % degrees (see TEST_Mathur2013.m).
         %
         % While a horizontal kappa of ~5 degrees is a consistent finding,
@@ -748,7 +786,7 @@ switch p.Results.species
         %
         % We note that there is evidence that the vertical kappa value can
         % vary based upon the subject being in a sittng or supine position.
-        % Tscherning measured a downward alpha of 2-3 degrees, although
+        % Tscherning measured an upward alpha of 2-3 degrees, although
         % this varied amongst subjects:
         %
         %   Tscherning, Marius Hans Erik. Physiologic Optics: Dioptrics of
@@ -756,7 +794,7 @@ switch p.Results.species
         %   Vision. Keystone Publishing Company, 1920.
         %
         % Until better evidene is available, we adopt a vertical kappa of
-        % -2.15 degrees for the emmetropic model eye, as this value best
+        % 2.3 degrees for the emmetropic model eye, as this value best
         % fits the Mathur 2013 data.
         %
         % Measured kappa has been found to depend upon axial length:
@@ -767,34 +805,24 @@ switch p.Results.species
         % Tabernero 2007 report a mean horizontal kappa of 5 degrees in
         % emmetropes, and their Equation 6 expresses kappa (technically
         % alpha, the angle w.r.t. the optical axis) as a function of axial
-        % length. Their formula assumes an emmetropic model eye of 24 mm,
-        % while the model eye used here has an emmetropic axial length of
-        % 23.592. The equation implemented below is adjusted so that an
-        % emmetropic eye of 23.5924 mm has a horizontal (nasal directed)
-        % kappa of 5.5 degrees and a vertical (inferiorly directed) kappa
-        % of -2.15 degrees.
+        % length. 
         %
-        if isempty(p.Results.gammaAngle)
-            switch eyeLaterality
-                case 'Right'
-                    eye.gamma(1) = atand((15.0924/(eye.axialLength-8.5000))*tand(5.3));
-                case 'Left'
-                    eye.gamma(1) = -atand((15.0924/(eye.axialLength-8.5000))*tand(5.3));
-            end
-            eye.gamma(2) = atand((15.0924/(eye.axialLength-8.5000))*tand(2.1));
-            eye.gamma(3)=0;
+        % In this model, I set a foveal location that varies based upon the
+        % axial length of the eye, following Tabernero 2007. With the
+        % foveal location set, 
+        if isempty(p.Results.alphaAngle)
+            % Find alpha angles that rotate the visual axis to be parallel
+            % to the optical axis. This is achieved when the slope of the
+            % visual axis is zero in the p1p2 and p1p3 planes.
+            objfun_p1p2 = @(x) visualAxisSlope([-x,0],eye,'p1p2')^2;
+            eye.alpha(1) = fminsearch(objfun_p1p2,5);
+            objfun_p1p3 = @(x) visualAxisSlope([eye.alpha(1) -x],eye,'p1p3')^2;
+            eye.alpha(2) = fminsearch(objfun_p1p3,2);
+            eye.alpha(3) = 0;
         else
-            eye.gamma = p.Results.gammaAngle;
+            eye.alpha = p.Results.alphaAngle;
         end
         
-        % Find gamma angles that rotate the visual axis to be parallel to
-        % the optical axis. This is achieved when the slope of the visual
-        % axis is zero in the p1p2 and p1p3 planes.
-        
-        objfun_p1p2 = @(x) visualAxisSlope([x,0],eye,'p1p2')^2;
-        eye.gamma(1) = fminsearch(objfun_p1p2,5);
-        objfun_p1p3 = @(x) visualAxisSlope([eye.gamma(1) x],eye,'p1p3')^2;
-        eye.gamma(2) = fminsearch(objfun_p1p3,2);
          
         %% Refractive indices
         % Obtain refractive index values for this spectral domain.
@@ -931,19 +959,51 @@ eye.meta.p = p.Results;
 eye.meta.units = 'mm';
 eye.meta.coordinates = 'eyeWorld';
 eye.meta.dimensions = {'depth (axial)' 'horizontal' 'vertical'};
-eye.meta.gamma = 'Degrees angle of fixation axis w.r.t. optical axis.';
+eye.meta.alpha = 'Degrees angle of fixation axis w.r.t. optical axis.';
 
 end % function
 
 
+
 %% LOCAL FUNCTION
+
 function slope = visualAxisSlope(x, eye, axisLabel)
+% Returns the slope of the visual axis in the p1p2 or p1p3 plane
+%
+% Description:
+%   Given a eye structure that specifies the coordinates of the fovea and
+%   the rear lens nodal point, we can calculate the slope of the line
+%   within the eyeWorld coordinate space that connects these points and
+%   thus defines the visual axis. We perform this calculation after having
+%   rotated the eye by the azimuth and elevation values specified in 'x'.
+%   This allows us to determine the eye rotation that causes the visual
+%   axis of the eye to be parallel with the original orientation of the
+%   optical axis of the eye, and thus have a slope of zero.
+%
+% Inputs:
+%   x                     - The [azimuth, elevation] of eye rotation.
+%   eye                   - The eye structure variable
+%   axisLabel             - Char vector, of the value 'p1p2' or 'p1p3'
+%
+% Outputs
+%   slope                 - The slope of the visual axis of the
+%                           rotated eye within either the p1p2 or p1p3
+%                           planes of the eyeWorld coordinate space.
+%
+
+% Put the eye structure into a sceneGeometry structure
 sceneGeometry.eye = eye;
 
-[~, ~, sceneWorldPoints, ~, pointLabels] = pupilProjection_fwd([-x(1) -x(2) 0 1], sceneGeometry, 'fullEyeModelFlag', true);
+% Obtain the sceneWorld points for the eye rotated by the x angles
+[~, ~, sceneWorldPoints, ~, pointLabels] = pupilProjection_fwd([x(1) x(2) 0 1], sceneGeometry, 'fullEyeModelFlag', true);
+
+% Find the indices in the returned points for the fovea and lens rear nodal
+% point
 idx1 = find(strcmp(pointLabels,'fovea'));
 idx2 = find(strcmp(pointLabels,'nodalPointRear'));
 
+% Depending upon which plane we are interogating, return the slope of the
+% visual axis
 switch axisLabel
     case 'p1p2'
         slope = (sceneWorldPoints(idx2,1) - sceneWorldPoints(idx1,1)) / (sceneWorldPoints(idx2,3) - sceneWorldPoints(idx1,3));
