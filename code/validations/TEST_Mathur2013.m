@@ -42,9 +42,24 @@ compileVirtualImageFunc;
 % By having the eye rotate around the corneal apex, we match the conditions
 % of Mathur et al in which the camera was maintained at a constant distance
 % from the corneal apex.
+%
+% We set the eye to have an axial length slightly longer than default. This
+% is because the Mathur data include both emmetropic and myopic subjects.
+% They find that the beta "turning point" of the pupil diameter ratio was
+% at -5.8 degrees for the emmetropic subjects, and at -5.3 for the
+% population as a whole.
+%{
+    myAlphaAzi = @(sg) sg.eye.alpha(1);
+    myObj = @(x) (5.3 - myAlphaAzi(createSceneGeometry('axialLength',x)))^2;
+    axialLength = fminsearch(myObj,25)
+%}
+% We find that an axial length of 25.134 mm yields a model eye with an
+% alpha of 5.3 degrees, thus matching the central tendency of the Mathur
+% population.
 sceneGeometry = createSceneGeometry( ...
     'extrinsicTranslationVector',[0; 0; 100],...
-    'eyeLaterality','Right');
+    'eyeLaterality','Right', ...
+    'axialLength',25.1340);
 sceneGeometry.eye.rotationCenters.azi = [0 0 0];
 sceneGeometry.eye.rotationCenters.ele = [0 0 0];
 
@@ -88,8 +103,8 @@ viewingAngleDeg = -60:1:60;
 % the eye. The coordinates of our model eye are based around the pupil
 % axis. Therfore, we need to calculate a rotation that accounts for the
 % Mathur viewing angle and kappa.
-azimuthsDeg = (-viewingAngleDeg)-sceneGeometry.eye.gamma(1);
-elevationsDeg = zeros(size(viewingAngleDeg))-sceneGeometry.eye.gamma(2);
+azimuthsDeg = (-viewingAngleDeg)-sceneGeometry.eye.alpha(1);
+elevationsDeg = zeros(size(viewingAngleDeg))-sceneGeometry.eye.alpha(2);
 
 % Calculate the diameter ratios and thetas
 [diamRatios, thetas] = calcPupilDiameterRatio(azimuthsDeg,elevationsDeg,pupilDiam,sceneGeometry);
