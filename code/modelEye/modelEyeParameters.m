@@ -27,14 +27,16 @@ function eye = modelEyeParameters( varargin )
 %                           spherical refractive correction for the
 %                           subject. A negative number is the correction
 %                           that would be used for a myopic person.
-%  'axialLength'          - Scalar. When set, this fixes the axial length
-%                           of the eye to the passed value in millimeters.
-%                           As the modeled anterior chamber depth is not
-%                           variable, this change is enforced on the
-%                           posterior chamber. The remaining dimensions of
-%                           the posterior chamber are scaled to fit the
-%                           proportions predicted by the Atchison model for
-%                           the specified degree of ametropia.
+%  'axialLength'          - Scalar. This is the axial length along the 
+%                           optical axis. When set, this fixes the axial
+%                           length of the eye to the passed value in
+%                           millimeters. As the modeled anterior chamber
+%                           depth is not variable, this change is enforced
+%                           on the posterior chamber. The remaining
+%                           dimensions of the posterior chamber are scaled
+%                           to fit the proportions predicted by the
+%                           Atchison model for the specified degree of
+%                           ametropia.
 %  'alphaAngle'           - 1x4 vector. This is the angle of the visual
 %                           axis w.r.t. to optical axis. The values are
 %                           [azimuth, elevation, torsion]. An eyePose of:
@@ -75,6 +77,7 @@ p.addParameter('sphericalAmetropia',0,@isscalar);
 p.addParameter('axialLength',[],@(x)(isempty(x) || isscalar(x)));
 p.addParameter('alphaAngle',[],@(x)(isempty(x) || isnumeric(x)));
 p.addParameter('foveaAngle',[],@(x)(isempty(x) || isnumeric(x)));
+p.addParameter('corneaAxis',[],@(x)(isempty(x) || isnumeric(x)));
 p.addParameter('eyeLaterality','Right',@ischar);
 p.addParameter('species','Human',@ischar);
 p.addParameter('spectralDomain','nir',@ischar);
@@ -222,13 +225,16 @@ switch p.Results.species
             % Now obtain the corneal axes relative to optical axis
             cornealAxisWRTopticalAxis = fixationAxisWRTopticalAxis - fixationAxisWRTcornealAxis            
         %}
-        switch eyeLaterality
-            case 'Right'
-                eye.cornea.axis = [3.4582    1.4499   -0.0200];
-            case 'Left'
-                eye.cornea.axis = [-3.4582    1.4499   -0.0200];
+        if isempty(p.Results.corneaAxis)
+            switch eyeLaterality
+                case 'Right'
+                    eye.cornea.axis = [3.4582    1.4499   -0.0200];
+                case 'Left'
+                    eye.cornea.axis = [-3.4582    1.4499   -0.0200];
+            end
+        else
+            eye.cornea.axis = p.Results.corneaAxis;
         end
-
         
         %% Pupil
         % We position the pupil plane at the depth of the anterior point of
@@ -366,13 +372,12 @@ switch p.Results.species
         % to find the size of the true iris.
         %{
             sceneGeometry = createSceneGeometry();
-            virtualImageFunc = compileVirtualImageFunc(sceneGeometry);
-            sceneGeometry.virtualImageFunc = [];
+            sceneGeometry.refraction = [];
             % Get the area in pixels of a "pupil" that is the same radius
             % as the HVID when there is no ray tracing
             hvidP=pupilProjection_fwd([0 0 0 hvidRadiusMean],sceneGeometry);
             % Restore ray tracing
-            sceneGeometry.virtualImageFunc = virtualImageFunc;
+            sceneGeometry = createSceneGeometry();
             % Set up the objective function
             myArea = @(p) p(3);
             myObj = @(r) (hvidP(3) - myArea(pupilProjection_fwd([0 0 0 r],sceneGeometry)))^2;
@@ -381,7 +386,7 @@ switch p.Results.species
         %}
         % We use this true iris size and then subject the iris perimeter
         % points to refraction
-        eye.iris.radius = 5.55;
+        eye.iris.radius = 5.56;
         
         % We are aware of some reports that the iris is shifted slightly
         % temporally and upward with respect to the pupil center:
@@ -447,34 +452,62 @@ switch p.Results.species
         % We specify the location of a nodal point so that this can be used
         % for displaying eye axes. Values taken from the Gullstrand-LeGrand
         % eye model
-        eye.lens.nodalPoint.front = [-7.2 0 0];
+        eye.lens.nodalPoint.front = [-7.200 0 0];
         eye.lens.nodalPoint.rear = [-7.513 0 0];
         
         
         %% Posterior chamber
-        % The posterior chamber of the eye is modeled as an ellipsoid.
-        % Atchison 2006 provides radii of curvature and asphericity for the
-        % posterior chamber as they vary by spherical ametropia. We perform
-        % the calculations here and save only the corresponding radii.
-        % Calculated using the formula for a positive Q value. We can
-        % compare the posterior chamber radii calculated here to those
-        % reported in Atchison 2005, and we find they are very similar:
+        % Atchison 2006 provides radii of curvature and asphericities for a
+        % biconic model of the posterior chamber, with these values varying
+        % by spherical ametropia. Parameters for the the decentration and
+        % tilt of the posterior chamber are also provided:
         %
-        %   Atchison, David A., et al. "Shape of the retinal surface in
+        %	Atchison, David A., et al. "Shape of the retinal surface in
         %   emmetropia and myopia." Investigative ophthalmology & visual
         %   science 46.8 (2005): 2698-2707.
+        %
+        % I model the posterior chamber as a centered ellipsoid. I convert
+        % the 4 parameeters of the Atchison biconic model to a 3 radii of
+        % an ellipsoid by numeric approximation. To match Atchison's axial
+        % length formula (Eq 19), I had to inflate the effect of spherical
+        % ametropia upon the asphericity coefficients very sligtly.
+        % Atchison gives the values:
+        %
+        %   Qx = 0.27+0.026*SR
+        %   Qy = 0.25+0.017*SR
+        %
+        % and I increased the effects of SR to be 0.0272 and 0.0182 upon Qx
+        % and Qy, respectively. I suspect this adjustment is the result of
+        % a small, systematic underestimation of the ellipsoid radii by my
+        % numeric approximation.
+        %   
         %{
-            eye = modelEyeParameters();
-            fprintf('Atchison emmetropic eye 2005, posterior chamber radii [axial x horizontal x vertical]:\n');
-            fprintf('\t10.148\t11.455\t11.365\n');
-            fprintf('The current model eye, emmetropic eye:\n');
-            fprintf('\t%4.3f \t%4.3f \t%4.3f \n',eye.posteriorChamberRadii(1),eye.posteriorChamberRadii(2),eye.posteriorChamberRadii(3));
+            % Numeric approximation of Atchison 2006 biconic model of 
+            % posterior chamber with ellipsoid radii
+            radii = [];
+            for SR = -2:2
+            Cx = 1/(12.91+0.094*SR);
+            Cy = 1/(12.72-0.004*SR);
+            Qx = 0.27+0.0272*SR;
+            Qy = 0.25+0.0182*SR;
+            biconicZ = @(x,y) (Cx.*x.^2 + Cy.*y.^2)./(1+sqrt( 1-(1+Qx).* Cx.^2.*x.^2 - (1+Qy).*Cy.^2.*y.^2));
+            myObj = @(p) -biconicZ(p,0);
+            [radiusX] = fminsearch(myObj,10);
+            myObj = @(p) -biconicZ(0,p);
+            [radiusY] = fminsearch(myObj,10);
+            radiusZ = max([biconicZ(radiusX,0) biconicZ(0,radiusY)]);
+            radii = [radii; [radiusZ, radiusX, radiusY]];
+            end
+            slopes = mean(diff(radii));
+            fprintf('axial radius = %4.4f %4.4f * SR\n',radii(3,1),slopes(1));
+            fprintf('horizontal radius = %4.4f %4.4f * SR \n',radii(3,2),slopes(2));
+            fprintf('vertical radius = %4.4f %4.4f * SR \n',radii(3,3),slopes(3));
         %}
-        Rzx = -12.91-0.094*p.Results.sphericalAmetropia;
-        Rzy = -12.72+0.004*p.Results.sphericalAmetropia;
-        Qzx = 0.27+0.026*p.Results.sphericalAmetropia;
-        Qzy = 0.25+0.017*p.Results.sphericalAmetropia;
-        eye.posteriorChamber.radii = [ -(Rzx/(Qzx+1)) -(Rzx*sqrt(1/(Qzx+1))) -(Rzy*sqrt(1/(Qzy+1)))];
+        postChamberRadiiEmetrope = [10.1760 11.4558 11.3771];
+        postChamberRadiiAmetropiaSlope = [-0.1495 -0.0393 -0.0864];
+        
+        eye.posteriorChamber.radii = ...
+            postChamberRadiiEmetrope + postChamberRadiiAmetropiaSlope.* p.Results.sphericalAmetropia;
         
         % Our model holds the depth of the anterior chamber constant.
         % Atchison found that anterior chamber depth does not vary with
@@ -486,22 +519,10 @@ switch p.Results.species
         %
         % To position the posterior chamber, we need to know the distance
         % between the apex of the anterior chamber and the apex of the
-        % posterior chamber. The value for this fixed distance is derived
-        % from the Atchison 2006 model eye. The total interior depth of the
-        % eye from Table 1 for an emmetrope is:
-        %
-        %   0.55 + 3.15 + 1.44 + 2.16 + 16.28 = 23.58
-        %
-        % The axial length of the posterior chamber ellipsoid in an
-        % emmetrope is:
-        %
-        %   10.1654 * 2 = 20.3308
-        %
-        % Therefore, the apex of the posterior ellipsoid is:
-        %   23.5800 - 20.3308 = 3.2492 mm
-        % behind the corneal apex.
-        posteriorChamberApexDepth = 3.2492;
-        
+        % posterior chamber. I derive the value for this distance from the
+        % Atchison 2006 model eye.
+        posteriorChamberApexDepth = 23.5800 - postChamberRadiiEmetrope(1)*2;
+
         % Compute and store axial length
         if isempty(p.Results.axialLength)
             eye.axialLength = posteriorChamberApexDepth + eye.posteriorChamber.radii(1)*2;
@@ -512,16 +533,11 @@ switch p.Results.species
             % the posterior chamber to maintain the specified ametropia. We
             % adjust the axial length for the component of the anterior
             % chamber that contibutes to length (posteriorChamberApexDepth)
-            %
-            % GKA to follow up: Axial length is usually measured with the
-            % IOL master along the visual (as opposed to optic or
-            % pupillary) axis of the eye. May want to correct for this
-            % somewhere.
             scaleFactor = (p.Results.axialLength - posteriorChamberApexDepth) / (eye.posteriorChamber.radii(1)*2);
             eye.posteriorChamber.radii = eye.posteriorChamber.radii .* scaleFactor;
             eye.axialLength = p.Results.axialLength;
         end
-        
+
         % Set the depth of the center of the posterior chamber
         eye.posteriorChamber.center = ...
             [(-posteriorChamberApexDepth - eye.posteriorChamber.radii(1)) 0 0];
@@ -578,11 +594,11 @@ switch p.Results.species
         if isempty(p.Results.foveaAngle)
             switch eyeLaterality
                 case 'Right'
-                    aziFoveaEmmetropic = 9.1542;
+                    aziFoveaEmmetropic = 9.1449;
                 case 'Left'
-                    aziFoveaEmmetropic = -9.1542;
+                    aziFoveaEmmetropic = -9.1449;
             end
-            eleFoveaEmmetropic = 3.6480;
+            eleFoveaEmmetropic = 3.6442;
         else
             aziFoveaEmmetropic = p.Results.foveaAngle(1);
             eleFoveaEmmetropic = p.Results.foveaAngle(2);
@@ -597,10 +613,10 @@ switch p.Results.species
         %
         % We use the Taberno equation 6 to adjust the position of the fovea
         % in units of degrees of distance from the optical axis as the size
-        % of the posterior chamber changes. The fixed value of 10.1654 is
+        % of the posterior chamber changes. The fixed value of 10.1760 is
         % axial radius of the posterior chamber in the emmetropic eye.
-        aziFoveaEmmetropic = atand( (10.1654/eye.posteriorChamber.radii(1))*tand(aziFoveaEmmetropic) );
-        eleFoveaEmmetropic = atand( (10.1654/eye.posteriorChamber.radii(1))*tand(eleFoveaEmmetropic) );
+        aziFoveaEmmetropic = atand( (postChamberRadiiEmetrope(1)/eye.posteriorChamber.radii(1))*tand(aziFoveaEmmetropic) );
+        eleFoveaEmmetropic = atand( (postChamberRadiiEmetrope(1)/eye.posteriorChamber.radii(1))*tand(eleFoveaEmmetropic) );
         
         % Rotation matrix to bring the eyeWorld (p1p2p3) axes to be w.r.t.
         % the fovea
@@ -621,7 +637,7 @@ switch p.Results.species
 
         % Now rotate this coordinate location back to the original axes.
         % This gives us the coordinates of the fovea in the canonical
-        % eyeWorld coordinates space.
+        % eyeWorld coordinate space.
         angles = [aziFoveaEmmetropic, eleFoveaEmmetropic, 0];
         R3 = [cosd(angles(1)) -sind(angles(1)) 0; sind(angles(1)) cosd(angles(1)) 0; 0 0 1];
         R2 = [cosd(angles(2)) 0 sind(angles(2)); 0 1 0; -sind(angles(2)) 0 cosd(angles(2))];
@@ -722,12 +738,9 @@ switch p.Results.species
         % We scale the azi and ele rotation centers by the ratio of the
         % posterior chamber axial and vertical radii relative to the
         % emmetropic size
-        emmetropicPostChamberRadii = [10.1653543307087 11.455772536562 11.3771138695189];
-        for dim=1:3
-            eye.rotationCenters.azi(dim) = eye.rotationCenters.azi(dim) .* (eye.posteriorChamber.radii(dim)/emmetropicPostChamberRadii(dim));
-            eye.rotationCenters.ele(dim) = eye.rotationCenters.ele(dim) .* (eye.posteriorChamber.radii(dim)/emmetropicPostChamberRadii(dim));
-            eye.rotationCenters.tor(dim) = eye.rotationCenters.tor(dim) .* (eye.posteriorChamber.radii(dim)/emmetropicPostChamberRadii(dim));
-        end
+        eye.rotationCenters.azi = eye.rotationCenters.azi .* (eye.posteriorChamber.radii./postChamberRadiiEmetrope);
+        eye.rotationCenters.ele = eye.rotationCenters.ele .* (eye.posteriorChamber.radii./postChamberRadiiEmetrope);
+        eye.rotationCenters.tor = eye.rotationCenters.tor .* (eye.posteriorChamber.radii./postChamberRadiiEmetrope);
 
         
         %% Alpha
@@ -795,17 +808,11 @@ switch p.Results.species
         % alpha, the angle w.r.t. the optical axis) as a function of axial
         % length. 
         %
-        % In this model, I set a foveal location that varies based upon the
-        % axial length of the eye, following Tabernero 2007. With the
-        % foveal location set, 
+        % In this model, alpha is deter,ined by the visual axis, which
+        % itself is defined by the foveal position.
         if isempty(p.Results.alphaAngle)
-            % Find alpha angles that rotate the visual axis to be parallel
-            % to the optical axis. This is achieved when the slope of the
-            % visual axis is zero in the p1p2 and p1p3 planes.
-            objfun_p1p2 = @(x) visualAxisSlope([-x,0],eye,'p1p2')^2;
-            eye.alpha(1) = fminsearch(objfun_p1p2,5);
-            objfun_p1p3 = @(x) visualAxisSlope([eye.alpha(1) -x],eye,'p1p3')^2;
-            eye.alpha(2) = fminsearch(objfun_p1p3,2);
+            eye.alpha(1) = atand((eye.posteriorChamber.fovea(2) - eye.lens.nodalPoint.rear(2)) / (eye.posteriorChamber.fovea(1) - eye.lens.nodalPoint.rear(1)));
+            eye.alpha(2) = -atand((eye.posteriorChamber.fovea(3) - eye.lens.nodalPoint.rear(3)) / (eye.posteriorChamber.fovea(1) - eye.lens.nodalPoint.rear(1)));
             eye.alpha(3) = 0;
         else
             eye.alpha = p.Results.alphaAngle;
@@ -952,51 +959,3 @@ eye.meta.alpha = 'Degrees angle of fixation axis w.r.t. optical axis.';
 end % function
 
 
-
-%% LOCAL FUNCTION
-
-function slope = visualAxisSlope(x, eye, axisLabel)
-% Returns the slope of the visual axis in the p1p2 or p1p3 plane
-%
-% Description:
-%   Given a eye structure that specifies the coordinates of the fovea and
-%   the rear lens nodal point, we can calculate the slope of the line
-%   within the eyeWorld coordinate space that connects these points and
-%   thus defines the visual axis. We perform this calculation after having
-%   rotated the eye by the azimuth and elevation values specified in 'x'.
-%   This allows us to determine the eye rotation that causes the visual
-%   axis of the eye to be parallel with the original orientation of the
-%   optical axis of the eye, and thus have a slope of zero.
-%
-% Inputs:
-%   x                     - The [azimuth, elevation] of eye rotation.
-%   eye                   - The eye structure variable
-%   axisLabel             - Char vector, of the value 'p1p2' or 'p1p3'
-%
-% Outputs
-%   slope                 - The slope of the visual axis of the
-%                           rotated eye within either the p1p2 or p1p3
-%                           planes of the eyeWorld coordinate space.
-%
-
-% Put the eye structure into a sceneGeometry structure
-sceneGeometry.eye = eye;
-
-% Obtain the sceneWorld points for the eye rotated by the x angles
-[~, ~, sceneWorldPoints, ~, pointLabels] = pupilProjection_fwd([x(1) x(2) 0 1], sceneGeometry, 'fullEyeModelFlag', true);
-
-% Find the indices in the returned points for the fovea and lens rear nodal
-% point
-idx1 = find(strcmp(pointLabels,'fovea'));
-idx2 = find(strcmp(pointLabels,'nodalPointRear'));
-
-% Depending upon which plane we are interogating, return the slope of the
-% visual axis
-switch axisLabel
-    case 'p1p2'
-        slope = (sceneWorldPoints(idx2,1) - sceneWorldPoints(idx1,1)) / (sceneWorldPoints(idx2,3) - sceneWorldPoints(idx1,3));
-    case 'p1p3'
-        slope = (sceneWorldPoints(idx2,2) - sceneWorldPoints(idx1,2)) / (sceneWorldPoints(idx2,3) - sceneWorldPoints(idx1,3));
-end
-
-end
