@@ -53,16 +53,15 @@ compileVirtualImageFunc;
     myObj = @(x) (5.3 - myAlphaAzi(createSceneGeometry('axialLength',x)))^2;
     axialLength = fminsearch(myObj,25)
 %}
-% We find that an axial length of 25.134 mm yields a model eye with an
+% We find that an axial length of 23.7462 mm yields a model eye with an
 % alpha of 5.3 degrees, thus matching the central tendency of the Mathur
 % population.
 sceneGeometry = createSceneGeometry( ...
     'extrinsicTranslationVector',[0; 0; 100],...
     'eyeLaterality','Right', ...
-    'axialLength',25.1340);
+    'axialLength',23.7268);
 sceneGeometry.eye.rotationCenters.azi = [0 0 0];
 sceneGeometry.eye.rotationCenters.ele = [0 0 0];
-
 
 % Mathur 2013 used 1% cyclopentolate to produce pharmacological dilation
 % for their subjects. A study of the this mydriatic upon pupil size in
