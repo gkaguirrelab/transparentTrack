@@ -158,8 +158,8 @@ for ii = 1:length(azimuthsDeg)
     % examiner adjusted the camera to be centered on the pupil.
     geometricPupilCenter = mean(sceneWorldPoints);
     adjustedSceneGeometry = sceneGeometry;
-    adjustedSceneGeometry.cameraExtrinsic.translation(1) = adjustedSceneGeometry.cameraExtrinsic.translation(1)+geometricPupilCenter(1);
-    adjustedSceneGeometry.cameraExtrinsic.translation(2) = adjustedSceneGeometry.cameraExtrinsic.translation(2)+geometricPupilCenter(2);
+    adjustedSceneGeometry.cameraPosition.translation(1) = adjustedSceneGeometry.cameraPosition.translation(1)+geometricPupilCenter(1);
+    adjustedSceneGeometry.cameraPosition.translation(2) = adjustedSceneGeometry.cameraPosition.translation(2)+geometricPupilCenter(2);
     % Now, measure the horizontal and vertical width of the image of the
     % pupil
     [pupilEllipseOnImagePlane, imagePoints] = pupilProjection_fwd(eyePose, adjustedSceneGeometry, 'nPupilPerimPoints',50);
