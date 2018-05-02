@@ -121,45 +121,19 @@ for ii = 1:nFrames
     if ~any(isnan(eyePoses(ii,:)))
         
         % Obtain the pupilProjection of the model eye to the image plane
-        [pupilEllipseParams, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses(ii,:), sceneGeometry, 'fullEyeModelFlag', true, 'nIrisPerimPoints',20);
-        
-        % Loop through the point labels present in the eye model
-        for pp = 1:length(p.Results.modelEyeLabelNames)
-            idx = strcmp(pointLabels,p.Results.modelEyeLabelNames{pp});
-            if strcmp(p.Results.modelEyeLabelNames{pp},'pupilPerimeter')
-                % Just before we plot the pupil perimeter points, add the
-                % pupil fit ellipse
-                pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(pupilEllipseParams));
-                fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
-                % superimpose the ellipse using fimplicit or ezplot (ezplot
-                % is the fallback option for older Matlab versions)
-                if exist('fimplicit','file')==2
-                    fimplicit(fh,[1, videoSizeX, 1, videoSizeY],'Color', 'g','LineWidth',1);
-                    set(gca,'position',[0 0 1 1],'units','normalized')
-                    axis off;
-                else
-                    plotHandle=ezplot(fh,[1, videoSizeX, 1, videoSizeY]);
-                    set(plotHandle, 'Color', p.Results.pupilColor)
-                    set(plotHandle,'LineWidth',1);
-                end
-            end
-            plot(imagePoints(idx,1), imagePoints(idx,2), p.Results.modelEyePlotColors{pp})
-        end
+        [~, renderedFrame] = renderEyePose(eyePoses(ii,:), sceneGeometry, 'newFigure', false, 'modelEyeLabelNames', p.Results.modelEyeLabelNames, 'modelEyePlotColors', p.Results.modelEyePlotColors);
         
     end
-    
-    % Clean up the plot
+
+    % Get ready for the next frame
     hold off
-    
-    % Get the frame and close the figure
-    thisFrame=getframe(frameFig);
     
     % Write out this frame
     if p.Results.saveCompressedVideo
-        thisFrame = squeeze(thisFrame);
-        writeVideo(videoOutObj,thisFrame);
+        thisFrame = squeeze(renderedFrame);
+        writeVideo(videoOutObj,renderedFrame);
     else
-        indexedFrame = rgb2ind(thisFrame, cmap, 'nodither');
+        indexedFrame = rgb2ind(renderedFrame, cmap, 'nodither');
         writeVideo(videoOutObj,indexedFrame);
     end
     
