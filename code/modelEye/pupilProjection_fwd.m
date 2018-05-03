@@ -1,12 +1,12 @@
-function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoints, pointLabels, nodalPointIntersectError, pupilFitError] = pupilProjection_fwd(eyePose, sceneGeometry, varargin)
-% Project the pupil circle to an ellipse on the image plane
+function [pupilEllipseOnImagePlane, imagePoints, worldPoints, eyePoints, pointLabels, nodalPointIntersectError, pupilFitError] = pupilProjection_fwd(eyePose, sceneGeometry, varargin)
+% Obtain the parameters of the entrance pupil ellipse on the image plane
 %
 % Syntax:
-%  [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoints, pointLabels] = pupilProjection_fwd(eyePoses, sceneGeometry)
+%  [pupilEllipseOnImagePlane, imagePoints, worldPoints, eyePoints, pointLabels] = pupilProjection_fwd(eyePoses, sceneGeometry)
 %
 % Description:
-%   Given the sceneGeometry this routine simulates an elliptical exit pupil
-%   on a rotating eye and then measures the parameters of the ellipse (in
+%   Given the sceneGeometry this routine simulates an exit pupil on a
+%   rotating eye and then measures the parameters of the ellipse (in
 %   transparent format) of the entrance pupil in the image plane.
 %
 %   The forward model is a perspective projection of an anatomically
@@ -22,9 +22,9 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
 %   the Fick coordinate sysem). Azimuth, Elevation of [0,0] corresponds to
 %   the position of the eye when a line that connects the center of
 %   rotation of the eye with the center of the pupil is normal to the image
-%   plane. Positive rotations correspond to rightward, upward, translation
-%   of the pupil center in the image. Torsion of zero corresponds to the
-%   torsion of the eye when it is in primary position.
+%   plane. Positive rotations correspond to rightward / upward (+x, -y)
+%   translation of the pupil center in the image. Torsion of zero
+%   corresponds to the torsion of the eye when it is in primary position.
 %
 %   Units - Eye rotations are in units of degrees. However, the units of
 %   theta in the transparent ellipse parameters are radians. This is in
@@ -41,9 +41,12 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
 % Optional key/value pairs:
 %  'fullEyeModelFlag'     - Logical. Determines if the full posterior and
 %                           anterior chamber eye model will be created.
-%  'nPupilPerimPoints'    - The number of points that are distributed
-%                           around the pupil circle. A minimum of 5 is
-%                           required to uniquely specify the image ellipse.
+%  'nPupilPerimPoints'    - Scalar. The number of points that are 
+%                           distributed around the pupil circle. A minimum
+%                           of 5 is required to uniquely specify the image
+%                           ellipse.
+%  'pupilPerimPhase'      - Scalar. The phase (in radians) of the position
+%                           of the pupil perimeter points.
 %  'nIrisPerimPoints'     - The number of points that are distributed
 %                           around the iris circle. A minimum of 5 is
 %                           required to uniquely specify the image ellipse.
@@ -65,17 +68,17 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
 %   imagePoints           - An nx2 matrix that specifies the x, y location
 %                           on the image plane for each of the eyeWorld
 %                           points.
-%   sceneWorldPoints      - An nx3 matrix of the coordinates of the
-%                           points of the eye model in the sceneWorld
+%   worldPoints           - An nx3 matrix of the coordinates of the
+%                           points of the eye model in the world
 %                           coordinate frame. If fullEyeModel is set to
 %                           false, then there will only be points for the
 %                           pupil perimeter. If fullEyeModel is true, then
 %                           the entire model of ~1000 points will be
 %                           returned.
-%   eyeWorldPoints        - An nx3 matrix of the coordinates of the
+%   eyePoints             - An nx3 matrix of the coordinates of the
 %                           points of the eye model in the eyeWorld
 %                           coordinate frame.
-%   pointsLabels          - An nx1 cell array that identifies each of the
+%   pointLabels           - An nx1 cell array that identifies each of the
 %                           points, from the set {'pupilCenter',
 %                           'irisCenter', 'aziRotationCenter',
 %                           'eleRotationCenter', 'posteriorChamber',
@@ -99,64 +102,9 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     eyePose = [-10 5 0 3];
     % Obtain the pupil ellipse parameters in transparent format
     pupilEllipseOnImagePlane = pupilProjection_fwd(eyePose,sceneGeometry);
-    % Test against 4/15/2018 cached result for eyePose [-10 5 0 3]
-    pupilEllipseOnImagePlaneCached = [0.027449574316713e+4   0.022183443169719e+4   1.758736766639561e+4   0.000020274195253e+4   0.000212596262636e+4];
+    % Test against cached result
+    pupilEllipseOnImagePlaneCached = [0.027903058011752e+4   0.022474914194671e+4   1.576773633880742e+4   0.000026011471871e+4   0.000190947179958e+4];
     assert(max(abs(pupilEllipseOnImagePlane -  pupilEllipseOnImagePlaneCached)) < 1e-6)
-%}
-%{
-    %% Plot the pupil ellipse for various eye poses
-    % Obtain a default sceneGeometry structure
-    sceneGeometry=createSceneGeometry();
-    % Prepare a figure
-    figure
-    sensorResolution=sceneGeometry.cameraIntrinsic.sensorResolution;
-    blankFrame = zeros(fliplr(sensorResolution))+0.5;
-    imshow(blankFrame, 'Border', 'tight');
-    hold on
-    axis off
-    axis equal
-    xlim([0 sensorResolution(1)]);
-    ylim([0 sensorResolution(2)]);
-    % Loop over eye poses and plot
-    for azi = -35:35:35
-        for ele = -35:35:35
-            eyePose = [azi ele 0 1];
-            % Obtain the pupil ellipse parameters in transparent format
-            pupilEllipseOnImagePlane = pupilProjection_fwd(eyePose,sceneGeometry);
-            pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(pupilEllipseOnImagePlane));
-            fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
-            fimplicit(fh,[1, sensorResolution(1), 1, sensorResolution(2)],'Color', 'g','LineWidth',1);
-            axis off;
-        end
-    end
-    hold off
-%}
-%{
-    %% Display a 2D image of a slightly myopic left eye wearing a contact
-    % Obtain a default sceneGeometry structure
-    sceneGeometry=createSceneGeometry('eyeLaterality','left','sphericalAmetropia',-2,'contactLens',-2);
-    % Define an eyePose with azimuth, elevation, torsion, and pupil radius
-    eyePose = [-40 -5 0 3];
-    % Perform the projection and request the full eye model
-    [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePose,sceneGeometry,'fullEyeModelFlag',true, 'nIrisPerimPoints', 20);
-    % Define some settings for display
-    eyePartLabels = {'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber'};
-    plotColors = {'.w' '.b' '*g' '.y'};
-    sensorResolution=sceneGeometry.cameraIntrinsic.sensorResolution;
-    blankFrame = zeros(fliplr(sensorResolution))+0.5;
-    % Prepare a figure
-    figure
-    imshow(blankFrame, 'Border', 'tight');
-    hold on
-    axis off
-    axis equal
-    xlim([0 sensorResolution(1)]);
-    ylim([0 sensorResolution(2)]);
-    % Plot each anatomical component
-    for pp = 1:length(eyePartLabels)
-    	idx = strcmp(pointLabels,eyePartLabels{pp});
-        plot(imagePoints(idx,1), imagePoints(idx,2), plotColors{pp})
-    end
 %}
 %{
     %% Display a 3D plot of a right eye
@@ -167,7 +115,7 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     % Define an eyePose with azimuth, elevation, torsion, and pupil radius
     eyePose = [-10 5 0 3];
     % Perform the projection and request the full eye model
-    [~, ~, sceneWorldPoints, ~, pointLabels] = pupilProjection_fwd(eyePose,sceneGeometry,'fullEyeModelFlag',true,'removeOccultedPoints',false);
+    [~, ~, worldPoints, ~, pointLabels] = pupilProjection_fwd(eyePose,sceneGeometry,'fullEyeModelFlag',true,'removeOccultedPoints',false);
     % Define some settings for display
     eyePartLabels = {'aziRotationCenter', 'eleRotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex' 'fovea' 'opticDisc'};
     plotColors = {'>r' '^m' '.k' '*b' '*g' '.y' '*y' '*r' 'xk'};
@@ -177,12 +125,12 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     % Plot each anatomical component
     for pp = 1:length(eyePartLabels)
     	idx = strcmp(pointLabels,eyePartLabels{pp});
-        plot3(sceneWorldPoints(idx,1), sceneWorldPoints(idx,2), sceneWorldPoints(idx,3), plotColors{pp})
+        plot3(worldPoints(idx,1), worldPoints(idx,2), worldPoints(idx,3), plotColors{pp})
     end
     % Add the visual and optical axes
-    opticalOrigin = sceneWorldPoints(strcmp(pointLabels,'opticalAxisOrigin'),:);
-    foveaPoint = sceneWorldPoints(strcmp(pointLabels,'fovea'),:);
-    nodalPoint = sceneWorldPoints(strcmp(pointLabels,'nodalPointRear'),:);
+    opticalOrigin = worldPoints(strcmp(pointLabels,'opticalAxisOrigin'),:);
+    foveaPoint = worldPoints(strcmp(pointLabels,'fovea'),:);
+    nodalPoint = worldPoints(strcmp(pointLabels,'nodalPointRear'),:);
     visualAxis = [foveaPoint; nodalPoint];
     opticalAxis = [opticalOrigin; nodalPoint];
     plot3(visualAxis(:,1),visualAxis(:,2),visualAxis(:,3),'-r');
@@ -191,24 +139,16 @@ function [pupilEllipseOnImagePlane, imagePoints, sceneWorldPoints, eyeWorldPoint
     axis equal
 %}
 %{
-    %% Calculate the ray tracing error for some random poses
-    % Make sure there is a compiled virtualImageFunc
-    compileVirtualImageFunc
-    % Obtain a default sceneGeometry structure
+    %% Test the accuracy of the ellipse fit to the pupil boundary
     sceneGeometry=createSceneGeometry();
-    % Perform 100 forward projections with randomly selected eye poses
-    nPoses = 100;
-    eyePoses=[(rand(nPoses,1)-0.5)*45, (rand(nPoses,1)-0.5)*40, zeros(nPoses,1), 2+(rand(nPoses,1)-0.5)*1];
-    clear nodalPointIntersectError
-    for pp = 1:nPoses
-    	[~,~,~,~,~,nodalPointIntersectError(:,pp)]=pupilProjection_fwd(eyePoses(pp,:),sceneGeometry);
+    aziVals = -45:5:45;
+    pupilFitError = [];
+    for aa = 1:length(aziVals)
+        eyePose = [aziVals(aa) -3 0 3];
+        [pupilEllipseOnImagePlane, ~, ~, ~, ~, ~, pupilFitError(aa)] = pupilProjection_fwd(eyePose, sceneGeometry,'nPupilPerimPoints',6);
     end
-    % Observe that the ray trace nodal error, while small, grows as a
-    % function of the rotation of the eye.
     figure
-    plot(sqrt(eyePoses(:,1).^2+eyePoses(:,2).^2),median(nodalPointIntersectError),'.r')
-    xlabel('Euclidean rotation distance [deg]');
-    ylabel('Ray trace nodal error [mm]');
+    plot(aziVals,pupilFitError,'.r');
 %}
 %{
     %% Calculate the time required for the forward projection
@@ -240,6 +180,7 @@ p.addRequired('sceneGeometry',@isstruct);
 % Optional
 p.addParameter('fullEyeModelFlag',false,@islogical);
 p.addParameter('nPupilPerimPoints',5,@(x)(isnumeric(x) && x>4));
+p.addParameter('pupilPerimPhase',0,@isnumeric);
 p.addParameter('nIrisPerimPoints',5,@isnumeric);
 p.addParameter('posteriorChamberEllipsoidPoints',30,@isnumeric);
 p.addParameter('anteriorChamberEllipsoidPoints',30,@isnumeric);
@@ -260,7 +201,7 @@ pupilRadius = eyePose(4);
 nPupilPerimPoints = p.Results.nPupilPerimPoints;
 
 
-%% Define an eye in eyeWorld coordinates
+%% Define an eye in eye coordinates
 % This coordinate frame is in mm units and has the dimensions (p1,p2,p3).
 % The diagram is of a cartoon pupil, being viewed directly from the front.
 %
@@ -271,9 +212,9 @@ nPupilPerimPoints = p.Results.nPupilPerimPoints;
 %
 %                 |
 %     ^         __|__
-%  -  |        /     \
+%  +  |        /     \
 % p3  -  -----(   +   )-----
-%  +  |        \_____/
+%  -  |        \_____/
 %     v           |
 %                 |
 %
@@ -282,6 +223,7 @@ nPupilPerimPoints = p.Results.nPupilPerimPoints;
 % For the right eye, negative values on the p2 dimension are more temporal,
 % and positive values are more nasal. Positive values of p3 are downward,
 % and negative values are upward
+
 
 %% Define points around the elliptical exit pupil
 % The eccentricity of the exit pupil is given by a stored function
@@ -297,11 +239,11 @@ exitPupilEllipse = [sceneGeometry.eye.pupil.center(2) , ...
     abs(exitPupilEccenFunc(pupilRadius)),...
     sceneGeometry.eye.pupil.thetas(1+(exitPupilEccenFunc(pupilRadius)>0))];
 % Obtain the points on the perimeter of the ellipse
-[p2p, p3p] = ellipsePerimeterPoints( exitPupilEllipse, nPupilPerimPoints );
+[p2p, p3p] = ellipsePerimeterPoints( exitPupilEllipse, nPupilPerimPoints, p.Results.pupilPerimPhase );
 % Place these points into the eyeWorld coordinates
-eyeWorldPoints(1:nPupilPerimPoints,3) = p3p;
-eyeWorldPoints(1:nPupilPerimPoints,2) = p2p;
-eyeWorldPoints(1:nPupilPerimPoints,1) = sceneGeometry.eye.pupil.center(1);
+eyePoints(1:nPupilPerimPoints,3) = p3p;
+eyePoints(1:nPupilPerimPoints,2) = p2p;
+eyePoints(1:nPupilPerimPoints,1) = sceneGeometry.eye.pupil.center(1);
 % Create labels for the pupilPerimeter points
 tmpLabels = cell(nPupilPerimPoints, 1);
 tmpLabels(:) = {'pupilPerimeter'};
@@ -315,21 +257,21 @@ if p.Results.fullEyeModelFlag
     
     % Add points for the pupil center, iris center, rotation centers,
     % origin of the optical axis, rear nodal point, and the fovea
-    eyeWorldPoints = [eyeWorldPoints; sceneGeometry.eye.pupil.center];
+    eyePoints = [eyePoints; sceneGeometry.eye.pupil.center];
     pointLabels = [pointLabels; 'pupilCenter'];
-    eyeWorldPoints = [eyeWorldPoints; sceneGeometry.eye.iris.center];
+    eyePoints = [eyePoints; sceneGeometry.eye.iris.center];
     pointLabels = [pointLabels; 'irisCenter'];
-    eyeWorldPoints = [eyeWorldPoints; sceneGeometry.eye.rotationCenters.azi];
+    eyePoints = [eyePoints; sceneGeometry.eye.rotationCenters.azi];
     pointLabels = [pointLabels; 'aziRotationCenter'];
-    eyeWorldPoints = [eyeWorldPoints; sceneGeometry.eye.rotationCenters.ele];
+    eyePoints = [eyePoints; sceneGeometry.eye.rotationCenters.ele];
     pointLabels = [pointLabels; 'eleRotationCenter'];
-    eyeWorldPoints = [eyeWorldPoints; 0 0 0];
+    eyePoints = [eyePoints; 0 0 0];
     pointLabels = [pointLabels; 'opticalAxisOrigin'];
-    eyeWorldPoints = [eyeWorldPoints; sceneGeometry.eye.lens.nodalPoint.rear];
+    eyePoints = [eyePoints; sceneGeometry.eye.lens.nodalPoint.rear];
     pointLabels = [pointLabels; 'nodalPointRear'];
-    eyeWorldPoints = [eyeWorldPoints; sceneGeometry.eye.posteriorChamber.fovea];
+    eyePoints = [eyePoints; sceneGeometry.eye.posteriorChamber.fovea];
     pointLabels = [pointLabels; 'fovea'];
-    eyeWorldPoints = [eyeWorldPoints; sceneGeometry.eye.posteriorChamber.opticDisc];
+    eyePoints = [eyePoints; sceneGeometry.eye.posteriorChamber.opticDisc];
     pointLabels = [pointLabels; 'opticDisc'];
     
     % Define points around the perimeter of the iris
@@ -343,7 +285,7 @@ if p.Results.fullEyeModelFlag
         0 + sceneGeometry.eye.iris.center(1);
     
     % Add the points and labels
-    eyeWorldPoints = [eyeWorldPoints; irisPoints];
+    eyePoints = [eyePoints; irisPoints];
     tmpLabels = cell(size(irisPoints,1), 1);
     tmpLabels(:) = {'irisPerimeter'};
     pointLabels = [pointLabels; tmpLabels];
@@ -369,7 +311,7 @@ if p.Results.fullEyeModelFlag
     % in the axis of the corneal ellipsoid w.r.t. the optical axis
     angles = sceneGeometry.eye.cornea.axis;
     R3 = [cosd(angles(1)) -sind(angles(1)) 0; sind(angles(1)) cosd(angles(1)) 0; 0 0 1];
-    R2 = [cosd(angles(2)) 0 sind(angles(2)); 0 1 0; -sind(angles(2)) 0 cosd(angles(2))];
+    R2 = [cosd(-angles(2)) 0 sind(-angles(2)); 0 1 0; -sind(-angles(2)) 0 cosd(-angles(2))];
     R1 = [1 0 0; 0 cosd(angles(3)) -sind(angles(3)); 0 sind(angles(3)) cosd(angles(3))];
     anteriorChamberPoints = ((R1*R2*R3)*(anteriorChamberPoints-sceneGeometry.eye.cornea.front.center)')'+sceneGeometry.eye.cornea.front.center;
     
@@ -384,13 +326,13 @@ if p.Results.fullEyeModelFlag
     anteriorChamberPoints = anteriorChamberPoints(retainIdx,:);
     
     % Add the points and labels
-    eyeWorldPoints = [eyeWorldPoints; anteriorChamberPoints];
+    eyePoints = [eyePoints; anteriorChamberPoints];
     tmpLabels = cell(size(anteriorChamberPoints,1), 1);
     tmpLabels(:) = {'anteriorChamber'};
     pointLabels = [pointLabels; tmpLabels];
     
     % Add a entry for the corneal apex
-    eyeWorldPoints = [eyeWorldPoints; cornealApex];
+    eyePoints = [eyePoints; cornealApex];
     pointLabels = [pointLabels; 'cornealApex'];
     
     % Create the posterior chamber ellipsoid. We switch dimensions here so
@@ -421,7 +363,7 @@ if p.Results.fullEyeModelFlag
     posteriorChamberPoints = posteriorChamberPoints(retainIdx,:);
     
     % Add the points and labels
-    eyeWorldPoints = [eyeWorldPoints; posteriorChamberPoints];
+    eyePoints = [eyePoints; posteriorChamberPoints];
     tmpLabels = cell(size(posteriorChamberPoints,1), 1);
     tmpLabels(:) = {'posteriorChamber'};
     pointLabels = [pointLabels; tmpLabels];
@@ -440,74 +382,35 @@ if isfield(sceneGeometry,'refraction')
     % If this field is not set to empty, proceed    
     if ~isempty(sceneGeometry.refraction)
         % Assemble the static args for the virtualImageFunc
-        args = {sceneGeometry.cameraExtrinsic.translation, ...
+        args = {sceneGeometry.cameraPosition.translation, ...
                 sceneGeometry.eye.rotationCenters, ...
                 sceneGeometry.refraction.opticalSystem.p1p2, ...
                 sceneGeometry.refraction.opticalSystem.p1p3};
-        % Identify the eyeWorldPoints subject to refraction by the cornea
+        % Identify the eyePoints subject to refraction by the cornea
         refractPointsIdx = find(strcmp(pointLabels,'pupilPerimeter')+...
             strcmp(pointLabels,'pupilCenter')+...
             strcmp(pointLabels,'irisPerimeter')+...
             strcmp(pointLabels,'irisCenter'));
-        % Loop through the eyeWorldPoints that are to be refracted
+        % Loop through the eyePoints that are to be refracted
         for ii=1:length(refractPointsIdx)
             % Get this eyeWorld point
-            eyeWorldPoint=eyeWorldPoints(refractPointsIdx(ii),:);
+            eyePoint=eyePoints(refractPointsIdx(ii),:);
             % Perform the computation using the passed function handle.
-            [eyeWorldPoints(refractPointsIdx(ii),:), nodalPointIntersectError(refractPointsIdx(ii))] = ...
+            [eyePoints(refractPointsIdx(ii),:), nodalPointIntersectError(refractPointsIdx(ii))] = ...
                 sceneGeometry.refraction.handle(...
-                eyeWorldPoint, eyePose, args{:});
+                eyePoint, eyePose, args{:});
         end
     end
 end
 
 
-%% Project the eyeWorld points to headWorld coordinates.
-% This coordinate frame is in mm units and has the dimensions (h1,h2,h3).
-% The diagram is of a cartoon eye, being viewed directly from the front.
-%
-%  h1 values negative --> towards the head, positive towards the camera
-%
-%         h2
-%    0,0 ---->
-%     |
-%  h3 |
-%     v
-%
-%               |
-%             __|__
-%            /  _  \
-%    -------(  (_)  )-------  h2 (horizontal axis of the head)
-%            \_____/          rotation about h2 causes pure vertical
-%               |             eye movement
-%               |
-%
-%               h3
-%   (vertical axis of the head)
-%  rotation about h3 causes pure
-%     horizontal eye movement
-%
-%
-%
-% Position [0,-,-] indicates the front surface of the eye.
-% Position [-,0,0] indicates the h2 / h3 position of the pupil axis of
-% the eye when it is normal to the image plane.
-%
-% We will convert from this coordinate frame to that of the camera scene
-% later.
-
-
-%% Copy the eyeWorld points into headWorld
-headWorldPoints=eyeWorldPoints;
-
-
 %% Define the eye rotation matrix
 % Assemble a rotation matrix from the head-fixed Euler angle rotations. In
 % the head-centered world coordinate frame, positive azimuth, elevation and
-% torsion values correspond to leftward, downward and clockwise (as seen
+% torsion values correspond to rightward, upward and clockwise (as seen
 % from the perspective of the subject) eye movements
 R.azi = [cosd(eyeAzimuth) -sind(eyeAzimuth) 0; sind(eyeAzimuth) cosd(eyeAzimuth) 0; 0 0 1];
-R.ele = [cosd(eyeElevation) 0 sind(eyeElevation); 0 1 0; -sind(eyeElevation) 0 cosd(eyeElevation)];
+R.ele = [cosd(-eyeElevation) 0 sind(-eyeElevation); 0 1 0; -sind(-eyeElevation) 0 cosd(-eyeElevation)];
 R.tor = [1 0 0; 0 cosd(eyeTorsion) -sind(eyeTorsion); 0 sind(eyeTorsion) cosd(eyeTorsion)];
 
 
@@ -517,14 +420,14 @@ R.tor = [1 0 0; 0 cosd(eyeTorsion) -sind(eyeTorsion); 0 sind(eyeTorsion) cosd(ey
 % rotation matrix and would corresponds to the "Fick coordinate" scheme.
 rotOrder = {'tor','ele','azi'};
 
-% We shift the headWorld points to this rotation center, rotate, shift
-% back, and repeat. Omit the eye rotation centers from this process.
-% We must perform the rotation independently for each Euler angle to
-% accomodate having rotation centers that differ by Euler angle.
+% We shift the points to each rotation center, rotate, shift back, and
+% repeat. Omit the eye rotation centers from this process. We must perform
+% the rotation independently for each Euler angle to accomodate having
+% rotation centers that differ by Euler angle.
 rotatePointsIdx = ~contains(pointLabels,'Rotation');
 for rr=1:3
-    headWorldPoints(rotatePointsIdx,:) = ...
-        (R.(rotOrder{rr})*(headWorldPoints(rotatePointsIdx,:)-sceneGeometry.eye.rotationCenters.(rotOrder{rr}))')'+sceneGeometry.eye.rotationCenters.(rotOrder{rr});
+    eyePoints(rotatePointsIdx,:) = ...
+        (R.(rotOrder{rr})*(eyePoints(rotatePointsIdx,:)-sceneGeometry.eye.rotationCenters.(rotOrder{rr}))')'+sceneGeometry.eye.rotationCenters.(rotOrder{rr});
 end
 
 % If we are projecting a full eye model, and the 'removeOccultedPoints' is
@@ -532,29 +435,30 @@ end
 % posterior to the most posterior of the centers of rotation of the eye,
 % and thus would not be visible to the camera.
 if p.Results.fullEyeModelFlag && p.Results.removeOccultedPoints
-    retainIdx = strcmp(pointLabels,'posteriorChamber') .* (headWorldPoints(:,1) >= min([sceneGeometry.eye.rotationCenters.azi(1) sceneGeometry.eye.rotationCenters.ele(1)]));
+    retainIdx = strcmp(pointLabels,'posteriorChamber') .* (eyePoints(:,1) >= min([sceneGeometry.eye.rotationCenters.azi(1) sceneGeometry.eye.rotationCenters.ele(1)]));
     retainIdx = logical(retainIdx + ~strcmp(pointLabels,'posteriorChamber'));
-    eyeWorldPoints = eyeWorldPoints(retainIdx,:);
-    headWorldPoints = headWorldPoints(retainIdx,:);
+    eyePoints = eyePoints(retainIdx,:);
     pointLabels = pointLabels(retainIdx);
 end
 
 
-%% Project the headWorld points to sceneWorld coordinates.
+%% Switch axes to world coordinates.
 % This coordinate frame is in mm units and has the dimensions (X,Y,Z).
 % The diagram is of a cartoon head (taken from Leszek Swirski), being
 % viewed from above:
 %
-%   |
-%   |    .-.
-%   |   |   | <- Head
-%   |   `^u^'
-% Z |      :V <- Camera    (As seen from above)
-%   |      :
-%   |      :
-%  \|/     o <- Target
+%    ^
+%    |
+%    |    .-.
+% -Z |   |   | <- Head
+%    +   `^u^'
+% +Z |      
+%    |      
+%    |      W <- Camera    (As seen from above)
+%    V     
 %
-%     ----------> X
+%     <-----+----->
+%        -X   +X
 %
 % +X = right
 % +Y = up
@@ -564,12 +468,11 @@ end
 % pupil center when the line that connects the center of rotation of the
 % eye and the pupil center are normal to the image plane.
 
-% Re-arrange the head world coordinate frame to transform to the scene
-% world coordinate frame
-sceneWorldPoints = headWorldPoints(:,[2 3 1]);
+% Re-arrange the eyePoints to transform to the world coordinate frame
+worldPoints = eyePoints(:,[2 3 1]);
 
 
-%% Project the sceneWorld points to the image plane
+%% Project the world coordinate points to the image plane
 % This coordinate frame is in units of pixels, and has the dimensions
 % [x, y]:
 %
@@ -583,40 +486,53 @@ sceneWorldPoints = headWorldPoints(:,[2 3 1]);
 % With x being left/right and y being up/down
 %
 
-% If the sceneGeometry is lacking a cameraIntrinsic or cameraIntrinsic,
-% then return
-if ~isfield(sceneGeometry,'cameraExtrinsic') || ~isfield(sceneGeometry,'cameraIntrinsic')
+% Return if the sceneGeometry is lacking a cameraPosition or
+% cameraIntrinsic field
+if ~isfield(sceneGeometry,'cameraPosition') || ~isfield(sceneGeometry,'cameraIntrinsic')
     imagePoints = [];
     pupilEllipseOnImagePlane=nan(1,5);
     pupilFitError = nan;
     return
 end
 
-% Create the extrinsicRotationMatrix. The model specifies only the camera
-% rotation about the Z axis of the sceneWorld coordinate system.
-extrinsicRotationMatrix = ...
-    [cosd(sceneGeometry.cameraExtrinsic.rotationZ)	-sind(sceneGeometry.cameraExtrinsic.rotationZ)	0; ...
-    sind(sceneGeometry.cameraExtrinsic.rotationZ)     cosd(sceneGeometry.cameraExtrinsic.rotationZ)     0; ...
-    0                                       0                                       1];
+% Create the camera position rotation matrix. This is the rotation matrix
+% for the position of the camera with respect to the world coordinate
+% system. Only camera torsion is supported.
+cameraRotationMatrix = ...
+     [cosd(sceneGeometry.cameraPosition.torsion)	-sind(sceneGeometry.cameraPosition.torsion)	0; ...
+    sind(sceneGeometry.cameraPosition.torsion)     cosd(sceneGeometry.cameraPosition.torsion)     0; ...
+    0                                   0                                       1];
 
-% Create the projectionMatrix
-projectionMatrix = ...
-    sceneGeometry.cameraIntrinsic.matrix * ...
-    [extrinsicRotationMatrix, ...
-    sceneGeometry.cameraExtrinsic.translation];
+% We need to post-multiply the camera rotation matrix by a matrix that
+% reverses the Y and Z axes. This is to allow the camera coordinates to
+% also be right handed (as are the world coordinates), and to accomodate
+% the reversed Y-axis (negative is up) of the image plane.
+cameraRotationMatrix = cameraRotationMatrix * [1 0 0; 0 -1 0; 0 0 -1];
+
+% Create the extrinsic matrix. The sceneGeometry structure specifies the
+% translation and rotation parameters of camera in world coordinates (i.e.,
+% the sceneGeometry structure specifies the camera pose). The extrinsic
+% matrix is equal to [R t], where R is transpose of the
+% cameraRotationMatrix, and t = -RC, where C is the camerra translation in
+% world coordinates
+cameraExtrinsicMatrix = [transpose(cameraRotationMatrix) -transpose(cameraRotationMatrix)*sceneGeometry.cameraPosition.translation];
+
+% The projection matrix is the cameraInstrinsic matrix times the
+% cameraExtrinsic matrix.
+projectionMatrix = sceneGeometry.cameraIntrinsic.matrix * cameraExtrinsicMatrix;
 
 % What is our total number of points to project?
-nEyeWorldPoints = size(eyeWorldPoints,1);
+nEyePoints = size(eyePoints,1);
 
-% Project the sceneWorld points to the image plane and scale. The
-% sceneWorld points have a column of ones added to support the
+% Project the world points to camera points, and then to the image plane.
+% The world points have a column of ones added to support the
 % multiplication with a combined rotation and translation matrix
-tmpImagePoints=(projectionMatrix*[sceneWorldPoints, ones(nEyeWorldPoints,1)]')';
-imagePointsPreDistortion=zeros(nEyeWorldPoints,2);
+cameraPoints=(projectionMatrix*[worldPoints, ones(nEyePoints,1)]')';
+imagePointsPreDistortion=zeros(nEyePoints,2);
 imagePointsPreDistortion(:,1) = ...
-    tmpImagePoints(:,1)./tmpImagePoints(:,3);
+    cameraPoints(:,1)./cameraPoints(:,3);
 imagePointsPreDistortion(:,2) = ...
-    tmpImagePoints(:,2)./tmpImagePoints(:,3);
+    cameraPoints(:,2)./cameraPoints(:,3);
 
 
 %% Apply radial lens distortion
@@ -629,8 +545,8 @@ imagePointsPreDistortion(:,2) = ...
 imagePointsNormalized = (imagePointsPreDistortion - [sceneGeometry.cameraIntrinsic.matrix(1,3) sceneGeometry.cameraIntrinsic.matrix(2,3)]) ./ ...
     [sceneGeometry.cameraIntrinsic.matrix(1,1) sceneGeometry.cameraIntrinsic.matrix(2,2)];
 
-% Distortion is proportional to distance from the center of the center of
-% projection on the camera sensor
+% Distortion is proportional to distance from the center of projection on
+% the camera sensor
 radialPosition = sqrt(imagePointsNormalized(:,1).^2 + imagePointsNormalized(:,2).^2);
 
 distortionVector =   1 + ...
@@ -660,7 +576,7 @@ validPerimIdx = find(~any(isnan(imagePoints(pupilPerimIdx,:))')');
 if eyePose(4)==0 || ~isreal(imagePoints(pupilPerimIdx,:)) || length(validPerimIdx)<5
     pupilEllipseOnImagePlane=nan(1,5);
 else
-    % silence a warning that can arise regarding a nearly singular matrix
+    % Silence a warning that can arise regarding a nearly singular matrix
     warnState = warning;
     warning('off','MATLAB:nearlySingularMatrix');
     % We place the ellipse fit in a try-catch block, as the fit can fail
@@ -670,7 +586,7 @@ else
         implicitEllipseParams = ellipsefit_direct( imagePoints(pupilPerimIdx(validPerimIdx),1), imagePoints(pupilPerimIdx(validPerimIdx),2));
         % Convert the ellipse from implicit to transparent form
         pupilEllipseOnImagePlane = ellipse_ex2transparent(ellipse_im2ex(implicitEllipseParams));
-        % place theta within the range of 0 to pi
+        % Place theta within the range of 0 to pi
         if pupilEllipseOnImagePlane(5) < 0
             pupilEllipseOnImagePlane(5) = pupilEllipseOnImagePlane(5)+pi;
         end

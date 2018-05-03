@@ -25,9 +25,10 @@ function figHandle = plotModelEyeSchematic(eye, varargin)
 %
 % Examples:
 %{
-    % Basic call for an axial view plot in a new window with black lines
+    % Basic call for an axial and sagittal view plot in new windows
     eye = modelEyeParameters;
-    plotModelEyeSchematic(eye)
+    plotModelEyeSchematic(eye);
+    plotModelEyeSchematic(eye,'view','sag');
 %}
 %{
     % Two panel plot with axial and sagittal views for eyes with 0 and -10
@@ -79,20 +80,19 @@ switch p.Results.view
         xLabelString = 'posterior <----> anterior';
         postChamberRange = [-30, -7, -15, 15];
         corneaRange = [eye.pupil.center(1), 5, -15, 15];
-        lensRange = [-10, 0, -5, 5];
+        lensRange = [-10, -2.5, -5, 5];
     case {'sagittal','Sagittal','Sag','sag','Vertical','vertical','vert'}
         PdimA = 1;
         PdimB = 3;
         SdimA = 3;
         SdimB = 2;
-        set(gca,'Ydir','reverse')
         rotationField = 'ele';
         titleString = 'Sagittal';
         yLabelString = 'inferior <----> superior';
         xLabelString = 'posterior <----> anterior';
         postChamberRange = [-30, -7, -15, 15];
         corneaRange = [eye.pupil.center(1), 5, -15, 15];
-        lensRange = [-10, 0, -5, 5];       
+        lensRange = [-10, -2.5, -5, 5];       
     otherwise
         error('Not a recognized view for the schematic eye');
 end
@@ -126,6 +126,12 @@ plot(eyeWorldPoints(idx,PdimA),eyeWorldPoints(idx,PdimB),['*' p.Results.plotColo
 
 %% Plot the visual axis
 m = (eye.posteriorChamber.fovea(PdimB) - eye.lens.nodalPoint.rear(PdimB)) / (eye.posteriorChamber.fovea(PdimA) - eye.lens.nodalPoint.rear(PdimA));
+b = eye.lens.nodalPoint.rear(PdimB) -  (eye.lens.nodalPoint.rear(PdimA) * m);
+xRange = xlim;
+plot(xRange,xRange.*m+b,[':' p.Results.plotColor]);
+
+%% Plot the blind spot axis
+m = (eye.posteriorChamber.opticDisc(PdimB) - eye.lens.nodalPoint.rear(PdimB)) / (eye.posteriorChamber.opticDisc(PdimA) - eye.lens.nodalPoint.rear(PdimA));
 b = eye.lens.nodalPoint.rear(PdimB) -  (eye.lens.nodalPoint.rear(PdimA) * m);
 xRange = xlim;
 plot(xRange,xRange.*m+b,[':' p.Results.plotColor]);

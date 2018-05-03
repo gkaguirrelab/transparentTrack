@@ -67,7 +67,7 @@ for laterality = 1:2
     % Obtain the point that corresponds to the visual axis at the pupil
     % plane
     [~, imagePointsFixationAxis, ~, ~, pointLabelsFixationAxis] = ...
-        pupilProjection_fwd([sceneGeometry.eye.alpha(1) sceneGeometry.eye.alpha(2) 0 3],sceneGeometry,'fullEyeModelFlag',true);
+        pupilProjection_fwd([sceneGeometry.eye.axes.alpha.degField(1) sceneGeometry.eye.axes.alpha.degField(2) 0 3],sceneGeometry,'fullEyeModelFlag',true);
     
     % setup the figure
     subplot(1,2,laterality);

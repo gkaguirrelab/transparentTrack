@@ -1,4 +1,4 @@
-function [ Xp, Yp ] = ellipsePerimeterPoints( transparentEllipseParams, steps )
+function [ Xp, Yp ] = ellipsePerimeterPoints( transparentEllipseParams, steps, phase )
 % Returns a set of points on the boundary of a transparent ellipse
 %
 % Syntax:
@@ -13,18 +13,27 @@ function [ Xp, Yp ] = ellipsePerimeterPoints( transparentEllipseParams, steps )
 %
 % Inputs:
 %   transparentEllipseParams - A 1x5 vector containing the parameters of an
-%                               ellipse in transparent format.
-%   steps                     - Scalar. The number of points on the
-%                               boundary to be returned. If not passed,
-%                               steps is set to 5.
+%                           ellipse in transparent format.
+%   steps                 - Scalar. The number of points on the boundary
+%                          	to be returned. If not passed, steps is set to
+%                          	5.
+%   phase                 - Scalar. The phase (in radians) of the points
+%                           around the pupil perimeter. If not passed,
+%                           phase is set to zero.
+%
 % Outputs:
-%   Xp, Yp                    - Each is a stepsx1 vector, providing the X
-%                               and Y coordinate of each point.
+%   Xp, Yp                - Each is a stepsx1 vector, providing the X
+%                           and Y coordinate of each point.
 %
 
 % If steps was not passed, set to 5.
 if nargin == 1
     steps = 5;
+    phase = 0;
+end
+
+if nargin == 2
+    phase = 0;
 end
 
 % Convert the transparent ellipse to explicit form
@@ -40,7 +49,7 @@ theta = p(5);
 % Perform the calculation
 sintheta = sin(theta);
 costheta = cos(theta);
-alpha = linspace(0, 2*pi-(2*pi/steps), steps)';
+alpha = linspace(phase, 2*pi-(2*pi/steps)+phase, steps)';
 sinalpha = sin(alpha);
 cosalpha = cos(alpha);
 Xp = x + (a * cosalpha * costheta - b * sinalpha * sintheta);

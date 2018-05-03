@@ -28,7 +28,7 @@ idx = 1;
 thisTorsion = 0;
 azimuthFlip=1;
 elevationFlip=1;
-for thisPupilRadius = 1:0.5:3
+for thisPupilRadius = 1:1:3
     for thisElevation = -25:5:25
         for thisAzimuth = -35:5:35
             eyePoses=[thisAzimuth*azimuthFlip,thisElevation*elevationFlip,thisTorsion,thisPupilRadius];
@@ -43,9 +43,8 @@ save(pupilFileName,'pupilData')
 
 
 %% Create and save the default sceneGeometry file
-sceneGeometry = createSceneGeometry();
-sceneGeometry.virtualImageFunc = compileVirtualImageFunc(sceneGeometry,functionDirPath);
-save(sceneGeometryFileName,'sceneGeometry')
+createSceneGeometry('sceneGeometryFileName',sceneGeometryFileName,'aqueousRefractiveIndex',1.225);
+
 
 %% Create the eyeModel video
 makeEyeModelVideo(videoOutFileName,pupilFileName, sceneGeometryFileName, 'verbose',true)

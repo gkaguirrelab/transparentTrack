@@ -1,4 +1,4 @@
-function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileName, vitualImageFuncDir, varargin)
+function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileName, varargin)
 % Estimate camera translation and eye rotation given image plane ellipses
 %
 % Syntax:
@@ -103,17 +103,15 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
     %% Recover a veridical camera translation
     % Create a default sceneGeometry
     veridicalSceneGeometry = createSceneGeometry();
-    % Compile the ray tracing functions
-    veridicalSceneGeometry.virtualImageFunc = compileVirtualImageFunc( veridicalSceneGeometry, 'functionDirPath', '/tmp/demo_virtualImageFunc' );
     % Set some arbitrary extrinsic camera translation
-    veridicalSceneGeometry.extrinsicTranslationVector = [-1.2; 0.9; 108];
+    veridicalSceneGeometry.cameraPosition.translation = [-1.2; 0.9; 108];
     % Create a set of ellipses using the veridical geometry and
     % randomly varying pupil radii.
     ellipseIdx=1;
     for azi=-15:15:15
     	for ele=-15:15:15
             eyePose=[azi, ele, 0, 2+(randn()./5)];
-            pupilData.initial.ellipses.values(ellipseIdx,:) = pupilProjection_fwd(eyePose, veridicalSceneGeometry, virtualImageFuncPointer);
+            pupilData.initial.ellipses.values(ellipseIdx,:) = pupilProjection_fwd(eyePose, veridicalSceneGeometry);
             pupilData.initial.ellipses.RMSE(ellipseIdx,:) = 1;
             ellipseIdx=ellipseIdx+1;
         end
@@ -122,7 +120,7 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
     estimatedSceneGeometry = estimateSceneParams(pupilData,'','useParallel',true,'verbose',true,'ellipseArrayList',1:1:ellipseIdx-1);
     % Report how well we did
     fprintf('Error in the recovered camera translation vector (x, y, depth] in mm: \n');
-    veridicalSceneGeometry.extrinsicTranslationVector - estimatedSceneGeometry.extrinsicTranslationVector
+    veridicalSceneGeometry.cameraPosition.translation - estimatedSceneGeometry.cameraPosition.translation
 %}
 
 %% input parser
@@ -131,7 +129,6 @@ p = inputParser; p.KeepUnmatched = true;
 % Required
 p.addRequired('pupilFileName',@(x)(isstruct(x) || iscell(x) || ischar(x)));
 p.addRequired('sceneGeometryFileName',@ischar);
-p.addRequired('vitualImageFuncFileName',@(x)(isempty(x) || ischar(x)));
 
 % Optional display and I/O params
 p.addParameter('verbose',false,@islogical);
@@ -161,7 +158,7 @@ p.addParameter('badFrameErrorThreshold',2, @isnumeric);
 p.addParameter('nBADSsearches',10,@isnumeric);
 
 % parse
-p.parse(pupilFileName, sceneGeometryFileName, vitualImageFuncDir, varargin{:})
+p.parse(pupilFileName, sceneGeometryFileName, varargin{:})
 
 
 %% Announce we are starting
@@ -170,7 +167,7 @@ if p.Results.verbose
     fprintf(['Estimating camera position and eye rotation from pupil ellipses. Started ' char(datetime('now')) '\n']);
 end
 
-%% Create initial sceneGeometry structure and ray tracing function
+%% Create initial sceneGeometry structure
 initialSceneGeometry = createSceneGeometry(varargin{:});
 
 
@@ -421,9 +418,9 @@ end
         % Assemble a candidate sceneGeometry structure
         candidateSceneGeometry = initialSceneGeometry;
         % Store the camera rotation in Z
-        candidateSceneGeometry.cameraExtrinsic.rotationZ = x(1);
+        candidateSceneGeometry.cameraPosition.torsion = x(1);
         % Store the extrinsic camera translation vector
-        candidateSceneGeometry.cameraExtrinsic.translation = x(2:4)';
+        candidateSceneGeometry.cameraPosition.translation = x(2:4)';
         % Scale the rotation center values by the joint and differential
         % parameters
         candidateSceneGeometry.eye.rotationCenters.azi = candidateSceneGeometry.eye.rotationCenters.azi .* x(5) .* x(6);
@@ -453,8 +450,8 @@ warning(warningState);
 
 % Assemble the sceneGeometry file to return
 sceneGeometry = initialSceneGeometry;
-sceneGeometry.cameraExtrinsic.rotationZ = x(1);
-sceneGeometry.cameraExtrinsic.translation = x(2:4)';
+sceneGeometry.cameraPosition.torsion = x(1);
+sceneGeometry.cameraPosition.translation = x(2:4)';
 sceneGeometry.eye.rotationCenters.azi = sceneGeometry.eye.rotationCenters.azi .* x(5) .* x(6);
 sceneGeometry.eye.rotationCenters.ele = sceneGeometry.eye.rotationCenters.ele .* x(5) ./ x(6);
 sceneGeometry.meta.estimateSceneParams.search.x = x';

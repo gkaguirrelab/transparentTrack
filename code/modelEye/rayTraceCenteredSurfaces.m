@@ -10,7 +10,7 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
 %       Elagha, Hassan A. "Generalized formulas for ray-tracing and
 %       longitudinal spherical aberration." JOSA A 34.3 (2017): 335-343.
 %
-%   Our implementation assumes a set of elliptical surfaces, with each
+%   The implementation assumes a set of elliptical surfaces, with each
 %   surface having its center positioned on the optical axis. The initial
 %   state of the ray is specified by its two-dimensional coordinates and by
 %   the angle (theta) that it makes with the optical axis. By convention,
@@ -102,10 +102,10 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
     %% Pupil through cornea
     % A model of the passage of a point on the pupil perimeter through
     % the axial cross-section of the cornea (units in mm)
-    sceneGeometry = createSceneGeometry();
-    outputRay = rayTraceCenteredSurfaces([-3.7 2], deg2rad(-10), sceneGeometry.refraction.opticalSystem.p1p2, true);
-    % Compare the output to value calculated on April 10, 2018
-    outputRayCached = [-0.151947109615718   1.381824292230910; 0.802861112858012   1.084601718565053];
+    sceneGeometry = createSceneGeometry('aqueousRefractiveIndex',[]);
+    outputRay = rayTraceCenteredSurfaces([sceneGeometry.eye.pupil.center(1) 2], deg2rad(-15), sceneGeometry.refraction.opticalSystem.p1p2, true);
+    % Compare the output to value calculated on April 26, 2018
+    outputRayCached = [-0.052350606943506   0.882953893324114;   0.869847276998802   0.496235568373862];
     assert ( max(max(abs(outputRayCached - outputRay))) < 1e-6)
 %}
 %{
@@ -138,7 +138,7 @@ function [outputRay, thetas, imageCoords, intersectionCoords] = rayTraceCentered
     % This ray encounters total internal reflection. The function issues
     % warning and returns an empty outputRay
     theta = deg2rad(15);
-    outputRay = rayTraceCenteredSurfaces(coords, theta, opticalSystem);    
+    outputRay = rayTraceCenteredSurfaces(coords, theta, opticalSystem);
 %}
 
 
@@ -313,13 +313,16 @@ for ii = 2:nSurfaces
         (1/curvature(ii))*(relativeIndices(ii-1).*aVals(ii-1).*curvature(ii-1)+d.*sin(thetas(ii-1)));
     % Check if the incidence angle is above the critical angle for the
     % relative refractive index at the surface interface.
-        if abs((aVals(ii)*relativeIndices(ii))) > 1
-            warning('rayTraceCenteredSurfaces:criticalAngle','Angle of incidence for surface %d greater than critical angle. Returning.',ii);
-            return
-        end
+    if abs((aVals(ii)*relativeIndices(ii))) > 1
+        warning('rayTraceCenteredSurfaces:criticalAngle','Angle of incidence for surface %d greater than critical angle. Returning.',ii);
+        return
+    end
     % Find the angle of the ray after it enters the current surface
-    thisTheta = thetas(ii-1) - asin(aVals(ii)) + asin(aVals(ii).*relativeIndices(ii));
-        thetas(ii) = thisTheta;
+    thetas(ii) = thetas(ii-1) - asin(aVals(ii)) + asin(aVals(ii).*relativeIndices(ii));
+    % Find the coordinates at which the ray, after making contact
+    % with the current surface, would contact (or originate from)
+    % the optical axis
+    imageCoords(ii,:) = [-(intersectionCoords(ii,2)-tan(thetas(ii))*intersectionCoords(ii,1))/tan(thetas(ii)) 0];
     % Update the plot
     if figureFlag.show
         % add this lens surface
@@ -328,10 +331,6 @@ for ii = 2:nSurfaces
         end
         % plot the line for the virtual image
         if figureFlag.imageLines
-            % Find the coordinates at which the ray, after making contact
-            % with the current surface, would contact (or originate from)
-            % the optical axis
-            imageCoords(ii,:) = [-(intersectionCoords(ii,2)-tan(thetas(ii))*intersectionCoords(ii,1))/tan(thetas(ii)) 0];
             % Plot the prior virtual image line
             plot([imageCoords(ii-1,1) intersectionCoords(ii-1,1)],[imageCoords(ii-1,2) intersectionCoords(ii-1,2)],'--b');
         end
@@ -363,7 +362,7 @@ if figureFlag.show
         finalRay = [intersectionCoords(nSurfaces,:); [intersectionCoords(nSurfaces,1)+(3/norm) intersectionCoords(nSurfaces,2)+(3*slope/norm)]];
         plot([finalRay(1,1) finalRay(2,1)],[finalRay(1,2) finalRay(2,2)],'-r');
         plot(intersectionCoords(1,1),intersectionCoords(1,2),'xr');
-    end    
+    end
     % Plot the output unit ray vector
     if figureFlag.finalUnitRay
         plot([outputRay(1,1) outputRay(2,1)],[outputRay(1,2) outputRay(2,2)],'-g');
