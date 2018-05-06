@@ -32,22 +32,25 @@ function compileVirtualImageFunc( varargin )
 %
 % Examples:
 %{
-    % Basic example with a compiled virtualImageFunc
+    % Confirm that compiled and native virtualImageFunc yield same value
+    sceneGeometry = createSceneGeometry('forceMATLABVirtualImageFunc',true);
+    % Assemble the args for the virtualImageFunc
+    args = {sceneGeometry.cameraPosition.translation, ...
+    	sceneGeometry.eye.rotationCenters, ...
+    	sceneGeometry.refraction.opticalSystem};
+    virtualEyePointNative = sceneGeometry.refraction.handle( [sceneGeometry.eye.pupil.center(1) 2 0], [0 0 0 2], args{:} );
     compileVirtualImageFunc
     sceneGeometry = createSceneGeometry();
     % Assemble the args for the virtualImageFunc
     args = {sceneGeometry.cameraPosition.translation, ...
     	sceneGeometry.eye.rotationCenters, ...
-    	sceneGeometry.refraction.opticalSystem.p1p2, ...
-    	sceneGeometry.refraction.opticalSystem.p1p3};
-    [virtualEyePoint, nodalPointIntersectError] = sceneGeometry.refraction.handle( [sceneGeometry.eye.pupil.center(1) 2 0], [0 0 0 2], args{:} );
-    % Test output against cached value
-    virtualEyePointCached = [-4.250000000000000   2.299520562547075   0.000000000000001];
-    assert(max(abs(virtualEyePoint - virtualEyePointCached)) < 1e-6)
+    	sceneGeometry.refraction.opticalSystem};
+    virtualEyePointCompiled = sceneGeometry.refraction.handle( [sceneGeometry.eye.pupil.center(1) 2 0], [0 0 0 2], args{:} );
+    % Test if the outputds agree
+    assert(max(abs(virtualEyePointNative - virtualEyePointCompiled)) < 1e-6)
 %}
 %{
-    % Compare computation time for MATLAB and compiled C code
-    % Turn off warning that we are replacing the compiled func
+    % Compare computation time for MATLAB and compiled code
     nComputes = 100;
     fprintf('\nTime to execute virtualImageFunc (average over %d projections):\n',nComputes);
     % Native function
@@ -55,8 +58,7 @@ function compileVirtualImageFunc( varargin )
     % Assemble the args for the virtualImageFunc
     args = {sceneGeometry.cameraPosition.translation, ...
     	sceneGeometry.eye.rotationCenters, ...
-    	sceneGeometry.refraction.opticalSystem.p1p2, ...
-    	sceneGeometry.refraction.opticalSystem.p1p3};
+    	sceneGeometry.refraction.opticalSystem};
     tic
     for ii=1:nComputes
         virtualImageFunc( [-3.7 2 0], [0 0 0 2], args{:} );
@@ -72,6 +74,7 @@ function compileVirtualImageFunc( varargin )
     msecPerComputeCompile = toc / nComputes * 1000;
     fprintf('\tUsing the compiled function: %4.2f msecs.\n',msecPerComputeCompile);
 %}
+
 
 %% input parser
 p = inputParser;
@@ -139,8 +142,7 @@ sceneGeometry = createSceneGeometry();
 dynamicArgs = {[0,0,0], [0,0,0,0]};
 staticArgs = {sceneGeometry.cameraPosition.translation, ...
     	sceneGeometry.eye.rotationCenters, ...
-    	sceneGeometry.refraction.opticalSystem.p1p2, ...
-    	sceneGeometry.refraction.opticalSystem.p1p3};
+    	sceneGeometry.refraction.opticalSystem};
 
 args = [dynamicArgs, staticArgs{:}];
 % Change to the compile directory
