@@ -5,7 +5,7 @@ function [pupilEllipseOnImagePlane, imagePoints, worldPoints, eyePoints, pointLa
 %  [pupilEllipseOnImagePlane, imagePoints, worldPoints, eyePoints, pointLabels] = pupilProjection_fwd(eyePoses, sceneGeometry)
 %
 % Description:
-%   Given the sceneGeometry this routine simulates an exit pupil on a
+%   Given the sceneGeometry this routine simulates an actual pupil on a
 %   rotating eye and then measures the parameters of the ellipse (in
 %   transparent format) of the entrance pupil in the image plane.
 %
@@ -56,10 +56,6 @@ function [pupilEllipseOnImagePlane, imagePoints, worldPoints, eyePoints, pointLa
 %  'anteriorChamberEllipsoidPoints' - The number of points that are on
 %                           each longitude line of the anterior chamber
 %                           ellipsoid. About 30 makes a nice image.
-%  'removeOccultedPoints' - Logical. If set to true (default) the set of
-%                           modeled points will be restricted to only those
-%                           that are anterior to the center of rotation of
-%                           the eye following rotation of the eye.
 %
 % Outputs:
 %   pupilEllipseOnImagePlane - A 1x5 vector with the parameters of the
@@ -103,7 +99,7 @@ function [pupilEllipseOnImagePlane, imagePoints, worldPoints, eyePoints, pointLa
     % Obtain the pupil ellipse parameters in transparent format
     pupilEllipseOnImagePlane = pupilProjection_fwd(eyePose,sceneGeometry);
     % Test against cached result
-    pupilEllipseOnImagePlaneCached = [0.027882084468391e4 0.022419008831363e4   1.564653262580187e4   0.000024846189627e4 0.000188727559347e4];
+    pupilEllipseOnImagePlaneCached = [0.027839072157472   0.022398611861105   1.548090054525043   0.000025800693977   0.000191192670464].*1e4;
     assert(max(abs(pupilEllipseOnImagePlane -  pupilEllipseOnImagePlaneCached)) < 1e-6)
 %}
 %{
@@ -115,10 +111,10 @@ function [pupilEllipseOnImagePlane, imagePoints, worldPoints, eyePoints, pointLa
     % Define an eyePose with azimuth, elevation, torsion, and pupil radius
     eyePose = [-10 5 0 3];
     % Perform the projection and request the full eye model
-    [~, ~, worldPoints, ~, pointLabels] = pupilProjection_fwd(eyePose,sceneGeometry,'fullEyeModelFlag',true,'removeOccultedPoints',false);
+    [~, ~, worldPoints, ~, pointLabels] = pupilProjection_fwd(eyePose,sceneGeometry,'fullEyeModelFlag',true);
     % Define some settings for display
-    eyePartLabels = {'aziRotationCenter', 'eleRotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex' 'fovea' 'opticDisc'};
-    plotColors = {'>r' '^m' '.k' '*b' '*g' '.y' '*y' '*r' 'xk'};
+    eyePartLabels = {'aziRotationCenter', 'eleRotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeterFront' 'pupilPerimeterBack' 'anteriorChamber' 'cornealApex' 'fovea' 'opticDisc'};
+    plotColors = {'>r' '^m' '.k' '*b' '*g' '*g' '.y' '*y' '*r' 'xk'};
     % Prepare a figure
     figure
     hold on
@@ -141,7 +137,7 @@ function [pupilEllipseOnImagePlane, imagePoints, worldPoints, eyePoints, pointLa
 %{
     %% Test the accuracy of the ellipse fit to the pupil boundary
     sceneGeometry=createSceneGeometry();
-    aziVals = -45:5:45;
+    aziVals = -60:5:60;
     pupilFitError = [];
     for aa = 1:length(aziVals)
         eyePose = [aziVals(aa) -3 0 3];
@@ -182,7 +178,6 @@ p.addParameter('pupilPerimPhase',0,@isnumeric);
 p.addParameter('nIrisPerimPoints',5,@isnumeric);
 p.addParameter('posteriorChamberEllipsoidPoints',30,@isnumeric);
 p.addParameter('anteriorChamberEllipsoidPoints',30,@isnumeric);
-p.addParameter('removeOccultedPoints',true,@islogical);
 
 % parse
 p.parse(eyePose, sceneGeometry, varargin{:})
@@ -223,29 +218,38 @@ nPupilPerimPoints = p.Results.nPupilPerimPoints;
 % and negative values are upward
 
 
-%% Define points around the elliptical exit pupil
-% The eccentricity of the exit pupil is given by a stored function
-exitPupilEccenFunc = str2func(sceneGeometry.eye.pupil.eccenFcnString);
-% Determine the parameters of the ellipse that defines the exit
-% pupil in the plane of the pupil. The absolute value of exitPupilEccenFunc
-% gives the eccentricity. The theta of the theta of the exit pupil switches
+%% Define points around the elliptical actual pupil
+% The eccentricity of the actual pupil is given by a stored function
+actualPupilEccenFunc = str2func(sceneGeometry.eye.pupil.eccenFcnString);
+% Determine the parameters of the ellipse that defines the actual pupil in
+% the plane of the pupil. The absolute value of actualPupilEccenFunc gives
+% the eccentricity. The theta of the theta of the actual pupil switches
 % from horizontal to vertical when the pupil passes the circular radius
 % point (0).
-exitPupilEllipse = [sceneGeometry.eye.pupil.center(2) , ...
+actualPupilEllipse = [sceneGeometry.eye.pupil.center(2) , ...
     sceneGeometry.eye.pupil.center(3), ...
     pi*pupilRadius^2, ...
-    abs(exitPupilEccenFunc(pupilRadius)),...
-    sceneGeometry.eye.pupil.thetas(1+(exitPupilEccenFunc(pupilRadius)>0))];
+    abs(actualPupilEccenFunc(pupilRadius)),...
+    sceneGeometry.eye.pupil.thetas(1+(actualPupilEccenFunc(pupilRadius)>0))];
 % Obtain the points on the perimeter of the ellipse
-[p2p, p3p] = ellipsePerimeterPoints( exitPupilEllipse, nPupilPerimPoints, p.Results.pupilPerimPhase );
-% Place these points into the eyeWorld coordinates
-eyePoints(1:nPupilPerimPoints,3) = p3p;
-eyePoints(1:nPupilPerimPoints,2) = p2p;
-eyePoints(1:nPupilPerimPoints,1) = sceneGeometry.eye.pupil.center(1);
+[p2p, p3p] = ellipsePerimeterPoints( actualPupilEllipse, nPupilPerimPoints, p.Results.pupilPerimPhase );
+% Place these points into the eyeWorld coordinates, and create a front
+% pupil perimeter
+pupilFrontPoints(1:nPupilPerimPoints,3) = p3p;
+pupilFrontPoints(1:nPupilPerimPoints,2) = p2p;
+pupilFrontPoints(1:nPupilPerimPoints,1) = sceneGeometry.eye.pupil.center(1)+sceneGeometry.eye.iris.thickness/2;
+eyePoints = pupilFrontPoints;
 % Create labels for the pupilPerimeter points
 tmpLabels = cell(nPupilPerimPoints, 1);
-tmpLabels(:) = {'pupilPerimeter'};
+tmpLabels(:) = {'pupilPerimeterFront'};
 pointLabels = tmpLabels;
+% Add the back pupil perimeter
+pupilBackPoints(1:nPupilPerimPoints,3) = p3p;
+pupilBackPoints(1:nPupilPerimPoints,2) = p2p;
+pupilBackPoints(1:nPupilPerimPoints,1) = sceneGeometry.eye.pupil.center(1)-sceneGeometry.eye.iris.thickness/2;
+eyePoints = [eyePoints; pupilBackPoints];
+tmpLabels(:) = {'pupilPerimeterBack'};
+pointLabels = [pointLabels; tmpLabels];
 
 
 %% Define full eye model
@@ -384,7 +388,9 @@ if isfield(sceneGeometry,'refraction')
                 sceneGeometry.eye.rotationCenters, ...
                 sceneGeometry.refraction.opticalSystem};
         % Identify the eyePoints subject to refraction by the cornea
-        refractPointsIdx = find(strcmp(pointLabels,'pupilPerimeter')+...
+        refractPointsIdx = find(...
+            strcmp(pointLabels,'pupilPerimeterFront')+...
+            strcmp(pointLabels,'pupilPerimeterBack')+...
             strcmp(pointLabels,'pupilCenter')+...
             strcmp(pointLabels,'irisPerimeter')+...
             strcmp(pointLabels,'irisCenter'));
@@ -418,24 +424,22 @@ R.tor = [1 0 0; 0 cosd(eyeTorsion) -sind(eyeTorsion); 0 sind(eyeTorsion) cosd(ey
 rotOrder = {'tor','ele','azi'};
 
 % We shift the points to each rotation center, rotate, shift back, and
-% repeat. Omit the eye rotation centers from this process. We must perform
-% the rotation independently for each Euler angle to accomodate having
-% rotation centers that differ by Euler angle.
-rotatePointsIdx = ~contains(pointLabels,'Rotation');
+% repeat. Omit the eye rotation centers from this process and the center of
+% projection. We must perform the rotation independently for each Euler
+% angle to accomodate having rotation centers that differ by Euler angle.
+rotatePointsIdx = ~contains(pointLabels,{'Rotation','centerOfProjection'});
 for rr=1:3
     eyePoints(rotatePointsIdx,:) = ...
         (R.(rotOrder{rr})*(eyePoints(rotatePointsIdx,:)-sceneGeometry.eye.rotationCenters.(rotOrder{rr}))')'+sceneGeometry.eye.rotationCenters.(rotOrder{rr});
 end
 
-% If we are projecting a full eye model, and the 'removeOccultedPoints' is
-% set to true, then remove those posterior chamber points that are
-% posterior to the most posterior of the centers of rotation of the eye,
-% and thus would not be visible to the camera.
-if p.Results.fullEyeModelFlag && p.Results.removeOccultedPoints
-    retainIdx = strcmp(pointLabels,'posteriorChamber') .* (eyePoints(:,1) >= min([sceneGeometry.eye.rotationCenters.azi(1) sceneGeometry.eye.rotationCenters.ele(1)]));
-    retainIdx = logical(retainIdx + ~strcmp(pointLabels,'posteriorChamber'));
-    eyePoints = eyePoints(retainIdx,:);
-    pointLabels = pointLabels(retainIdx);
+% If we are projecting a full eye model, label as hidden those posterior
+% chamber points that are posterior to the most posterior of the centers of
+% rotation of the eye, and thus would not be visible to the camera.
+if p.Results.fullEyeModelFlag
+    seenIdx = strcmp(pointLabels,'posteriorChamber') .* (eyePoints(:,1) >= min([sceneGeometry.eye.rotationCenters.azi(1) sceneGeometry.eye.rotationCenters.ele(1)]));
+    seenIdx = logical(seenIdx + ~strcmp(pointLabels,'posteriorChamber'));
+    pointLabels(~seenIdx) = strcat(pointLabels(~seenIdx),'_hidden');
 end
 
 
@@ -558,19 +562,57 @@ imagePoints = (imagePointsNormalizedDistorted .* [sceneGeometry.cameraIntrinsic.
     [sceneGeometry.cameraIntrinsic.matrix(1,3) sceneGeometry.cameraIntrinsic.matrix(2,3)];
 
 
-%% Fit an ellipse to the pupil points in the image plane
-% Obtain the transparent ellipse params of the projection of the pupil
-% circle on the image plane.
-pupilPerimIdx = find(strcmp(pointLabels,'pupilPerimeter'));
+%% Obtain the pupil ellipse
+% Proceed with fitting if we have a non-zero pupil radius
+if eyePose(4) > 0
+    % First obtain the ellipse fit to the front and back pupil perimeters
+    pupilPerimIdxFront = strcmp(pointLabels,'pupilPerimeterFront');
+    p1 = pupilEllipseFit(imagePoints(pupilPerimIdxFront,:));
+    pupilPerimIdxBack = strcmp(pointLabels,'pupilPerimeterBack');
+    p2 = pupilEllipseFit(imagePoints(pupilPerimIdxBack,:));
+    if any(isnan(p1)) || any(isnan(p2))
+        % If we are unable to fit an ellipse to the front or back pupil
+        % perimeter, then exit with nans
+        pupilFitError = nan;
+        pupilEllipseOnImagePlane=nan(1,5);
+    else
+        % For each position on the perimeter of the pupil, determine which
+        % point (front or back) is farther from the center of the ellipse
+        % and then mark this point as hidden.
+        centerDistance = sqrt(sum(((imagePoints(logical(pupilPerimIdxFront+pupilPerimIdxBack),:)-mean([p1(1:2);p2(1:2)])).^2),2));
+        hideBack = (centerDistance(1:nPupilPerimPoints)-centerDistance(nPupilPerimPoints+1:nPupilPerimPoints*2))<0;
+        idx = pupilPerimIdxBack;
+        idx(pupilPerimIdxBack)=hideBack;
+        pointLabels(idx) = strcat(pointLabels(idx),'_hidden');
+        idx = pupilPerimIdxFront;
+        idx(pupilPerimIdxFront)=~hideBack;
+        pointLabels(idx) = strcat(pointLabels(idx),'_hidden');
+        % Fit an ellipse to the non-hidden pupil perimeter points
+        pupilPerimIdx = logical(strcmp(pointLabels,{'pupilPerimeterFront'}) + ...
+            strcmp(pointLabels,{'pupilPerimeterBack'}));
+        [pupilEllipseOnImagePlane, pupilFitError] = pupilEllipseFit(imagePoints(pupilPerimIdx,:));
+    end
+else
+    pupilFitError = nan;
+    pupilEllipseOnImagePlane=nan(1,5);
+end
+
+
+end % pupilProjection_fwd
+
+
+%%%%% LOCAL FUNCTIONS
+
+function [pupilEllipseOnImagePlane, pupilFitError] = pupilEllipseFit(imagePoints)
 
 % Set up a variable to hold the pupil fit error
 pupilFitError = nan;
 
 % Before we try to fit the ellipse, make sure that the radius is not zero,
 % and that there are at least 5 perimeter points that are non nan.
-validPerimIdx = find(~any(isnan(imagePoints(pupilPerimIdx,:))')');
+validPerimIdx = find(~any(isnan(imagePoints)')');
 
-if eyePose(4)==0 || ~isreal(imagePoints(pupilPerimIdx,:)) || length(validPerimIdx)<5
+if ~isreal(imagePoints) || length(validPerimIdx)<5
     pupilEllipseOnImagePlane=nan(1,5);
 else
     % Silence a warning that can arise regarding a nearly singular matrix
@@ -580,7 +622,7 @@ else
     % when the ellipse is so eccentric that it approaches a line
     try
         % Ellipse fitting with routine from the quadfit toolbox
-        implicitEllipseParams = ellipsefit_direct( imagePoints(pupilPerimIdx(validPerimIdx),1), imagePoints(pupilPerimIdx(validPerimIdx),2));
+        implicitEllipseParams = ellipsefit_direct( imagePoints(validPerimIdx,1), imagePoints(validPerimIdx,2));
         % Convert the ellipse from implicit to transparent form
         pupilEllipseOnImagePlane = ellipse_ex2transparent(ellipse_im2ex(implicitEllipseParams));
         % Place theta within the range of 0 to pi
@@ -588,7 +630,7 @@ else
             pupilEllipseOnImagePlane(5) = pupilEllipseOnImagePlane(5)+pi;
         end
         % Get the error of the ellipse fit to the pupil points
-        pupilFitError = sqrt(nanmean(ellipsefit_distance( imagePoints(pupilPerimIdx(validPerimIdx),1), imagePoints(pupilPerimIdx(validPerimIdx),2),ellipse_transparent2ex(pupilEllipseOnImagePlane)).^2));
+        pupilFitError = sqrt(nanmean(ellipsefit_distance( imagePoints(validPerimIdx,1), imagePoints(validPerimIdx,2),ellipse_transparent2ex(pupilEllipseOnImagePlane)).^2));
     catch ME
         % If the ellipse fit direct fails because of an inability to fit an
         % ellipse to the provided points, return nans and issue a warning.
@@ -603,8 +645,4 @@ else
     end % try-catch block
     warning(warnState);
 end
-
-end % pupilProjection_fwd
-
-
-
+end

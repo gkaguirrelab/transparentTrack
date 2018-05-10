@@ -37,12 +37,6 @@ function eye = modelEyeParameters( varargin )
 %                           to fit the proportions predicted by the
 %                           Atchison model for the specified degree of
 %                           ametropia.
-%  'visualAxis'           - 1x4 vector. This is the angle of the visual
-%                           axis w.r.t. to optical axis. The values are
-%                           [azimuth, elevation, torsion]. An eyePose that
-%                           is the negative of the visual axis rotation
-%                           values aligns the visual axis of the eye with
-%                           the optical axis of the camera.
 %  'eyeLaterality'        - A text string that specifies which eye (left,
 %                           right) to model. Allowed values (in any case)
 %                           are {'left','right','L','R','OS','OD'}
@@ -53,6 +47,14 @@ function eye = modelEyeParameters( varargin )
 %                           This is the wavelength domain within which
 %                           imaging is being performed. The refractive
 %                           indices vary based upon this choice.
+%  'visualAxisDegRetina'  - 1x3 vector. This is the position of the fovea 
+%                           w.r.t. to optical axis in degrees of retina.
+%                           The values are [azimuth, elevation, torsion].
+%                           Used in model development.
+%  'opticDiscAxisDegRegina'  - 1x3 vector. This is the position of the  
+%                           optic disc w.r.t. to optical axis in degrees of
+%                           retina. The values are [azimuth, elevation,
+%                           torsion]. Used in model development.
 %
 % Outputs:
 %   eye                   - A structure with fields that contain the values
@@ -75,12 +77,12 @@ p = inputParser; p.KeepUnmatched = true;
 % Optional
 p.addParameter('sphericalAmetropia',0,@isscalar);
 p.addParameter('axialLength',[],@(x)(isempty(x) || isscalar(x)));
-p.addParameter('visualAxis',[],@(x)(isempty(x) || isnumeric(x)));
-p.addParameter('opticDiscAxis',[],@(x)(isempty(x) || isnumeric(x)));
 p.addParameter('cornealAxis',[],@(x)(isempty(x) || isnumeric(x)));
 p.addParameter('eyeLaterality','Right',@ischar);
 p.addParameter('species','Human',@ischar);
 p.addParameter('spectralDomain','nir',@ischar);
+p.addParameter('visualAxisDegRetina',[],@(x)(isempty(x) || isnumeric(x)));
+p.addParameter('opticDiscAxisDegRetina',[],@(x)(isempty(x) || isnumeric(x)));
 
 % parse
 p.parse(varargin{:})
@@ -248,24 +250,99 @@ switch p.Results.species
         if isempty(p.Results.cornealAxis)
             switch eyeLaterality
                 case 'Right'
-                    eye.cornea.axis = [3.4467    1.4400   -0.0200];
+                    eye.cornea.axis = [3.4460    1.6500   -0.0200];
                 case 'Left'
-                    eye.cornea.axis = [-3.4467    1.4400   -0.0200];
+                    eye.cornea.axis = [-3.4460    1.6500   -0.0200];
             end
         else
             eye.cornea.axis = p.Results.cornealAxis;
         end
 
         
+        %% Iris
+        % The iris has a thickness. This thickness influences the
+        % properties of the entrance pupil, as when the eye is rotated
+        % w.r.t. the camera either front or back surface of the iris
+        % aperture defines the near or far edge of the entrance pupil.
+        eye.iris.thickness = 0.15;
+
+        % We position the anterior surface of the iris at the depth of the
+        % anterior point of the lens. We model an eye with zero iris angle,
+        % thus making the iris a plane. We adjust the position of the iris
+        % so that it is centered within the rotated corneal ellipse. This
+        % is consistent with reports that the iris is shifted slightly
+        % upward with respect to the pupil center, although inconsistent
+        % with the report that it is shifted temporally:
+        %
+        %   ...the typical entrance pupil is decentered
+        %   approximately 0.15 mm nasally and 0.1 mm inferior to the
+        %   geometric center of the visible iris circumference
+        %
+        % Bennett, Edward S., and Barry A. Weissman, eds. Clinical contact
+        % lens practice. Lippincott Williams & Wilkins, 2005, p119
+        switch eyeLaterality
+            case 'Right'
+                eye.iris.center = [-4+eye.iris.thickness/2 0.35 0.35];
+            case 'Left'
+                eye.iris.center = [-4+eye.iris.thickness/2 -0.35 0.35];
+        end
+        
+        % Define the iris radius. One study measured the horizontal visible
+        % iris diameter (HVID) in 200 people, and found a mean of 11.8 with
+        % a range of 10.2 - 13.0.
+        %
+        %    PJ Caroline & MP Andrew. "The Effect of Corneal Diameter on
+        %    Soft Lens Fitting, Part 1" Contact Lens Spectrum, Issue: April
+        %    2002
+        %    https://www.clspectrum.com/issues/2002/april-2002/contact-lens-case-reports
+        %
+        % Bernd Bruckner of the company Appenzeller Kontaktlinsen AG
+        % supplied me with a tech report from his company (HVID & SimK
+        % study) that measured HVID in 461 people. These data yield a mean
+        % iris radius of 5.92 mm, 0.28 SD. The values from the histogram
+        % are represented here, along with a Gaussian fit to the
+        % distribution
+        %{
+            counts = [0 2 2 0 0 4 5 12 19 23 36 44 52 41 39 37 43 30 28 12 15 10 4 1 0 2 0];
+            HVIDRadiusmm = (10.5:0.1:13.1)/2;
+            hvidGaussFit = fit(HVIDRadiusmm', counts', 'gauss1');
+            hvidRadiusMean = hvidGaussFit.b1;
+            hvidRadiusSD =  hvidGaussFit.c1;
+            figure
+            plot(HVIDRadiusmm, hvidGaussFit(HVIDRadiusmm), '-r')
+            hold on
+            plot(HVIDRadiusmm, counts, '*k')
+            xlabel('HVID radius in mm')
+            ylabel('counts')
+        %}
+        % The HVID is the refracted iris size. We can use the forward model
+        % to find the size of the true iris.
+        %{
+            sceneGeometry = createSceneGeometry();
+            sceneGeometry.refraction = [];
+            % Get the area in pixels of a "pupil" that is the same radius
+            % as the HVID when there is no ray tracing
+            hvidP=pupilProjection_fwd([0 0 0 hvidRadiusMean],sceneGeometry);
+            % Restore ray tracing
+            sceneGeometry = createSceneGeometry();
+            % Set up the objective function
+            myArea = @(p) p(3);
+            myObj = @(r) (hvidP(3) - myArea(pupilProjection_fwd([0 0 0 r],sceneGeometry)))^2;
+            [r,pixelError] = fminsearch(myObj,5.5);
+            fprintf('An unrefracted iris radius of %4.2f yields a refracted HVID of %4.2f \n',r,hvidRadiusMean)
+        %}
+        % We use this true iris size and then subject the iris perimeter
+        % points to refraction
+        eye.iris.radius = 5.57;
+
+        
         %% Pupil
-        % We position the pupil plane at the depth of the anterior point of
-        % the lens, assuming cycloplegia. The coordinate space of the model
-        % eye is defined w.r.t. the center of the pupil, so the p2 and p3
-        % values are zero
-        eye.pupil.center = [-4.0 0 0];
+        % The pupil is an aperture in the iris, centered on the optical
+        % axis
+        eye.pupil.center = [eye.iris.center(1) 0 0];
         
         % The actual pupil of the eye is elliptical. Further, the
-        % eccentricity and theta of the actual pupil ellipse changes with
+        % eccentricity and theta of the entrance pupil ellipse changes with
         % pupil dilation:
         %
         %   Wyatt, Harry J. "The form of the human pupil." Vision Research
@@ -349,7 +426,7 @@ switch p.Results.species
         %}
         % Specify the params and equation that defines the actual pupil
         % ellipse. This can be invoked as a function using str2func.
-        eye.pupil.eccenParams = [-1.743 4.787 0.122 0.117]; 
+        eye.pupil.eccenParams = [-1.749 -4.770 0.099 -0.145]; 
         eye.pupil.eccenFcnString = sprintf('@(x) (tanh((x+%f).*%f)+%f)*%f',eye.pupil.eccenParams(1),eye.pupil.eccenParams(2),eye.pupil.eccenParams(3),eye.pupil.eccenParams(4)); 
 
         % The theta values of the actual pupil ellipse for eccentricities
@@ -358,78 +435,7 @@ switch p.Results.species
             case 'Right'
                 eye.pupil.thetas = [0  3/7*pi];
             case 'Left'
-                eye.pupil.thetas = [0  4/7*pi/2];
-        end
-        
-        
-        %% Iris
-        % Define the iris radius. One study measured the horizontal visible
-        % iris diameter (HVID) in 200 people, and found a mean of 11.8 with
-        % a range of 10.2 - 13.0.
-        %
-        %    PJ Caroline & MP Andrew. "The Effect of Corneal Diameter on
-        %    Soft Lens Fitting, Part 1" Contact Lens Spectrum, Issue: April
-        %    2002
-        %    https://www.clspectrum.com/issues/2002/april-2002/contact-lens-case-reports
-        %
-        % Bernd Bruckner of the company Appenzeller Kontaktlinsen AG
-        % supplied me with a tech report from his company (HVID & SimK
-        % study) that measured HVID in 461 people. These data yield a mean
-        % iris radius of 5.92 mm, 0.28 SD. The values from the histogram
-        % are represented here, along with a Gaussian fit to the
-        % distribution
-        %{
-            counts = [0 2 2 0 0 4 5 12 19 23 36 44 52 41 39 37 43 30 28 12 15 10 4 1 0 2 0];
-            HVIDRadiusmm = (10.5:0.1:13.1)/2;
-            hvidGaussFit = fit(HVIDRadiusmm', counts', 'gauss1');
-            hvidRadiusMean = hvidGaussFit.b1;
-            hvidRadiusSD =  hvidGaussFit.c1;
-            figure
-            plot(HVIDRadiusmm, hvidGaussFit(HVIDRadiusmm), '-r')
-            hold on
-            plot(HVIDRadiusmm, counts, '*k')
-            xlabel('HVID radius in mm')
-            ylabel('counts')
-        %}
-        % The HVID is the refracted iris size. We can use the forward model
-        % to find the size of the true iris.
-        %{
-            sceneGeometry = createSceneGeometry();
-            sceneGeometry.refraction = [];
-            % Get the area in pixels of a "pupil" that is the same radius
-            % as the HVID when there is no ray tracing
-            hvidP=pupilProjection_fwd([0 0 0 hvidRadiusMean],sceneGeometry);
-            % Restore ray tracing
-            sceneGeometry = createSceneGeometry();
-            % Set up the objective function
-            myArea = @(p) p(3);
-            myObj = @(r) (hvidP(3) - myArea(pupilProjection_fwd([0 0 0 r],sceneGeometry)))^2;
-            [r,pixelError] = fminsearch(myObj,5.5);
-            fprintf('An unrefracted iris radius of %4.2f yields a refracted HVID of %4.2f \n',r,hvidRadiusMean)
-        %}
-        % We use this true iris size and then subject the iris perimeter
-        % points to refraction
-        eye.iris.radius = 5.54;
-        
-        % We are aware of some reports that the iris is shifted slightly
-        % temporally and upward with respect to the pupil center:
-        %
-        %   ...the typical entrance pupil is decentered
-        %   approximately 0.15 mm nasally and 0.1 mm inferior to the
-        %   geometric center of the visible iris circumference
-        %
-        % Bennett, Edward S., and Barry A. Weissman, eds. Clinical contact
-        % lens practice. Lippincott Williams & Wilkins, 2005, p119
-        %
-        % We model an eye with zero iris angle, and thus set the depth of
-        % the iris plane equal to the pupil plane. We adjust the position
-        % of the iris so that it is centered within the rotated corneal
-        % ellipse.
-        switch eyeLaterality
-            case 'Right'
-                eye.iris.center = [-4 0.35 0.35];
-            case 'Left'
-                eye.iris.center = [-4 -0.35 0.35];
+                eye.pupil.thetas = [0  4/7*pi];
         end
         
         
@@ -593,9 +599,9 @@ switch p.Results.species
         % model the fovea as being 3x closer to the optical axis than is
         % the optic disc.
         %{
-            targetBlindSpotAngle = [16.02 1.84 0];
+            targetBlindSpotAngle = [-16.02 -1.84 0];
             blindSpotAngle = @(eye) eye.axes.opticDisc.degField - eye.axes.visual.degField;
-            myObj = @(x) sum((blindSpotAngle(modelEyeParameters('opticDiscAxis',[3/4*x(1),x(2)/2,0],'visualAxis',-[1/4*x(1),x(2)/2,0])) - targetBlindSpotAngle).^2);
+            myObj = @(x) sum((blindSpotAngle(modelEyeParameters('opticDiscAxisDegRetina',[3/4*x(1),x(2)/2,0],'visualAxisDegRetina',-[1/4*x(1),x(2)/2,0])) - targetBlindSpotAngle).^2);
             options = optimoptions('fmincon','Display','off');
             retinalArcDeg = fmincon(myObj,[20 4],[],[],[],[],[],[],[],options);
             fprintf('Distance between the fovea and the center of the optic disc in retinal degrees in the right eye:\n');
@@ -624,10 +630,10 @@ switch p.Results.species
             % These are the visual axis angles for an emmetropic eye
             targetAlphaAngle = [5.8  2.5  0];
             myComputedAlphaAzi = @(eye) eye.axes.visual.degField(1);
-            myObj = @(x) (targetAlphaAngle(1) - myComputedAlphaAzi(modelEyeParameters('visualAxis',[x 0 0])))^2;
+            myObj = @(x) (targetAlphaAngle(1) - myComputedAlphaAzi(modelEyeParameters('visualAxisDegRetina',[x 0 0])))^2;
             aziFoveaEmmetropic = fminsearch(myObj,9)
             myComputedAlphaEle = @(eye) eye.axes.visual.degField(2);
-            myObj = @(x) (targetAlphaAngle(2) - myComputedAlphaEle(modelEyeParameters('visualAxis',[aziFoveaEmmetropic x 0])))^2;
+            myObj = @(x) (targetAlphaAngle(2) - myComputedAlphaEle(modelEyeParameters('visualAxisDegRetina',[aziFoveaEmmetropic x 0])))^2;
             eleFoveaEmmetropic = fminsearch(myObj,2)
         %}
         switch eyeLaterality
@@ -656,14 +662,14 @@ switch p.Results.species
         % from the fovea
         eye.axes.opticDisc.degRetina = opticDisc_WRT_foveaDegRetina + eye.axes.visual.degRetina;
 
-        % If a visualAxis or opticDiscAxis key-value pair was passed,
+        % If a visualAxisDegRetina or opticDiscAxisDegRetina key-value pair was passed,
         % override the computed value. This is used primarily during model
         % development.
-        if ~isempty(p.Results.visualAxis)
-            eye.axes.visual.degRetina = p.Results.visualAxis;
+        if ~isempty(p.Results.visualAxisDegRetina)
+            eye.axes.visual.degRetina = p.Results.visualAxisDegRetina;
         end
-        if ~isempty(p.Results.opticDiscAxis)
-            eye.axes.opticDisc.degRetina = p.Results.opticDiscAxis;
+        if ~isempty(p.Results.opticDiscAxisDegRetina)
+            eye.axes.opticDisc.degRetina = p.Results.opticDiscAxisDegRetina;
         end
         
         % Calculate the foveal and optic disc positions in terms of mm of
@@ -700,7 +706,7 @@ switch p.Results.species
         eye.posteriorChamber.opticDisc = [-x y -z] + eye.posteriorChamber.center;
 
         % Calcuate the optic disc and visual axes in deg of visual field,
-        % using the rear nodal point of th eye. For the visual axis, these
+        % using the rear nodal point of the eye. For the visual axis, these
         % values correspond to alpha / kappa, the angles between the visual
         % and optical /pupillary axes. The difference between the visual
         % and optic disc axes specifies the location of the physiologic
