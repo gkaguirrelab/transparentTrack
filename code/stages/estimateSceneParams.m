@@ -394,7 +394,7 @@ options.UncertaintyHandling = 0;     % The objective is deterministic
 warningState = warning;
 warning('off','bads:meshOverflow');
 % Silence some errors that can arise during the forward projection
-warning('off','pupilProjection_fwd:rayTracingError');
+warning('off','rayTraceEllipsoids:criticalAngle');
 warning('off','pupilProjection_fwd:ellipseFitFailed');
 
 
