@@ -189,6 +189,10 @@ end
 % Store the warning state
 warnState = warning();
 
+% Turn off expected warnings
+warning('off','rayTraceEllipsoids:criticalAngle');
+warning('off','pupilProjection_fwd:ellipseFitFailed');
+
 % Loop through the frames
 parfor (ii = 1:nFrames, nWorkers)
     %for ii = 1:nFrames
@@ -216,10 +220,6 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % fit an ellipse to the boundary (if any points exist)
     if ~isempty(Xp) && ~isempty(Yp)
-
-        % Turn off expected warnings
-        warning('off','pupilProjection_fwd:rayTracingError');
-        warning('off','pupilProjection_fwd:ellipseFitFailed');
 
         % Obtain the fit to the veridical data
         if isempty(sceneGeometry)
@@ -303,9 +303,6 @@ parfor (ii = 1:nFrames, nWorkers)
             end
         end % check if we want to do splits
         
-        % Restore the warning state
-        warning(warnState);
-
     end % check if there are pupil boundary data to be fit
     
     % store results
@@ -319,6 +316,9 @@ parfor (ii = 1:nFrames, nWorkers)
     end
     
 end % loop over frames
+
+% Restore the warning state
+warning(warnState);
 
 % alert the user that we are done with the fit loop
 if p.Results.verbose
