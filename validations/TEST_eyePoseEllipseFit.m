@@ -10,9 +10,6 @@
 % createSceneGeometry returns a default sceneGeometry structure
 sceneGeometry = createSceneGeometry();
 
-% Compile the ray tracing functions
-sceneGeometry.virtualImageFunc = compileVirtualImageFunc(sceneGeometry,'/tmp/demo_virtualImageFunc');
-
 %% Define some variables
 pupilRadiusMM = 2;
 eyePoses = [];
