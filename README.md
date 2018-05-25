@@ -18,6 +18,6 @@ There are many parameters that control the behavior of the routines. While the d
 
 The MATLAB parpool may be used to speed the analysis on multi-core systems.
 
-To install and configure transparentTrack, first install toolboxToolbox (tBtB), which provides for declarative dependency management for Matlab (https://github.com/ToolboxHub/ToolboxToolbox). Once tBtB is installed, transparentTrack (and all its dependencies) will be installed and readied for use with the command `tbUse('transparentTrack')`. These dependencies are:
-- The gkaModelEye (https://github.com/gkaguirrelab/gkaModelEye)
-- Bayesian Adaptive Direct Search (bads) (https://github.com/lacerbi/bads)
+To install and configure transparentTrack, first install [toolboxToolbox (tBtB)](https://github.com/ToolboxHub/ToolboxToolbox), which provides for declarative dependency management for MATLAB. Once tBtB is installed, transparentTrack (and all its dependencies) will be installed and readied for use with the command `tbUse('transparentTrack')`. These dependencies are:
+- [gkaModelEye](https://github.com/gkaguirrelab/gkaModelEye)
+- [Bayesian Adaptive Direct Search (bads)](https://github.com/lacerbi/bads)
