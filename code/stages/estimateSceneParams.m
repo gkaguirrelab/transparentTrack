@@ -351,31 +351,27 @@ function sceneGeometry = performSceneSearch(initialSceneGeometry, ellipses, LB, 
 % Pattern search for best fitting sceneGeometry parameters
 %
 % Description:
-%   The routine searches for parameters of the extrinsic translation vector
-%   of the camera and rotation centers of the eye that best model the
-%   shapes (and areas) of ellipses found on the image plane, while
-%   minimizing the distance between the modeled and observed ellipse
-%   centers. The passed sceneGeometry structure is used as the starting
-%   point for the search. Across each iteration of the search, a candidate
-%   sceneGeometry is assembled from the current values of the parameters.
-%   This sceneGeometry is then used in the inverse pupil projection model.
-%   The inverse projection searches for an eye azimuth, elevation, and
-%   pupil radius that, given the sceneGeometry, best accounts for the
-%   parameters of the target ellipse on the image plane. This inverse
-%   search attempts to minimize the distance bewteen the centers of the
-%   predicted and targeted ellipse on the image plane, while satisfying
-%   non-linear constraints upon matching the shape (eccentricity and theta)
-%   and area of the ellipses. Only when the translation vector is correctly
-%   specified will the inverse pupil projection model be able to
-%   simultaneouslty match the center and shape of the ellipse on the image
-%   plane.
+%   The routine searches for parameters of camera translation and torsion,
+%   and rotation centers of the eye, that best model the shapes (and areas)
+%   of ellipses found on the image plane, while minimizing the distance
+%   between the modeled and observed ellipse centers. The passed
+%   sceneGeometry structure is used as the starting point for the search.
+%   Across each iteration of the search, a candidate sceneGeometry is
+%   assembled from the current values of the parameters. This sceneGeometry
+%   is then used in the inverse pupil projection model. The inverse
+%   projection searches for an eye azimuth, elevation, and pupil radius
+%   that, given the sceneGeometry, best accounts for the parameters of the
+%   target ellipse on the image plane. This inverse search attempts to
+%   minimize the distance bewteen the centers of the predicted and targeted
+%   ellipse on the image plane, while satisfying non-linear constraints
+%   upon matching the shape (eccentricity and theta) and area of the
+%   ellipses. Only when the translation vector is correctly specified will
+%   the inverse pupil projection model be able to simultaneouslty match the
+%   center and shape of the ellipse on the image plane.
 %
 %   The iterative search across sceneGeometry parameters attempts to
 %   minimize the L2 norm of the shape and area errors between the targeted
-%   and modeled centers of the ellipses. In the calculation of this
-%   objective functon, each distance error is weighted. The error weight is
-%   derived from the accuracy with which the boundary points of the pupil
-%   in the image plane are fit by an unconstrained ellipse.
+%   and modeled centers of the ellipses.
 %
 %   The search is performed using Bayesian Adaptive Direct Search (bads),
 %   as we find that it performs better than (e.g.) patternsearch. BADS only
@@ -393,10 +389,10 @@ options.UncertaintyHandling = 0;     % The objective is deterministic
 % Silence the mesh overflow warning from BADS
 warningState = warning;
 warning('off','bads:meshOverflow');
+
 % Silence some errors that can arise during the forward projection
 warning('off','rayTraceEllipsoids:criticalAngle');
 warning('off','pupilProjection_fwd:ellipseFitFailed');
-
 
 % Define nested variables for within the search
 centerDistanceErrorByEllipse=zeros(size(ellipses,1),1);
@@ -417,7 +413,7 @@ end
     function fval = objfun(x)
         % Assemble a candidate sceneGeometry structure
         candidateSceneGeometry = initialSceneGeometry;
-        % Store the camera rotation in Z
+        % Store the camera torsion
         candidateSceneGeometry.cameraPosition.torsion = x(1);
         % Store the extrinsic camera translation vector
         candidateSceneGeometry.cameraPosition.translation = x(2:4)';
@@ -441,7 +437,7 @@ end
         % between the taget and modeled ellipses in shape and area
         fval = sqrt(mean(shapeErrorByEllipse.^2 + areaErrorByEllipse.^2));
         % We have to keep the fval non-infinite to keep BADS happy
-        fval=min([fval realmax]);
+        fval = min([fval realmax]);
     end
 
 
@@ -475,7 +471,7 @@ end % local search function
 
 
 function [] = saveSceneDiagnosticPlot(ellipses, Xedges, Yedges, eyePoseLB, eyePoseUB, sceneGeometry, sceneDiagnosticPlotFileName)
-% Creates and saves a plot that illustrates the sceneGeometry results
+% Saves a plot that illustrates the sceneGeometry search results
 %
 % Inputs:
 %   ellipses              - An n x p array containing the p parameters of
@@ -494,6 +490,7 @@ function [] = saveSceneDiagnosticPlot(ellipses, Xedges, Yedges, eyePoseLB, eyePo
 %   none
 %
 
+% Prepare the figure
 figHandle=figure('visible','off');
 set(gcf,'PaperOrientation','landscape');
 
@@ -501,13 +498,14 @@ set(figHandle, 'Units','inches')
 height = 6;
 width = 11;
 
-% the last two parameters of 'Position' define the figure size
+% The last two parameters of 'Position' define the figure size
 set(figHandle, 'Position',[25 5 width height],...
     'PaperSize',[width height],...
     'PaperPositionMode','auto',...
     'Color','w',...
     'Renderer','painters'...
     );
+
 
 %% Left panel -- distance error
 subplot(3,3,[1 4]);
@@ -563,8 +561,6 @@ plot(rotationCenterEllipse(1),rotationCenterEllipse(2), '+g', 'MarkerSize', 5);
 
 % Calculate the plot limits
 if ~isempty(Xedges)
-    % xPlotBounds = [Xedges(1)-binSpaceX Xedges(end)+binSpaceX];
-    % yPlotBounds = [Yedges(1)-binSpaceY Yedges(end)+binSpaceY];
     minX = min([projectedEllipses(:,1);ellipses(:,1);rotationCenterEllipse(1)]);
     maxX = max([projectedEllipses(:,1);ellipses(:,1);rotationCenterEllipse(1)]);
     minY = min([projectedEllipses(:,2);ellipses(:,2);rotationCenterEllipse(2)]);
@@ -647,9 +643,9 @@ scatter(nan, nan,2,'filled', ...
 set(hSub, 'Visible', 'off');
 legend({'0',num2str(sceneGeometry.constraintTolerance/2), ['=> ' num2str(sceneGeometry.constraintTolerance)]},'Location','north', 'Orientation','vertical');
 
-% Add text to report the extrinsic translation vector
+% Add text to report the camera position parameters
 xFinal = sceneGeometry.meta.estimateSceneParams.search.x;
-myString = sprintf('Z rotation [deg] %4.1f; Translation vector [mm] = %4.1f, %4.1f, %4.1f; Rotation center scaling [joint, differential] = %4.2f, %4.2f',xFinal(1),xFinal(2),xFinal(3),xFinal(4),xFinal(5),xFinal(6));
+myString = sprintf('torsion [deg] %4.1f; translation vector [mm] = %4.1f, %4.1f, %4.1f; rotation center scaling [joint, differential] = %4.2f, %4.2f',xFinal(1),xFinal(2),xFinal(3),xFinal(4),xFinal(5),xFinal(6));
 text(0.5,1.0,myString,'Units','normalized','HorizontalAlignment','center')
 
 %% Right panel -- area error
