@@ -218,7 +218,7 @@ parfor (ii = 1:nFrames, nWorkers)
     if ~isempty(Xp) && ~isempty(Yp)
 
         % Turn off expected warnings
-        warning('off','pupilProjection_fwd:rayTracingError');
+        warning('off','rayTraceEllipsoids:criticalAngle');
         warning('off','pupilProjection_fwd:ellipseFitFailed');
 
         % Obtain the fit to the veridical data

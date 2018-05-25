@@ -17,17 +17,19 @@
 % DEMO_eyeTracking
 %
 
+
+%% hard coded parameters
+nFrames = Inf; % number of frames to process (set to Inf to do all)
+verbose = true; % Set to none to make the demo silent
+TbTbToolboxName = 'transparentTrack';
+
+
 %% set paths and make directories
 % create test sandbox on desktop
 sandboxDir = '~/Desktop/eyeTrackingDEMO';
 if ~exist(sandboxDir,'dir')
     mkdir(sandboxDir)
 end
-
-%% hard coded parameters
-nFrames = Inf; % number of frames to process (set to Inf to do all)
-verbose = true; % Set to none to make the demo silent
-TbTbToolboxName = 'transparentTrack';
 
 % define path parameters
 pathParams.dataSourceDirRoot = fullfile(sandboxDir,'TOME_data');
@@ -46,12 +48,14 @@ tbConfigResult=tbUse(TbTbToolboxName,'reset','full','verbose',false);
 if sum(cellfun(@sum,extractfield(tbConfigResult, 'isOk')))~=length(tbConfigResult)
     error('There was a tb deploy error. Check the contents of tbConfigResult');
 end
+% We save a deployment snapshot. This variable is passed to the analysis
+% pipeline and then saved with every output file, thereby documenting the
+% system and software configuration at the time of execution.
 tbSnapshot=tbDeploymentSnapshot(tbConfigResult,'verbose',false);
 clear tbConfigResult
 
 
 %% Prepare paths and directories
-
 % define full paths for input and output
 pathParams.dataSourceDirFull = fullfile(pathParams.dataSourceDirRoot, pathParams.projectSubfolder, ...
     pathParams.subjectID, pathParams.sessionDate, pathParams.eyeTrackingDir);
@@ -69,9 +73,15 @@ if ~exist (demoPackage,'file')
     cd (currentDir)
 end
 
-% Define intrinsic camera parameters
+
+%% Prepare analysis parameters
+
+% Define camera parameters
+% These were obtained by an empirical measurement (camera resectioning) of
+% the IR camera used to record the demo data
 intrinsicCameraMatrix = [2627.0 0 338.1; 0 2628.1 246.2; 0 0 1];
 radialDistortionVector = [-0.3517 3.5353];
+spectralDomain = 'nir';
 
 % Define subject parameters
 eyeLaterality = 'right';
@@ -80,31 +90,38 @@ sphericalAmetropia = -1.5;
 maxIrisDiamPixels = 267;
 
 % Estimate camera distance from iris diameter in pixels
+% Because biological variation in the size of the visible iris is known,
+% we can use the observed maximum diameter of the iris in pixels to obtain
+% a guess as to the distance of the eye from the camera.
 sceneGeometry = createSceneGeometry(...
     'radialDistortionVector',radialDistortionVector, ...
-    'intrinsicCameraMatrix',intrinsicCameraMatrix, ...
-    'constraintTolerance',0.02, ...
-    'aqueousRefractiveIndex',1.225);
+    'intrinsicCameraMatrix',intrinsicCameraMatrix);
 [cameraDepthMean, cameraDepthSD] = depthFromIrisDiameter( sceneGeometry, maxIrisDiamPixels );
 
-% Assemble the scene parameter bounds
+% Assemble the scene parameter bounds. These are in the order of:
+%   torsion, x, y, z, eyeRotationScalarJoint, eyeRotationScalerDifferential
+% where torsion specifies the torsion of the camera with respect to the eye
+% in degrees, [x y z] is the translation of the camera w.r.t. the eye in
+% mm, and the eyeRotationScalar variables are multipliers that act upon the
+% centers of rotation estimated for the eye.
 sceneParamsLB = [-5; -5; -5; cameraDepthMean-cameraDepthSD*2; 0.75; 0.9];
 sceneParamsLBp = [-3; -2; -2; cameraDepthMean-cameraDepthSD*1; 0.85; 0.95];
 sceneParamsUBp = [3; 2; 2; cameraDepthMean+cameraDepthSD*1; 1.15; 1.05];
 sceneParamsUB = [5; 5; 5; cameraDepthMean+cameraDepthSD*2; 1.25; 1.1];
 
-% Run the analysis pipeline
+
+%% Run the analysis pipeline
 runVideoPipeline( pathParams, ...
     'nFrames',nFrames,'verbose', verbose, 'tbSnapshot',tbSnapshot, 'useParallel',true, ...
     'pupilRange', [40 200], 'pupilCircleThresh', 0.04, 'pupilGammaCorrection', 1.5, ...
     'intrinsicCameraMatrix',intrinsicCameraMatrix, ...
     'radialDistortionVector',radialDistortionVector, ...
-    'aqueousRefractiveIndex',1.225, ...
+    'spectralDomain',spectralDomain, ...
     'eyeLaterality',eyeLaterality,'axialLength',axialLength,'sphericalAmetropia',sphericalAmetropia,...
     'sceneParamsLB',sceneParamsLB,'sceneParamsUB',sceneParamsUB,...
     'sceneParamsLBp',sceneParamsLBp,'sceneParamsUBp',sceneParamsUBp,...
     'overwriteControlFile', true, 'catchErrors', false,...
-    'skipStageByNumber',[1:6],'makeFitVideoByNumber',[6 8]);
+    'skipStageByNumber',[1],'makeFitVideoByNumber',[6 8]);
 
 
 %% Plot some fits
