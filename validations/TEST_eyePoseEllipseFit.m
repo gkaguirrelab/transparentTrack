@@ -31,7 +31,7 @@ for thisAzimuth = -35:5:35
         pupilEllipseOnImagePlane = pupilProjection_fwd(eyePoses(end,:), sceneGeometry);
         
         % Obtain boundary points for this ellipse
-        [ Xp, Yp ] = ellipsePerimeterPoints( pupilEllipseOnImagePlane );
+        [ Xp, Yp ] = ellipsePerimeterPoints( pupilEllipseOnImagePlane, 6 );
         
         % Inverse projection from image ellipse to eyePoses. Note that we
         % must constrain at least one of the eye rotations, as the search
