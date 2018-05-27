@@ -74,6 +74,11 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %                           sceneGeometry is available, fitting is
 %                           performed in terms of eye parameters instead of
 %                           ellipse parameters
+%  'badFrameErrorThreshold' - This values is passed to eyePoseEllipseFit(),
+%                           which is the function used when performing
+%                           scene constrained fitting. The value is used to
+%                           detect a possible local minimum when performing
+%                           the eye pose search.
 %  'fitLabel'             - The field name in the pupilData structure where
 %                           the results of the fitting will be stored.
 %
@@ -111,6 +116,7 @@ p.addParameter('ellipseTransparentLB',[0,0,800,0,0],@(x)(isempty(x) | isnumeric(
 p.addParameter('ellipseTransparentUB',[640,480,20000,0.6,pi],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nSplits',2,@isnumeric);
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
+p.addParameter('badFrameErrorThreshold',2, @isnumeric);
 p.addParameter('fitLabel',[],@(x)(isempty(x) | ischar(x)));
 
 
@@ -118,7 +124,7 @@ p.addParameter('fitLabel',[],@(x)(isempty(x) | ischar(x)));
 p.parse(perimeterFileName, pupilFileName, varargin{:});
 
 nEllipseParams=5; % 5 params in the transparent ellipse form
-nEyePoseParams=4; % 4 values (azimuth, elevation, torsion, pupil radius) for eyePose
+nEyePoseParams=4; % 4 eyePose values (azimuth, elevation, torsion, radius) 
 
 %% Load data
 % Load the pupil perimeter data. It will be a structure variable
@@ -177,6 +183,7 @@ verbose = p.Results.verbose;
 ellipseTransparentLB = p.Results.ellipseTransparentLB;
 ellipseTransparentUB = p.Results.ellipseTransparentUB;
 nSplits = p.Results.nSplits;
+badFrameErrorThreshold = p.Results.badFrameErrorThreshold;
 
 % Alert the user
 if p.Results.verbose
@@ -232,7 +239,7 @@ parfor (ii = 1:nFrames, nWorkers)
             % Identify the best fitting eye parameters for the pupil
             % perimeter
             [eyePose, eyePoseObjectiveError] = ...
-                eyePoseEllipseFit(Xp, Yp, sceneGeometry);
+                eyePoseEllipseFit(Xp, Yp, sceneGeometry, 'repeatSearchThresh', badFrameErrorThreshold);
             % Obtain the parameters of the ellipse
             ellipseParamsTransparent = ...
                 pupilProjection_fwd(eyePose, sceneGeometry);
@@ -249,7 +256,8 @@ parfor (ii = 1:nFrames, nWorkers)
             % Find the center of the pupil boundary points, place the
             % boundary points in a matrix and shift them to the center
             % position
-            xCenter=mean(Xp); yCenter=mean(Yp);
+            xCenter = mean(Xp);
+            yCenter = mean(Yp);
             centerMatrix = repmat([xCenter'; yCenter'], 1, length(Xp));
             
             % Prepare a variable to hold the results of the split data
@@ -284,9 +292,9 @@ parfor (ii = 1:nFrames, nWorkers)
                     % We do have sceneGeometry, so search for eyePose that
                     % best fit the splits of the pupil perimeter.
                     pFitEyePoseSplit(1,ss,:) = ...
-                        eyePoseEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry, 'x0', eyePose);
+                        eyePoseEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry, 'x0', eyePose, 'repeatSearchThresh', badFrameErrorThreshold);
                     pFitEyePoseSplit(2,ss,:) = ...
-                        eyePoseEllipseFit(Xp(splitIdx2), Yp(splitIdx2), sceneGeometry, 'x0', eyePose);
+                        eyePoseEllipseFit(Xp(splitIdx2), Yp(splitIdx2), sceneGeometry, 'x0', eyePose, 'repeatSearchThresh', badFrameErrorThreshold);
                     % Obtain the ellipse parameeters that correspond the
                     % eyePose
                     pFitTransparentSplit(1,ss,:) = ...
