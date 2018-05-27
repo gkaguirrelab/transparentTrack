@@ -49,7 +49,7 @@ for aziIdx = 1:15
         
         % Inverse projection from image ellipse to eyePose.
         tic
-            eyePoseRecovered = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, 'repeatSearchThresh',0.5);
+            eyePoseRecovered = pupilProjection_inv(pupilEllipseOnImagePlane, sceneGeometry, 'repeatSearchThresh',0.25);
         toc
 
         % Save the error

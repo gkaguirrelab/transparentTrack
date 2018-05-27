@@ -38,7 +38,7 @@ for thisAzimuth = -35:5:35
         % is otherwise underdetermined. We constrain torsion to be zero,
         % following Listing's Law.
         tic
-        [inverseEyePose, RMSE] = eyePoseEllipseFit(Xp, Yp, sceneGeometry);
+        [inverseEyePose, RMSE] = eyePoseEllipseFit(Xp, Yp, sceneGeometry, 'repeatSearchThresh',0.25);
         toc
         
         reconstructedEyePoses = [reconstructedEyePoses; inverseEyePose];
@@ -56,6 +56,6 @@ fprintf('The largest elevation error is %f degrees.\n',max(abs(eyePoseErrors(:,2
 fprintf('The largest radius error is %f millimeters.\n',max(abs(eyePoseErrors(:,4))));
 
 fprintf('The median absolute azimuth error is %f degrees.\n',median(abs(eyePoseErrors(:,1))));
-fprintf('The median elevation error is %f degrees.\n',median(abs(eyePoseErrors(:,2))));
-fprintf('The median radius error is %f millimeters.\n',median(abs(eyePoseErrors(:,4))));
+fprintf('The median absolute elevation error is %f degrees.\n',median(abs(eyePoseErrors(:,2))));
+fprintf('The median absolute radius error is %f millimeters.\n',median(abs(eyePoseErrors(:,4))));
 
