@@ -41,8 +41,8 @@ p.addRequired('sceneGeometryFileName', @ischar);
 p.addParameter('verbose',false, @islogical);
 p.addParameter('videoOutFrameRate', 60, @isnumeric);
 p.addParameter('saveCompressedVideo', true, @islogical);
-p.addParameter('modelEyeLabelNames', {'aziRotationCenter', 'eleRotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilPerimeter' 'anteriorChamber' 'cornealApex'}, @iscell);
-p.addParameter('modelEyePlotColors', {'>r' '^m' '.w' '.b' '*g' '.y' '*y'}, @iscell);
+p.addParameter('modelEyeLabelNames', {'aziRotationCenter', 'eleRotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilEllipse' 'anteriorChamber' 'cornealApex'}, @iscell);
+p.addParameter('modelEyePlotColors', {'>r' '^m' '.w' '.b' '-g' '.y' '*y'}, @iscell);
 p.addParameter('fitLabel', 'radiusSmoothed', @ischar);
 
 % parse
@@ -119,10 +119,8 @@ for ii = 1:nFrames
     ylim([0 videoSizeY]);
     
     if ~any(isnan(eyePoses(ii,:)))
-        
         % Obtain the pupilProjection of the model eye to the image plane
         [~, renderedFrame] = renderEyePose(eyePoses(ii,:), sceneGeometry, 'newFigure', false, 'modelEyeLabelNames', p.Results.modelEyeLabelNames, 'modelEyePlotColors', p.Results.modelEyePlotColors);
-        
     end
 
     % Get ready for the next frame
