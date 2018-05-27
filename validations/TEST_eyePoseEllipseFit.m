@@ -38,7 +38,7 @@ for thisAzimuth = -35:5:35
         % is otherwise underdetermined. We constrain torsion to be zero,
         % following Listing's Law.
         tic
-        [inverseEyePose, RMSE] = eyePoseEllipseFit(Xp, Yp, sceneGeometry,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4]);
+        [inverseEyePose, RMSE] = eyePoseEllipseFit(Xp, Yp, sceneGeometry);
         toc
         
         reconstructedEyePoses = [reconstructedEyePoses; inverseEyePose];
