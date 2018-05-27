@@ -264,7 +264,8 @@ parfor (ss = 1:p.Results.nBADSsearches,nWorkers)
         p.Results.sceneParamsLBp, ...
         p.Results.sceneParamsUBp, ...
         p.Results.eyePoseLB, ...
-        p.Results.eyePoseUB);
+        p.Results.eyePoseUB, ...
+        p.Results.badFrameErrorThreshold);
     
     % update progress
     if p.Results.verbose
@@ -347,7 +348,7 @@ end % main function
 
 %% LOCAL FUNCTIONS
 
-function sceneGeometry = performSceneSearch(initialSceneGeometry, ellipses, LB, UB, LBp, UBp, eyePoseLB, eyePoseUB)
+function sceneGeometry = performSceneSearch(initialSceneGeometry, ellipses, LB, UB, LBp, UBp, eyePoseLB, eyePoseUB, badFrameErrorThreshold)
 % Pattern search for best fitting sceneGeometry parameters
 %
 % Description:
@@ -431,7 +432,8 @@ end
                     ellipses(ii,:),...
                     candidateSceneGeometry, ...
                     'eyePoseLB',eyePoseLB,...
-                    'eyePoseUB',eyePoseUB);
+                    'eyePoseUB',eyePoseUB,...
+                    'repeatSearchThresh',badFrameErrorThreshold);
         end
         % Now compute objective function as the RMSE of the distance
         % between the taget and modeled ellipses in shape and area
