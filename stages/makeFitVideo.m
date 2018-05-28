@@ -56,7 +56,7 @@ p.addParameter('perimeterColor','w',@ischar);
 p.addParameter('pupilColor','green',@ischar);
 p.addParameter('sceneGeometryColor','magenta',@ischar);
 p.addParameter('modelEyeLabelNames', {'posteriorChamber' 'irisPerimeter' 'anteriorChamber'}, @iscell);
-p.addParameter('modelEyePlotColors', {'.w' 'ob' '.y'}, @iscell);
+p.addParameter('modelEyePlotColors', {'.w' '.b' '.y'}, @iscell);
 p.addParameter('modelEyeAlpha', 0,@isnumeric);
 p.addParameter('fitLabel', 'radiusSmoothed',@(x)(isempty(x) | ischar(x)));
 p.addParameter('controlFileName',[],@(x)(isempty(x) | ischar(x)));
@@ -221,7 +221,7 @@ for ii = 1:nFrames
     if ~isempty(eyePoses) && sum(p.Results.modelEyeAlpha)~=0
         % If we have a defined eyePose for this frame, display the modelEye
         if ~any(isnan(eyePoses(ii,:)))
-            renderEyePose(eyePose, sceneGeometry, 'newFigure', false, ...
+            renderEyePose(eyePoses(ii,:), sceneGeometry, 'newFigure', false, ...
                 'modelEyeLabelNames', p.Results.modelEyeLabelNames, ...
                 'modelEyePlotColors', p.Results.modelEyePlotColors, ...
                 'modelEyeAlpha', p.Results.modelEyeAlpha);   
