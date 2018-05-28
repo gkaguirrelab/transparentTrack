@@ -10,9 +10,6 @@
 % createSceneGeometry returns a default sceneGeometry structure
 sceneGeometry = createSceneGeometry();
 
-% Compile the ray tracing functions
-sceneGeometry.virtualImageFunc = compileVirtualImageFunc(sceneGeometry,'/tmp/demo_virtualImageFunc');
-
 %% Define some variables
 pupilRadiusMM = 2;
 eyePoses = [];
@@ -34,14 +31,14 @@ for thisAzimuth = -35:5:35
         pupilEllipseOnImagePlane = pupilProjection_fwd(eyePoses(end,:), sceneGeometry);
         
         % Obtain boundary points for this ellipse
-        [ Xp, Yp ] = ellipsePerimeterPoints( pupilEllipseOnImagePlane );
+        [ Xp, Yp ] = ellipsePerimeterPoints( pupilEllipseOnImagePlane, 6 );
         
         % Inverse projection from image ellipse to eyePoses. Note that we
         % must constrain at least one of the eye rotations, as the search
         % is otherwise underdetermined. We constrain torsion to be zero,
         % following Listing's Law.
         tic
-        [inverseEyePose, RMSE] = eyePoseEllipseFit(Xp, Yp, sceneGeometry,'eyePoseLB',[-40,-35,0,0.5],'eyePoseUB',[40,35,0,4]);
+        [inverseEyePose, RMSE] = eyePoseEllipseFit(Xp, Yp, sceneGeometry, 'repeatSearchThresh',0.25);
         toc
         
         reconstructedEyePoses = [reconstructedEyePoses; inverseEyePose];
@@ -59,6 +56,6 @@ fprintf('The largest elevation error is %f degrees.\n',max(abs(eyePoseErrors(:,2
 fprintf('The largest radius error is %f millimeters.\n',max(abs(eyePoseErrors(:,4))));
 
 fprintf('The median absolute azimuth error is %f degrees.\n',median(abs(eyePoseErrors(:,1))));
-fprintf('The median elevation error is %f degrees.\n',median(abs(eyePoseErrors(:,2))));
-fprintf('The median radius error is %f millimeters.\n',median(abs(eyePoseErrors(:,4))));
+fprintf('The median absolute elevation error is %f degrees.\n',median(abs(eyePoseErrors(:,2))));
+fprintf('The median absolute radius error is %f millimeters.\n',median(abs(eyePoseErrors(:,4))));
 

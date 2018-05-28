@@ -55,9 +55,9 @@ p.addParameter('glintColor','r',@ischar);
 p.addParameter('perimeterColor','w',@ischar);
 p.addParameter('pupilColor','green',@ischar);
 p.addParameter('sceneGeometryColor','magenta',@ischar);
-p.addParameter('modelEyeAlpha', 0,@isnumeric);
 p.addParameter('modelEyeLabelNames', {'posteriorChamber' 'irisPerimeter' 'anteriorChamber'}, @iscell);
-p.addParameter('modelEyePlotColors', {'.w' 'ob' '.y'}, @iscell);
+p.addParameter('modelEyePlotColors', {'.w' '.b' '.y'}, @iscell);
+p.addParameter('modelEyeAlpha', 0,@isnumeric);
 p.addParameter('fitLabel', 'radiusSmoothed',@(x)(isempty(x) | ischar(x)));
 p.addParameter('controlFileName',[],@(x)(isempty(x) | ischar(x)));
 
@@ -110,8 +110,12 @@ else
     instructions(1).params=[];
 end
 
-% Load the sceneGeometry file
-sceneGeometry = loadSceneGeometry(p.Results.sceneGeometryFileName, p.Results.verbose);
+% Load the sceneGeometry file if passed
+if ~isempty(p.Results.sceneGeometryFileName)
+    sceneGeometry = loadSceneGeometry(p.Results.sceneGeometryFileName, p.Results.verbose);
+else
+    sceneGeometry = [];
+end
 
 % Open a video object for reading
 videoInObj = VideoReader(videoInFileName);
@@ -171,7 +175,7 @@ for ii = 1:nFrames
     
     % Create a figure
     frameFig = figure( 'Visible', 'off');
-    
+        
     % show the initial frame
     imshow(sourceFrame, 'Border', 'tight');
     hold on
@@ -190,33 +194,7 @@ for ii = 1:nFrames
             plot(perimeter.data{ii}.Xp ,perimeter.data{ii}.Yp, ['.' p.Results.perimeterColor], 'MarkerSize', 1);
         end
     end
-    
-    % superimpose the model eye
-    if ~isempty(eyePoses) && p.Results.modelEyeAlpha~=0
-        if ~any(isnan(eyePoses(ii,:)))
-            % Obtain the pupilProjection of the model eye to the image plane
-            [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd(eyePoses(ii,:), sceneGeometry, 'fullEyeModelFlag', true);
-            
-            % Loop through the point labels present in the eye model
-            for pp = 1:length(p.Results.modelEyeLabelNames)
-                idx = strcmp(pointLabels,p.Results.modelEyeLabelNames{pp});
-                mc =  p.Results.modelEyePlotColors{pp};
-                switch mc(1)
-                    case '.'
-                        sc = scatter(imagePoints(idx,1), imagePoints(idx,2), 10, 'o', 'filled', 'MarkerFaceColor', mc(2), 'MarkerEdgeColor','none');
-                        sc.MarkerFaceAlpha = p.Results.modelEyeAlpha;
-                    case 'o'
-                        sc = scatter(imagePoints(idx,1), imagePoints(idx,2), mc(1), 'filled', 'MarkerFaceColor', mc(2), 'MarkerEdgeColor','none');
-                        sc.MarkerFaceAlpha = p.Results.modelEyeAlpha;
-                    otherwise
-                        sc = scatter(imagePoints(idx,1), imagePoints(idx,2), mc(1), 'MarkerFaceColor', 'none', 'MarkerEdgeColor',mc(2));
-                        sc.MarkerEdgeAlpha = p.Results.modelEyeAlpha;
-                end
-            end
-            
-        end
-    end
-    
+        
     % add pupil ellipse fit
     if ~isempty(p.Results.pupilFileName)
         if ~isempty(ellipseFitParams)
@@ -238,7 +216,18 @@ for ii = 1:nFrames
             end
         end
     end
-        
+
+    % superimpose the model eye
+    if ~isempty(eyePoses) && sum(p.Results.modelEyeAlpha)~=0
+        % If we have a defined eyePose for this frame, display the modelEye
+        if ~any(isnan(eyePoses(ii,:)))
+            renderEyePose(eyePoses(ii,:), sceneGeometry, 'newFigure', false, ...
+                'modelEyeLabelNames', p.Results.modelEyeLabelNames, ...
+                'modelEyePlotColors', p.Results.modelEyePlotColors, ...
+                'modelEyeAlpha', p.Results.modelEyeAlpha);   
+        end
+    end
+
     % add an instruction label
     if ~isempty(p.Results.controlFileName)
         instructionIdx = find ([instructions.frame] == ii);
@@ -258,15 +247,7 @@ for ii = 1:nFrames
                 'Color',[1 0 0]);
         end
     end
-    
-    % add the center of rotation
-    if ~isempty(p.Results.sceneGeometryFileName)
-        % Obtain the pupilProjection of the model eye to the image plane
-        [~, imagePoints, ~, ~, pointLabels] = pupilProjection_fwd([0 0 0 2], sceneGeometry, 'fullEyeModelFlag', true);
-        idx = find(strcmp(pointLabels,'rotationCenter'));
-        plot(imagePoints(idx,1),imagePoints(idx,2),['+' p.Results.sceneGeometryColor]);
-    end
-    
+        
     % Get the frame and close the figure
     thisFrame=getframe(frameFig);
     close(frameFig);
