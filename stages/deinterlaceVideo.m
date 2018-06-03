@@ -62,6 +62,7 @@ p.addParameter('startFrame',1,@isnumeric);
 % Optional analysis params
 p.addParameter('bobMode', 'Mean', @isstr);
 p.addParameter('convertToGray',true,@islogical)
+p.addParameter('timebaseFileName',[],@(x)(isempty(x) | ischar(x)));
 
 % parse
 p.parse(videoInFileName,videoOutFileName,varargin{:})
@@ -76,7 +77,7 @@ inObj = VideoReader(videoInFileName);
 if p.Results.nFrames == Inf
     nFrames = floor(inObj.Duration*inObj.FrameRate);
 else
-    nFrames=p.Results.nFrames;
+    nFrames = p.Results.nFrames;
 end
 
 Bob = VideoWriter(videoOutFileName);
@@ -164,6 +165,17 @@ for ii = p.Results.startFrame:nFrames
     writeVideo(Bob,oddFields);
     writeVideo(Bob,evenFields);
     
+end
+
+% Save a timebase file if requested
+if ~isempty(p.Results.timebaseFileName)
+    frameDur = (1/Bob.FrameRate)*1000;
+    timebase.values = ((p.Results.startFrame-1)*frameDur:frameDur:((p.Results.startFrame+nFrames-1)*2-1)*frameDur)';
+    timebase.meta.deinterlaceVideo = p.Results;
+    timebase.meta.deinterlaceVideo.nFrames = nFrames;
+    timebase.meta.deinterlaceVideo.frameRate = Bob.FrameRate;
+    timebase.meta.deinterlaceVideo.units = 'milliseconds';
+    save(p.Results.timebaseFileName,'timebase');
 end
 
 clear Bob inObj
