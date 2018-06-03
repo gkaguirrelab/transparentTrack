@@ -130,13 +130,13 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 %                           would allow a cut to remove more than half of
 %                           the total pupil radius.
 %  'pixelBoundaryThreshold' - A search across theta values and radius 
-%                           divisionscontinues until a cut is found that is
-%                           below the 'cutErrorThreshold'. If no cut that
-%                           meets this criteria is found, we retain the cut
-%                           that resulted in the lowest RMSE. The frame
-%                           will be marked as 'bad' if, after cutting,
-%                           fewer pixels remain than is given by this
-%                           parameter.
+%                           divisions continues until a cut is found that
+%                           is below the 'cutErrorThreshold'. If no cut
+%                           that meets this criterion is found, we retain
+%                           the cut that resulted in the lowest RMSE. The
+%                           frame will be marked as 'bad' if, after
+%                           cutting, fewer pixels remain than is given by
+%                           this parameter.
 %  'badFrameErrorThreshold' - The other way that a frame will be marked as
 %                           bad at the conclusion of a cut search. If the
 %                           RMSE of the ellipse fit is above this
