@@ -129,18 +129,6 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 %                           proportion of the radius. A negative proportion
 %                           would allow a cut to remove more than half of
 %                           the total pupil radius.
-%  'pixelBoundaryThreshold' - A search across theta values and radius 
-%                           divisions continues until a cut is found that
-%                           is below the 'cutErrorThreshold'. If no cut
-%                           that meets this criterion is found, we retain
-%                           the cut that resulted in the lowest RMSE. The
-%                           frame will be marked as 'bad' if, after
-%                           cutting, fewer pixels remain than is given by
-%                           this parameter.
-%  'badFrameErrorThreshold' - The other way that a frame will be marked as
-%                           bad at the conclusion of a cut search. If the
-%                           RMSE of the ellipse fit is above this
-%                           threshold, mark as bad.
 %
 % Outputs:
 %   The routine does not return any variables, but does output a file.
@@ -202,8 +190,6 @@ p.addParameter('cutErrorThreshold', 1, @isnumeric);
 p.addParameter('candidateThetas',pi/2:pi/16:pi,@isnumeric);
 p.addParameter('radiusDivisions',5,@isnumeric);
 p.addParameter('minRadiusProportion',0,@isnumeric);
-p.addParameter('pixelBoundaryThreshold', 100, @isnumeric);
-p.addParameter('badFrameErrorThreshold', 2, @isnumeric);
     
 % parse
 p.parse(controlFileName, perimeterFileName, glintFileName, varargin{:})
@@ -350,7 +336,6 @@ glintPatchY = nan(nFrames,1);
 glintPatchRadius = nan(nFrames,1);
 frameRadii=nan(nFrames,1);
 frameThetas=nan(nFrames,1);
-frameBads=nan(nFrames,1);
 frameErrors=nan(nFrames,1);
 
 % alert the user
@@ -489,16 +474,6 @@ parfor (ii = 1:nFrames, nWorkers)
             continue
         end % try-catch
         
-        % If, after finishing the search, the bestFitOnThisSearch is larger
-        % than the badFrameErrorThreshold, or there are too few pixels that
-        % compose the boundary in this frame, then tag this frame bad.
-        if bestFitOnThisSearch > p.Results.badFrameErrorThreshold || ...
-                numberPerimeterPixels < p.Results.pixelBoundaryThreshold
-            frameBads(ii)=1;
-            frameThetas(ii)=nan;
-            frameRadii(ii)=nan;
-        end
-        
     end % not an empty frame
     
 end % parloop over frames
@@ -512,7 +487,8 @@ end
 
 %% Write out control file instructions
 fid = fopen(controlFileName,'a');
-% write out blinks
+
+% Blinks
 if ~isempty(blinkFrames)
     for bb = 1 : length(blinkFrames)
         instruction = [num2str(blinkFrames(bb)) ',' 'blink'];
@@ -521,7 +497,7 @@ if ~isempty(blinkFrames)
     end
 end
 
-% write out glint patches
+% Glint patches
 glintPatchFrames=find(~isnan(glintPatchX));
 if ~isempty(glintPatchFrames)
     for kk = 1 : length(glintPatchFrames)
@@ -532,7 +508,7 @@ if ~isempty(glintPatchFrames)
     end
 end
 
-% write out cuts
+% Cuts
 cutFrames=find(~isnan(frameThetas));
 if ~isempty(cutFrames)
     for kk = 1 : length(cutFrames)
@@ -543,18 +519,7 @@ if ~isempty(cutFrames)
     end
 end
 
-% write out bad frames
-badFrameIdx=find(~isnan(frameBads));
-if ~isempty(badFrameIdx)
-    for kk = 1 : length(badFrameIdx)
-        frameIdx=badFrameIdx(kk);
-        instruction = [num2str(frameIdx) ',' 'bad' ];
-        fprintf(fid,'%s\n',instruction);
-        clear instruction
-    end
-end
-
-% write out error frames
+% Fit errors
 errorFrameIdx=find(~isnan(frameErrors));
 if ~isempty(errorFrameIdx)
     for kk = 1 : length(errorFrameIdx)
@@ -565,26 +530,31 @@ if ~isempty(errorFrameIdx)
     end
 end
 
-% write out the params as comments
 % Extract field data
 fields = repmat(fieldnames(p.Results), numel(p.Results), 1);
 values = struct2cell(p.Results);
+
 % Convert all numerical values to strings
 numericIdx = cellfun(@isnumeric, values);
 values(numericIdx) = cellfun(@num2str, values(numericIdx), 'UniformOutput', 0);
+
 % Convert all logical values to strings
 logicalText = {'false','true'};
 logicalIdx = cellfun(@islogical, values);
 values(logicalIdx) = cellfun(@(x) logicalText{double(x)+1}, values(logicalIdx), 'UniformOutput', 0);
+
 % Replace any remaining structures with an explanation
 structIdx = cellfun(@isstruct, values);
 values(structIdx) = cellfun(@(x) '== struct value not reported here ==', values(structIdx), 'UniformOutput', 0);
+
 % Combine field names and values in the same array
 paramsCellArray = {fields{:}; values{:}};
+
 % Mark off this section
 instruction = ['%' ',' '%' ',' '**** start analysis parameters ****'];
 fprintf(fid,'%s\n',instruction);
 clear instruction
+
 % Loop through the columns and save each as a row in the filed
 for kk = 1:size(paramsCellArray,2)
     instruction = ['%' ',' '%' ',' paramsCellArray{1,kk} ',' paramsCellArray{2,kk}];
