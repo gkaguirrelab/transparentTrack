@@ -48,10 +48,10 @@ function perimeter = findPupilPerimeter(grayVideoName, perimeterFileName, vararg
 %                           0.09])
 %  'maskBox'              - This is the proportion to dilate the pupil
 %                           masked region in the vertical and horizontal
-%                           directions respectively. A value of zero will
+%                           directions respectively. A value of 1 will
 %                           result in no dilation in that direction. A
-%                           value of unity will result in a masked region
-%                           that is twice the size of the pupil radius.
+%                           value of 2 will result in a masked region that
+%                           is twice the size of the pupil radius.
 %  'frameMaskValue'       - The image value that is assigned to the region
 %                           that is masked by frameMask. This should be a
 %                           gray that is neither pupil nor glint.
