@@ -133,8 +133,11 @@ dataLoad=load(perimeterFileName);
 perimeter=dataLoad.perimeter;
 clear dataLoad
 
-% Optionally load the pupilData file
-if exist(p.Results.pupilFileName, 'file') == 2
+% Load the pupilData file if it exists and we have been given a
+% sceneGeometry file. In this circumstance, we are loading the file that
+% contains the initial fit, and we are not going to add the scene
+% constrained fit.
+if exist(p.Results.pupilFileName, 'file')==2 && ~isempty(p.Results.sceneGeometryFileName)
     dataLoad=load(pupilFileName);
     pupilData=dataLoad.pupilData;
     clear dataLoad
