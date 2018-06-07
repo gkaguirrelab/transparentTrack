@@ -13,15 +13,11 @@ function perimeter = applyControlFile(perimeterFileName, controlFileName, correc
 %   according to the control file instructions (if any) for the given
 %   frame.
 % 
-%   Currently available instructions include:
-%     - blink: save out a black frame
-%     - bad: save out a black frame
-%     - glintPatch: cut the portion of the perimeter that intersects the glint
+%   The instructions that modify the perimeter are:
+%     - glintPatch: cut the portion of the perimeter that intersects the
+%       glint
 %     - cut: cut the perimeter using radius and theta given
 %     - ellipse: draw an ellipse with the given params into the frame
-%     - error: if any error occurred while compiling the automatic
-%       instructions the frame won't be corrected, but an error flag will be
-%       displayed for later inspection.
 % 
 %   Note that each line of the control file is set of instructions for one
 %   specifical video frame, identified by the FrameNumber. If there is no
@@ -128,10 +124,12 @@ for ii = 1:nFrames
         for dd=1:length(instructionIdx)
             switch instructions(instructionIdx(dd)).type
                 case 'blink'
-                    thisFrame=blankFrame;
+                    % Leave it unchanged
                 case 'bad'
-                    thisFrame=blankFrame;
+                    % Leave it unchanged
                 case 'error'
+                    % If we are unable to fit an ellipse to this frame, set
+                    % it blank
                     thisFrame=blankFrame;
                 case 'ellipse'
                     % get the instruction params
