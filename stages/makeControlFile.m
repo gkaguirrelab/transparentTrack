@@ -407,13 +407,14 @@ parfor (ii = 1:nFrames, nWorkers)
     smallestFittingError = NaN;
     bestFitOnThisSearch= NaN;
     
-    % proceed if the frame is not empty and has not been tagged as a blink
-    if ~ismember(ii,blinkFrames) && ~isempty(Xp)
+    % proceed if the frame is not empty
+    if ~isempty(Xp)
         
         % The try - catch allows processing to proceed if an attempt to
         % fit the ellipse fails
         try
-            % fit an ellipse to the full perimeter using the constrainedEllipseFit
+            % fit an ellipse to the full perimeter using the
+            % constrainedEllipseFit
             [~, originalFittingError] = constrainedEllipseFit(Xp, Yp, ...
                 p.Results.ellipseTransparentLB, ...
                 p.Results.ellipseTransparentUB, ...
@@ -434,8 +435,8 @@ parfor (ii = 1:nFrames, nWorkers)
             candidateRadius=maxRadius - stepReducer;
             minRadius = maxRadius * p.Results.minRadiusProportion;
             
-            % Keep searching until we have a fit of accetable quality, or if
-            % the candidate radius drops below zero
+            % Keep searching until we have a fit of accetable quality, or
+            % if the candidate radius drops below zero
             while stillSearching && candidateRadius > minRadius
                 
                 % Perform a grid search across thetas
