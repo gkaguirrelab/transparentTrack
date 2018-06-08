@@ -191,9 +191,11 @@ pupilFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_pup
 % estimateSceneParams routine.
 sceneGeometryFileNameOutput = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sceneGeometry.mat']);
 
-% the sceneGeometryFileNameInput is the name of the file passed to the
-% fitPupilPerimeter, smoothPupilRadius, refineIrisRadius, and make fit
-% video routines. A custom value can be passed.
+% The sceneGeometryFileNameInput is the name of the file passed to the
+% fitPupilPerimeter, smoothPupilRadius, and makeFitVideo routines. A custom
+% value can be passed. The custom value will usually identify a different
+% acqusition during which the head was in the same positiion, and for which
+% sceneGeometry was well estimated.
 if ~isempty(p.Results.customSceneGeometryFile)
     sceneGeometryFileNameInput = p.Results.customSceneGeometryFile;
 else
@@ -249,10 +251,6 @@ switch p.Results.videoTypeChoice
     otherwise
         error('VideoTypeChoice is not defined')
 end
-
-% Parking this line here while this stage is under development
-%            'refineIrisRadius(grayVideoName, pupilFileName, sceneGeometryFileName, varargin{:});'...
-
 
 % Grab the function names as the portion of the funCalls that preceed the
 % open parenthesis
@@ -357,43 +355,47 @@ initialPerimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.ru
 controlFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_controlFile.csv']);
 correctedPerimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_correctedPerimeter.mat']);
 pupilFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_pupil.mat']);
-irisFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_iris.mat']);
-
 
 % Depending upon which stage just completed, set to empty any files
 % that do not yet exist, and select the appropriate perimeter file and
 % pupil ellipse fit to display.
 switch funNames{ff}
     case 'deinterlaceVideo'
-        glintFileName = []; perimeterFileName=[]; controlFileName=[]; pupilFileName=[]; sceneGeometryFileNameInput=[]; irisFileName=[];
+        glintFileName = []; perimeterFileName=[]; controlFileName=[]; pupilFileName=[]; sceneGeometryFileNameInput=[];
     case 'resizeAndCropVideo'
-        glintFileName = []; perimeterFileName=[]; controlFileName=[]; pupilFileName=[]; sceneGeometryFileNameInput=[]; irisFileName=[];
+        glintFileName = []; perimeterFileName=[]; controlFileName=[]; pupilFileName=[]; sceneGeometryFileNameInput=[];
     case 'findGlint'
-        perimeterFileName=[]; controlFileName=[]; pupilFileName=[]; sceneGeometryFileNameInput=[]; irisFileName=[];
+        perimeterFileName=[]; controlFileName=[]; pupilFileName=[]; sceneGeometryFileNameInput=[];
     case 'findPupilPerimeter'
         if ~exist(glintFileName,'file')
             glintFileName = [];
         end
         perimeterFileName=initialPerimeterFileName;
-        controlFileName=[]; pupilFileName=[]; sceneGeometryFileNameInput=[]; irisFileName=[];
+        controlFileName=[]; pupilFileName=[]; sceneGeometryFileNameInput=[];
     case 'makeControlFile'
         if ~exist(glintFileName,'file')
             glintFileName = [];
         end
         perimeterFileName=initialPerimeterFileName;
-        controlFileName=[]; pupilFileName=[]; sceneGeometryFileNameInput=[]; irisFileName=[];
+        controlFileName=[]; pupilFileName=[]; sceneGeometryFileNameInput=[];
     case 'applyControlFile'
         if ~exist(glintFileName,'file')
             glintFileName = [];
         end
         perimeterFileName=correctedPerimeterFileName;
-        pupilFileName=[]; sceneGeometryFileNameInput=[]; irisFileName=[];
+        pupilFileName=[]; sceneGeometryFileNameInput=[];
     case 'fitPupilPerimeter'
         if ~exist(glintFileName,'file')
             glintFileName = [];
         end
-        perimeterFileName=correctedPerimeterFileName;
-        irisFileName=[];
+        % If the perimeter has been corrected we can plot the corrected
+        % perimeter, otherwise supply the original perimeter
+        sceneFunCallIdx=find(strcmp(funNames,'applyControlFile'));
+        if ~isempty(sceneFunCallIdx)
+            if sceneFunCallIdx < ff
+                perimeterFileName=correctedPerimeterFileName;
+            end
+        end
         % If the sceneGeometry has been determined by this point, we can
         % plot the sceneConstrained ellipse fit, otherwise plot the
         % unconstrained
@@ -411,15 +413,8 @@ switch funNames{ff}
             glintFileName = [];
         end
         perimeterFileName=correctedPerimeterFileName;
-        irisFileName=[];
         varargin={varargin{:}, 'fitLabel', 'initial'};
     case 'smoothPupilRadius'
-        if ~exist(glintFileName,'file')
-            glintFileName = [];
-        end
-        perimeterFileName=correctedPerimeterFileName;
-        irisFileName=[];
-    case 'fitIrisPerimeter'
         if ~exist(glintFileName,'file')
             glintFileName = [];
         end
@@ -433,7 +428,7 @@ end
 makeFitVideo(grayVideoName, fitVideoFileName, ...
     'glintFileName', glintFileName, 'perimeterFileName', perimeterFileName,...
     'controlFileName',controlFileName, 'pupilFileName', pupilFileName, ...
-    'sceneGeometryFileName', sceneGeometryFileNameInput, 'irisFileName', irisFileName, varargin{:});
+    'sceneGeometryFileName', sceneGeometryFileNameInput, varargin{:});
 
 end % makeFitVideoForThisStage
 
