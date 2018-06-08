@@ -41,7 +41,7 @@ function runVideoPipeline( pathParams, varargin )
 %                           output dirs.
 %
 % Optional key/value pairs (display and I/O):
-%  'lastStage'            - The last stage to be executed. By deafult ends 
+%  'lastStageByName'      - The last stage to be executed. By deafult ends 
 %                           with the production of the fit video.
 %  'skipStageByName'      - A cell array of function calls to be skipped 
 %                           during execution of the pipeline.
@@ -116,7 +116,8 @@ p = inputParser; p.KeepUnmatched = true;
 p.addRequired('pathParams',@isstruct);
 
 % optional input
-p.addParameter('lastStage', 'makePupilFitVideo', @ischar);
+p.addParameter('lastStageByName', {}, @iscell);
+p.addParameter('lastStageByNumber', [], @isnumeric);
 p.addParameter('skipStageByName', {}, @iscell);
 p.addParameter('skipStageByNumber',[], @isnumeric);
 p.addParameter('displayAvailableStages', false, @islogical)
@@ -305,7 +306,10 @@ for ff = 1:length(funCalls)
         
         % clear all files (hopefully prevents 'too many files open' error)
         fclose all;
-        if strcmp(p.Results.lastStage,funNames{ff})
+        if strcmp(p.Results.lastStageByName,funNames{ff})
+            break
+        end
+        if p.Results.lastStageByNumber==ff
             break
         end
     end % if we aren't skipping this stage by name or number
