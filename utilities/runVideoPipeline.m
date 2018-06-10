@@ -389,19 +389,19 @@ switch funNames{ff}
             glintFileName = [];
         end
         % If a control file has not been created, set this to empty
-        sceneFunCallIdx=find(strcmp(funNames,'makeControlFile'));
-        if isempty(sceneFunCallIdx)
+        controlFunCallIdx=find(strcmp(funNames,'makeControlFile'));
+        if isempty(controlFunCallIdx)
             controlFileName = [];
         else
-            if sceneFunCallIdx > ff
-            controlFileName = [];
+            if controlFunCallIdx > ff
+                controlFileName = [];
             end
         end
         % Show the initial perimeter, unless it has been corrected
         perimeterFileName=initialPerimeterFileName;
-        sceneFunCallIdx=find(strcmp(funNames,'applyControlFile'));
-        if isempty(sceneFunCallIdx)
-            if sceneFunCallIdx < ff
+        correctFunCallIdx=find(strcmp(funNames,'applyControlFile'));
+        if ~isempty(correctFunCallIdx)
+            if correctFunCallIdx < ff
                 perimeterFileName=correctedPerimeterFileName;
             end
         end
