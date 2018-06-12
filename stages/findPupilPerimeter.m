@@ -156,6 +156,13 @@ grayVideo = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
     end
 % end
 % close the video object
+% figure out which flames we're looping through
+startFrame = p.Results.startFrame;
+if p.Results.nFrames == Inf
+    endFrame = floor(videoInObj.Duration*videoInObj.FrameRate);
+else
+    endFrame = startFrame + p.Results.nFrames - 1;
+end
 clear videoInObj
 
 
@@ -190,13 +197,7 @@ perimeter.data = cell(nFrames,1);
 % as we progress through the frames
 pupilRange = p.Results.pupilRange;
 
-% figure out which flames we're looping through
-startFrame = p.Results.startFrame;
-if p.Results.nFrames == Inf
-    endFrame = floor(videoInObj.Duration*videoInObj.FrameRate);
-else
-    endFrame = startFrame + p.Results.nFrames - 1;
-end
+
 
 % loop through gray frames
 
