@@ -58,18 +58,27 @@ end
 % pairs
 if ~isempty(p.Results.ellipseTransparentUB)
     ellipseTransparentUB = p.Results.ellipseTransparentUB;
+    initialParams.ellipseTransparentUB = p.Results.ellipseTransparentUB;
 end
 if ~isempty(p.Results.ellipseTransparentLB)
     ellipseTransparentLB = p.Results.ellipseTransparentLB;
+    initialParams.ellipseTransparentLB = p.Results.ellipseTransparentLB;
+    
 end
 if ~isempty(p.Results.frameMaskValue)
     frameMaskValue = p.Results.frameMaskValue;
+    initialParams.frameMaskValue = p.Results.frameMaskValue;
+    
 end
 if ~isempty(p.Results.pupilGammaCorrection)
     pupilGammaCorrection = p.Results.pupilGammaCorrection;
+    initialParams.pupilGammaCorrection = p.Results.pupilGammaCorrection;
+    
 end
 if ~isempty(p.Results.numberOfGlints)
     numberOfGlints = p.Results.numberOfGlints;
+    initialParams.numberOfGlints = p.Results.numberOfGlints;
+    
 end
 
 if isempty(grayVideoName)
@@ -424,11 +433,11 @@ initialParams.pupilCircleThresh = pupilCircleThresh;
 %% Figure out the maximum visible iris diameter
 irisDiameterFrame = GetWithDefault('>> Enter the frame number in which the visible iris diameter is largest.', [1]);
 videoInObj.CurrentTime = (irisDiameterFrame - 1)/(videoInObj.FrameRate);
-thisFrame = readFrame(videoInObj);
-thisFrame = rgb2gray(thisFrame);
-thisFrame = squeeze(thisFrame);
+thisFrameIris = readFrame(videoInObj);
+thisFrameIris = rgb2gray(thisFrameIris);
+thisFrameIris = squeeze(thisFrameIris);
 figure;
-imshow(thisFrame, 'Border', 'tight');
+imshow(thisFrameIris, 'Border', 'tight');
 hold on
 fprintf('Define the maximum visible iris diameter in the figure.\n')
 string = sprintf('Define the iris diameter by clicking twice on the outer boundary of the iris.');
@@ -464,5 +473,14 @@ if p.Results.verbose
     initialParams
 end
 
+%% diagnostics
+% let's see how well we can find the pupil perimeter with these initial
+% parameters
+perimeter = findPupilPerimeter(grayVideoName, '', 'startFrame', 1, 'nFrames', 1);
+displayFrame=thisFrame;
+if ~isempty(perimeter.data{1}.Xp)
+    displayFrame(sub2ind(size(thisFrame),perimeter.data{1}.Yp,perimeter.data{1}.Xp))=255;
+end
+imshow(displayFrame, 'Border', 'tight')
 
 end
