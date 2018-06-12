@@ -82,18 +82,12 @@ videoInObj = VideoReader(grayVideoName);
 nFrames = floor(videoInObj.Duration*videoInObj.FrameRate);
 videoSizeX = videoInObj.Width;
 videoSizeY = videoInObj.Height;
-grayVideo = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
 
-
-%thisFrame = readFrame(videoInObj);
-%thisFrame = squeeze(thisFrame);
-for ii = 1:nFrames
-    thisFrame = readFrame(videoInObj);
-    %        thisFrame = imadjust(thisFrame,[],[],p.Results.glintGammaCorrection);
-    grayVideo(:,:,ii) = rgb2gray (thisFrame);
-end
-
-thisFrame = squeeze(grayVideo(:,:,p.Results.frameNumber));
+% load up the single desired video frame
+videoInObj.CurrentTime = (p.Results.frameNumber - 1)/(videoInObj.FrameRate);
+thisFrame = readFrame(videoInObj);
+thisFrame = rgb2gray(thisFrame);
+thisFrame = squeeze(thisFrame);
 
 % open video file, if asked
 if p.Results.openVideo
@@ -106,12 +100,17 @@ figure;
 imshow(thisFrame, 'Border', 'tight')
 hold on
 
+% ask the user if we the presented frame is OK, or if we should look for a
+% different one
 if p.Results.frameNumber ==1
     frameCheckChoice = GetWithDefault('>> Is this a good frame? Enter ''y'' to proceed, or ''n'' to choose new frame. [y/n]', 'y');
     if strcmp(frameCheckChoice, 'n')
         close all
         frameRequest = GetWithDefault('>> Enter desired frame:', 1);
-        thisFrame = squeeze(grayVideo(:,:,frameRequest));
+        videoInObj.CurrentTime = (frameRequest - 1)/(videoInObj.FrameRate);
+        thisFrame = readFrame(videoInObj);
+        thisFrame = rgb2gray(thisFrame);
+        thisFrame = squeeze(thisFrame);        
         figure;
         imshow(thisFrame, 'Border', 'tight');
         hold on
@@ -270,41 +269,7 @@ end
 
 close all
 
-%% Figure out the maximum visible iris diameter
-irisDiameterFrame = GetWithDefault('>> Enter the frame number in which the visible iris diameter is largest.', [1]);
-thisFrame = squeeze(grayVideo(:,:,irisDiameterFrame));
-figure;
-imshow(thisFrame, 'Border', 'tight');
-hold on
-fprintf('Define the maximum visible iris diameter in the figure.\n')
-string = sprintf('Define the iris diameter by clicking twice on the outer boundary of the iris.');
-hText = text(1,10,string, 'FontSize', 16, 'BackgroundColor', 'white');
-[x,y] = ginput(2);
-iHandle = plot(x ,y, '+', 'Color', 'red');
 
-% ask if we need to redo glint placement
-irisCheckChoice = GetWithDefault('>> Satisfied with iris diameter location? Enter ''y'' to proceed, or ''n'' to redraw. [y/n]', 'y');
-if ~strcmp(irisCheckChoice, 'y')
-    delete(gHandle);
-    irisDoneFlag = false;
-    while ~irisDoneFlag
-        string = sprintf('Define the iris diameter by clicking twice on the outer boundary of the iris.');
-        hText = text(1,10,string, 'FontSize', 16, 'BackgroundColor', 'white');
-        [x,y] = ginput(2);
-        iHandle = plot(x ,y, '+', 'Color', 'red');
-        irisCheckChoice = GetWithDefault('>> Satisfied with iris diameter location? Enter ''y'' to proceed, or ''n'' to redraw. [y/n]', 'y');
-        switch irisCheckChoice
-            case 'y'
-                irisDoneFlag = true;
-            case 'n'
-                irisDoneFlag = false;
-                delete(iHandle);
-        end
-    end
-end
-close all
-
-initialParams.maximumVisibleIrisDiameter = abs(x(1) - x(2));
 
 
 %% Figure out the pupilCircleThresh
@@ -455,6 +420,45 @@ end
 
 pupilCircleThresh = p.Results.potentialThreshValues(min(potentialIndices)-1);
 initialParams.pupilCircleThresh = pupilCircleThresh;
+
+%% Figure out the maximum visible iris diameter
+irisDiameterFrame = GetWithDefault('>> Enter the frame number in which the visible iris diameter is largest.', [1]);
+videoInObj.CurrentTime = (irisDiameterFrame - 1)/(videoInObj.FrameRate);
+thisFrame = readFrame(videoInObj);
+thisFrame = rgb2gray(thisFrame);
+thisFrame = squeeze(thisFrame);
+figure;
+imshow(thisFrame, 'Border', 'tight');
+hold on
+fprintf('Define the maximum visible iris diameter in the figure.\n')
+string = sprintf('Define the iris diameter by clicking twice on the outer boundary of the iris.');
+hText = text(1,10,string, 'FontSize', 16, 'BackgroundColor', 'white');
+[x,y] = ginput(2);
+iHandle = plot(x ,y, '+', 'Color', 'red');
+
+% ask if we need to redo glint placement
+irisCheckChoice = GetWithDefault('>> Satisfied with iris diameter location? Enter ''y'' to proceed, or ''n'' to redraw. [y/n]', 'y');
+if ~strcmp(irisCheckChoice, 'y')
+    delete(gHandle);
+    irisDoneFlag = false;
+    while ~irisDoneFlag
+        string = sprintf('Define the iris diameter by clicking twice on the outer boundary of the iris.');
+        hText = text(1,10,string, 'FontSize', 16, 'BackgroundColor', 'white');
+        [x,y] = ginput(2);
+        iHandle = plot(x ,y, '+', 'Color', 'red');
+        irisCheckChoice = GetWithDefault('>> Satisfied with iris diameter location? Enter ''y'' to proceed, or ''n'' to redraw. [y/n]', 'y');
+        switch irisCheckChoice
+            case 'y'
+                irisDoneFlag = true;
+            case 'n'
+                irisDoneFlag = false;
+                delete(iHandle);
+        end
+    end
+end
+close all
+
+initialParams.maximumVisibleIrisDiameter = abs(x(1) - x(2));
 
 if p.Results.verbose
     initialParams
