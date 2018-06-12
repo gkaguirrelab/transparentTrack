@@ -112,7 +112,7 @@ p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@i
 % Optional analysis params
 p.addParameter('pupilGammaCorrection', 0.75, @isnumeric);
 p.addParameter('pupilFrameMask', [], @isnumeric);
-p.addParameter('maskBox', [0.20 0.75], @isnumeric);
+p.addParameter('maskBox', [2 2], @isnumeric);
 p.addParameter('frameMaskValue', 220, @isnumeric);
 p.addParameter('smallObjThresh', 400, @isnumeric);
 
