@@ -32,7 +32,7 @@ p.addParameter('pupilRangeContractor', 0.8, @isnumeric);
 p.addParameter('innerDilationFactor', 1.1, @isnumeric);
 p.addParameter('outerDilationFactor', 1.3, @isnumeric);
 p.addParameter('potentialThreshValues', [0.001:0.001:0.2], @isnumeric);
-p.addParameter('intensityDividerComputeMethod', 'irisMaskMinimum', @isstr);
+p.addParameter('intensityDividerComputeMethod', 'manual', @isstr);
 p.addParameter('glintMaskPaddingFactor', 50, @isnumeric);
 p.addParameter('intensityDivider', [], @isnumeric);
 
@@ -87,6 +87,7 @@ if isempty(grayVideoName)
 end
 
 %% Load up the frame of interest
+close all
 videoInObj = VideoReader(grayVideoName);
 nFrames = floor(videoInObj.Duration*videoInObj.FrameRate);
 videoSizeX = videoInObj.Width;
@@ -476,28 +477,52 @@ end
 %% diagnostics
 % let's see how well we can find the pupil perimeter with these initial
 % parameters
-    ellipseTransparentUB = [1280, 720, 90000, 0.6, pi];
-    ellipseTransparentLB = [0, 0, 1000, 0, 0];
-    pupilGammaCorrection = 0.75;
-    frameMaskValue = 220;
-    numberOfGlints = 2;
-
-
-
-perimeter = findPupilPerimeter(grayVideoName, '', ...
-                            'startFrame', p.Results.frameNumber, ...
-                            'nFrames', 1, ...
-                            'ellipseTransparentUB', ellipseTransparentUB, ...
-                            'ellipseTransparentLB', ellipseTransparentLB, ...
-                            'pupilGammaCorrection', pupilGammaCorrection, ...
-                            'frameMaskValue', frameMaskValue, ...
-                            'pupilFrameMask', initialParams.pupilFrameMask, ...
-                            'pupilRange', initialParams.pupilRange, ...
-                            'pupilCricleThresh', initialParams.pupilCircleThresh);
-displayFrame=thisFrame;
-if ~isempty(perimeter.data{1}.Xp)
-    displayFrame(sub2ind(size(thisFrame),perimeter.data{1}.Yp,perimeter.data{1}.Xp))=255;
+nFramesToCheck = 4;
+for ii = 1:nFramesToCheck
+    framesToCheck(ii) = round((nFrames/(nFramesToCheck-1))*(ii-1))+1;
 end
-imshow(displayFrame, 'Border', 'tight')
+framesToCheck(1) = p.Results.frameNumber;
+framesToCheck(end) = nFrames;
+
+
+counter = 1;
+for ii = framesToCheck
+    perimeter = [];
+    plotFig = figure;
+    hold on
+    
+    %subplot(2, round(nFrames/2), counter)
+    counter = counter + 1;
+    string = [];
+    string = (['Frame ', num2str(ii)]);
+    
+    videoInObj.CurrentTime = (ii - 1)/(videoInObj.FrameRate);
+    thisFrameDiagnostics = readFrame(videoInObj);
+    thisFrameDiagnostics = rgb2gray(thisFrameDiagnostics);
+    thisFrameDiagnostics = squeeze(thisFrameDiagnostics);
+    
+    
+    perimeter = findPupilPerimeter(grayVideoName, 'temp', ...
+        'startFrame', ii, ...
+        'nFrames', 1, ...
+        'ellipseTransparentUB', ellipseTransparentUB, ...
+        'ellipseTransparentLB', ellipseTransparentLB, ...
+        'pupilGammaCorrection', pupilGammaCorrection, ...
+        'frameMaskValue', frameMaskValue, ...
+        'pupilFrameMask', initialParams.pupilFrameMask, ...
+        'pupilRange', initialParams.pupilRange, ...
+        'pupilCricleThresh', initialParams.pupilCircleThresh);
+    displayFrame=thisFrameDiagnostics;
+    if ~isempty(perimeter.data{1}.Xp)
+        displayFrame(sub2ind(size(thisFrameDiagnostics),perimeter.data{1}.Yp,perimeter.data{1}.Xp))=255;
+    end
+    if isempty(perimeter.data{1}.Xp)
+        string = 'No pupil found';
+        text(350, 200, string);
+    end
+    imshow(displayFrame, 'Border', 'tight')
+    dText = text(1,10,string, 'FontSize', 16, 'BackgroundColor', 'white');
+    delete('temp.mat')
+end
 
 end
