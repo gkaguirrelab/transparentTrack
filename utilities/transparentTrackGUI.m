@@ -426,6 +426,10 @@ for xx = p.Results.potentialThreshValues
 end
 [minValue, potentialIndices] = min(abs(yy-intensityDivider));
 
+% sometimes the attempt to find the potentialThreshValue fails (often
+% because the intensityDivider value is not reasonable). here we give the
+% user a chance to select the intensityDivider manually, then re-compute
+% the potentailThreshValue one last time.
 if (min(potentialIndices)-1) < 1 || (min(potentialIndices)-1) > length(p.Results.potentialThreshValues)
     fprintf('Attempt to determine pupilCircleThresh failed. Try again manually\n')
     plotFig = figure;
