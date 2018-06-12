@@ -31,7 +31,7 @@ p.addParameter('pupilRangeDilator', 1.2, @isnumeric);
 p.addParameter('pupilRangeContractor', 0.8, @isnumeric);
 p.addParameter('innerDilationFactor', 1.1, @isnumeric);
 p.addParameter('outerDilationFactor', 1.3, @isnumeric);
-p.addParameter('potentialThreshValues', [0.001:0.001:0.2], @isnumeric);
+p.addParameter('potentialThreshValues', [0.001:0.0001:0.2], @isnumeric);
 p.addParameter('intensityDividerComputeMethod', 'manual', @isstr);
 p.addParameter('glintMaskPaddingFactor', 50, @isnumeric);
 p.addParameter('intensityDivider', [], @isnumeric);
@@ -82,7 +82,7 @@ if ~isempty(p.Results.numberOfGlints)
 end
 
 if isempty(grayVideoName)
-    [fileName, path] = uigetfile({'*.mp4', '*.mov'});
+    [fileName, path] = uigetfile({'*.mp4;*.mov'});
     grayVideoName = [path, fileName];
 end
 
@@ -511,7 +511,7 @@ for ii = framesToCheck
         'frameMaskValue', frameMaskValue, ...
         'pupilFrameMask', initialParams.pupilFrameMask, ...
         'pupilRange', initialParams.pupilRange, ...
-        'pupilCricleThresh', initialParams.pupilCircleThresh);
+        'pupilCricleThresh', initialParams.pupilCircleThresh, 'maskBox', [1.5 1.5]);
     displayFrame=thisFrameDiagnostics;
     if ~isempty(perimeter.data{1}.Xp)
         displayFrame(sub2ind(size(thisFrameDiagnostics),perimeter.data{1}.Yp,perimeter.data{1}.Xp))=255;
