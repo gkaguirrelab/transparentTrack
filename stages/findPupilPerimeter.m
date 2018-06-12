@@ -140,13 +140,13 @@ videoSizeY = videoInObj.Height;
 % initialize variable to hold the perimeter data
 grayVideo = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
 % read the video into memory, adjusting gamma and local contrast
-if ~p.Results.displayMode
-    for ii = 1:nFrames
-        thisFrame = readFrame(videoInObj);
-        thisFrame = imadjust(thisFrame,[],[],p.Results.pupilGammaCorrection);
-        grayVideo(:,:,ii) = rgb2gray (thisFrame);
-    end
-else
+% if ~p.Results.displayMode
+%     for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
+%         thisFrame = readFrame(videoInObj);
+%         thisFrame = imadjust(thisFrame,[],[],p.Results.pupilGammaCorrection);
+%         grayVideo(:,:,ii) = rgb2gray (thisFrame);
+%     end
+% else
     cc = 0;
     for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
         cc = cc+1;
@@ -154,7 +154,7 @@ else
         thisFrame = imadjust(thisFrame,[],[],p.Results.pupilGammaCorrection);
         grayVideo(:,:,cc) = rgb2gray (thisFrame);
     end
-end
+% end
 % close the video object
 clear videoInObj
 
@@ -190,8 +190,17 @@ perimeter.data = cell(nFrames,1);
 % as we progress through the frames
 pupilRange = p.Results.pupilRange;
 
+% figure out which flames we're looping through
+startFrame = p.Results.startFrame;
+if p.Results.nFrames == Inf
+    endFrame = floor(videoInObj.Duration*videoInObj.FrameRate);
+else
+    endFrame = startFrame + p.Results.nFrames - 1;
+end
+
 % loop through gray frames
-for ii = 1:nFrames
+
+for ii = 1:(endFrame-startFrame+1)
     
     if p.Results.displayMode && strcmp(get(figureHandle,'currentchar'),' ')
         close(figureHandle)
