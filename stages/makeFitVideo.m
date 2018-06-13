@@ -188,7 +188,7 @@ for ii = 1:nFrames
     end
     hold on
     
-    hPlot = [];
+    hPlot = gobjects(0);
     
     % add glint
     if ~isempty(p.Results.glintFileName)
