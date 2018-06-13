@@ -33,7 +33,7 @@ p.addParameter('innerDilationFactor', 1.1, @isnumeric);
 p.addParameter('outerDilationFactor', 1.3, @isnumeric);
 p.addParameter('potentialThreshValues', [0.001:0.0001:0.2], @isnumeric);
 p.addParameter('intensityDividerComputeMethod', 'manual', @isstr);
-p.addParameter('glintMaskPaddingFactor', 50, @isnumeric);
+p.addParameter('glintMaskPaddingFactor', 75, @isnumeric);
 p.addParameter('intensityDivider', [], @isnumeric);
 
 
@@ -266,9 +266,9 @@ glintYPositionUpper = min(y);
 
 % expand beyond these positions to define to the glintFrameMask
 initialParams.glintFrameMask = [round(glintYPositionUpper - p.Results.glintMaskPaddingFactor) ...
-    round(videoSizeX - (glintXPosition + p.Results.glintMaskPaddingFactor)) ...
+    round(videoSizeX - (glintXPosition + p.Results.glintMaskPaddingFactor*2)) ...
     round(videoSizeY - (glintYPositionLower + p.Results.glintMaskPaddingFactor)) ...
-    round(glintXPosition - p.Results.glintMaskPaddingFactor)];
+    round(glintXPosition - p.Results.glintMaskPaddingFactor*2)];
 % make sure that glintFrameMask is actually within the window
 for ii = 1:4
     if initialParams.glintFrameMask(ii) < 1
