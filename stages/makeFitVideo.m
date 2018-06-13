@@ -271,7 +271,7 @@ for ii = 1:nFrames
     end
     
     % Clear the plot objects
-    if exists('hRender', 'var')
+    if exist('hRender', 'var')
         delete(hRender);
     end
     delete(hPlot);
