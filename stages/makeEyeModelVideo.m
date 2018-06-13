@@ -120,7 +120,7 @@ for ii = 1:nFrames
     
     if ~any(isnan(eyePoses(ii,:)))
         % Obtain the pupilProjection of the model eye to the image plane
-        [~, renderedFrame] = renderEyePose(eyePoses(ii,:), sceneGeometry, 'newFigure', false, 'modelEyeLabelNames', p.Results.modelEyeLabelNames, 'modelEyePlotColors', p.Results.modelEyePlotColors);
+        [~, ~, renderedFrame] = renderEyePose(eyePoses(ii,:), sceneGeometry, 'newFigure', false, 'modelEyeLabelNames', p.Results.modelEyeLabelNames, 'modelEyePlotColors', p.Results.modelEyePlotColors);
     end
 
     % Get ready for the next frame
