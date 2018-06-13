@@ -392,7 +392,7 @@ if ~isempty(framesWithMoreCentroids)
                 mainLengths = pdist(theseCentroids',@(x,y) x-y);
                 
                 % find main length closest to the average
-                candidateGlintVectorIdx = find(min(abs(abs(mainLengths) - medianGlintVector(2))));
+                [minimumLength, candidateGlintVectorIdx] = min(abs(abs(mainLengths) - medianGlintVector(2)));
                 
                 % get the indexes of the appropriate centroids
                 if candidateGlintVectorIdx < length(theseCentroids)
