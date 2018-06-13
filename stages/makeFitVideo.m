@@ -271,8 +271,11 @@ for ii = 1:nFrames
     end
     
     % Clear the plot objects
+    if exists('hRender', 'var')
+        delete(hRender);
+    end
     delete(hPlot);
-    delete(hRender);
+
         
 end % Loop over frames
 
