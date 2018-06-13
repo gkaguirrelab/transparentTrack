@@ -152,6 +152,12 @@ else
     open(videoOutObj);
 end
 
+% Create blank figure. Save the the axis handles. By allowing the figure to
+% be visible, processing is about 10x faster. This is a weird property of
+% how MATLAB handles frame buffering. 
+hFig = figure( 'Visible', 'on');
+hAxes = subplot(1,1,1);
+
 % Alert the user
 if p.Results.verbose
     tic
@@ -172,18 +178,22 @@ for ii = 1:nFrames
     % read the source video frame into memory
     sourceFrame = readFrame(videoInObj);
     sourceFrame = rgb2gray (sourceFrame);
-    
-    % Create a figure
-    frameFig = figure( 'Visible', 'off');
-        
+            
     % show the initial frame
-    imshow(sourceFrame, 'Border', 'tight');
+    if ii==1
+        hImage = imshow(sourceFrame,'Border', 'tight','Parent',hAxes);
+    else
+        hold off
+        set(hImage,'CData',sourceFrame);
+    end
     hold on
+    
+    hPlot = [];
     
     % add glint
     if ~isempty(p.Results.glintFileName)
         for gg = 1:size(glintData.X,2)
-        plot(glintData.X(ii,gg),glintData.Y(ii,gg),['*' p.Results.glintColor]);
+        hPlot(end+1) = plot(glintData.X(ii,gg),glintData.Y(ii,gg),['*' p.Results.glintColor]);
         end
     end
     
@@ -191,7 +201,7 @@ for ii = 1:nFrames
     if ~isempty(p.Results.perimeterFileName)
         % get the data frame
         if ~isempty(perimeter.data{ii}.Xp)
-            plot(perimeter.data{ii}.Xp ,perimeter.data{ii}.Yp, ['.' p.Results.perimeterColor], 'MarkerSize', 1);
+            hPlot(end+1) = plot(perimeter.data{ii}.Xp ,perimeter.data{ii}.Yp, ['.' p.Results.perimeterColor], 'MarkerSize', 1);
         end
     end
         
@@ -205,13 +215,13 @@ for ii = 1:nFrames
                 % superimpose the ellipse using fimplicit or ezplot (ezplot
                 % is the fallback option for older Matlab versions)
                 if exist('fimplicit','file')==2
-                    fimplicit(fh,[1, videoSizeX, 1, videoSizeY],'Color', p.Results.pupilColor,'LineWidth',1);
+                    hPlot(end+1) = fimplicit(fh,[1, videoSizeX, 1, videoSizeY],'Color', p.Results.pupilColor,'LineWidth',1);
                     set(gca,'position',[0 0 1 1],'units','normalized')
                     axis off;
                 else
-                    plotHandle=ezplot(fh,[1, videoSizeX, 1, videoSizeY]);
-                    set(plotHandle, 'Color', p.Results.pupilColor)
-                    set(plotHandle,'LineWidth',1);
+                    hPlot(end+1) = ezplot(fh,[1, videoSizeX, 1, videoSizeY]);
+                    set(hPlot(end), 'Color', p.Results.pupilColor)
+                    set(hPlot(end), 'LineWidth',1);
                 end
             end
         end
@@ -221,7 +231,7 @@ for ii = 1:nFrames
     if ~isempty(eyePoses) && sum(p.Results.modelEyeAlpha)~=0
         % If we have a defined eyePose for this frame, display the modelEye
         if ~any(isnan(eyePoses(ii,:)))
-            renderEyePose(eyePoses(ii,:), sceneGeometry, 'newFigure', false, ...
+            [~, hRender] = renderEyePose(eyePoses(ii,:), sceneGeometry, 'newFigure', false, ...
                 'modelEyeLabelNames', p.Results.modelEyeLabelNames, ...
                 'modelEyePlotColors', p.Results.modelEyePlotColors, ...
                 'modelEyeAlpha', p.Results.modelEyeAlpha);   
@@ -233,7 +243,7 @@ for ii = 1:nFrames
         instructionIdx = find ([instructions.frame] == ii);
         if ~isempty(instructionIdx)
             text_str = instructions(instructionIdx(end)).type;
-            annotation('textbox',...
+            hPlot(end+1) = annotation('textbox',...
                 [.80 .85 .1 .1],...
                 'HorizontalAlignment','center',...
                 'VerticalAlignment','middle',...
@@ -248,9 +258,8 @@ for ii = 1:nFrames
         end
     end
         
-    % Get the frame and close the figure
-    thisFrame=getframe(frameFig);
-    close(frameFig);
+    % Get the frame
+    thisFrame=getframe(hFig);
     
     % Write out this frame
     if p.Results.saveCompressedVideo
@@ -261,10 +270,17 @@ for ii = 1:nFrames
         writeVideo(videoOutObj,indexedFrame);
     end
     
+    % Clear the plot objects
+    delete(hPlot);
+    delete(hRender);
+        
 end % Loop over frames
 
 
 %% Save and cleanup
+
+% Close the figure
+close(hFig);
 
 % close the video objects
 clear videoOutObj videoInObj
