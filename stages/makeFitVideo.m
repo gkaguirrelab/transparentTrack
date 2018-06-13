@@ -259,6 +259,7 @@ for ii = 1:nFrames
     end
         
     % Get the frame
+    drawnow;
     thisFrame=getframe(hFig);
     
     % Write out this frame
