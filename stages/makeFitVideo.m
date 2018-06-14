@@ -156,7 +156,7 @@ end
 % be visible, processing is about 10x faster. This is a weird property of
 % how MATLAB handles frame buffering. 
 hFig = figure( 'Visible', 'on');
-hAxes = subplot(1,1,1);
+hAxes = gca();
 
 % Alert the user
 if p.Results.verbose
