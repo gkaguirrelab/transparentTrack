@@ -271,7 +271,7 @@ for ii = 1:nFrames
         
     % Get the frame
     drawnow;
-    thisFrame=getframe(hFig);
+    thisFrame=getframe(hAxes);
     
     % Write out this frame
     if p.Results.saveCompressedVideo
