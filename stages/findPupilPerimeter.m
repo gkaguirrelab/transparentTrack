@@ -126,7 +126,17 @@ p.addParameter('rangeAdjust', 0.05, @isnumeric);
 p.parse(grayVideoName, perimeterFileName, varargin{:})
 
 
-%% Read video file into memory
+%% Open a video object for reading
+% Touch the file. If the file is in the "online only" state within a
+% DropBox "smartSync" directory, this action will cause the file to be
+% downloaded and made local. The system will pause during this time. The
+% only effect of this step will be to update the most recent access date of
+% the file. This step is only available on unix-based operating systems
+if isunix
+    sysCommand = ['touch -a ' grayVideoName];
+    system(sysCommand);
+end
+% create the video in object
 videoInObj = VideoReader(grayVideoName);
 % get number of frames
 if p.Results.nFrames == Inf
