@@ -70,18 +70,27 @@ p.parse(videoInFileName,videoOutFileName,varargin{:})
 % define variables
 bobMode = p.Results.bobMode;
 
-%% Load video to deinterlace and set parameters for output video file.
-
-inObj = VideoReader(videoInFileName);
+%% Prepare the video object
+% Touch the file. If the file is in the "online only" state within a
+% DropBox "smartSync" directory, this action will cause the file to be
+% downloaded and made local. The system will pause during this time. The
+% only effect of this step will be to update the most recent access date of
+% the file. This step is only available on unix-based operating systems
+if isunix
+    sysCommand = ['touch -a ' videoInFileName];
+    system(sysCommand);
+end
+% create the video in object
+videoInObj = VideoReader(videoInFileName);
 
 if p.Results.nFrames == Inf
-    nFrames = floor(inObj.Duration*inObj.FrameRate);
+    nFrames = floor(videoInObj.Duration*videoInObj.FrameRate);
 else
     nFrames = p.Results.nFrames;
 end
 
 Bob = VideoWriter(videoOutFileName);
-Bob.FrameRate = inObj.FrameRate * 2;
+Bob.FrameRate = videoInObj.FrameRate * 2;
 Bob.Quality = 100;
 
 % Alert the user
@@ -102,7 +111,7 @@ for ii = p.Results.startFrame:nFrames
     end
     
     % get the frame
-    tmp = readFrame(inObj);
+    tmp = readFrame(videoInObj);
     
     % if required, convert to gray
     if p.Results.convertToGray
