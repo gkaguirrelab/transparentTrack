@@ -77,9 +77,11 @@ bobMode = p.Results.bobMode;
 % only effect of this step will be to update the most recent access date of
 % the file. This step is only available on unix-based operating systems
 if isunix
-    sysCommand = ['touch -a ' videoInFileName];
+    sanitizedFileName = replace(videoInFileName,{' ','(',')'},{'\ ','\(','\)'});
+    sysCommand = ['touch -a ' sanitizedFileName];
     system(sysCommand);
 end
+
 % create the video in object
 videoInObj = VideoReader(videoInFileName);
 

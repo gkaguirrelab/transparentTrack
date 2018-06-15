@@ -153,20 +153,25 @@ p.parse(grayVideoName, glintFileName, varargin{:})
 % only effect of this step will be to update the most recent access date of
 % the file. This step is only available on unix-based operating systems
 if isunix
-    sysCommand = ['touch -a ' grayVideoName];
+    sanitizedFileName = replace(grayVideoName,{' ','(',')'},{'\ ','\(','\)'});
+    sysCommand = ['touch -a ' sanitizedFileName];
     system(sysCommand);
 end
+
 % create the video in object
 videoInObj = VideoReader(grayVideoName);
+
 % get number of frames
 if p.Results.nFrames == Inf
     nFrames = floor(videoInObj.Duration*videoInObj.FrameRate);
 else
     nFrames = p.Results.nFrames;
 end
+
 % get video dimensions
 videoSizeX = videoInObj.Width;
 videoSizeY = videoInObj.Height;
+
 % initialize variable to hold the perimeter data
 grayVideo = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
 
