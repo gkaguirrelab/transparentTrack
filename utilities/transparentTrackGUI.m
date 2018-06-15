@@ -5,7 +5,7 @@ p = inputParser; p.KeepUnmatched = true;
 
 % Required
 p.addOptional('grayVideoName', [], @(x)(isempty(x) || ischar(x)));
-p.addOptional('protocol', 'SquintToPulse', @(x)(isempty(x) || ischar(x)));
+p.addOptional('approach', 'SquintToPulse', @(x)(isempty(x) || ischar(x)));
 
 
 
@@ -40,13 +40,13 @@ p.addParameter('intensityDivider', [], @isnumeric);
 % parse
 p.parse(grayVideoName,protocol, varargin{:})
 
-if strcmp(p.Results.protocol, 'TOME')
+if strcmp(p.Results.approach, 'TOME')
     ellipseTransparentUB = [1280, 720, 90000, 0.6, pi];
     ellipseTransparentLB = [0, 0, 1000, 0, 0];
     pupilGammaCorrection = 1;
     frameMaskValue = 220;
     numberOfGlints = 2;
-elseif strcmp(p.Results.protocol, 'SquintToPulse')
+elseif strcmp(p.Results.approach, 'SquintToPulse')
     ellipseTransparentUB = [1280, 720, 90000, 0.6, pi];
     ellipseTransparentLB = [0, 0, 1000, 0, 0];
     pupilGammaCorrection = 0.75;
