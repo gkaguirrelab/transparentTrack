@@ -73,6 +73,9 @@ if strcmp(p.Results.approach, 'TOME')
     pupilGammaCorrection = 1;
     frameMaskValue = 220;
     numberOfGlints = 1;
+    intrinsicCameraMatrix = [2627.0 0 338.1; 0 2628.1 246.2; 0 0 1];
+    radialDistortionVector = [-0.3517 3.5353];
+    spectralDomain = 'nir';
 elseif strcmp(p.Results.approach, 'SquintToPulse')
     ellipseTransparentUB = [1280, 720, 90000, 0.6, pi];
     ellipseTransparentLB = [0, 0, 1000, 0, 0];
@@ -496,6 +499,30 @@ end
 close all
 
 initialParams.maximumVisibleIrisDiameter = abs(x(1) - x(2));
+
+% Could calculate and store the actual default sceneParam values here:
+%{
+    % Estimate camera distance from iris diameter in pixels
+    % Because biological variation in the size of the visible iris is known,
+    % we can use the observed maximum diameter of the iris in pixels to obtain
+    % a guess as to the distance of the eye from the camera.
+    sceneGeometry = createSceneGeometry(...
+        'radialDistortionVector',radialDistortionVector, ...
+        'intrinsicCameraMatrix',intrinsicCameraMatrix);
+    [cameraDepthMean, cameraDepthSD] = depthFromIrisDiameter( sceneGeometry, maxIrisDiamPixels );
+
+    % Assemble the scene parameter bounds. These are in the order of:
+    %   torsion, x, y, z, eyeRotationScalarJoint, eyeRotationScalerDifferential
+    % where torsion specifies the torsion of the camera with respect to the eye
+    % in degrees, [x y z] is the translation of the camera w.r.t. the eye in
+    % mm, and the eyeRotationScalar variables are multipliers that act upon the
+    % centers of rotation estimated for the eye.
+    sceneParamsLB = [-5; -5; -5; cameraDepthMean-cameraDepthSD*2; 0.75; 0.9];
+    sceneParamsLBp = [-3; -2; -2; cameraDepthMean-cameraDepthSD*1; 0.85; 0.95];
+    sceneParamsUBp = [3; 2; 2; cameraDepthMean+cameraDepthSD*1; 1.15; 1.05];
+    sceneParamsUB = [5; 5; 5; cameraDepthMean+cameraDepthSD*2; 1.25; 1.1];
+%}
+
 
 if p.Results.verbose
     initialParams
