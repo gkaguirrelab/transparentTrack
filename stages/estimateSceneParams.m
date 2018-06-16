@@ -531,6 +531,10 @@ scatter(ellipses(:,1),ellipses(:,2),'o','filled', ...
     'MarkerFaceAlpha',2/8,'MarkerFaceColor',[0 0 0]);
 hold on
 
+% Silence some errors that can arise during the inverse projection
+warningState = warning;
+warning('off','rayTraceEllipsoids:criticalAngle');
+
 % get the predicted ellipse centers
 [~, projectedEllipses] = ...
     arrayfun(@(x) pupilProjection_inv...
@@ -540,6 +544,9 @@ hold on
     'eyePoseLB',eyePoseLB,'eyePoseUB',eyePoseUB),...
     1:1:size(ellipses,1),'UniformOutput',false);
 projectedEllipses=vertcat(projectedEllipses{:});
+
+% Restore the warning state
+warning(warningState);
 
 % plot the projected ellipse centers
 scatter(projectedEllipses(:,1),projectedEllipses(:,2),'o','filled', ...
