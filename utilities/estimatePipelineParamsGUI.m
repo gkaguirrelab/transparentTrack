@@ -1,4 +1,36 @@
-function [ initialParams ] = estimatePipelineParamsGUI(grayVideoName, protocol, varargin)
+function [ initialParams ] = estimatePipelineParamsGUI(grayVideoName, approach, varargin)
+% A one line description here
+%
+% Syntax:
+%  [ initialParams ] = estimatePipelineParamsGUI(grayVideoName, protocol)
+%
+% Description:
+%   Provide a description here. Note the indentation style for this block
+%   of paragraph of text.
+%
+% Inputs:
+%   grayVideoName         - String vector. The full path to a video file
+%                           for which parameters are to be derived.
+%                           Are there limitations on the file type? If so,
+%                           describe those limitations here.
+%   approach              - String vector. Defines the default param values
+%                           for a particular protocol. Defined values are:
+%                           {'TOME','SquintToPulse'}
+%
+% Optional key/value pairs:
+%  'frameNumber'          - Define
+%  'openVideo'            - Define
+%  etc...
+%
+% Outputs;
+%   initialParams         - Describe it here
+%
+% Examples:
+%{
+    Give an example here, perhaps for the path to the DEMO video
+%}
+
+
 
 %% Input parser
 p = inputParser; p.KeepUnmatched = true;
@@ -7,14 +39,10 @@ p = inputParser; p.KeepUnmatched = true;
 p.addOptional('grayVideoName', [], @(x)(isempty(x) || ischar(x)));
 p.addOptional('approach', 'SquintToPulse', @(x)(isempty(x) || ischar(x)));
 
-
-
 % Optional flow control params
 p.addParameter('frameNumber',1,@isnumeric);
 p.addParameter('openVideo',true,@islogical);
 p.addParameter('verbose',true,@islogical);
-
-
 
 % automatic default parameters in case no default parameters are provided
 p.addParameter('ellipseTransparentUB', [], @isnumeric);
@@ -22,7 +50,6 @@ p.addParameter('ellipseTransparentLB', [], @isnumeric);
 p.addParameter('pupilGammaCorrection', [], @isnumeric);
 p.addParameter('frameMaskValue', [], @isnumeric);
 p.addParameter('numberOfGlints', [], @isnumeric);
-
 
 % parameters that adjust this initial parameter guessing
 p.addParameter('pupilMaskShrinkFactor', 0.9, @isnumeric);
@@ -38,14 +65,14 @@ p.addParameter('intensityDivider', [], @isnumeric);
 
 
 % parse
-p.parse(grayVideoName,protocol, varargin{:})
+p.parse(grayVideoName,approach, varargin{:})
 
 if strcmp(p.Results.approach, 'TOME')
     ellipseTransparentUB = [1280, 720, 90000, 0.6, pi];
     ellipseTransparentLB = [0, 0, 1000, 0, 0];
     pupilGammaCorrection = 1;
     frameMaskValue = 220;
-    numberOfGlints = 2;
+    numberOfGlints = 1;
 elseif strcmp(p.Results.approach, 'SquintToPulse')
     ellipseTransparentUB = [1280, 720, 90000, 0.6, pi];
     ellipseTransparentLB = [0, 0, 1000, 0, 0];
