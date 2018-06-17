@@ -39,27 +39,27 @@ p.addRequired('videoInFileName', @ischar);
 p.addRequired('videoOutFileName', @ischar);
 
 % Optional display and I/O params
-p.addParameter('verbose',false,@islogical);
+p.addParameter('verbose', false, @islogical);
 p.addParameter('videoOutFrameRate', 60, @isnumeric);
 p.addParameter('saveCompressedVideo', true, @islogical);
 
 % Optional flow control params
-p.addParameter('nFrames',Inf,@isnumeric);
+p.addParameter('nFrames', Inf, @isnumeric);
 
 % Optional video items
-p.addParameter('glintFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('perimeterFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('pupilFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('glintColor','r',@ischar);
-p.addParameter('perimeterColor','w',@ischar);
-p.addParameter('pupilColor','green',@ischar);
-p.addParameter('sceneGeometryColor','magenta',@ischar);
+p.addParameter('glintFileName', [], @(x)(isempty(x) | ischar(x)));
+p.addParameter('perimeterFileName', [], @(x)(isempty(x) | ischar(x)));
+p.addParameter('pupilFileName', [], @(x)(isempty(x) | ischar(x)));
+p.addParameter('sceneGeometryFileName', [], @(x)(isempty(x) | ischar(x)));
+p.addParameter('glintColor', 'r', @ischar);
+p.addParameter('perimeterColor', 'w', @ischar);
+p.addParameter('pupilColor', 'green', @ischar);
+p.addParameter('sceneGeometryColor', 'magenta', @ischar);
 p.addParameter('modelEyeLabelNames', {'posteriorChamber' 'irisPerimeter' 'anteriorChamber'}, @iscell);
 p.addParameter('modelEyePlotColors', {'.w' '.b' '.y'}, @iscell);
-p.addParameter('modelEyeAlpha', 0,@isnumeric);
-p.addParameter('fitLabel', 'radiusSmoothed',@(x)(isempty(x) | ischar(x)));
-p.addParameter('controlFileName',[],@(x)(isempty(x) | ischar(x)));
+p.addParameter('modelEyeAlpha', 0, @isnumeric);
+p.addParameter('fitLabel', 'radiusSmoothed', @(x)(isempty(x) | ischar(x)));
+p.addParameter('controlFileName', [], @(x)(isempty(x) | ischar(x)));
 
 % parse
 p.parse(videoInFileName, videoOutFileName, varargin{:})
