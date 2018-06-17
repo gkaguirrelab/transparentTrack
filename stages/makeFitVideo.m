@@ -58,6 +58,7 @@ p.addParameter('sceneGeometryColor', 'magenta', @ischar);
 p.addParameter('modelEyeLabelNames', {'posteriorChamber' 'irisPerimeter' 'anteriorChamber'}, @iscell);
 p.addParameter('modelEyePlotColors', {'.w' '.b' '.y'}, @iscell);
 p.addParameter('modelEyeAlpha', 0, @isnumeric);
+p.addParameter('modelEyeSymbolSizeScaler',1.5,@isnumeric);
 p.addParameter('fitLabel', 'radiusSmoothed', @(x)(isempty(x) | ischar(x)));
 p.addParameter('controlFileName', [], @(x)(isempty(x) | ischar(x)));
 
@@ -246,7 +247,8 @@ for ii = 1:nFrames
             [~, hRender] = renderEyePose(eyePoses(ii,:), sceneGeometry, 'newFigure', false, ...
                 'modelEyeLabelNames', p.Results.modelEyeLabelNames, ...
                 'modelEyePlotColors', p.Results.modelEyePlotColors, ...
-                'modelEyeAlpha', p.Results.modelEyeAlpha);   
+                'modelEyeAlpha', p.Results.modelEyeAlpha, ...
+                'modelEyeSymbolSizeScaler', p.Results.modelEyeSymbolSizeScaler);   
         end
     end
 
