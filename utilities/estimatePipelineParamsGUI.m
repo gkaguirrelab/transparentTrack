@@ -70,7 +70,7 @@ p.parse(grayVideoName,approach, varargin{:})
 if strcmp(p.Results.approach, 'TOME')
     ellipseTransparentUB = [1280, 720, 90000, 0.6, pi];
     ellipseTransparentLB = [0, 0, 1000, 0, 0];
-    pupilGammaCorrection = 1;
+    pupilGammaCorrection = 0.75;
     frameMaskValue = 220;
     numberOfGlints = 1;
     intrinsicCameraMatrix = [2627.0 0 338.1; 0 2628.1 246.2; 0 0 1];
@@ -600,3 +600,5 @@ end
 if (isempty(inputVal))
     inputVal = defaultVal;
 end
+
+end % GetWithDefault
