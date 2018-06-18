@@ -134,6 +134,9 @@ clear dataLoad
 temporalSupport = 0:1/60.:(size(pupilData.sceneConstrained.ellipses.values,1)-1)/60; % seconds
 temporalSupport = temporalSupport / 60; % minutes
 
+% Points with a narrow posterior distribution of the fit to pupil radius
+goodIdx = pupilData.radiusSmoothed.eyePoses.radiusSD < 0.025;
+
 % Make a plot of pupil area, both on the image plane and on the eye
 figure
 subplot(2,1,1)
@@ -142,7 +145,7 @@ hold on
 plot(temporalSupport,pupilData.sceneConstrained.ellipses.values(:,3),'-b');
 plot(temporalSupport,pupilData.sceneConstrained.ellipses.values(:,3)-pupilData.sceneConstrained.ellipses.splitsSD(:,3),'-','Color',[0 0 0.7])
 plot(temporalSupport,pupilData.sceneConstrained.ellipses.values(:,3)+pupilData.sceneConstrained.ellipses.splitsSD(:,3),'-','Color',[0 0 0.7])
-plot(temporalSupport,pupilData.radiusSmoothed.ellipses.values(:,3),'-r','LineWidth',2)
+plot(temporalSupport(goodIdx),pupilData.radiusSmoothed.ellipses.values(goodIdx,3),'.r','LineWidth',2)
 xlim([0 max(temporalSupport)]);
 xlabel('time [mins]');
 ylabel('pupil area [pixels in plane]');
@@ -154,7 +157,7 @@ hold on
 plot(temporalSupport,pupilData.sceneConstrained.eyePoses.values(:,4),'-b');
 plot(temporalSupport,pupilData.sceneConstrained.eyePoses.values(:,4)-pupilData.sceneConstrained.eyePoses.splitsSD(:,4),'-','Color',[0 0 0.7])
 plot(temporalSupport,pupilData.sceneConstrained.eyePoses.values(:,4)+pupilData.sceneConstrained.eyePoses.splitsSD(:,4),'-','Color',[0 0 0.7])
-plot(temporalSupport,pupilData.radiusSmoothed.eyePoses.values(:,4),'-r','LineWidth',2)
+plot(temporalSupport(goodIdx),pupilData.radiusSmoothed.eyePoses.values(goodIdx,4),'.r','LineWidth',2)
 xlim([0 max(temporalSupport)]);
 xlabel('time [mins]');
 ylabel('pupil radius [mm on eye]');
@@ -168,7 +171,7 @@ hold on
 plot(temporalSupport,pupilData.sceneConstrained.ellipses.values(:,1),'-b');
 plot(temporalSupport,pupilData.sceneConstrained.ellipses.values(:,1)-pupilData.sceneConstrained.ellipses.splitsSD(:,1),'-','Color',[0 0 0.7])
 plot(temporalSupport,pupilData.sceneConstrained.ellipses.values(:,1)+pupilData.sceneConstrained.ellipses.splitsSD(:,1),'-','Color',[0 0 0.7])
-plot(temporalSupport,pupilData.radiusSmoothed.ellipses.values(:,1),'-r','LineWidth',2)
+plot(temporalSupport(goodIdx),pupilData.radiusSmoothed.ellipses.values(goodIdx,1),'.r','LineWidth',2)
 xlim([0 max(temporalSupport)]);
 xlabel('time [mins]');
 ylabel('X position [pixels]');
@@ -180,7 +183,7 @@ hold on
 plot(temporalSupport,pupilData.sceneConstrained.ellipses.values(:,2),'-b');
 plot(temporalSupport,pupilData.sceneConstrained.ellipses.values(:,2)-pupilData.sceneConstrained.ellipses.splitsSD(:,2),'-','Color',[0 0 0.7])
 plot(temporalSupport,pupilData.sceneConstrained.ellipses.values(:,2)+pupilData.sceneConstrained.ellipses.splitsSD(:,2),'-','Color',[0 0 0.7])
-plot(temporalSupport,pupilData.radiusSmoothed.ellipses.values(:,2),'-r','LineWidth',2)
+plot(temporalSupport(goodIdx),pupilData.radiusSmoothed.ellipses.values(goodIdx,2),'.r','LineWidth',2)
 
 xlim([0 max(temporalSupport)]);
 xlabel('time [mins]');
