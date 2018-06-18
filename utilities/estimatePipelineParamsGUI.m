@@ -1,33 +1,160 @@
 function [ initialParams ] = estimatePipelineParamsGUI(grayVideoName, approach, varargin)
-% A one line description here
+% Extract parameters to guide pupil tracking by asking  operator input
 %
 % Syntax:
 %  [ initialParams ] = estimatePipelineParamsGUI(grayVideoName, protocol)
 %
 % Description:
-%   Provide a description here. Note the indentation style for this block
-%   of paragraph of text.
+%   Successful pupil tracking requires the input of various parameters,
+%   some of which vary across subjects. This routine is intended as a quick
+%   means of figuring out what those parameters that vary should be.
+%
+%   Specifically we are interested in determining: 1) pupilFrameMask
+%   (defines the window in which the tracking routine will look for the
+%   pupil), 2) glintFrameMask (defines the window in which the tracking
+%   routine will look for the glint/glints), 3) pupilRange (sets upper and
+%   lower limits for the radius of the pupil the routine searches for in
+%   the first frame), 4) pupilCircleThresh (a value which is used to
+%   differentiate which intensities correspond to pupil vs. surrounding
+%   iris), and 5) maximumVisibleIrisDiameter (defines the diameter of the
+%   iris seen in the frame in which the eye is looking straight ahead). 
+%
+%   The process of this routine is as follows. First, the inputted video is
+%   opened (using the system's default video program) allowing the user to
+%   assess the quality of the video as well as find a representative frame
+%   from which we can extract our parameters. The default frame shown first
+%   is the first frame, but the operator is prompted to specify if a
+%   different frame is required. After the frame has been selected, the
+%   operator is instructed to click repeatedly along the boundary of the
+%   pupil in the figure window to define the shape of the pupil; a green
+%   ellipse fitted to those points is then presented. Next, the operator is
+%   asked to click in the figure to define the position of the glints.
+%   Unless the routine is changed from its default behavior, the operator
+%   is then shown a histogram showing the intensities of pixels found in
+%   both the pupil and surrounding iris. On this histogram, the user is
+%   asked to select an intensity value that best differetiates iris from
+%   pupil. Finally, the user is asked to select a frame in which the
+%   recorded eye is looking straight ahead, and the iris therefore is its
+%   maximal apparent size. Once this frame has been selected, the operator
+%   must click twice on the outer limit of the iris to define its diameter.
+%
+%   With this process completed, the pupil perimeter found in four frames
+%   from the video in question will be displayed, allowing the user to
+%   assess the quality of future tracking. Assuming these frames look
+%   reasonable, the hope is the default parameters for a given protocol,
+%   combined with these newly estimated parameters, should provide
+%   reasonable tracking.
 %
 % Inputs:
 %   grayVideoName         - String vector. The full path to a video file
-%                           for which parameters are to be derived.
-%                           Are there limitations on the file type? If so,
-%                           describe those limitations here.
+%                           for which parameters are to be derived. If an
+%                           empty string is passed (''), the operator can
+%                           choose the relevant video file (mp4 or mov) via
+%                           a dialog box.
 %   approach              - String vector. Defines the default param values
 %                           for a particular protocol. Defined values are:
 %                           {'TOME','SquintToPulse'}
 %
 % Optional key/value pairs:
-%  'frameNumber'          - Define
-%  'openVideo'            - Define
-%  etc...
+%  'frameNumber'          - A number. Controls which frame of the video is
+%                           presented, and upon which the operator will
+%                           specify the location of the pupil and glints.
+%                           The default value is 1.
+%  'openVideo'            - A logical. If true, the relevant video will be
+%                           opened by the default video player of the
+%                           operator's system.
+%  'verbose'              - A logical. Controls the amount of information
+%                           displayed onto the console.
+%  'ellipseTransparentLB/UB' - A 4-element vector that defines the hard
+%                           lower and upper boundaries, respectively, of
+%                           the ellipse fitted to the user selected
+%                           datapoints around the pupil. The 4 elements, in
+%                           order, are: center x position, center y
+%                           position, ellipse area, eccentricity, and angle
+%                           of tilt.
+%  'pupilGammaCorrection' - A number. Gamma correction to be applied to the
+%                           video frames (default 1, typical values between 
+%                           0.5 and 1.8)
+%  'frameMaskValue'       - A number. The image value that is assigned to
+%                           the region that is masked by frameMask. This
+%                           should be a gray that is neither pupil nor
+%                           glint.
+%  'numberOfGlints'       - A number. Describes how many glints are
+%                           expected in this video
+%  'pupilMaskShrinkFactor' - A number. When trying to identify pixels that
+%                           are definitively within the pupil, the routine
+%                           takes the ellipse fitted to the identified
+%                           points along the pupil perimeter and draws a
+%                           slightly smaller circle at its center. This
+%                           quantity is multiplied by the smaller radius of
+%                           the ellipse fit to create the smaller circle.
+%  'pupilMaskDilationFactor' - A number. When trying trying to create the
+%                           pupilFrameMask, we start from the center of the
+%                           user-defined pupil, then expand outwards in
+%                           each direction by a length defined by the
+%                           radius of the pupil multiplied by the
+%                           pupilMaskDilationFactor
+%  'inner/outerDilationFactor' - A number. When trying to identify pixels
+%                           that are definitively within the pupil, we
+%                           dilate the ellipse that defines the pupil by
+%                           two separate magnitudes, corresponding to the
+%                           inner and outer dilationFactors. Pixels in
+%                           between these two dilated circles are
+%                           considered iris.
+%  'potentialThreshValues' - A vector. Defines the range of values for
+%                           pupilCircleThresh that the routine will search
+%                           over.
+%  'intensityDividerComputeMethod' - A string. Options include 'manual'
+%                           (the default option), 'mean', and
+%                           'irisMaskMinimum' that refer to various methods
+%                           of choosing which pixel intensity value best
+%                           differentiates pupil from iris (the variable
+%                           intensityDivider in the code below). The
+%                           'manual' option has the operator choose the
+%                           value from a histogram of pixel intensity
+%                           values of both the iris and the pupil. The
+%                           'mean' method takes the average pixel intensity
+%                           across all pixels in both the iris and pupil
+%                           masks as the intensityDivider. The
+%                           'irisMaskMinimum' method takes the minimum
+%                           pixel intensity within the iris mask as the
+%                           intensityDivider.
+%  'glintMaskPaddingFactor' - A number. Used to define the limits of the
+%                           glintFrameMask. Defines how far from the center
+%                           of the identified glints, in units of pixels,
+%                           to extend the pupil frame mask in all
+%                           directions. Note that the routine multiplies
+%                           this value by a scalar to extend the
+%                           glintFrameMask in the horizontal direction.
+%  'intensityDivider'     - A number. The user has the option to manually
+%                           specifiy the intensityDivider value, which
+%                           represents the pixel intensity that best
+%                           differentiates iris from pupil.
 %
-% Outputs;
-%   initialParams         - Describe it here
-%
+% Outputs:
+%   initialParams         - A structure with at least 5 subfields, with
+%                           subfields including pupilFrameMask,
+%                           glintFrameMask, pupilCircleThresh, pupilRange,
+%                           and maximumVisibleIrisDiameter. These estimated
+%                           parameters an then be added to the default
+%                           parameters for a given experiment to begin
+%                           processing the relevant video through the
+%                           transparentTrack pipeline. Additional subfields
+%                           will be added if the operator overrides default
+%                           behavior for ellipseTransparentUB/LB,
+%                           pupilGammaCorrection, frameMaskValue, or
+%                           numberOfGlints
+
 % Examples:
 %{
-    Give an example here, perhaps for the path to the DEMO video
+    initialParams =
+    estimatePipelineParamsGUI('pathToVideoFile/videoFile.extension')
+%}
+%{
+    initialParams =
+    estimatePipelineParamsGUI('pathToVideoFile/videoFile.extension',
+    'TOME') % estimate the parameters using the default parameters for the
+    TOME dataset.
 %}
 
 
