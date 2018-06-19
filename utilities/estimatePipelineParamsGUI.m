@@ -210,6 +210,7 @@ if strcmp(p.Results.approach, 'TOME')
     pupilGammaCorrection = 0.75;
     frameMaskValue = 220;
     numberOfGlints = 1;
+    maskBox = [2 2];
     intrinsicCameraMatrix = [2627.0 0 338.1; 0 2628.1 246.2; 0 0 1];
     radialDistortionVector = [-0.3517 3.5353];
     spectralDomain = 'nir';
@@ -219,6 +220,7 @@ elseif strcmp(p.Results.approach, 'SquintToPulse')
     pupilGammaCorrection = 0.75;
     frameMaskValue = 220;
     numberOfGlints = 2;
+    maskBox = [2 2];
 end
 
 % allow ability to override defaultParams if necessary by passing key-value
