@@ -55,7 +55,7 @@ function [ initialParams ] = estimatePipelineParamsGUI(grayVideoName, approach, 
 %                           for a particular protocol. Defined values are:
 %                           {'TOME','SquintToPulse'}
 %
-% Optional key/value pairs:
+% Optional key/value pairs that control general tracking:
 %  'frameNumber'          - A number. Controls which frame of the video is
 %                           presented, and upon which the operator will
 %                           specify the location of the pupil and glints.
@@ -81,6 +81,14 @@ function [ initialParams ] = estimatePipelineParamsGUI(grayVideoName, approach, 
 %                           glint.
 %  'numberOfGlints'       - A number. Describes how many glints are
 %                           expected in this video
+%  'maskBox'              - This is the proportion to dilate the pupil
+%                           masked region in the vertical and horizontal
+%                           directions respectively. A value of 1 will
+%                           result in no dilation in that direction. A
+%                           value of 2 will result in a masked region that
+%                           is twice the size of the pupil radius.
+%
+% Optional key/value pairs that control estimation of pipeline parameters:
 %  'pupilMaskShrinkFactor' - A number. When trying to identify pixels that
 %                           are definitively within the pupil, the routine
 %                           takes the ellipse fitted to the identified
@@ -177,6 +185,8 @@ p.addParameter('ellipseTransparentLB', [], @isnumeric);
 p.addParameter('pupilGammaCorrection', [], @isnumeric);
 p.addParameter('frameMaskValue', [], @isnumeric);
 p.addParameter('numberOfGlints', [], @isnumeric);
+p.addParameter('maskBox', [], @isnumeric);
+
 
 % parameters that adjust this initial parameter guessing
 p.addParameter('pupilMaskShrinkFactor', 0.9, @isnumeric);
@@ -235,6 +245,11 @@ end
 if ~isempty(p.Results.numberOfGlints)
     numberOfGlints = p.Results.numberOfGlints;
     initialParams.numberOfGlints = p.Results.numberOfGlints;
+    
+end
+if ~isempty(p.Results.maskBox)
+    maskBox = p.Results.maskBox;
+    initialParams.maskBox = p.Results.maskBox;
     
 end
 
@@ -692,7 +707,8 @@ for ii = framesToCheck
         'frameMaskValue', frameMaskValue, ...
         'pupilFrameMask', initialParams.pupilFrameMask, ...
         'pupilRange', initialParams.pupilRange, ...
-        'pupilCircleThresh', initialParams.pupilCircleThresh);
+        'pupilCircleThresh', initialParams.pupilCircleThresh, ...
+        'maskBox', maskBox);
     displayFrame=thisFrameDiagnostics;
     if ~isempty(perimeter.data{1}.Xp)
         displayFrame(sub2ind(size(thisFrameDiagnostics),perimeter.data{1}.Yp,perimeter.data{1}.Xp))=255;
