@@ -51,7 +51,7 @@ p.addOptional('plotSaveDir',[],@(x)(isempty(x) || ischar(x)));
 
 % Optional
 p.addParameter('histMax',2,@isnumeric);
-p.addParameter('numPlotRows',16,@isnumeric);
+p.addParameter('numPlotRows',20,@isnumeric);
 p.addParameter('fitLabel','initial',@ischar);
 
 % parse
