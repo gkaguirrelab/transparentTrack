@@ -124,7 +124,7 @@ p.addParameter('displayAvailableStages', false, @islogical)
 p.addParameter('rawVideoSuffix', {'_raw.mov' '.mov'}, @iscell);
 p.addParameter('videoTypeChoice', 'LiveTrackWithVTOP_eye', @ischar);
 p.addParameter('customFunCalls', {}, @iscell);
-p.addParameter('customSceneGeometryFile', [], @(x)(isempty(x) | ischar(x)));
+p.addParameter('customSceneGeometryFile', [], @(x)(isempty(x) | iscell(x) | ischar(x)));
 p.addParameter('catchErrors', true, @islogical);
 p.addParameter('maxAttempts',3,@isnueric);
 p.addParameter('makeFitVideoByName',{},@iscell);
@@ -197,7 +197,11 @@ sceneGeometryFileNameOutput = fullfile(pathParams.dataOutputDirFull, [pathParams
 % acqusition during which the head was in the same positiion, and for which
 % sceneGeometry was well estimated.
 if ~isempty(p.Results.customSceneGeometryFile)
-    sceneGeometryFileNameInput = p.Results.customSceneGeometryFile;
+    if iscell(p.Results.customSceneGeometryFile)
+        sceneGeometryFileNameInput = p.Results.customSceneGeometryFile{1};
+    else
+        sceneGeometryFileNameInput = p.Results.customSceneGeometryFile;
+    end
 else
     sceneGeometryFileNameInput = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sceneGeometry.mat']);
 end
