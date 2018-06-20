@@ -183,7 +183,7 @@ if ~isempty(fileListStruct)
                 
                 % Add text to label the
                 text(0,0.8,pupilFileName,'Interpreter', 'none','HorizontalAlignment','left','VerticalAlignment','middle','Units','normalized');
-                acqStats=sprintf('%d frames, %.1f%% nans',length(errorVector),100*sum(isnan(errorVector))/length(errorVector));
+                acqStats=sprintf('%d frames, %.1f%% nans, %.1f%% > %.1f%,',length(errorVector),100*sum(isnan(errorVector))/length(errorVector),100*sum(errorVector>p.Results.histMax)/length(errorVector),p.Results.histMax);
                 text(0.95,0.8,acqStats,'Interpreter', 'none','HorizontalAlignment','right','VerticalAlignment','middle','Units','normalized');
                 
                 % If this is our very first sub-plot on the very first

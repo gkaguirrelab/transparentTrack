@@ -124,7 +124,7 @@ p.addParameter('displayAvailableStages', false, @islogical)
 p.addParameter('rawVideoSuffix', {'_raw.mov' '.mov'}, @iscell);
 p.addParameter('videoTypeChoice', 'LiveTrackWithVTOP_eye', @ischar);
 p.addParameter('customFunCalls', {}, @iscell);
-p.addParameter('customSceneGeometryFile', [], @(x)(isempty(x) | ischar(x)));
+p.addParameter('customSceneGeometryFile', [], @(x)(isempty(x) | iscell(x) | ischar(x)));
 p.addParameter('catchErrors', true, @islogical);
 p.addParameter('maxAttempts',3,@isnueric);
 p.addParameter('makeFitVideoByName',{},@iscell);
@@ -197,7 +197,11 @@ sceneGeometryFileNameOutput = fullfile(pathParams.dataOutputDirFull, [pathParams
 % acqusition during which the head was in the same positiion, and for which
 % sceneGeometry was well estimated.
 if ~isempty(p.Results.customSceneGeometryFile)
-    sceneGeometryFileNameInput = p.Results.customSceneGeometryFile;
+    if iscell(p.Results.customSceneGeometryFile)
+        sceneGeometryFileNameInput = p.Results.customSceneGeometryFile{1};
+    else
+        sceneGeometryFileNameInput = p.Results.customSceneGeometryFile;
+    end
 else
     sceneGeometryFileNameInput = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sceneGeometry.mat']);
 end
@@ -297,20 +301,26 @@ for ff = 1:length(funCalls)
             eval(funCalls{ff});
         end % if catchErrors
         
-        % Check if we should make a fit video for this stage
-        if any(strcmp(p.Results.makeFitVideoByName,funNames{ff})) || any(p.Results.makeFitVideoByNumber == ff)
-            makeFitVideoForThisStage(pathParams, sceneGeometryFileNameInput, funNames, ff, varargin{:});
-        end
-        
-        % clear all files (hopefully prevents 'too many files open' error)
-        fclose all;
-        if strcmp(p.Results.lastStageByName,funNames{ff})
-            break
-        end
-        if p.Results.lastStageByNumber==ff
-            break
-        end
     end % if we aren't skipping this stage by name or number
+    
+    % Check if we should make a fit video for this stage. Note that it is
+    % possible that we would make a fit video even though we skipped the
+    % stage
+    if any(strcmp(p.Results.makeFitVideoByName,funNames{ff})) || any(p.Results.makeFitVideoByNumber == ff)
+        makeFitVideoForThisStage(pathParams, sceneGeometryFileNameInput, funNames, ff, varargin{:});
+    end
+    
+    % clear all files (hopefully prevents 'too many files open' error)
+    fclose all;
+    
+    % Check to see if we have just completed the last stage, in which case
+    % we should break out of the loop of function calls
+    if strcmp(p.Results.lastStageByName,funNames{ff})
+        break
+    end
+    if p.Results.lastStageByNumber==ff
+        break
+    end
 end % loop over function calls
 
 
