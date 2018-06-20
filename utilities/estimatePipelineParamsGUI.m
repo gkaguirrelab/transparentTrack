@@ -668,9 +668,7 @@ initialParams.maximumVisibleIrisDiameter = abs(x(1) - x(2));
 %}
 
 
-if p.Results.verbose
-    initialParams
-end
+
 
 %% diagnostics
 % let's see how well we can find the pupil perimeter with these initial
@@ -832,6 +830,11 @@ if ~strcmp(adjustParamsChoice, 'y')
         
         
     end
+end
+
+%% dump out the params we estimated
+if p.Results.verbose
+    initialParams
 end
 
 end % MAIN
