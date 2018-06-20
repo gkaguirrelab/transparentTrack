@@ -301,20 +301,26 @@ for ff = 1:length(funCalls)
             eval(funCalls{ff});
         end % if catchErrors
         
-        % Check if we should make a fit video for this stage
-        if any(strcmp(p.Results.makeFitVideoByName,funNames{ff})) || any(p.Results.makeFitVideoByNumber == ff)
-            makeFitVideoForThisStage(pathParams, sceneGeometryFileNameInput, funNames, ff, varargin{:});
-        end
-        
-        % clear all files (hopefully prevents 'too many files open' error)
-        fclose all;
-        if strcmp(p.Results.lastStageByName,funNames{ff})
-            break
-        end
-        if p.Results.lastStageByNumber==ff
-            break
-        end
     end % if we aren't skipping this stage by name or number
+    
+    % Check if we should make a fit video for this stage. Note that it is
+    % possible that we would make a fit video even though we skipped the
+    % stage
+    if any(strcmp(p.Results.makeFitVideoByName,funNames{ff})) || any(p.Results.makeFitVideoByNumber == ff)
+        makeFitVideoForThisStage(pathParams, sceneGeometryFileNameInput, funNames, ff, varargin{:});
+    end
+    
+    % clear all files (hopefully prevents 'too many files open' error)
+    fclose all;
+    
+    % Check to see if we have just completed the last stage, in which case
+    % we should break out of the loop of function calls
+    if strcmp(p.Results.lastStageByName,funNames{ff})
+        break
+    end
+    if p.Results.lastStageByNumber==ff
+        break
+    end
 end % loop over function calls
 
 
