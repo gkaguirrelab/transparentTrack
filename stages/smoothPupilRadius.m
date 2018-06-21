@@ -325,7 +325,11 @@ parfor (ii = 1:nFrames, nWorkers)
         % Perform the fit
         [posteriorEyePose, posteriorEyePoseObjectiveError] = ...
             eyePoseEllipseFit(Xp, Yp, sceneGeometry, 'eyePoseLB', lb_pin, 'eyePoseUB', ub_pin, 'x0', x0, 'repeatSearchThresh', badFrameErrorThreshold);
-        posteriorEllipseParams = pupilProjection_fwd(posteriorEyePose, sceneGeometry);
+
+        % Calculate and store the ellipe parameters for this eyePose
+        if ~any(isnan(posteriorEyePose))
+            posteriorEllipseParams = pupilProjection_fwd(posteriorEyePose, sceneGeometry);
+        end
         
         % Restore the warning state
         warning(warnState);
