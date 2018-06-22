@@ -191,8 +191,8 @@ p.addParameter('maskBox', [], @isnumeric);
 % parameters that adjust this initial parameter guessing
 p.addParameter('pupilMaskShrinkFactor', 0.9, @isnumeric);
 p.addParameter('pupilMaskDilationFactor', 4, @isnumeric);
-p.addParameter('pupilRangeDilator', 1.2, @isnumeric);
-p.addParameter('pupilRangeContractor', 0.8, @isnumeric);
+p.addParameter('pupilRangeDilator', 1.1, @isnumeric);
+p.addParameter('pupilRangeContractor', 0.9, @isnumeric);
 p.addParameter('innerDilationFactor', 1.1, @isnumeric);
 p.addParameter('outerDilationFactor', 1.3, @isnumeric);
 p.addParameter('potentialThreshValues', [0.001:0.0001:0.2], @isnumeric);
@@ -220,7 +220,7 @@ elseif strcmp(p.Results.approach, 'SquintToPulse')
     pupilGammaCorrection = 0.75;
     frameMaskValue = 220;
     numberOfGlints = 2;
-    maskBox = [2 2];
+    maskBox = [1.3 1.3];
 end
 
 % allow ability to override defaultParams if necessary by passing key-value
@@ -744,18 +744,23 @@ if ~strcmp(adjustParamsChoice, 'y')
         switch choice
             case '1'
                 ellipseTransparentUB = input('Enter new ellipseTransparentUB:     ');
+                initialParams.ellipseTransparentUB = ellipseTransparentUB;
             case '2'
                 ellipseTransparentLB = input('Enter new ellipseTransparentLB:     ');
+                initialParams.ellipseTransparentLB = ellipseTransparentLB;
             case '3'
                 pupilGammaCorrection = input('Enter new pupilGammaCorrection:     ');
+                initialParams.pupilGammaCorrection = pupilGammaCorrection;
             case '4'
                 frameMaskValue = input('Enter new frameMaskValue:     ');
+                initialParams.frameMaskValue = frameMaskValue;
             case '5'
                 initialParams.pupilFrameMask = input('Enter new pupilFrameMask:     ');
             case '6'
                 initialParams.pupilCircleThresh = input('Enter new pupilCircleThresh:     ');
             case '7'
                 maskBox = input('Enter new maskBox:     ');
+                initialParams.maskBox = maskBox;                
             case '8'
                 initialParams.pupilRange = input('Enter new pupilRange:     ');
         end
