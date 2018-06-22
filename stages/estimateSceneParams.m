@@ -252,42 +252,51 @@ if p.Results.verbose
     fprintf('.\n');
 end
 
-% Loop over the requested number of BADS searches
-searchResults = {};
-parfor (ss = 1:p.Results.nBADSsearches,nWorkers)
-    
-    searchResults{ss} = ...
-        performSceneSearch(initialSceneGeometry, ...
-        ellipses(ellipseArrayList,:), ...
-        p.Results.sceneParamsLB, ...
-        p.Results.sceneParamsUB, ...
-        p.Results.sceneParamsLBp, ...
-        p.Results.sceneParamsUBp, ...
-        p.Results.eyePoseLB, ...
-        p.Results.eyePoseUB);
-    
-    % update progress
-    if p.Results.verbose
-        for pp=1:floor(50/p.Results.nBADSsearches(1))
-            fprintf('\b.\n');
+% If zero searches have been requested, then set the solution parameters to
+% be the midpoint of the plausible bounds.
+if p.Results.nBADSsearches==0
+    allSceneParamResults = [];
+    sceneParamResultsMean = (p.Results.sceneParamsLBp+p.Results.sceneParamsUBp)./2;
+    sceneParamResultsSD=[];
+    allFvals = [];
+else
+    % Loop over the requested number of BADS searches
+    searchResults = {};
+    parfor (ss = 1:p.Results.nBADSsearches,nWorkers)
+        
+        searchResults{ss} = ...
+            performSceneSearch(initialSceneGeometry, ...
+            ellipses(ellipseArrayList,:), ...
+            p.Results.sceneParamsLB, ...
+            p.Results.sceneParamsUB, ...
+            p.Results.sceneParamsLBp, ...
+            p.Results.sceneParamsUBp, ...
+            p.Results.eyePoseLB, ...
+            p.Results.eyePoseUB);
+        
+        % update progress
+        if p.Results.verbose
+            for pp=1:floor(50/p.Results.nBADSsearches(1))
+                fprintf('\b.\n');
+            end
         end
+        
+    end
+    if p.Results.verbose
+        fprintf('\n');
     end
     
-end
-if p.Results.verbose
-    fprintf('\n');
-end
-
-% Find the weighted mean and SD of the solution parameters
-allFvals = cellfun(@(x) x.meta.estimateSceneParams.search.fVal,searchResults);
-allSceneParamResults = cellfun(@(thisSceneGeometry) thisSceneGeometry.meta.estimateSceneParams.search.x,searchResults,'UniformOutput',false);
-for dim = 1:length(p.Results.sceneParamsLB)
-    vals = cellfun(@(x) x(dim), allSceneParamResults);
-    sceneParamResultsMean(dim)=mean(vals.*(1./allFvals))/mean(1./allFvals);
-    sceneParamResultsSD(dim)=std(vals,1./allFvals);
-end
-sceneParamResultsMean=sceneParamResultsMean';
-sceneParamResultsSD=sceneParamResultsSD';
+    % Find the weighted mean and SD of the solution parameters
+    allFvals = cellfun(@(x) x.meta.estimateSceneParams.search.fVal,searchResults);
+    allSceneParamResults = cellfun(@(thisSceneGeometry) thisSceneGeometry.meta.estimateSceneParams.search.x,searchResults,'UniformOutput',false);
+    for dim = 1:length(p.Results.sceneParamsLB)
+        vals = cellfun(@(x) x(dim), allSceneParamResults);
+        sceneParamResultsMean(dim)=mean(vals.*(1./allFvals))/mean(1./allFvals);
+        sceneParamResultsSD(dim)=std(vals,1./allFvals);
+    end
+    sceneParamResultsMean=sceneParamResultsMean';
+    sceneParamResultsSD=sceneParamResultsSD';
+end % Check for zero requested searches
 
 % Perform the search using the mean parameters as absolute bounds to obtain
 % the error values
@@ -655,6 +664,11 @@ legend({'0',num2str(sceneGeometry.constraintTolerance/2), ['=> ' num2str(sceneGe
 xFinal = sceneGeometry.meta.estimateSceneParams.search.x;
 myString = sprintf('torsion [deg] %4.1f; translation vector [mm] = %4.1f, %4.1f, %4.1f; rotation center scaling [joint, differential] = %4.2f, %4.2f',xFinal(1),xFinal(2),xFinal(3),xFinal(4),xFinal(5),xFinal(6));
 text(0.5,1.0,myString,'Units','normalized','HorizontalAlignment','center')
+
+% Add text to report the ellipse frames used
+ellipseFrameList = num2str(sort(sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList)');
+myString = sprintf(['Ellipse frames (index from 1): [' ellipseFrameList ']']);
+text(0.5,0.25,myString,'Units','normalized','HorizontalAlignment','center')
 
 %% Right panel -- area error
 subplot(3,3,[3 6]);

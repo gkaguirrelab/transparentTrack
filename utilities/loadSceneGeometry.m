@@ -47,32 +47,15 @@ else
             case 'simple'
                 % Determine if the function exists
                 if exist(func2str(sceneGeometry.refraction.handle))==0
-                    % We need to add the function back to the path
-                    addpath(fileparts(sceneGeometry.refraction.path),'-BEGIN')
+                    % This might be a sceneGeometry structure created on a
+                    % different computer, with a different path to the
+                    % compiled virtual image function.
+                    functionName = func2str(sceneGeometry.refraction.handle);
+                    sceneGeometry.refraction.handle = eval(['@' functionName]);
+                    sceneGeometry.refraction.path = eval(['which ' functionName]);
                     % Check to make sure that it is now available
                     if exist(func2str(sceneGeometry.refraction.handle))==0
                         error('Unable to re-instantiate the ray tracing function')
-                    end
-                else
-                    % If we have a compiled function, make sure that it is
-                    % the right compiled function.
-                    if exist(func2str(sceneGeometry.refraction.handle))==3
-                        if ~strcmp(which(func2str(sceneGeometry.refraction.handle)), sceneGeometry.refraction.path)
-                            % Attempt to remove the currently prioritized
-                            % function. Silence a warning about it not
-                            % existing, which can occur.
-                            warnState=warning();
-                            warning('off','MATLAB:rmpath:DirNotFound');
-                            rmpath(fileparts(which(func2str(sceneGeometry.refraction.handle))))
-                            warning(warnState);
-                            % Check if we now have the correct function on
-                            % the path
-                            if ~strcmp(which(func2str(sceneGeometry.refraction.handle)), sceneGeometry.refraction.path)
-                                % all set
-                            else
-                                error('Unable to re-instantiate the ray tracing function')
-                            end
-                        end
                     end
                 end
                 if verbose
