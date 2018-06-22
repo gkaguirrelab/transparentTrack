@@ -667,8 +667,8 @@ text(0.5,1.0,myString,'Units','normalized','HorizontalAlignment','center')
 
 % Add text to report the ellipse frames used
 ellipseFrameList = num2str(sort(sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList)');
-myString = sprintf(['Ellipse frames: ' ellipseFrameList]);
-text(0.5,0.1,myString,'Units','normalized','HorizontalAlignment','center')
+myString = sprintf(['Ellipse frames (index from 1): [' ellipseFrameList ']']);
+text(0.5,0.25,myString,'Units','normalized','HorizontalAlignment','center')
 
 %% Right panel -- area error
 subplot(3,3,[3 6]);
