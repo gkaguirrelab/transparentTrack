@@ -252,42 +252,50 @@ if p.Results.verbose
     fprintf('.\n');
 end
 
-% Loop over the requested number of BADS searches
-searchResults = {};
-parfor (ss = 1:p.Results.nBADSsearches,nWorkers)
-    
-    searchResults{ss} = ...
-        performSceneSearch(initialSceneGeometry, ...
-        ellipses(ellipseArrayList,:), ...
-        p.Results.sceneParamsLB, ...
-        p.Results.sceneParamsUB, ...
-        p.Results.sceneParamsLBp, ...
-        p.Results.sceneParamsUBp, ...
-        p.Results.eyePoseLB, ...
-        p.Results.eyePoseUB);
-    
-    % update progress
-    if p.Results.verbose
-        for pp=1:floor(50/p.Results.nBADSsearches(1))
-            fprintf('\b.\n');
+% If zero searches have been requested, then set the solution parameters to
+% be the midpoint of the plausible bounds.
+if p.Results.nBADSsearches==0
+    allSceneParamResults = [];
+    sceneParamResultsMean = (p.Results.sceneParamsLBp+p.Results.sceneParamsUBp)./2;
+    sceneParamResultsSD=[];
+else
+    % Loop over the requested number of BADS searches
+    searchResults = {};
+    parfor (ss = 1:p.Results.nBADSsearches,nWorkers)
+        
+        searchResults{ss} = ...
+            performSceneSearch(initialSceneGeometry, ...
+            ellipses(ellipseArrayList,:), ...
+            p.Results.sceneParamsLB, ...
+            p.Results.sceneParamsUB, ...
+            p.Results.sceneParamsLBp, ...
+            p.Results.sceneParamsUBp, ...
+            p.Results.eyePoseLB, ...
+            p.Results.eyePoseUB);
+        
+        % update progress
+        if p.Results.verbose
+            for pp=1:floor(50/p.Results.nBADSsearches(1))
+                fprintf('\b.\n');
+            end
         end
+        
+    end
+    if p.Results.verbose
+        fprintf('\n');
     end
     
-end
-if p.Results.verbose
-    fprintf('\n');
-end
-
-% Find the weighted mean and SD of the solution parameters
-allFvals = cellfun(@(x) x.meta.estimateSceneParams.search.fVal,searchResults);
-allSceneParamResults = cellfun(@(thisSceneGeometry) thisSceneGeometry.meta.estimateSceneParams.search.x,searchResults,'UniformOutput',false);
-for dim = 1:length(p.Results.sceneParamsLB)
-    vals = cellfun(@(x) x(dim), allSceneParamResults);
-    sceneParamResultsMean(dim)=mean(vals.*(1./allFvals))/mean(1./allFvals);
-    sceneParamResultsSD(dim)=std(vals,1./allFvals);
-end
-sceneParamResultsMean=sceneParamResultsMean';
-sceneParamResultsSD=sceneParamResultsSD';
+    % Find the weighted mean and SD of the solution parameters
+    allFvals = cellfun(@(x) x.meta.estimateSceneParams.search.fVal,searchResults);
+    allSceneParamResults = cellfun(@(thisSceneGeometry) thisSceneGeometry.meta.estimateSceneParams.search.x,searchResults,'UniformOutput',false);
+    for dim = 1:length(p.Results.sceneParamsLB)
+        vals = cellfun(@(x) x(dim), allSceneParamResults);
+        sceneParamResultsMean(dim)=mean(vals.*(1./allFvals))/mean(1./allFvals);
+        sceneParamResultsSD(dim)=std(vals,1./allFvals);
+    end
+    sceneParamResultsMean=sceneParamResultsMean';
+    sceneParamResultsSD=sceneParamResultsSD';
+end % Check for zero requested searches
 
 % Perform the search using the mean parameters as absolute bounds to obtain
 % the error values
