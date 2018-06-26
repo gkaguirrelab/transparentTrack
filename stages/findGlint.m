@@ -173,7 +173,7 @@ if isunix
             stillTrying = tryAttempt<4;
         end
     end
-    if ~exist('videoInObj',1)
+    if ~exist('videoInObj','var')
         error('makeFitVideo:unableToReadGrayVideo',['Unable to read ' grayVideoName]);
     end
 else
