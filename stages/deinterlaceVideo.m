@@ -87,17 +87,19 @@ if isunix
     
     % Place the touch and videoReader command in a try-catch loop and give
     % it three tries before giving up
-    tryAttempt = 0;
-    while tryAttempt<3
+    stillTrying = true; tryAttempt = 0;
+    while stillTrying
         try
             system(sysCommand);
             videoInObj = VideoReader(videoInFileName);
+            stillTrying = false;
         catch
-            tryAttempt = tryAttempt +1;
+            tryAttempt = tryAttempt+1;
+            stillTrying = tryAttempt<4;
         end
     end
-    if isempty(videoInObj)
-        error('deinterlaceVideo:unableToReadGrayVideo',['Unable to read ' videoInFileName]);
+    if ~exist(videoInObj)
+        error('makeFitVideo:unableToReadGrayVideo',['Unable to read ' videoInFileName]);
     end
 else
     % We are on a non-unix based system (e.g., Windows). Here is where we
