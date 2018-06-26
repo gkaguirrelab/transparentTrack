@@ -86,23 +86,28 @@ if isunix
     sysCommand = ['touch -a ' sanitizedFileName suppressOutputString];
     
     % Place the touch and videoReader command in a try-catch loop and give
-    % it three tries before giving up
+    % it three tries before giving up. A pause is placed between the
+    % initial touch and the attempt to open the video object. The pause
+    % lengthens by a minute with subsequent try attempts. The total time
+    % for the attempt to fail is thus 6 minutes plus DropBox download
+    % attempt times.
     stillTrying = true; tryAttempt = 0;
     while stillTrying
         try
             system(sysCommand);
+            pause(tryAttempt*60);
             videoInObj = VideoReader(videoInFileName);
             stillTrying = false;
         catch
+            warning('makeFitVideo:unableToReadVideo','Attempt %d of 3 to open video failed; retrying.',tryAttempt);
             tryAttempt = tryAttempt+1;
             stillTrying = tryAttempt<4;
         end
     end
     if ~exist('videoInObj','var')
-        error('makeFitVideo:unableToReadGrayVideo',['Unable to read ' videoInFileName]);
+        error('makeFitVideo:unableToReadVideo',['Unable to read ' videoInFileName]);
     end
-else
-    % We are on a non-unix based system (e.g., Windows). Here is where we
+else    % We are on a non-unix based system (e.g., Windows). Here is where we
     % could implement similar machinery for cloud-based DropBox files. At
     % present, the routine simply creates the video object.
     videoInObj = VideoReader(videoInFileName);
