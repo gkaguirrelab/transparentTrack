@@ -67,7 +67,6 @@ p.parse(videoInFileName, videoOutFileName, varargin{:})
 
 
 %% Prepare variables
-
 % Read in the glint file if passed
 if ~isempty(p.Results.glintFileName)
     dataLoad = load(p.Results.glintFileName);
@@ -119,7 +118,7 @@ else
 end
 
 
-% Open a video object for reading
+%% Prepare the video object
 % Touch the file. If the file is in the "online only" state within a
 % DropBox "smartSync" directory, this action will cause the file to be
 % downloaded and made local. The system will pause during this time. The
@@ -127,11 +126,32 @@ end
 % the file. This step is only available on unix-based operating systems
 if isunix
     sanitizedFileName = replace(videoInFileName,{' ','(',')'},{'\ ','\(','\)'});
-    sysCommand = ['touch -a ' sanitizedFileName];
-    system(sysCommand);
+    % In case the touch commmand elicits an error (for example, if the file
+    % is read only), pass the error text to null so that it does not appear
+    % in the console.
+    suppressOutputString = ' >/dev/null 2>&1';
+    sysCommand = ['touch -a ' sanitizedFileName suppressOutputString];
+    
+    % Place the touch and videoReader command in a try-catch loop and give
+    % it three tries before giving up
+    tryAttempt = 0;
+    while tryAttempt<3
+        try
+            system(sysCommand);
+            videoInObj = VideoReader(videoInFileName);
+        catch
+            tryAttempt = tryAttempt +1;
+        end
+    end
+    if isempty(videoInObj)
+        error('makeFitVideo:unableToReadGrayVideo',['Unable to read ' videoInFileName]);
+    end
+else
+    % We are on a non-unix based system (e.g., Windows). Here is where we
+    % could implement similar machinery for cloud-based DropBox files. At
+    % present, the routine simply creates the video object.
+    videoInObj = VideoReader(videoInFileName);
 end
-% create the video in object
-videoInObj = VideoReader(videoInFileName);
 
 % get number of frames
 if p.Results.nFrames == Inf
