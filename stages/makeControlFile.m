@@ -94,10 +94,6 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 %                           by the scene geometry. A mild constraint (0.75)
 %                           is placed upon the eccentricity, corresponding
 %                           to an aspect ration of 3:2.
-%  'sceneGeometryFileName' - Full path to a sceneGeometry file that is to
-%                           be used to provide a non-linear constraint for
-%                           ellipse fitting. If set to empty, no non-linear
-%                           constraint will be applied.
 %  'cutErrorThreshold'    - If the ellipse fit RMSE is larger than this,
 %                           perform a search over pupil cuts
 %  'candidateThetas'      - A grid search of cuts are examined, with the
@@ -185,7 +181,6 @@ p.addParameter('glintPatchRadius', 20, @isnumeric);
 % Optional analysis params -- Pupil Cutting
 p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, 0],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('ellipseTransparentUB',[640,480,20000,1, pi],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('cutErrorThreshold', 1, @isnumeric);
 p.addParameter('candidateThetas',pi/2:pi/16:pi,@isnumeric);
 p.addParameter('radiusDivisions',5,@isnumeric);
@@ -217,25 +212,6 @@ if p.Results.useParallel
     nWorkers = startParpool( p.Results.nWorkers, p.Results.verbose );
 else
     nWorkers=0;
-end
-
-
-%% Prepare some anonymous functions
-% Create a non-linear constraint for the ellipse fit. If no parameters are
-% given, then create an empty function handle (and thus have no non-linear
-% constraint). We will also define the cutErrorThreshold based upon the
-% presence or absence of a sceneGeometry constraint
-if isempty(p.Results.sceneGeometryFileName)
-    nonlinconst = [];
-else
-    % load the sceneGeometry structure
-    dataLoad=load(p.Results.sceneGeometryFileName);
-    sceneGeometry=dataLoad.sceneGeometry;
-    clear dataLoad
-
-    nonlinconst = @(transparentEllipseParams) constrainEllipseBySceneGeometry(...
-        transparentEllipseParams, ...
-        sceneGeometry);
 end
 
 
@@ -413,12 +389,11 @@ parfor (ii = 1:nFrames, nWorkers)
         % The try - catch allows processing to proceed if an attempt to
         % fit the ellipse fails
         try
-            % fit an ellipse to the full perimeter using the
-            % constrainedEllipseFit
+            % fit an ellipse to the full perimeter
             [~, originalFittingError] = constrainedEllipseFit(Xp, Yp, ...
                 p.Results.ellipseTransparentLB, ...
                 p.Results.ellipseTransparentUB, ...
-                nonlinconst);
+                []);
             
             % if the fitting error is above the threshold, search over cuts
             if originalFittingError > p.Results.cutErrorThreshold
@@ -441,7 +416,7 @@ parfor (ii = 1:nFrames, nWorkers)
                 
                 % Perform a grid search across thetas
                 [gridSearchRadii,gridSearchThetas] = ndgrid(candidateRadius,p.Results.candidateThetas);
-                myCutOptim = @(params) calcErrorForACut(thisFrame, params(1), params(2), p.Results.ellipseTransparentLB, p.Results.ellipseTransparentUB, nonlinconst);
+                myCutOptim = @(params) calcErrorForACut(thisFrame, params(1), params(2), p.Results.ellipseTransparentLB, p.Results.ellipseTransparentUB);
                 gridSearchResults=arrayfun(@(k1,k2) myCutOptim([k1,k2]),gridSearchRadii,gridSearchThetas);
                 
                 % Store the best cut from this search
@@ -576,9 +551,9 @@ end % function
 
 %% LOCAL FUNCTIONS
 
-function [distanceError] = calcErrorForACut(theFrame, radiusThresh, theta, lb, ub, nonlinconst)
+function [distanceError] = calcErrorForACut(theFrame, radiusThresh, theta, lb, ub)
 [binPcut] = applyPupilCut (theFrame, radiusThresh, theta);
 [Yp, Xp] = ind2sub(size(binPcut),find(binPcut));
-[~, distanceError] = constrainedEllipseFit(Xp, Yp, lb, ub, nonlinconst);
+[~, distanceError] = constrainedEllipseFit(Xp, Yp, lb, ub, []);
 end
 
