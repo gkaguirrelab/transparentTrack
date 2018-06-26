@@ -126,6 +126,7 @@ p.parse(perimeterFileName, pupilFileName, varargin{:});
 nEllipseParams=5; % 5 params in the transparent ellipse form
 nEyePoseParams=4; % 4 eyePose values (azimuth, elevation, torsion, radius) 
 
+
 %% Load data
 % Load the pupil perimeter data. It will be a structure variable
 % "perimeter", with the fields .data and .meta
@@ -375,6 +376,12 @@ if ~isempty(sceneGeometry)
     pupilData.(fitLabel).eyePoses.meta.labels = {'azimuth','elevation','torsion','pupil radius'};
     pupilData.(fitLabel).eyePoses.meta.units = {'deg','deg','deg','mm'};
     pupilData.(fitLabel).eyePoses.meta.coordinateSystem = 'head fixed (extrinsic)';
+end
+
+% If the perimeter variable has an "instructions" field, copy it over to
+% pupilData
+if isfield(perimeter,'instructions')
+    pupilData.instructions = perimeter.instructions;
 end
 
 % add meta data

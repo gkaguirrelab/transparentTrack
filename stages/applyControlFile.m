@@ -62,6 +62,9 @@ p.addRequired('correctedPerimeterFileName',@isstr);
 % Optional display and I/O params
 p.addParameter('verbose',false,@islogical);
 
+% Optional analysis params
+p.addParameter('instructionList',{'blink','error','cut','ellipse','glintPatch'},@iscell)
+
 % Optional environment params
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
 p.addParameter('timestamp',char(datetime('now')),@ischar);
@@ -94,6 +97,9 @@ nFrames=size(originalPerimeter.data,1);
 perimeter = struct();
 perimeter.size = originalPerimeter.size;
 perimeter.data = cell(nFrames,1);
+for jj = 1:length(p.Results.instructionList)
+    perimeter.instructions.(p.Results.instructionList{jj})=false(nFrames,1);
+end
 blankFrame = uint8(zeros(perimeter.size));
 
 % alert the user
@@ -124,13 +130,14 @@ for ii = 1:nFrames
         for dd=1:length(instructionIdx)
             switch instructions(instructionIdx(dd)).type
                 case 'blink'
-                    % Leave it unchanged
-                case 'bad'
-                    % Leave it unchanged
+                    % Note the instruction
+                    perimeter.instructions.blink(ii)=true;
                 case 'error'
                     % If we are unable to fit an ellipse to this frame, set
                     % it blank
                     thisFrame=blankFrame;
+                    % Note the instruction
+                    perimeter.instructions.error(ii)=true;
                 case 'ellipse'
                     % get the instruction params
                     [p1, p2, p3, p4, p5] = parseControlInstructions(instructions(instructionIdx(dd)));
@@ -143,10 +150,14 @@ for ii = 1:nFrames
                     Ye = round(Ye);
                     % draw ellipse in frame
                     thisFrame(sub2ind(size(thisFrame),Ye(:),Xe(:))) = 1;
+                    % Note the instruction
+                    perimeter.instructions.ellipse(ii)=true;
                 case 'cut'
                     % get cut params
                     [radiusThresh,theta] = parseControlInstructions(instructions(instructionIdx(dd)));
                     [thisFrame] = applyPupilCut(thisFrame,radiusThresh,theta);
+                    % Note the instruction
+                    perimeter.instructions.cut(ii)=true;
                 case 'glintPatch'
                     % get cut params
                     [glintX,glintY,glintPatchRadius] = parseControlInstructions(instructions(instructionIdx(dd)));
@@ -155,6 +166,8 @@ for ii = 1:nFrames
                     glintPatch = insertShape(glintPatch,'FilledCircle',[glintX glintY glintPatchRadius],'Color','black');
                     glintPatch = im2bw(glintPatch);
                     thisFrame = immultiply(thisFrame,glintPatch);
+                    % Note the instruction
+                    perimeter.instructions.glintPatch(ii)=true;
                 otherwise
                     warning(['Instruction ' instructions(instructionIdx(dd)).type ' for frame ' num2str(ii) ' is unrecognized.']);
             end % switch instruction types

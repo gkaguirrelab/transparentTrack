@@ -140,7 +140,7 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 %           the instruction.
 %
 %   This routine generates instructions of the type "blink", "cut", "glint
-%   patch", and "bad". Additional legal instructions are "ellipse", with
+%   patch", and "error". Additional legal instructions are "ellipse", with
 %   the parameters of a forced ellipse, and "%", which marks a non-executed
 %   comment
 %
