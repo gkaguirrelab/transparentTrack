@@ -40,6 +40,16 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
 %                           location where a diagnostic plot of the
 %                           sceneGeometry calculation is to be saved. If
 %                           left empty, then no plot will be saved.
+%  'ellipseArrayMontageFileName' - Full path (including suffix) to the file
+%                           in which to save a montage of fit video frames
+%                           illustrate the ellipses used to guide the
+%                           search.
+%  'pupilFileToFitVideoSuffixSwitch' - Cell array that provides the suffix
+%                           of the pupilData file and the suffix of the
+%                           corresponding fit video file. This way, the fit
+%                           video corresponding to the passed pupilData
+%                           file can be found and used to create the
+%                           ellipse array montage plot.  
 %
 % Optional key/value pairs (flow control)
 %  'useParallel'          - If set to true, use the Matlab parallel pool
@@ -93,7 +103,6 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
 %                           result is retained. Each search is run on a
 %                           separate worker if the parpool is available.
 %
-%
 % Outputs
 %	sceneGeometry         - A structure that contains the components of the
 %                           projection model.
@@ -123,6 +132,7 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
     veridicalSceneGeometry.cameraPosition.translation - estimatedSceneGeometry.cameraPosition.translation
 %}
 
+
 %% input parser
 p = inputParser; p.KeepUnmatched = true;
 
@@ -133,6 +143,8 @@ p.addRequired('sceneGeometryFileName',@ischar);
 % Optional display and I/O params
 p.addParameter('verbose',false,@islogical);
 p.addParameter('sceneDiagnosticPlotFileName', '', @(x)(isempty(x) || ischar(x)));
+p.addParameter('ellipseArrayMontageFileName', '', @(x)(isempty(x) || ischar(x)));
+p.addParameter('pupilFileToFitVideoSuffixSwitch',{'_pupil.mat','_fitStage6.avi'},@iscell);
 
 % Optional flow control params
 p.addParameter('useParallel',false,@islogical);
@@ -166,6 +178,7 @@ if p.Results.verbose
     tic
     fprintf(['Estimating camera position and eye rotation from pupil ellipses. Started ' char(datetime('now')) '\n']);
 end
+
 
 %% Create initial sceneGeometry structure
 initialSceneGeometry = createSceneGeometry(varargin{:});
@@ -341,6 +354,19 @@ if ~isempty(p.Results.sceneDiagnosticPlotFileName)
         sceneGeometry,...
         p.Results.sceneDiagnosticPlotFileName)
 end
+
+
+%% Create an ellipse fit montage
+if ~isempty(p.Results.ellipseArrayMontageFileName) 
+    if p.Results.verbose
+        fprintf('Creating an ellipse fit montage.\n');
+    end
+    saveEllipseArrayMontage(ellipseArrayList, ...
+        p.Results.ellipseArrayMontageFileName, ...
+        pupilFileName, ...
+        p.Results.pupilFileToFitVideoSuffixSwitch);
+end
+
 
 
 %% alert the user that we are done with the routine
@@ -726,3 +752,67 @@ close(figHandle)
 
 end % saveSceneDiagnosticPlot
 
+
+function [] = saveEllipseArrayMontage(ellipseArrayList, ellipseArrayMontageFileName, pupilFileName, pupilFileToFitVideoSuffixSwitch)
+% Saves a montage of the video frames illustrating the ellipses used for
+% the sceneGeometry estimation
+
+% Sort the ellipse array list so that the frames appear in temporal order
+ellipseArrayList = sort(ellipseArrayList);
+
+% Assemble the name of the fit video file
+fitVideoName = strrep(pupilFileName,pupilFileToFitVideoSuffixSwitch{1},pupilFileToFitVideoSuffixSwitch{2});
+
+% Check that the file exists
+if exist(fitVideoName,'file') && ~isempty(ellipseArrayList)
+
+    % Open the video object
+    videoInObj = videoReadWrapper(fitVideoName);
+    
+    % Get the video properties
+    videoSizeX = videoInObj.Width;
+    videoSizeY = videoInObj.Height;
+    nFrames = floor(videoInObj.Duration*videoInObj.FrameRate);
+    
+    % Define a variable to hold the selected frames
+    framesToMontage = zeros(videoSizeY,videoSizeX,3,length(ellipseArrayList),'uint8');
+    
+    % Loop through the frames and keep the matching ones 
+    for ii = 1:min([nFrames,max(ellipseArrayList)])
+        frame = readFrame(videoInObj);
+        idx = ellipseArrayList==ii;
+        if sum(idx)
+            frameLabel = sprintf('frame: %d',ii);
+            frame = insertText(frame,[20 20],frameLabel);
+            framesToMontage(:,:,:,idx) = frame;
+        end
+    end
+    
+    % Prepare the figure
+    figHandle=figure('visible','off');
+    set(gcf,'PaperOrientation','landscape');    
+    set(figHandle, 'Units','inches')
+    height = 6;
+    width = 11;
+    
+    % The last two parameters of 'Position' define the figure size
+    set(figHandle, 'Position',[25 5 width height],...
+        'PaperSize',[width height],...
+        'PaperPositionMode','auto',...
+        'Color','w');
+
+    % Create the montage
+    montage(framesToMontage);
+    
+    % Save the montage
+    saveas(figHandle,ellipseArrayMontageFileName)
+    
+    % Close the figure
+    close(figHandle)
+    
+    % close the video object
+    clear videoInObj
+
+end % There is a file to plot
+
+end % saveEllipseArrayMontage
