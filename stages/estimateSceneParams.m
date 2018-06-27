@@ -782,8 +782,15 @@ if exist(fitVideoName,'file') && ~isempty(ellipseArrayList)
         frame = readFrame(videoInObj);
         idx = ellipseArrayList==ii;
         if sum(idx)
+            % Add blue grid lines
+            for xx = -1:1:1
+                frame(round(videoSizeY/2)+xx,:,3)=127;
+                frame(:,round(videoSizeX/2)+xx,3)=127;
+            end
+            % Add a text label for the frame number
             frameLabel = sprintf('frame: %d',ii);
             frame = insertText(frame,[20 20],frameLabel);
+            % Store the frame
             framesToMontage(:,:,:,idx) = frame;
         end
     end
