@@ -146,48 +146,8 @@ p.addParameter('centroidsAllocation', 5, @isnumeric);
 p.parse(grayVideoName, glintFileName, varargin{:})
 
 
-%% Prepare the video object
-% Touch the file. If the file is in the "online only" state within a
-% DropBox "smartSync" directory, this action will cause the file to be
-% downloaded and made local. The system will pause during this time. The
-% only effect of this step will be to update the most recent access date of
-% the file. This step is only available on unix-based operating systems
-if isunix
-    sanitizedFileName = replace(grayVideoName,{' ','(',')'},{'\ ','\(','\)'});
-    % In case the touch commmand elicits an error (for example, if the file
-    % is read only), pass the error text to null so that it does not appear
-    % in the console.
-    suppressOutputString = ' >/dev/null 2>&1';
-    sysCommand = ['touch -a ' sanitizedFileName suppressOutputString];
-    
-    % Place the touch and videoReader command in a try-catch loop and give
-    % it three tries before giving up. A pause is placed between the
-    % initial touch and the attempt to open the video object. The pause
-    % lengthens by a minute with subsequent try attempts. The total time
-    % for the attempt to fail is thus 6 minutes plus DropBox download
-    % attempt times.
-    stillTrying = true; tryAttempt = 0;
-    while stillTrying
-        try
-            system(sysCommand);
-            pause(tryAttempt*60);
-            videoInObj = VideoReader(grayVideoName);
-            stillTrying = false;
-        catch
-            warning('makeFitVideo:unableToReadVideo','Attempt %d of 3 to open video failed; retrying.',tryAttempt);
-            tryAttempt = tryAttempt+1;
-            stillTrying = tryAttempt<4;
-        end
-    end
-    if ~exist('videoInObj','var')
-        error('makeFitVideo:unableToReadVideo',['Unable to read ' videoInFileName]);
-    end
-else
-    % We are on a non-unix based system (e.g., Windows). Here is where we
-    % could implement similar machinery for cloud-based DropBox files. At
-    % present, the routine simply creates the video object.
-    videoInObj = VideoReader(grayVideoName);
-end
+% Prepare the video object
+videoInObj = videoReadWrapper(grayVideoName);
 
 % get number of frames
 if p.Results.nFrames == Inf
@@ -507,6 +467,8 @@ glintData.meta.centroidsByFrame.X = centroidsByFrame_X;
 glintData.meta.centroidsByFrame.Y = centroidsByFrame_Y;
 glintData.meta.coordinateSystem = 'intrinsicCoordinates(pixels)';
 
+% close the video object
+clear videoInObj
 
 % save out a mat file with the glint tracking data
 if ~p.Results.displayMode

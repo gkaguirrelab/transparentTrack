@@ -70,55 +70,17 @@ p.parse(videoInFileName,videoOutFileName,varargin{:})
 % define variables
 bobMode = p.Results.bobMode;
 
+% Prepare the video object
+videoInObj = videoReadWrapper(videoInFileName);
 
-%% Prepare the video object
-% Touch the file. If the file is in the "online only" state within a
-% DropBox "smartSync" directory, this action will cause the file to be
-% downloaded and made local. The system will pause during this time. The
-% only effect of this step will be to update the most recent access date of
-% the file. This step is only available on unix-based operating systems
-if isunix
-    sanitizedFileName = replace(videoInFileName,{' ','(',')'},{'\ ','\(','\)'});
-    % In case the touch commmand elicits an error (for example, if the file
-    % is read only), pass the error text to null so that it does not appear
-    % in the console.
-    suppressOutputString = ' >/dev/null 2>&1';
-    sysCommand = ['touch -a ' sanitizedFileName suppressOutputString];
-    
-    % Place the touch and videoReader command in a try-catch loop and give
-    % it three tries before giving up. A pause is placed between the
-    % initial touch and the attempt to open the video object. The pause
-    % lengthens by a minute with subsequent try attempts. The total time
-    % for the attempt to fail is thus 6 minutes plus DropBox download
-    % attempt times.
-    stillTrying = true; tryAttempt = 0;
-    while stillTrying
-        try
-            system(sysCommand);
-            pause(tryAttempt*60);
-            videoInObj = VideoReader(videoInFileName);
-            stillTrying = false;
-        catch
-            warning('makeFitVideo:unableToReadVideo','Attempt %d of 3 to open video failed; retrying.',tryAttempt);
-            tryAttempt = tryAttempt+1;
-            stillTrying = tryAttempt<4;
-        end
-    end
-    if ~exist('videoInObj','var')
-        error('makeFitVideo:unableToReadVideo',['Unable to read ' videoInFileName]);
-    end
-else    % We are on a non-unix based system (e.g., Windows). Here is where we
-    % could implement similar machinery for cloud-based DropBox files. At
-    % present, the routine simply creates the video object.
-    videoInObj = VideoReader(videoInFileName);
-end
-
+% Obtain the video parameters
 if p.Results.nFrames == Inf
     nFrames = floor(videoInObj.Duration*videoInObj.FrameRate);
 else
     nFrames = p.Results.nFrames;
 end
 
+% Create the video out object
 Bob = VideoWriter(videoOutFileName);
 Bob.FrameRate = videoInObj.FrameRate * 2;
 Bob.Quality = 100;
@@ -217,7 +179,8 @@ if ~isempty(p.Results.timebaseFileName)
     save(p.Results.timebaseFileName,'timebase');
 end
 
-clear Bob inObj
+% close the video objects
+clear Bob videoInObj
 
 % report completion of analysis
 if p.Results.verbose
