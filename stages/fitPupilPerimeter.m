@@ -180,7 +180,6 @@ end
 % Recast perimeter into a sliced cell array to reduce parfor broadcast
 % overhead
 frameCellArray = perimeter.data(1:nFrames);
-clear perimeter
 
 % Set-up other variables to be non-broadcast
 verbose = p.Results.verbose;
