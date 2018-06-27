@@ -806,9 +806,15 @@ if exist(fitVideoName,'file') && ~isempty(ellipseArrayList)
     
     % Save the montage
     saveas(figHandle,ellipseArrayMontageFileName)
-    
+        
     % Close the figure
     close(figHandle)
+
+    % Rotate the figure by 90 degrees clockwise, because I can't get the
+    % MATLAB plotting routines to output the image how I want it.
+    A = imread(ellipseArrayMontageFileName);
+    A = rot90(A,3);
+    imwrite(A,ellipseArrayMontageFileName);
     
     % close the video object
     clear videoInObj
