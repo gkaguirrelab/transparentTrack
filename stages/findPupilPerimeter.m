@@ -57,6 +57,14 @@ function perimeter = findPupilPerimeter(grayVideoName, perimeterFileName, vararg
 %                           gray that is neither pupil nor glint.
 %  'smallObjThresh'       - Maximum size of small objects to be removed to
 %                           clean up the pupil perimeter.
+%  'expandPupilRange'     - This option controls what the routine does when
+%                           it does not find a circle within the initial
+%                           range. If true, the routine will expand the
+%                           pupilRange and look again. If false and no
+%                           circle is found initially, the routine will
+%                           move onto the next frame. Consider setting this
+%                           to false when the routine finds circles that
+%                           don't correspond to the pupil
 %
 % Optional key/value pairs (used in the local function findPupilCircle)
 %  'pupilCircleThresh'    - The threshold used to binarize the image.
@@ -115,6 +123,7 @@ p.addParameter('pupilFrameMask', [], @isnumeric);
 p.addParameter('maskBox', [2 2], @isnumeric);
 p.addParameter('frameMaskValue', 220, @isnumeric);
 p.addParameter('smallObjThresh', 400, @isnumeric);
+p.addParameter('expandPupilRange', true, @islogical);
 
 % Optional findPupilCircle routine params. Defined here for transparency
 p.addParameter('pupilCircleThresh', 0.06, @isnumeric);
@@ -259,22 +268,13 @@ for ii = 1:(endFrame-startFrame+1)
         pupilRange,...
         p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust);
     
-    % If a pupile circle patch was not found, try again after expanding the
-    % pupil search range by 50%, then 100%. We limit the possible range for
-    % the pupil search to the passed default bounds
-    if isempty(pCenters)
-        % Check if a 50% expansion is within bounds
-        candidateRange = [ceil(initialPupilRange(1)/1.5) round(initialPupilRange(2)*1.5)];
-        if candidateRange(1) < p.Results.pupilRange(1) || candidateRange(2) > p.Results.pupilRange(2)
-            candidateRange = p.Results.pupilRange;
-        end
-        [pCenters, pRadii,~,pupilRange] = ...
-            findPupilCircle(thisFrame,...
-            p.Results.pupilCircleThresh,...
-            candidateRange,...
-            p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust);
-        if isempty(pCenters) % still no circle? Try 100% increase
-            candidateRange = [ceil(initialPupilRange(1)/2) round(initialPupilRange(2)*2)];
+    if (p.Results.expandPupilRange)
+        % If a pupile circle patch was not found, try again after expanding the
+        % pupil search range by 50%, then 100%. We limit the possible range for
+        % the pupil search to the passed default bounds
+        if isempty(pCenters)
+            % Check if a 50% expansion is within bounds
+            candidateRange = [ceil(initialPupilRange(1)/1.5) round(initialPupilRange(2)*1.5)];
             if candidateRange(1) < p.Results.pupilRange(1) || candidateRange(2) > p.Results.pupilRange(2)
                 candidateRange = p.Results.pupilRange;
             end
@@ -283,8 +283,19 @@ for ii = 1:(endFrame-startFrame+1)
                 p.Results.pupilCircleThresh,...
                 candidateRange,...
                 p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust);
-            if isempty(pCenters) % STILL no circle? Give up and restore initialPupilRange
-                pupilRange = initialPupilRange;
+            if isempty(pCenters) % still no circle? Try 100% increase
+                candidateRange = [ceil(initialPupilRange(1)/2) round(initialPupilRange(2)*2)];
+                if candidateRange(1) < p.Results.pupilRange(1) || candidateRange(2) > p.Results.pupilRange(2)
+                    candidateRange = p.Results.pupilRange;
+                end
+                [pCenters, pRadii,~,pupilRange] = ...
+                    findPupilCircle(thisFrame,...
+                    p.Results.pupilCircleThresh,...
+                    candidateRange,...
+                    p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust);
+                if isempty(pCenters) % STILL no circle? Give up and restore initialPupilRange
+                    pupilRange = initialPupilRange;
+                end
             end
         end
     end
