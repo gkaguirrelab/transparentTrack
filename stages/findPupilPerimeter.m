@@ -135,20 +135,8 @@ p.addParameter('rangeAdjust', 0.05, @isnumeric);
 p.parse(grayVideoName, perimeterFileName, varargin{:})
 
 
-%% Open a video object for reading
-% Touch the file. If the file is in the "online only" state within a
-% DropBox "smartSync" directory, this action will cause the file to be
-% downloaded and made local. The system will pause during this time. The
-% only effect of this step will be to update the most recent access date of
-% the file. This step is only available on unix-based operating systems
-if isunix
-    sanitizedFileName = replace(grayVideoName,{' ','(',')'},{'\ ','\(','\)'});
-    sysCommand = ['touch -a ' sanitizedFileName];
-    system(sysCommand);
-end
-
-% create the video in object
-videoInObj = VideoReader(grayVideoName);
+% Prepare the video object
+videoInObj = videoIOWrapper(grayVideoName,'ioAction','read');
 
 % get number of frames
 if p.Results.nFrames == Inf
@@ -163,14 +151,6 @@ videoSizeY = videoInObj.Height;
 
 % initialize variable to hold the perimeter data
 grayVideo = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
-% read the video into memory, adjusting gamma and local contrast
-% if ~p.Results.displayMode
-%     for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
-%         thisFrame = readFrame(videoInObj);
-%         thisFrame = imadjust(thisFrame,[],[],p.Results.pupilGammaCorrection);
-%         grayVideo(:,:,ii) = rgb2gray (thisFrame);
-%     end
-% else
     cc = 0;
     for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
         cc = cc+1;

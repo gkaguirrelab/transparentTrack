@@ -71,7 +71,7 @@ p.parse(videoInFileName,videoOutFileName,varargin{:})
 bobMode = p.Results.bobMode;
 
 % Prepare the video object
-videoInObj = videoReadWrapper(videoInFileName);
+videoInObj = videoIOWrapper(videoInFileName,'ioAction','read');
 
 % Obtain the video parameters
 if p.Results.nFrames == Inf
@@ -81,9 +81,10 @@ else
 end
 
 % Create the video out object
-Bob = VideoWriter(videoOutFileName);
+Bob = videoIOWrapper(videoOutFileName,'ioAction','write');
 Bob.FrameRate = videoInObj.FrameRate * 2;
 Bob.Quality = 100;
+open(Bob)
 
 % Alert the user
 if p.Results.verbose
@@ -93,8 +94,7 @@ if p.Results.verbose
     fprintf('.');
 end
 
-open(Bob)
-
+% Loop through the frames
 for ii = p.Results.startFrame:nFrames
     
     % update progressbar

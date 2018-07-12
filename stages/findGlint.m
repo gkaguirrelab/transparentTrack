@@ -147,7 +147,7 @@ p.parse(grayVideoName, glintFileName, varargin{:})
 
 
 % Prepare the video object
-videoInObj = videoReadWrapper(grayVideoName);
+videoInObj = videoIOWrapper(grayVideoName,'ioAction','read');
 
 % get number of frames
 if p.Results.nFrames == Inf

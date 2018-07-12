@@ -118,7 +118,7 @@ else
 end
 
 % Prepare the video object
-videoInObj = videoReadWrapper(videoInFileName);
+videoInObj = videoIOWrapper(videoInFileName,'ioAction','read');
 
 % get number of frames
 if p.Results.nFrames == Inf
@@ -133,7 +133,7 @@ videoSizeY = videoInObj.Height;
 
 % Open a video object for writing
 if p.Results.saveCompressedVideo
-    videoOutObj = VideoWriter(videoOutFileName);
+    videoOutObj = videoIOWrapper(videoOutFileName,'ioAction','write');
     videoOutObj.FrameRate = p.Results.videoOutFrameRate;
     open(videoOutObj);
 else
@@ -146,7 +146,7 @@ else
     cmap(5,:)=[0 1 1];
     cmap(6,:)=[1 0 1];
     
-    videoOutObj = VideoWriter(videoOutFileName,'Indexed AVI');
+    videoOutObj = videoIOWrapper(videoOutFileName,'ioAction','write','indexedAVI',true);
     videoOutObj.FrameRate = p.Results.videoOutFrameRate;
     videoOutObj.Colormap = cmap;
     open(videoOutObj);
