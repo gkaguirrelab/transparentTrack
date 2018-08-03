@@ -127,7 +127,9 @@ pupilData=dataLoad.pupilData;
 clear dataLoad
 
 % Load the sceneGeometry file
-sceneGeometry = loadSceneGeometry(p.Results.sceneGeometryFileName, p.Results.verbose);
+dataLoad=load(sceneGeometryFileName);
+sceneGeometry=dataLoad.sceneGeometry;
+clear dataLoad
 
 % determine how many frames we will process
 if p.Results.nFrames == Inf
