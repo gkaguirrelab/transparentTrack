@@ -35,14 +35,14 @@ function [cameraDepthMean, cameraDepthSD] = depthFromIrisDiameter( sceneGeometry
 %{
     %% Recover a veridical camera distance
     % Calculate what the observed iris diameter should be at 100 mm
-    sceneGeometry_100depth = createSceneGeometry('cameraTranslation',[0; 0; 100],'aqueousRefractiveIndex',1.225);
+    sceneGeometry_100depth = createSceneGeometry('cameraTranslation',[0; 0; 100]);
     [~, imagePoints, ~, ~, pointLabels] = ...
     	pupilProjection_fwd([0 0 0 1], sceneGeometry_100depth, 'fullEyeModelFlag', true, 'nIrisPerimPoints', 20);
     idx = find(strcmp(pointLabels,'irisPerimeter'));
     observedIrisDiamPixels = max(imagePoints(idx,1))-min(imagePoints(idx,1));
     % Now call the estimation function, supplied with a sceneGeometry that
     % a different value for the camera depth (which is used for the x0).
-    sceneGeometry_65depth = createSceneGeometry('cameraTranslation',[0; 0; 65],'aqueousRefractiveIndex',1.225);
+    sceneGeometry_65depth = createSceneGeometry('cameraTranslation',[0; 0; 65]);
     [cameraDepthMean, cameraDepthSD] = ...
         depthFromIrisDiameter( sceneGeometry_65depth, observedIrisDiamPixels );
     % Report the results
@@ -93,32 +93,39 @@ p.parse(sceneGeometry, observedIrisDiamPixels)
 % to find the size of the true iris for the mean and mean+1SD observed
 % refracted iris sizes
 %{
- 	sceneGeometry = createSceneGeometry('aqueousRefractiveIndex',1.225);
-	% Get the area in pixels of a "pupil" that is the same radius
-	sceneGeometry.refraction = [];
-	% as the HVID when there is no ray tracing
-	hvidP=pupilProjection_fwd([0 0 0 hvidRadiusMean],sceneGeometry);
-	% Restore ray tracing
- 	sceneGeometry = createSceneGeometry('aqueousRefractiveIndex',1.225);
-	% Set up the objective function
-	myArea = @(p) p(3);
-	myObj = @(r) (hvidP(3) - myArea(pupilProjection_fwd([0 0 0 r],sceneGeometry)))^2;
-	[r,pixelError] = fminsearch(myObj,5.5);
-	fprintf('An unrefracted iris radius of %4.2f yields a refracted HVID of %4.2f \n',r,hvidRadiusMean)
-	% Now handle the +1SD case
-	sceneGeometry.refraction = [];
-	% as the HVID when there is no ray tracing
-	hvidP=pupilProjection_fwd([0 0 0 hvidRadiusMean+hvidRadiusSD],sceneGeometry);
-	% Restore ray tracing
- 	sceneGeometry = createSceneGeometry('aqueousRefractiveIndex',1.225);
-	% Set up the objective function
-	myArea = @(p) p(3);
-	myObj = @(r) (hvidP(3) - myArea(pupilProjection_fwd([0 0 0 r],sceneGeometry)))^2;
-	[r,pixelError] = fminsearch(myObj,5.5);
-	fprintf('An unrefracted iris radius of %4.2f yields a refracted HVID of %4.2f \n',r,hvidRadiusMean+hvidRadiusSD)
+    % Mean and SD radius value from prior block of code
+    hvidRadiusMean = 5.9161;
+    hvidRadiusSD = 0.2830;
+    sceneGeometry = createSceneGeometry();
+    % Inactivate ray tracing
+    sceneGeometry.refraction = [];
+    % Get the area in pixels of a "pupil" that is the same radius
+    % as the mean HVID when there is no ray tracing
+    hvidP=pupilProjection_fwd([0 0 0 hvidRadiusMean],sceneGeometry);
+    % Restore ray tracing
+    sceneGeometry = createSceneGeometry();
+    % Set up the objective function
+    myArea = @(p) p(3);
+    myObj = @(r) (hvidP(3) - myArea(pupilProjection_fwd([0 0 0 r],sceneGeometry)))^2;
+    [r,pixelError] = fminsearch(myObj,5.5);
+    fprintf('An unrefracted iris radius of %4.2f yields a refracted HVID of %4.2f \n',r,hvidRadiusMean)
+    % Now handle the +1SD case
+    % Inactivate ray tracing
+    sceneGeometry.refraction = [];
+    % Get the area in pixels of a "pupil" that is the same radius
+    % as the mean HVID when there is no ray tracing
+    hvidP=pupilProjection_fwd([0 0 0 hvidRadiusMean+hvidRadiusSD],sceneGeometry);
+    % Restore ray tracing
+    sceneGeometry = createSceneGeometry();
+    % Set up the objective function
+    myArea = @(p) p(3);
+    myObj = @(r) (hvidP(3) - myArea(pupilProjection_fwd([0 0 0 r],sceneGeometry)))^2;
+    [r,pixelError] = fminsearch(myObj,5.5);
+    fprintf('An unrefracted iris radius of %4.2f yields a refracted HVID of %4.2f \n',r,hvidRadiusMean+hvidRadiusSD)
+    
 %}
-trueIrisSizeMean = 5.54;
-trueIrisSizeSD = 0.30;
+trueIrisSizeMean = 5.55;
+trueIrisSizeSD = 0.33;
 
 % We now identify the camera distances corresponding the mean, and then to
 % the +1SD iris sizes
