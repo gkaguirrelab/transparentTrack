@@ -58,8 +58,11 @@ clear dataLoad
 eyePoses = pupilData.(p.Results.fitLabel).eyePoses.values;
 
 % Load the sceneGeometry file
-sceneGeometry = loadSceneGeometry(p.Results.sceneGeometryFileName, p.Results.verbose);
-
+dataLoad=load(p.Results.sceneGeometryFileName);
+sceneGeometry=dataLoad.sceneGeometry;
+clear dataLoad
+    
+    
 % Open a video object for writing
 if p.Results.saveCompressedVideo
     videoOutObj = videoIOWrapper(videoOutFileName,'ioAction','write');

@@ -167,9 +167,12 @@ else
     nWorkers=0;
 end
 
-% Load a sceneGeometry file
+% Load the sceneGeometry file if passed
 if ~isempty(p.Results.sceneGeometryFileName)
-    sceneGeometry = loadSceneGeometry(p.Results.sceneGeometryFileName, p.Results.verbose);
+    % Load the sceneGeometry file
+    dataLoad=load(p.Results.sceneGeometryFileName);
+    sceneGeometry=dataLoad.sceneGeometry;
+    clear dataLoad
 else
     sceneGeometry = [];
 end
