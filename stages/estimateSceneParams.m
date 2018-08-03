@@ -1,5 +1,5 @@
 function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileName, varargin)
-% Estimate camera translation and eye rotation given image plane ellipses
+% Estimate camera position and eye rotation given image plane ellipses
 %
 % Syntax:
 %  sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileName)
@@ -42,7 +42,7 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
 %                           left empty, then no plot will be saved.
 %  'ellipseArrayMontageFileName' - Full path (including suffix) to the file
 %                           in which to save a montage of fit video frames
-%                           illustrate the ellipses used to guide the
+%                           to illustrate the ellipses used to guide the
 %                           search.
 %  'pupilFileToFitVideoSuffixSwitch' - Cell array that provides the suffix
 %                           of the pupilData file and the suffix of the
@@ -52,7 +52,7 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
 %                           ellipse array montage plot.  
 %
 % Optional key/value pairs (flow control)
-%  'useParallel'          - If set to true, use the Matlab parallel pool
+%  'useParallel'          - If set to true, use the MATLAB parallel pool
 %  'nWorkers'             - Specify the number of workers in the parallel
 %                           pool. If undefined the default number will be
 %                           used.
@@ -767,7 +767,7 @@ fitVideoName = strrep(pupilFileName,pupilFileToFitVideoSuffixSwitch{1},pupilFile
 if exist(fitVideoName,'file') && ~isempty(ellipseArrayList)
 
     % Open the video object
-    videoInObj = videoReadWrapper(fitVideoName);
+    videoInObj = videoIOWrapper(fitVideoName,'ioAction','read');
     
     % Get the video properties
     videoSizeX = videoInObj.Width;
