@@ -55,7 +55,7 @@ p.addParameter('glintColor', 'r', @ischar);
 p.addParameter('perimeterColor', 'w', @ischar);
 p.addParameter('pupilColor', 'green', @ischar);
 p.addParameter('sceneGeometryColor', 'magenta', @ischar);
-p.addParameter('modelEyeLabelNames', {'posteriorChamber' 'irisPerimeter' 'anteriorChamber'}, @iscell);
+p.addParameter('modelEyeLabelNames', {'retina' 'irisPerimeter' 'cornea'}, @iscell);
 p.addParameter('modelEyePlotColors', {'.w' '.b' '.y'}, @iscell);
 p.addParameter('modelEyeAlpha', 0, @isnumeric);
 p.addParameter('modelEyeSymbolSizeScaler',1.5,@isnumeric);

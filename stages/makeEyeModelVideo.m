@@ -41,7 +41,7 @@ p.addRequired('sceneGeometryFileName', @ischar);
 p.addParameter('verbose',false, @islogical);
 p.addParameter('videoOutFrameRate', 60, @isnumeric);
 p.addParameter('saveCompressedVideo', true, @islogical);
-p.addParameter('modelEyeLabelNames', {'aziRotationCenter', 'eleRotationCenter', 'posteriorChamber' 'irisPerimeter' 'pupilEllipse' 'anteriorChamber' 'cornealApex'}, @iscell);
+p.addParameter('modelEyeLabelNames', {'aziRotationCenter', 'eleRotationCenter', 'retina' 'irisPerimeter' 'pupilEllipse' 'cornea' 'cornealApex'}, @iscell);
 p.addParameter('modelEyePlotColors', {'>r' '^m' '.w' '.b' '-g' '.y' '*y'}, @iscell);
 p.addParameter('fitLabel', 'radiusSmoothed', @ischar);
 
