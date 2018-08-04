@@ -426,7 +426,6 @@ warningState = warning;
 warning('off','bads:meshOverflow');
 
 % Silence some errors that can arise during the forward projection
-warning('off','rayTraceEllipsoids:criticalAngle');
 warning('off','pupilProjection_fwd:ellipseFitFailed');
 
 % Define nested variables for within the search
@@ -566,10 +565,6 @@ scatter(ellipses(:,1),ellipses(:,2),'o','filled', ...
     'MarkerFaceAlpha',2/8,'MarkerFaceColor',[0 0 0]);
 hold on
 
-% Silence some errors that can arise during the inverse projection
-warningState = warning;
-warning('off','rayTraceEllipsoids:criticalAngle');
-
 % get the predicted ellipse centers
 [~, projectedEllipses] = ...
     arrayfun(@(x) pupilProjection_inv...
@@ -579,9 +574,6 @@ warning('off','rayTraceEllipsoids:criticalAngle');
     'eyePoseLB',eyePoseLB,'eyePoseUB',eyePoseUB),...
     1:1:size(ellipses,1),'UniformOutput',false);
 projectedEllipses=vertcat(projectedEllipses{:});
-
-% Restore the warning state
-warning(warningState);
 
 % plot the projected ellipse centers
 scatter(projectedEllipses(:,1),projectedEllipses(:,2),'o','filled', ...
@@ -808,9 +800,16 @@ if exist(fitVideoName,'file') && ~isempty(ellipseArrayList)
         'PaperPositionMode','auto',...
         'Color','w');
 
+    % Turn off a warning that can occur during the montage step
+    warningState = warning;
+    warning('off','images:initSize:adjustingMag');
+    
     % Create the montage
     montage(framesToMontage);
     
+    % Restore the warning state
+    warning(warningState);
+
     % Save the montage
     saveas(figHandle,ellipseArrayMontageFileName)
         
