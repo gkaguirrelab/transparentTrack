@@ -176,7 +176,7 @@ p.parse(pupilFileName, sceneGeometryFileName, varargin{:})
 %% Announce we are starting
 if p.Results.verbose
     tic
-    fprintf(['Estimating camera position and eye rotation from pupil ellipses. Started ' char(datetime('now')) '\n']);
+    fprintf(['Estimating scene parameters. Started ' char(datetime('now')) '\n']);
 end
 
 
@@ -347,7 +347,6 @@ if ~isempty(p.Results.sceneDiagnosticPlotFileName)
         fprintf('Creating a sceneGeometry diagnostic plot.\n');
     end
     saveSceneDiagnosticPlot(...
-        ellipses(ellipseArrayList,:),...
         Xedges, Yedges,...
         p.Results.eyePoseLB, ...
         p.Results.eyePoseUB, ...
@@ -505,7 +504,7 @@ sceneGeometry.meta.estimateSceneParams.search.recoveredEyePoses = recoveredEyePo
 end % local search function
 
 
-function [] = saveSceneDiagnosticPlot(ellipses, Xedges, Yedges, eyePoseLB, eyePoseUB, sceneGeometry, sceneDiagnosticPlotFileName)
+function [] = saveSceneDiagnosticPlot(Xedges, Yedges, eyePoseLB, eyePoseUB, sceneGeometry, sceneDiagnosticPlotFileName)
 % Saves a plot that illustrates the sceneGeometry search results
 %
 % Inputs:
@@ -524,6 +523,9 @@ function [] = saveSceneDiagnosticPlot(ellipses, Xedges, Yedges, eyePoseLB, eyePo
 % Outputs:
 %   none
 %
+
+% Obtain the set of ellipse parameters from the sceneGeometry structure
+ellipses = sceneGeometry.meta.estimateSceneParams.search.ellipses;
 
 % Prepare the figure
 figHandle=figure('visible','off');
@@ -687,6 +689,7 @@ text(0.5,1.0,myString,'Units','normalized','HorizontalAlignment','center')
 ellipseFrameList = num2str(sort(sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList)');
 myString = sprintf(['Ellipse frames (index from 1): [' ellipseFrameList ']']);
 text(0.5,0.25,myString,'Units','normalized','HorizontalAlignment','center')
+
 
 %% Right panel -- area error
 subplot(3,3,[3 6]);
