@@ -646,6 +646,8 @@ if ~isempty(Xedges)
     for yy=1: length(Yedges)
         plot([Xedges(1) Xedges(end)], [Yedges(yy) Yedges(yy)], '-', 'Color', [0.9 0.9 0.9], 'LineWidth', 0.5);
     end
+else
+    hold on
 end
 
 % Calculate a color for each plot point corresponding to the degree of
@@ -705,6 +707,8 @@ if ~isempty(Xedges)
     for yy=1: length(Yedges)
         plot([Xedges(1) Xedges(end)], [Yedges(yy) Yedges(yy)], '-', 'Color', [0.9 0.9 0.9], 'LineWidth', 0.5);
     end
+else
+    hold on
 end
 
 % Calculate a color for each plot point corresponding to the degree of
