@@ -50,7 +50,7 @@ p.addRequired('dataRootDir',@ischar);
 p.addOptional('plotSaveDir',[],@(x)(isempty(x) || ischar(x)));
 
 % Optional
-p.addParameter('histMax',2,@isnumeric);
+p.addParameter('histMax',4,@isnumeric);
 p.addParameter('numPlotRows',20,@isnumeric);
 p.addParameter('fitLabel','initial',@ischar);
 
@@ -141,6 +141,16 @@ if ~isempty(fileListStruct)
             pupilData=dataLoad.pupilData;
             clear dataLoad
             
+            % Obtain the modification date for this pupil file
+            if isunix
+                sysCommand = ['date -r ' pupilFullFileName ' +%x'];
+                [~,modificationDate] = system(sysCommand);
+                % Strip the new line
+                modificationDate = regexprep(modificationDate,'\s+','');
+            else
+                modificationDate=[];
+            end
+            
             % Grab just the filename for this pupil data, omitting the
             % path. We will use this to label the plot
             [~, pupilFileName] = fileparts(pupilFullFileName);
@@ -182,7 +192,7 @@ if ~isempty(fileListStruct)
                 ax.Position = [left bottom ax_width ax_height];
                 
                 % Add text to label the
-                text(0,0.8,pupilFileName,'Interpreter', 'none','HorizontalAlignment','left','VerticalAlignment','middle','Units','normalized');
+                text(0,0.8,[pupilFileName ' (' modificationDate ')'],'Interpreter', 'none','HorizontalAlignment','left','VerticalAlignment','middle','Units','normalized');
                 acqStats=sprintf('%d frames, %.1f%% nans, %.1f%% > %.1f%,',length(errorVector),100*sum(isnan(errorVector))/length(errorVector),100*sum(errorVector>p.Results.histMax)/length(errorVector),p.Results.histMax);
                 text(0.95,0.8,acqStats,'Interpreter', 'none','HorizontalAlignment','right','VerticalAlignment','middle','Units','normalized');
                 
