@@ -144,7 +144,7 @@ p.addRequired('sceneGeometryFileName',@ischar);
 p.addParameter('verbose',false,@islogical);
 p.addParameter('sceneDiagnosticPlotFileName', '', @(x)(isempty(x) || ischar(x)));
 p.addParameter('ellipseArrayMontageFileName', '', @(x)(isempty(x) || ischar(x)));
-p.addParameter('pupilFileToFitVideoSuffixSwitch',{'_pupil.mat','_fitStage6.avi'},@iscell);
+p.addParameter('pupilFileToVideoSuffixSwitch',{'_pupil.mat','_gray.avi'},@iscell);
 
 % Optional flow control params
 p.addParameter('useParallel',false,@islogical);
@@ -360,10 +360,13 @@ if ~isempty(p.Results.ellipseArrayMontageFileName)
     if p.Results.verbose
         fprintf('Creating an ellipse fit montage.\n');
     end
+    % Assemble the name of the fit video file
+    fitVideoName = strrep(pupilFileName,p.Results.pupilFileToVideoSuffixSwitch{1},p.Results.pupilFileToVideoSuffixSwitch{2});
     saveEllipseArrayMontage(ellipseArrayList, ...
-        p.Results.ellipseArrayMontageFileName, ...
-        pupilFileName, ...
-        p.Results.pupilFileToFitVideoSuffixSwitch);
+        ellipses, ...
+        fitVideoName, ...
+        p.Results.ellipseArrayMontageFileName ...
+        );
 end
 
 
@@ -752,15 +755,12 @@ close(figHandle)
 end % saveSceneDiagnosticPlot
 
 
-function [] = saveEllipseArrayMontage(ellipseArrayList, ellipseArrayMontageFileName, pupilFileName, pupilFileToFitVideoSuffixSwitch)
+function [] = saveEllipseArrayMontage(ellipseArrayList, allEllipses, fitVideoName, ellipseArrayMontageFileName)
 % Saves a montage of the video frames illustrating the ellipses used for
 % the sceneGeometry estimation
 
 % Sort the ellipse array list so that the frames appear in temporal order
 ellipseArrayList = sort(ellipseArrayList);
-
-% Assemble the name of the fit video file
-fitVideoName = strrep(pupilFileName,pupilFileToFitVideoSuffixSwitch{1},pupilFileToFitVideoSuffixSwitch{2});
 
 % Check that the file exists
 if exist(fitVideoName,'file') && ~isempty(ellipseArrayList)
@@ -775,24 +775,44 @@ if exist(fitVideoName,'file') && ~isempty(ellipseArrayList)
     
     % Define a variable to hold the selected frames
     framesToMontage = zeros(videoSizeY,videoSizeX,3,length(ellipseArrayList),'uint8');
-    
+
+    % Define a figure
+    hFig = figure( 'Visible', 'off');
+    hAxes = gca();
+
     % Loop through the frames and keep the matching ones 
     for ii = 1:min([nFrames,max(ellipseArrayList)])
-        frame = readFrame(videoInObj);
+        sourceFrame = readFrame(videoInObj);
         idx = ellipseArrayList==ii;
         if sum(idx)
+            sourceFrame = rgb2gray (sourceFrame);
+            imshow(sourceFrame,'Border', 'tight','Parent',hAxes);
+            hold on
+            % Add the ellipse fit
+            pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(allEllipses(ii,:)));
+            fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
+            fimplicit(fh,[1, videoSizeX, 1, videoSizeY],'Color', 'g','LineWidth',1);
+            set(gca,'position',[0 0 1 1],'units','normalized')
+            axis off;
             % Add blue grid lines
-            for xx = -1:1:1
-                frame(round(videoSizeY/2)+xx,:,3)=127;
-                frame(:,round(videoSizeX/2)+xx,3)=127;
-            end
+            lh = plot([1 videoSizeX],[round(videoSizeY/2) round(videoSizeY/2)],'-b','LineWidth',2);
+            lh.Color=[0,0,1,0.5];
+            lh = plot([round(videoSizeX/2) round(videoSizeX/2)],[1 videoSizeY],'-b','LineWidth',2);
+            lh.Color=[0,0,1,0.5];
+            % Get the frame
+            drawnow;
+            thisFrame=getframe(hFig);
             % Add a text label for the frame number
             frameLabel = sprintf('frame: %d',ii);
-            frame = insertText(frame,[20 20],frameLabel);
+            thisFrame.cdata = insertText(thisFrame.cdata,[20 20],frameLabel,'FontSize',30);
             % Store the frame
-            framesToMontage(:,:,:,idx) = frame;
+            framesToMontage(:,:,:,idx) = thisFrame.cdata;
+            % hold off
         end
     end
+    
+    % Close the temporary figure
+    close(hFig);
     
     % Prepare the figure
     figHandle=figure('visible','off');
