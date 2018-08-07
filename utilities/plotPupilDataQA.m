@@ -143,10 +143,12 @@ if ~isempty(fileListStruct)
             
             % Obtain the modification date for this pupil file
             if isunix
-                sysCommand = ['date -r ' pupilFullFileName ' +%x'];
-                [~,modificationDate] = system(sysCommand);
-                % Strip the new line
-                modificationDate = regexprep(modificationDate,'\s+','');
+                sysCommand = ['stat -t %x ' pupilFullFileName];
+                [~,modificationDateString] = system(sysCommand);
+                % This returns a cell array of 4 date stamps
+                modificationDateString = extractBetween(modificationDateString,'"','"');
+                % The second date stamp is the modification date
+                modificationDate = modificationDateString{2};
             else
                 modificationDate=[];
             end
