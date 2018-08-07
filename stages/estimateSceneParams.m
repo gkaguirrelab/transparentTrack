@@ -589,10 +589,12 @@ ellipseRMSE = sceneGeometry.meta.estimateSceneParams.search.ellipseRMSE;
 for ii=1:size(ellipses,1)
     lineAlpha = ellipseRMSE(ii)/max(ellipseRMSE);
     lineWeight = 0.5 + (ellipseRMSE(ii)/max(ellipseRMSE));
-    ph=plot([projectedEllipses(ii,1) ellipses(ii,1)], ...
-        [projectedEllipses(ii,2) ellipses(ii,2)], ...
-        '-','Color',[1 0 0],'LineWidth', lineWeight);
-    ph.Color(4) = lineAlpha;
+    if ~any(isnan(ellipses(ii,:))) && ~any(isnan(projectedEllipses(ii,:)))
+        ph=plot([projectedEllipses(ii,1) ellipses(ii,1)], ...
+            [projectedEllipses(ii,2) ellipses(ii,2)], ...
+            '-','Color',[1 0 0],'LineWidth', lineWeight);
+        ph.Color(4) = lineAlpha;
+    end
 end
 
 % plot the estimated center of rotation of the eye
