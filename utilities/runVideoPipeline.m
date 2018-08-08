@@ -198,9 +198,9 @@ sceneGeometryFileNameOutput = fullfile(pathParams.dataOutputDirFull, [pathParams
 % sceneGeometry was well estimated.
 if ~isempty(p.Results.customSceneGeometryFile)
     if iscell(p.Results.customSceneGeometryFile)
-        sceneGeometryFileNameInput = p.Results.customSceneGeometryFile{1};
+        sceneGeometryFileNameInput = fullfile(pathParams.dataOutputDirFull,p.Results.customSceneGeometryFile{1});
     else
-        sceneGeometryFileNameInput = p.Results.customSceneGeometryFile;
+        sceneGeometryFileNameInput = fullfile(pathParams.dataOutputDirFull,p.Results.customSceneGeometryFile);
     end
 else
     sceneGeometryFileNameInput = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sceneGeometry.mat']);
