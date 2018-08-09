@@ -30,7 +30,6 @@ function videoObj = videoIOWrapper(videoFileName, varargin)
 %                           indexed video is saved.
 %
 
-
 %% input parser
 p = inputParser;
 
