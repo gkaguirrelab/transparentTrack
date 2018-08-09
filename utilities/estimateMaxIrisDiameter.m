@@ -28,15 +28,16 @@ p.addOptional('grayVideoName', [], @(x)(isempty(x) || ischar(x)));
 p.parse(varargin{:})
 
 if isempty(p.Results.grayVideoName)
-    [fileName, path] = uigetfile({'*.mp4;*.mov'});
+    [fileName, path] = uigetfile({'*.mp4;*.mov;*avi'});
+    if isempty(fileName)
+        returne
+    end
     grayVideoName = [path, fileName];
 else
-     grayVideoName = p.Results.grayVideoName;
+    grayVideoName = p.Results.grayVideoName;
 end
 
-
-%% Open the video 
-close all
+%% Open the video
 videoInObj = videoIOWrapper(grayVideoName,'ioAction','read');
 
 %% Select and display a frame
@@ -57,6 +58,9 @@ hText = text(1,10,string, 'FontSize', 16, 'BackgroundColor', 'white');
 iHandle = plot(x1 ,y1, '+', 'Color', 'red');
 [x2,y2] = ginput(1);
 iHandle = plot(x2 ,y2, '+', 'Color', 'red');
+
+%% Close the video object
+clear videoInObj
 
 maxIrisDiamPixels = round(sqrt((x1-x2)^2+(y1-y2)^2));
 
