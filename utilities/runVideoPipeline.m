@@ -16,7 +16,6 @@ function runVideoPipeline( pathParams, varargin )
 %       fitPupilPerimeter -- fit again with scene geometry constraints
 %       smoothPupilRadius
 %       makeFitVideo
-%       makeEyeModelVideo
 %
 %   The user can stop the execution after any of the stages with the
 %   optional param 'lastStage', or skip any number of stages listing them
@@ -250,7 +249,6 @@ switch p.Results.videoTypeChoice
             '''pupilFileName'', pupilFileName, ''sceneGeometryFileName'', sceneGeometryFileNameInput,' ...
             '''modelEyeAlpha'', 0.25,' ...
             '''controlFileName'',controlFileName,varargin{:});']...
-            'makeEyeModelVideo(eyeModelVideoName, pupilFileName, sceneGeometryFileNameInput, varargin{:});'...
             };
     case 'custom'
         funCalls = p.Results.customFunCalls;
