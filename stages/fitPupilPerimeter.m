@@ -231,7 +231,6 @@ parfor (ii = 1:nFrames, nWorkers)
     if ~isempty(Xp) && ~isempty(Yp)
 
         % Turn off expected warnings
-        warning('off','rayTraceEllipsoids:criticalAngle');
         warning('off','pupilProjection_fwd:ellipseFitFailed');
 
         % Obtain the fit to the veridical data
@@ -300,9 +299,9 @@ parfor (ii = 1:nFrames, nWorkers)
                         % We do have sceneGeometry, so search for eyePose that
                         % best fit the splits of the pupil perimeter.
                         pFitEyePoseSplit(1,ss,:) = ...
-                            eyePoseEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry, 'x0', eyePose, 'repeatSearchThresh', badFrameErrorThreshold);
+                            eyePoseEllipseFit(Xp(splitIdx1), Yp(splitIdx1), sceneGeometry, 'x0', eyePose, 'nMaxSearches', 1);
                         pFitEyePoseSplit(2,ss,:) = ...
-                            eyePoseEllipseFit(Xp(splitIdx2), Yp(splitIdx2), sceneGeometry, 'x0', eyePose, 'repeatSearchThresh', badFrameErrorThreshold);
+                            eyePoseEllipseFit(Xp(splitIdx2), Yp(splitIdx2), sceneGeometry, 'x0', eyePose, 'nMaxSearches', 1);
                         % Obtain the ellipse parameeters that correspond the
                         % eyePose
                         pFitTransparentSplit(1,ss,:) = ...
