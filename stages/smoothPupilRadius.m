@@ -287,9 +287,9 @@ parfor (ii = 1:nFrames, nWorkers)
         % the current frame realtive to the prior
         likelihoodPupilRadiusSD = likelihoodPupilRadiusSD .^ likelihoodErrorExponent;
         
-        % Check if the RMSE for the likelihood initial fit was above the bad
-        % threshold. If so, inflate the SD for the likelihood so that the
-        % prior dictates the value of the posterior
+        % Check if the RMSE for the likelihood initial fit was above the
+        % bad threshold. If so, inflate the SD for the likelihood so that
+        % the prior dictates the value of the posterior
         if pupilData.(initialFitLabel).ellipses.RMSE(ii) > badFrameErrorThreshold
             likelihoodPupilRadiusSD = likelihoodPupilRadiusSD .* 1e20;
         end
