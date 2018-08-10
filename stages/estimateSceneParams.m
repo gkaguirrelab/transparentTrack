@@ -269,7 +269,7 @@ end
 % be the midpoint of the plausible bounds.
 if p.Results.nBADSsearches==0
     allSceneParamResults = [];
-    sceneParamResultsMean = (p.Results.sceneParamsLBp+p.Results.sceneParamsUBp)./2;
+    sceneParamResultsMedian = (p.Results.sceneParamsLBp+p.Results.sceneParamsUBp)./2;
     sceneParamResultsSD=[];
     allFvals = [];
 else
@@ -304,10 +304,10 @@ else
     allSceneParamResults = cellfun(@(thisSceneGeometry) thisSceneGeometry.meta.estimateSceneParams.search.x,searchResults,'UniformOutput',false);
     for dim = 1:length(p.Results.sceneParamsLB)
         vals = cellfun(@(x) x(dim), allSceneParamResults);
-        sceneParamResultsMean(dim)=mean(vals.*(1./allFvals))/mean(1./allFvals);
+        sceneParamResultsMedian(dim)=median(vals.*(1./allFvals))/(median(1./allFvals));
         sceneParamResultsSD(dim)=std(vals,1./allFvals);
     end
-    sceneParamResultsMean=sceneParamResultsMean';
+    sceneParamResultsMedian=sceneParamResultsMedian';
     sceneParamResultsSD=sceneParamResultsSD';
 end % Check for zero requested searches
 
@@ -316,10 +316,10 @@ end % Check for zero requested searches
 sceneGeometry = ...
     performSceneSearch(initialSceneGeometry, ...
     ellipses(ellipseArrayList,:), ...
-    sceneParamResultsMean, ...
-    sceneParamResultsMean, ...
-    sceneParamResultsMean, ...
-    sceneParamResultsMean, ...
+    sceneParamResultsMedian, ...
+    sceneParamResultsMedian, ...
+    sceneParamResultsMedian, ...
+    sceneParamResultsMedian, ...
     p.Results.eyePoseLB, ...
     p.Results.eyePoseUB);
 
@@ -331,7 +331,7 @@ sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList = ellipseArrayLis
 sceneGeometry.meta.estimateSceneParams.search.ellipseRMSE = ellipseFitRMSE(ellipseArrayList);
 sceneGeometry.meta.estimateSceneParams.search.allFvals = allFvals;
 sceneGeometry.meta.estimateSceneParams.search.allSceneParamResults = allSceneParamResults;
-sceneGeometry.meta.estimateSceneParams.search.sceneParamResultsMean = sceneParamResultsMean;
+sceneGeometry.meta.estimateSceneParams.search.sceneParamResultsMedian = sceneParamResultsMedian;
 sceneGeometry.meta.estimateSceneParams.search.sceneParamResultsSD = sceneParamResultsSD;
 
 
