@@ -689,7 +689,7 @@ legend({'0',num2str(sceneGeometry.constraintTolerance/2), ['=> ' num2str(sceneGe
 
 % Add text to report the camera position parameters
 xFinal = sceneGeometry.meta.estimateSceneParams.search.x;
-myString = sprintf('torsion [deg] %4.1f; translation vector [mm] = %4.1f, %4.1f, %4.1f; rotation center scaling [joint, differential] = %4.2f, %4.2f',xFinal(1),xFinal(2),xFinal(3),xFinal(4),xFinal(5),xFinal(6));
+myString = sprintf('torsion [deg] = %4.1f; translation vector [mm] = %4.1f, %4.1f, %4.1f; rotation center scaling [joint, differential] = %4.2f, %4.2f',xFinal(1),xFinal(2),xFinal(3),xFinal(4),xFinal(5),xFinal(6));
 text(0.5,1.0,myString,'Units','normalized','HorizontalAlignment','center')
 
 % Add text to report the ellipse frames used
@@ -758,8 +758,9 @@ end % saveSceneDiagnosticPlot
 
 
 function [] = saveEllipseArrayMontage(ellipseArrayList, allEllipses, fitVideoName, ellipseArrayMontageFileName)
-% Saves a montage of the video frames illustrating the ellipses used for
-% the sceneGeometry estimation
+% Saves two diagnostic images. The first is a montage of the video frames
+% illustrating the ellipses used for the sceneGeometry estimation. The
+% second is the same montage, with the model eye superimposed.
 
 % Sort the ellipse array list so that the frames appear in temporal order
 ellipseArrayList = sort(ellipseArrayList);
@@ -778,10 +779,12 @@ if exist(fitVideoName,'file') && ~isempty(ellipseArrayList)
     % Define a variable to hold the selected frames
     framesToMontage = zeros(videoSizeY,videoSizeX,3,length(ellipseArrayList),'uint8');
 
+    %% Figure 1 -- montage only
+
     % Define a figure
     hFig = figure( 'Visible', 'off');
     hAxes = gca();
-
+    
     % Loop through the frames and keep the matching ones 
     for ii = 1:min([nFrames,max(ellipseArrayList)])
         sourceFrame = readFrame(videoInObj);
@@ -840,20 +843,106 @@ if exist(fitVideoName,'file') && ~isempty(ellipseArrayList)
     warning(warningState);
 
     % Save the montage
-    saveas(figHandle,ellipseArrayMontageFileName)
+    [tmpA, tmpB, tmpC] = fileparts(ellipseArrayMontageFileName);
+    saveFileName = fullfile(tmpA,[tmpB '_ellipses' tmpC]);
+    saveas(figHandle,saveFileName)
         
     % Close the figure
     close(figHandle)
 
     % Rotate the figure by 90 degrees clockwise, because I can't get the
     % MATLAB plotting routines to output the image how I want it.
-    A = imread(ellipseArrayMontageFileName);
+    A = imread(saveFileName);
     A = rot90(A,3);
-    imwrite(A,ellipseArrayMontageFileName);
+    imwrite(A,saveFileName);
     
     % close the video object
     clear videoInObj
 
+    %% Figure 2 -- eye model
+    
+    % Open the video object
+    videoInObj = videoIOWrapper(fitVideoName,'ioAction','read');
+
+    % Define a figure
+    hFig = figure( 'Visible', 'off');
+    hAxes = gca();
+    
+    % Loop through the frames and keep the matching ones 
+    for ii = 1:min([nFrames,max(ellipseArrayList)])
+        sourceFrame = readFrame(videoInObj);
+        idx = ellipseArrayList==ii;
+        if sum(idx)
+            sourceFrame = rgb2gray (sourceFrame);
+            imshow(sourceFrame,'Border', 'tight','Parent',hAxes);
+            hold on
+            % Add the ellipse fit
+            pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(allEllipses(ii,:)));
+            fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
+            fimplicit(fh,[1, videoSizeX, 1, videoSizeY],'Color', 'g','LineWidth',1);
+            set(gca,'position',[0 0 1 1],'units','normalized')
+            axis off;
+            % Add the rendered eye model
+            eyePose = sceneGeometry.meta.estimateSceneParams.search.recoveredEyePoses(ii,:);
+            if ~any(isnan(eyePose))
+                renderEyePose(eyePose, sceneGeometry, 'newFigure', false, ...
+                    'modelEyeAlpha', 0.25);
+            end
+            % Get the frame
+            drawnow;
+            thisFrame=getframe(hFig);
+            % Add a text label for the frame number
+            frameLabel = sprintf('frame: %d',ii);
+            thisFrame.cdata = insertText(thisFrame.cdata,[20 20],frameLabel,'FontSize',30);
+            % Store the frame
+            framesToMontage(:,:,:,idx) = thisFrame.cdata;
+            % hold off
+        end
+    end
+    
+    % Close the temporary figure
+    close(hFig);
+    
+    % Prepare the figure
+    figHandle=figure('visible','off');
+    set(gcf,'PaperOrientation','landscape');    
+    set(figHandle, 'Units','inches')
+    height = 6;
+    width = 11;
+    
+    % The last two parameters of 'Position' define the figure size
+    set(figHandle, 'Position',[25 5 width height],...
+        'PaperSize',[width height],...
+        'PaperPositionMode','auto',...
+        'Color','w');
+
+    % Turn off a warning that can occur during the montage step
+    warningState = warning;
+    warning('off','images:initSize:adjustingMag');
+    
+    % Create the montage
+    montage(framesToMontage);
+    
+    % Restore the warning state
+    warning(warningState);
+
+    % Save the montage
+    [tmpA, tmpB, tmpC] = fileparts(ellipseArrayMontageFileName);
+    saveFileName = fullfile(tmpA,[tmpB '_eyeModel' tmpC]);
+    saveas(figHandle,saveFileName)
+        
+    % Close the figure
+    close(figHandle)
+
+    % Rotate the figure by 90 degrees clockwise, because I can't get the
+    % MATLAB plotting routines to output the image how I want it.
+    A = imread(saveFileName);
+    A = rot90(A,3);
+    imwrite(A,saveFileName);
+    
+    % close the video object
+    clear videoInObj
+    
 end % There is a file to plot
 
 end % saveEllipseArrayMontage
