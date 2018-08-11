@@ -877,16 +877,13 @@ if exist(fitVideoName,'file') && ~isempty(ellipseArrayList)
             sourceFrame = rgb2gray (sourceFrame);
             imshow(sourceFrame,'Border', 'tight','Parent',hAxes);
             hold on
-            % Add the ellipse fit
-            pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(allEllipses(ii,:)));
-            fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
-            fimplicit(fh,[1, videoSizeX, 1, videoSizeY],'Color', 'g','LineWidth',1);
-            set(gca,'position',[0 0 1 1],'units','normalized')
             axis off;
             % Add the rendered eye model
-            eyePose = sceneGeometry.meta.estimateSceneParams.search.recoveredEyePoses(ii,:);
+            eyePose = sceneGeometry.meta.estimateSceneParams.search.recoveredEyePoses(idx,:);
             if ~any(isnan(eyePose))
                 renderEyePose(eyePose, sceneGeometry, 'newFigure', false, ...
+                    'modelEyeLabelNames', {'retina' 'irisPerimeter' 'pupilPerimeter' 'cornea'}, ...
+                    'modelEyePlotColors', {'.w' '.b' '-g' '.y'}, ...
                     'modelEyeAlpha', 0.25);
             end
             % Get the frame
@@ -898,6 +895,7 @@ if exist(fitVideoName,'file') && ~isempty(ellipseArrayList)
             % Store the frame
             framesToMontage(:,:,:,idx) = thisFrame.cdata;
             % hold off
+            hold off
         end
     end
     
