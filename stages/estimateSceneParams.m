@@ -299,7 +299,7 @@ else
         fprintf('\n');
     end
     
-    % Find the weighted mean and SD of the solution parameters
+    % Find the center of the largest cluster of solution parametersz
     allFvals = cellfun(@(x) x.meta.estimateSceneParams.search.fVal,searchResults);
     allSceneParamResults = cellfun(@(thisSceneGeometry) thisSceneGeometry.meta.estimateSceneParams.search.x,searchResults,'UniformOutput',false);
     for dim = 1:length(p.Results.sceneParamsLB)
