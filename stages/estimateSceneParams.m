@@ -299,7 +299,7 @@ else
         fprintf('\n');
     end
     
-    % Find the center of the largest cluster of solution parametersz
+    % Obtain the first principal component of the search parameters
     allFvals = cellfun(@(x) x.meta.estimateSceneParams.search.fVal,searchResults);
     allSceneParamResults = cellfun(@(thisSceneGeometry) thisSceneGeometry.meta.estimateSceneParams.search.x,searchResults,'UniformOutput',false);
     for dim = 1:length(p.Results.sceneParamsLB)
@@ -331,6 +331,7 @@ sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList = ellipseArrayLis
 sceneGeometry.meta.estimateSceneParams.search.ellipseRMSE = ellipseFitRMSE(ellipseArrayList);
 sceneGeometry.meta.estimateSceneParams.search.allFvals = allFvals;
 sceneGeometry.meta.estimateSceneParams.search.allSceneParamResults = allSceneParamResults;
+sceneGeometry.meta.estimateSceneParams.search.allSearchResults = searchResults;
 sceneGeometry.meta.estimateSceneParams.search.sceneParamResultsMedian = sceneParamResultsMedian;
 sceneGeometry.meta.estimateSceneParams.search.sceneParamResultsSD = sceneParamResultsSD;
 
