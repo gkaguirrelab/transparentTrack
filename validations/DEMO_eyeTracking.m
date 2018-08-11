@@ -140,7 +140,7 @@ temporalSupport = 0:1/60.:(size(pupilData.sceneConstrained.ellipses.values,1)-1)
 temporalSupport = temporalSupport / 60; % minutes
 
 % Points with a narrow posterior distribution of the fit to pupil radius
-goodIdx = pupilData.radiusSmoothed.eyePoses.radiusSD < 0.025;
+goodIdx = pupilData.radiusSmoothed.eyePoses.radiusSD < 0.01;
 
 % Make a plot of pupil area, both on the image plane and on the eye
 figure
@@ -154,6 +154,7 @@ plot(temporalSupport(goodIdx),pupilData.radiusSmoothed.ellipses.values(goodIdx,3
 xlim([0 max(temporalSupport)]);
 xlabel('time [mins]');
 ylabel('pupil area [pixels in plane]');
+ylim([5000 25000]);
 hold off
 
 subplot(2,1,2)
@@ -166,6 +167,7 @@ plot(temporalSupport(goodIdx),pupilData.radiusSmoothed.eyePoses.values(goodIdx,4
 xlim([0 max(temporalSupport)]);
 xlabel('time [mins]');
 ylabel('pupil radius [mm on eye]');
+ylim([0 4]);
 hold off
 
 % Make a plot of X and Y eye pupil position on the image plane
@@ -180,6 +182,7 @@ plot(temporalSupport(goodIdx),pupilData.radiusSmoothed.ellipses.values(goodIdx,1
 xlim([0 max(temporalSupport)]);
 xlabel('time [mins]');
 ylabel('X position [pixels]');
+ylim([0 500]);
 hold off
 
 subplot(2,1,2)
@@ -193,4 +196,5 @@ plot(temporalSupport(goodIdx),pupilData.radiusSmoothed.ellipses.values(goodIdx,2
 xlim([0 max(temporalSupport)]);
 xlabel('time [mins]');
 ylabel('Y position [pixels]');
+ylim([0 500]);
 hold off
