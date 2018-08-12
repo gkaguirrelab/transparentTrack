@@ -283,6 +283,7 @@ if p.Results.nBADSsearches==0
         tmpHold=sceneGeometry.meta.estimateSceneParams.search;
         sceneGeometry.meta.estimateSceneParams = p.Results;
         sceneGeometry.meta.estimateSceneParams.search = tmpHold;
+        sceneGeometry.meta.estimateSceneParams.search.ellipseFitRMSE = ellipseFitRMSE;
 
 else
     % Loop over the requested number of BADS searches
@@ -313,7 +314,6 @@ else
     
     % Obtain the "best" search result, which is defined as the smallest
     % product of the rankings of the three types of error
-    allFvals = cellfun(@(x) x.meta.estimateSceneParams.search.fVal,searchResults);
     medianCenterErrorBySearch = cellfun(@(x) sqrt(nansum((x.meta.estimateSceneParams.search.centerDistanceErrorByEllipse).^2)),searchResults);
     medianShapeErrorBySearch = cellfun(@(x) sqrt(nansum((x.meta.estimateSceneParams.search.shapeErrorByEllipse).^2)),searchResults);
     medianAreaErrorBySearch = cellfun(@(x) sqrt(nansum((x.meta.estimateSceneParams.search.areaErrorByEllipse).^2)),searchResults);
@@ -328,6 +328,8 @@ else
     sceneGeometry.meta.estimateSceneParams = p.Results;
     sceneGeometry.meta.estimateSceneParams.allSearches = searchResults;
     sceneGeometry.meta.estimateSceneParams.bestSearchIdx = bestSearchIdx;
+    sceneGeometry.meta.estimateSceneParams.search = searchResults{bestSearchIdx};
+    sceneGeometry.meta.estimateSceneParams.search.ellipseFitRMSE = ellipseFitRMSE;
 end % Check for zero requested searches
 
 
@@ -582,10 +584,10 @@ scatter(projectedEllipses(:,1),projectedEllipses(:,2),'o','filled', ...
     'MarkerFaceAlpha',2/8,'MarkerFaceColor',[0 0 1]);
 
 % connect the centers with lines
-ellipseRMSE = sceneGeometry.meta.estimateSceneParams.search.ellipseRMSE;
+ellipseFitRMSE = sceneGeometry.meta.estimateSceneParams.search.ellipseFitRMSE;
 for ii=1:size(ellipses,1)
-    lineAlpha = ellipseRMSE(ii)/max(ellipseRMSE);
-    lineWeight = 0.5 + (ellipseRMSE(ii)/max(ellipseRMSE));
+    lineAlpha = ellipseFitRMSE(ii)/max(ellipseFitRMSE);
+    lineWeight = 0.5 + (ellipseFitRMSE(ii)/max(ellipseFitRMSE));
     if ~any(isnan(ellipses(ii,:))) && ~any(isnan(projectedEllipses(ii,:)))
         ph=plot([projectedEllipses(ii,1) ellipses(ii,1)], ...
             [projectedEllipses(ii,2) ellipses(ii,2)], ...
