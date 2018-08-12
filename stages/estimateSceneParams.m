@@ -97,7 +97,10 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
 %                           the plausible bounds. This parameter sets how
 %                           many random starting points to try; the best
 %                           result is retained. Each search is run on a
-%                           separate worker if the parpool is available.
+%                           separate worker if the parpool is available. If
+%                           a value of zero is passed, then a sceneGeometry
+%                           file and diagnostic plots are created using the
+%                           midpoint of the passed bounds.
 %
 % Outputs
 %	sceneGeometry         - A structure that contains the components of the
@@ -279,8 +282,8 @@ if p.Results.nBADSsearches==0
         tmpHold=sceneGeometry.meta.estimateSceneParams.search;
         sceneGeometry.meta.estimateSceneParams = p.Results;
         sceneGeometry.meta.estimateSceneParams.search = tmpHold;
-        sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList = ellipseArrayList;
-        sceneGeometry.meta.estimateSceneParams.search.ellipseFitRMSE = ellipseFitRMSE;
+        sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList = ellipseArrayList';
+        sceneGeometry.meta.estimateSceneParams.search.ellipseFitRMSE = ellipseFitRMSE(ellipseArrayList);
 
 else
     % Loop over the requested number of BADS searches
@@ -326,8 +329,9 @@ else
     sceneGeometry.meta.estimateSceneParams.allSearches = searchResults;
     sceneGeometry.meta.estimateSceneParams.bestSearchIdx = bestSearchIdx;
     sceneGeometry.meta.estimateSceneParams.search = searchResults{bestSearchIdx};
-    sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList = ellipseArrayList;
-    sceneGeometry.meta.estimateSceneParams.search.ellipseFitRMSE = ellipseFitRMSE;
+    sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList = ellipseArrayList';
+    sceneGeometry.meta.estimateSceneParams.search.ellipseFitRMSE = ellipseFitRMSE(ellipseArrayList);
+
 end % Check for zero requested searches
 
 
