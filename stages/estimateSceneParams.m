@@ -265,13 +265,25 @@ if p.Results.verbose
     fprintf('.\n');
 end
 
-% If zero searches have been requested, then set the solution parameters to
-% be the midpoint of the plausible bounds.
+% If zero searches have been requested, then perform a fully bounded search
+% with the solution parameters set to be the midpoint of the plausible bounds.
 if p.Results.nBADSsearches==0
-    allSceneParamResults = [];
-    sceneParamResultsMedian = (p.Results.sceneParamsLBp+p.Results.sceneParamsUBp)./2;
-    sceneParamResultsSD=[];
-    allFvals = [];
+    sceneParams = (p.Results.sceneParamsLBp+p.Results.sceneParamsUBp)./2;
+        sceneGeometry = ...
+            performSceneSearch(initialSceneGeometry, ...
+            ellipses(ellipseArrayList,:), ...
+            sceneParams, ...
+            sceneParams, ...
+            sceneParams, ...
+            sceneParams, ...
+            p.Results.eyePoseLB, ...
+            p.Results.eyePoseUB);
+        
+        % Store the search results in the meta field
+        tmpHold=sceneGeometry.meta.estimateSceneParams.search;
+        sceneGeometry.meta.estimateSceneParams = p.Results;
+        sceneGeometry.meta.estimateSceneParams.search = tmpHold;
+
 else
     % Loop over the requested number of BADS searches
     searchResults = {};
@@ -299,41 +311,24 @@ else
         fprintf('\n');
     end
     
-    % Obtain the first principal component of the search parameters
+    % Obtain the "best" search result, which is defined as the smallest
+    % product of the rankings of the three types of error
     allFvals = cellfun(@(x) x.meta.estimateSceneParams.search.fVal,searchResults);
-    allSceneParamResults = cellfun(@(thisSceneGeometry) thisSceneGeometry.meta.estimateSceneParams.search.x,searchResults,'UniformOutput',false);
-    for dim = 1:length(p.Results.sceneParamsLB)
-        vals = cellfun(@(x) x(dim), allSceneParamResults);
-        sceneParamResultsMedian(dim)=median(vals.*(1./allFvals))/(median(1./allFvals));
-        sceneParamResultsSD(dim)=std(vals,1./allFvals);
-    end
-    sceneParamResultsMedian=sceneParamResultsMedian';
-    sceneParamResultsSD=sceneParamResultsSD';
+    medianCenterErrorBySearch = cellfun(@(x) sqrt(nansum((x.meta.estimateSceneParams.search.centerDistanceErrorByEllipse).^2)),searchResults);
+    medianShapeErrorBySearch = cellfun(@(x) sqrt(nansum((x.meta.estimateSceneParams.search.shapeErrorByEllipse).^2)),searchResults);
+    medianAreaErrorBySearch = cellfun(@(x) sqrt(nansum((x.meta.estimateSceneParams.search.areaErrorByEllipse).^2)),searchResults);
+    [~,centerErrorRank]  = ismember(medianCenterErrorBySearch,unique(medianCenterErrorBySearch));
+    [~,shapeErrorRank]  = ismember(medianShapeErrorBySearch,unique(medianShapeErrorBySearch));
+    [~,areaErrorRank]  = ismember(medianAreaErrorBySearch,unique(medianAreaErrorBySearch));
+    rankProduct = centerErrorRank.*shapeErrorRank.*areaErrorRank;
+    [~,bestSearchIdx] = min(rankProduct);
+    sceneGeometry = searchResults{bestSearchIdx};
+
+    % Store the search results in the meta field
+    sceneGeometry.meta.estimateSceneParams = p.Results;
+    sceneGeometry.meta.estimateSceneParams.allSearches = searchResults;
+    sceneGeometry.meta.estimateSceneParams.bestSearchIdx = bestSearchIdx;
 end % Check for zero requested searches
-
-% Perform the search using the mean parameters as absolute bounds to obtain
-% the error values
-sceneGeometry = ...
-    performSceneSearch(initialSceneGeometry, ...
-    ellipses(ellipseArrayList,:), ...
-    sceneParamResultsMedian, ...
-    sceneParamResultsMedian, ...
-    sceneParamResultsMedian, ...
-    sceneParamResultsMedian, ...
-    p.Results.eyePoseLB, ...
-    p.Results.eyePoseUB);
-
-% Add additional search and meta field info to sceneGeometry
-tmpHold=sceneGeometry.meta.estimateSceneParams.search;
-sceneGeometry.meta.estimateSceneParams = p.Results;
-sceneGeometry.meta.estimateSceneParams.search = tmpHold;
-sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList = ellipseArrayList';
-sceneGeometry.meta.estimateSceneParams.search.ellipseRMSE = ellipseFitRMSE(ellipseArrayList);
-sceneGeometry.meta.estimateSceneParams.search.allFvals = allFvals;
-sceneGeometry.meta.estimateSceneParams.search.allSceneParamResults = allSceneParamResults;
-sceneGeometry.meta.estimateSceneParams.search.allSearchResults = searchResults;
-sceneGeometry.meta.estimateSceneParams.search.sceneParamResultsMedian = sceneParamResultsMedian;
-sceneGeometry.meta.estimateSceneParams.search.sceneParamResultsSD = sceneParamResultsSD;
 
 
 %% Save the sceneGeometry file
