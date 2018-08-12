@@ -10,11 +10,10 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
 %   vector and scaling values for the azimuthal and elevational eye
 %   rotation centers. The search attempts to minimize the error associated
 %   with the prediction of the shape of ellipses in the image plane while
-%   minimizing the error in prediction of the center of those ellipses in
-%   the image plane.
+%   minimizing the error in prediction of the center of those ellipses.
 %
-%   The search is conducted over 6 parameters, corresponding to camera
-%   rotation about the Z (depth) axis, three parameters of camera
+%   The search is conducted over 6 parameters, corresponding to torsional
+%   camera rotation about the Z (depth) axis, three parameters of camera
 %   translation (horizontal, vertical, depth), a parameter for joint
 %   scaling of the centers of rotation of the eye (azimuthal and
 %   elevational rotations), and then a parameter for differential scaling
@@ -30,9 +29,6 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
 %                           pupilData file is loaded and concatenated.
 %   sceneGeometryFileName - Full path to the file in which the
 %                           sceneGeometry data should be saved
-%   vitualImageFuncDir    - Full path to the directory that should be
-%                           created to hold the ray tracing function for
-%                           the optical system in sceneGeometry.
 %
 % Optional key/value pairs (display and I/O):
 %  'verbose'              - Logical. Default false.
@@ -44,12 +40,12 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
 %                           in which to save a montage of fit video frames
 %                           to illustrate the ellipses used to guide the
 %                           search.
-%  'pupilFileToFitVideoSuffixSwitch' - Cell array that provides the suffix
+%  'pupilFileToVideoSuffixSwitch' - Cell array that provides the suffix
 %                           of the pupilData file and the suffix of the
 %                           corresponding fit video file. This way, the fit
 %                           video corresponding to the passed pupilData
 %                           file can be found and used to create the
-%                           ellipse array montage plot.  
+%                           ellipse array montage plot.
 %
 % Optional key/value pairs (flow control)
 %  'useParallel'          - If set to true, use the MATLAB parallel pool
@@ -283,6 +279,7 @@ if p.Results.nBADSsearches==0
         tmpHold=sceneGeometry.meta.estimateSceneParams.search;
         sceneGeometry.meta.estimateSceneParams = p.Results;
         sceneGeometry.meta.estimateSceneParams.search = tmpHold;
+        sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList = ellipseArrayList;
         sceneGeometry.meta.estimateSceneParams.search.ellipseFitRMSE = ellipseFitRMSE;
 
 else
@@ -329,6 +326,7 @@ else
     sceneGeometry.meta.estimateSceneParams.allSearches = searchResults;
     sceneGeometry.meta.estimateSceneParams.bestSearchIdx = bestSearchIdx;
     sceneGeometry.meta.estimateSceneParams.search = searchResults{bestSearchIdx};
+    sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList = ellipseArrayList;
     sceneGeometry.meta.estimateSceneParams.search.ellipseFitRMSE = ellipseFitRMSE;
 end % Check for zero requested searches
 
