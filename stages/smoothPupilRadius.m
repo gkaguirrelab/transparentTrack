@@ -237,12 +237,16 @@ parfor (ii = 1:nFrames, nWorkers)
         % Get the dataVector, restricted to the window range
         dataVector=squeeze(pupilData.(fitLabel).eyePoses.values(rangeLowSignal:rangeHiSignal,radiusIdx))';
         
-        % Build the precisionVector as the inverse of the measurement SD on
-        % each frame.
+        % The precisionVector is based upon the measurement of standard
+        % deviation of eyePose values across pupil perimeter splits
         precisionVector = squeeze(pupilData.(fitLabel).eyePoses.splitsSD(:,radiusIdx))';
-        precisionVector = precisionVector+realmin;
-        precisionVector = precisionVector.^(-1);
         precisionVector = precisionVector(rangeLowSignal:rangeHiSignal);
+        
+        % Occasionally bad fits can yield an SD value of zero. Remove these
+        precisionVector(precisionVector==0)=nan;
+
+        % Take the inverse of SD.
+        precisionVector = precisionVector.^(-1);
         
         % Identify any time points within the window for which the intial
         % fit RMSE was greater than threshold. We use the initial fit (as
