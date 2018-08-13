@@ -328,7 +328,7 @@ else
     sceneGeometry.meta.estimateSceneParams = p.Results;
     sceneGeometry.meta.estimateSceneParams.allSearches = searchResults;
     sceneGeometry.meta.estimateSceneParams.bestSearchIdx = bestSearchIdx;
-    sceneGeometry.meta.estimateSceneParams.search = searchResults{bestSearchIdx};
+    sceneGeometry.meta.estimateSceneParams.search = searchResults{bestSearchIdx}.meta.estimateSceneParams.search;
     sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList = ellipseArrayList';
     sceneGeometry.meta.estimateSceneParams.search.ellipseFitRMSE = ellipseFitRMSE(ellipseArrayList);
 
