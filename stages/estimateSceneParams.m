@@ -345,6 +345,9 @@ if ~isempty(sceneGeometryFileName)
     diagnosticDirName = fullfile(sceneGeomPath,[sceneGeomName '_diagnostics']);
     if ~exist(diagnosticDirName, 'dir')
         mkdir(diagnosticDirName);
+    else
+        rmdir(diagnosticDirName, 's');
+        mkdir(diagnosticDirName);
     end
     
     % Save the ellipse fit montage
