@@ -445,6 +445,10 @@ function sceneGeometry = performSceneSearch(initialSceneGeometry, ellipses, LB, 
 %   accepts row vectors, so there is much transposing ahead.
 %
 
+% Force the plausible bounds to be within the full bounds
+UBp=min([UB';UBp'])';
+LBp=max([LB';LBp'])';
+
 % Pick a random x0 from within the plausible bounds
 x0 = LBp + (UBp-LBp).*rand(numel(LBp),1);
 
