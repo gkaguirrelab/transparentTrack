@@ -32,14 +32,6 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
 %
 % Optional key/value pairs (display and I/O):
 %  'verbose'              - Logical. Default false.
-%  'sceneDiagnosticPlotFileName' - Full path (including suffix) to the
-%                           location where a diagnostic plot of the
-%                           sceneGeometry calculation is to be saved. If
-%                           left empty, then no plot will be saved.
-%  'ellipseArrayMontageFileName' - Full path (including suffix) to the file
-%                           in which to save a montage of fit video frames
-%                           to illustrate the ellipses used to guide the
-%                           search.
 %  'pupilFileToVideoSuffixSwitch' - Cell array that provides the suffix
 %                           of the pupilData file and the suffix of the
 %                           corresponding fit video file. This way, the fit
@@ -141,8 +133,6 @@ p.addRequired('sceneGeometryFileName',@ischar);
 
 % Optional display and I/O params
 p.addParameter('verbose',false,@islogical);
-p.addParameter('sceneDiagnosticPlotFileName', '', @(x)(isempty(x) || ischar(x)));
-p.addParameter('ellipseArrayMontageFileName', '', @(x)(isempty(x) || ischar(x)));
 p.addParameter('pupilFileToVideoSuffixSwitch',{'_pupil.mat','_gray.avi'},@iscell);
 
 % Optional flow control params
