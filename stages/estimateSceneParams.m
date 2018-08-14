@@ -167,6 +167,7 @@ p.addParameter('ellipseArrayList',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nBinsPerDimension',4,@isnumeric);
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
 p.addParameter('nBADSsearches',10,@isnumeric);
+p.addParameter('nDiagnosticPlots',10,@isnumeric);
 
 % parse
 p.parse(pupilFileName, sceneGeometryFileName, varargin{:})
@@ -265,7 +266,8 @@ if p.Results.verbose
 end
 
 % If zero searches have been requested, then perform a fully bounded search
-% with the solution parameters set to be the midpoint of the plausible bounds.
+% with the solution parameters set to be the midpoint of the plausible
+% bounds.
 if p.Results.nBADSsearches==0
     sceneParams = (p.Results.sceneParamsLBp+p.Results.sceneParamsUBp)./2;
         sceneGeometry = ...
@@ -284,6 +286,7 @@ if p.Results.nBADSsearches==0
         sceneGeometry.meta.estimateSceneParams.search = tmpHold;
         sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList = ellipseArrayList';
         sceneGeometry.meta.estimateSceneParams.search.ellipseFitRMSE = ellipseFitRMSE(ellipseArrayList);
+        rankOrder = 1;
 
 else
     % Loop over the requested number of BADS searches
@@ -300,6 +303,10 @@ else
             p.Results.eyePoseLB, ...
             p.Results.eyePoseUB);
         
+        % Save the ellipse details in the search results
+        searchResults{ss}.meta.estimateSceneParams.search.ellipseArrayList = ellipseArrayList';
+        searchResults{ss}.meta.estimateSceneParams.search.ellipseFitRMSE = ellipseFitRMSE(ellipseArrayList);
+
         % update progress
         if p.Results.verbose
             for pp=1:floor(50/p.Results.nBADSsearches(1))
@@ -321,6 +328,7 @@ else
     [~,shapeErrorRank]  = ismember(medianShapeErrorBySearch,unique(medianShapeErrorBySearch));
     [~,areaErrorRank]  = ismember(medianAreaErrorBySearch,unique(medianAreaErrorBySearch));
     rankProduct = centerErrorRank.*shapeErrorRank.*areaErrorRank;
+    [~,rankOrder]=sort(rankProduct);
     [~,bestSearchIdx] = min(rankProduct);
     sceneGeometry = searchResults{bestSearchIdx};
 
@@ -329,8 +337,6 @@ else
     sceneGeometry.meta.estimateSceneParams.allSearches = searchResults;
     sceneGeometry.meta.estimateSceneParams.bestSearchIdx = bestSearchIdx;
     sceneGeometry.meta.estimateSceneParams.search = searchResults{bestSearchIdx}.meta.estimateSceneParams.search;
-    sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList = ellipseArrayList';
-    sceneGeometry.meta.estimateSceneParams.search.ellipseFitRMSE = ellipseFitRMSE(ellipseArrayList);
 
 end % Check for zero requested searches
 
@@ -340,36 +346,59 @@ if ~isempty(sceneGeometryFileName)
     save(sceneGeometryFileName,'sceneGeometry');
 end
 
-
-%% Create a sceneGeometry plot
-if ~isempty(p.Results.sceneDiagnosticPlotFileName)
+%% Save sceneGeometry diagnostics
+if ~isempty(sceneGeometryFileName)
     if p.Results.verbose
-        fprintf('Creating a sceneGeometry diagnostic plot.\n');
+        fprintf('Creating diagnostic plots.\n');
     end
-    saveSceneDiagnosticPlot(...
-        Xedges, Yedges,...
-        p.Results.eyePoseLB, ...
-        p.Results.eyePoseUB, ...
-        sceneGeometry,...
-        p.Results.sceneDiagnosticPlotFileName)
-end
-
-
-%% Create an ellipse fit montage
-if ~isempty(p.Results.ellipseArrayMontageFileName) 
-    if p.Results.verbose
-        fprintf('Creating an ellipse fit montage.\n');
+    [sceneGeomPath,sceneGeomName,] = fileparts(sceneGeometryFileName);
+    diagnosticDirName = fullfile(sceneGeomPath,[sceneGeomName '_diagnostics']);
+    if ~exist(diagnosticDirName, 'dir')
+        mkdir(diagnosticDirName);
     end
-    % Assemble the name of the fit video file
-    fitVideoName = strrep(pupilFileName,p.Results.pupilFileToVideoSuffixSwitch{1},p.Results.pupilFileToVideoSuffixSwitch{2});
+    
+    % Save the ellipse fit montage
+    montageFileName = fullfile(diagnosticDirName,[sceneGeomName '_sceneDiagnosticMontage_ellipses.png']);
+	fitVideoName = strrep(pupilFileName,p.Results.pupilFileToVideoSuffixSwitch{1},p.Results.pupilFileToVideoSuffixSwitch{2});    
     saveEllipseArrayMontage(sceneGeometry, ...
         ellipseArrayList, ...
         ellipses, ...
         fitVideoName, ...
-        p.Results.ellipseArrayMontageFileName ...
+        montageFileName ...
         );
-end
+        
+    % Create a set of plots for the n best solutions
+    for ii=1:min([length(rankOrder),p.Results.nDiagnosticPlots])
 
+        % Assemble the candidate sceneGeometry
+        sceneDiagnosticPlotFileName = fullfile(diagnosticDirName,[sceneGeomName '_Rank' num2str(ii) '_Search' num2str(rankOrder(ii)) '_sceneDiagnosticPlot.pdf']);        
+        tmpSceneGeometry = searchResults{rankOrder(ii)};
+        tmpHold = tmpSceneGeometry.meta.estimateSceneParams.search;
+        tmpSceneGeometry.meta.estimateSceneParams = sceneGeometry.meta.estimateSceneParams;
+        tmpSceneGeometry.meta.estimateSceneParams.search = tmpHold;
+        tmpSceneGeometry.meta.estimateSceneParams.search.ellipseArrayList = ellipseArrayList';
+        tmpSceneGeometry.meta.estimateSceneParams.search.ellipseFitRMSE = ellipseFitRMSE(ellipseArrayList);
+
+        
+        % Create a sceneGeometry plot
+        saveSceneDiagnosticPlot(...
+            Xedges, Yedges,...
+            p.Results.eyePoseLB, ...
+            p.Results.eyePoseUB, ...
+            tmpSceneGeometry,...
+            sceneDiagnosticPlotFileName)
+        
+        % Create an eye model montage
+        montageFileName = fullfile(diagnosticDirName,[sceneGeomName '_Rank' num2str(ii) '_Search' num2str(rankOrder(ii)) '_sceneDiagnosticMontage_eyeModel.png']);
+        saveEyeModelMontage(tmpSceneGeometry, ...
+            ellipseArrayList, ...
+            ellipses, ...
+            fitVideoName, ...
+            montageFileName ...
+            );
+        
+    end
+end
 
 
 %% alert the user that we are done with the routine
@@ -758,10 +787,9 @@ close(figHandle)
 end % saveSceneDiagnosticPlot
 
 
-function [] = saveEllipseArrayMontage(sceneGeometry, ellipseArrayList, allEllipses, fitVideoName, ellipseArrayMontageFileName)
-% Saves two diagnostic images. The first is a montage of the video frames
-% illustrating the ellipses used for the sceneGeometry estimation. The
-% second is the same montage, with the model eye superimposed.
+function [] = saveEllipseArrayMontage(sceneGeometry, ellipseArrayList, allEllipses, fitVideoName, montageFileName)
+% Saves a montage of the video frames illustrating the ellipses used for
+% the sceneGeometry estimation.
 
 % Sort the ellipse array list so that the frames appear in temporal order
 ellipseArrayList = sort(ellipseArrayList);
@@ -780,41 +808,38 @@ if exist(fitVideoName,'file') && ~isempty(ellipseArrayList)
     % Define a variable to hold the selected frames
     framesToMontage = zeros(videoSizeY,videoSizeX,3,length(ellipseArrayList),'uint8');
 
-    %% Figure 1 -- montage only
-
     % Define a figure
     hFig = figure( 'Visible', 'off');
     hAxes = gca();
     
-    % Loop through the frames and keep the matching ones 
-    for ii = 1:min([nFrames,max(ellipseArrayList)])
+    % Loop through the frames 
+    for ii = 1:length(ellipseArrayList)
+        idx = ellipseArrayList(ii);
+        videoInObj.CurrentTime = (idx - 1)/(videoInObj.FrameRate);
         sourceFrame = readFrame(videoInObj);
-        idx = ellipseArrayList==ii;
-        if sum(idx)
-            sourceFrame = rgb2gray (sourceFrame);
-            imshow(sourceFrame,'Border', 'tight','Parent',hAxes);
-            hold on
-            % Add the ellipse fit
-            pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(allEllipses(ii,:)));
-            fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
-            fimplicit(fh,[1, videoSizeX, 1, videoSizeY],'Color', 'g','LineWidth',1);
-            set(gca,'position',[0 0 1 1],'units','normalized')
-            axis off;
-            % Add blue grid lines
-            lh = plot([1 videoSizeX],[round(videoSizeY/2) round(videoSizeY/2)],'-b','LineWidth',2);
-            lh.Color=[0,0,1,0.5];
-            lh = plot([round(videoSizeX/2) round(videoSizeX/2)],[1 videoSizeY],'-b','LineWidth',2);
-            lh.Color=[0,0,1,0.5];
-            % Get the frame
-            drawnow;
-            thisFrame=getframe(hFig);
-            % Add a text label for the frame number
-            frameLabel = sprintf('frame: %d',ii);
-            thisFrame.cdata = insertText(thisFrame.cdata,[20 20],frameLabel,'FontSize',30);
-            % Store the frame
-            framesToMontage(:,:,:,idx) = thisFrame.cdata;
-            % hold off
-        end
+        sourceFrame = rgb2gray (sourceFrame);
+        imshow(sourceFrame,'Border', 'tight','Parent',hAxes);
+        hold on
+        % Add the ellipse fit
+        pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(allEllipses(idx,:)));
+        fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
+        fimplicit(fh,[1, videoSizeX, 1, videoSizeY],'Color', 'g','LineWidth',1);
+        set(gca,'position',[0 0 1 1],'units','normalized')
+        axis off;
+        % Add blue grid lines
+        lh = plot([1 videoSizeX],[round(videoSizeY/2) round(videoSizeY/2)],'-b','LineWidth',2);
+        lh.Color=[0,0,1,0.5];
+        lh = plot([round(videoSizeX/2) round(videoSizeX/2)],[1 videoSizeY],'-b','LineWidth',2);
+        lh.Color=[0,0,1,0.5];
+        % Get the frame
+        drawnow;
+        thisFrame=getframe(hFig);
+        % Add a text label for the frame number
+        frameLabel = sprintf('frame: %d',idx);
+        thisFrame.cdata = insertText(thisFrame.cdata,[20 20],frameLabel,'FontSize',30);
+        % Store the frame
+        framesToMontage(:,:,:,ii) = thisFrame.cdata;
+        % hold off
     end
     
     % Close the temporary figure
@@ -844,62 +869,80 @@ if exist(fitVideoName,'file') && ~isempty(ellipseArrayList)
     warning(warningState);
 
     % Save the montage
-    [tmpA, tmpB, tmpC] = fileparts(ellipseArrayMontageFileName);
-    saveFileName = fullfile(tmpA,[tmpB '_ellipses' tmpC]);
-    saveas(figHandle,saveFileName)
+    saveas(figHandle,montageFileName)
         
     % Close the figure
     close(figHandle)
 
     % Rotate the figure by 90 degrees clockwise, because I can't get the
     % MATLAB plotting routines to output the image how I want it.
-    A = imread(saveFileName);
+    A = imread(montageFileName);
     A = rot90(A,3);
-    imwrite(A,saveFileName);
+    imwrite(A,montageFileName);
     
     % close the video object
     clear videoInObj
 
-    %% Figure 2 -- eye model
     
+end % There is a file to plot
+
+end % saveEllipseArrayMontage
+
+
+
+function [] = saveEyeModelMontage(sceneGeometry, ellipseArrayList, allEllipses, fitVideoName, montageFileName)
+% Saves a montage with the model eye superimposed.
+
+% Sort the ellipse array list so that the frames appear in temporal order
+ellipseArrayList = sort(ellipseArrayList);
+
+% Check that the file exists
+if exist(fitVideoName,'file') && ~isempty(ellipseArrayList)
+
     % Open the video object
     videoInObj = videoIOWrapper(fitVideoName,'ioAction','read');
+    
+    % Get the video properties
+    videoSizeX = videoInObj.Width;
+    videoSizeY = videoInObj.Height;
+    nFrames = floor(videoInObj.Duration*videoInObj.FrameRate);
+    
+    % Define a variable to hold the selected frames
+    framesToMontage = zeros(videoSizeY,videoSizeX,3,length(ellipseArrayList),'uint8');
 
     % Define a figure
     hFig = figure( 'Visible', 'off');
     hAxes = gca();
     
-    % Loop through the frames and keep the matching ones 
-    for ii = 1:min([nFrames,max(ellipseArrayList)])
+    % Loop through the frames and keep the matching ones
+    for ii = 1:length(ellipseArrayList)
+        idx = ellipseArrayList(ii);
+        videoInObj.CurrentTime = (idx - 1)/(videoInObj.FrameRate);
         sourceFrame = readFrame(videoInObj);
-        idx = ellipseArrayList==ii;
-        if sum(idx)
-            sourceFrame = rgb2gray (sourceFrame);
-            imshow(sourceFrame,'Border', 'tight','Parent',hAxes);
-            hold on
-            axis off;
-            % Add the rendered eye model
-            eyePose = sceneGeometry.meta.estimateSceneParams.search.recoveredEyePoses(idx,:);
-            if ~any(isnan(eyePose))
-                renderEyePose(eyePose, sceneGeometry, 'newFigure', false, ...
-                    'modelEyeLabelNames', {'retina' 'irisPerimeter' 'pupilEllipse' 'cornea'}, ...
-                    'modelEyePlotColors', {'.w' '.b' '-g' '.y'}, ...
-                    'modelEyeSymbolSizeScaler',1.5,...
-                    'modelEyeAlpha', 0.25);
-            end
-            % Get the frame
-            drawnow;
-            thisFrame=getframe(hFig);
-            % Add a text label for the frame number
-            frameLabel = sprintf('frame: %d',ii);
-            thisFrame.cdata = insertText(thisFrame.cdata,[20 20],frameLabel,'FontSize',30);
-            % Store the frame
-            framesToMontage(:,:,:,idx) = thisFrame.cdata;
-            % hold off
-            hold off
+        imshow(sourceFrame,'Border', 'tight','Parent',hAxes);
+        hold on
+        axis off;
+        % Add the rendered eye model
+        eyePose = sceneGeometry.meta.estimateSceneParams.search.recoveredEyePoses(ii,:);
+        if ~any(isnan(eyePose))
+            renderEyePose(eyePose, sceneGeometry, 'newFigure', false, ...
+                'modelEyeLabelNames', {'retina' 'irisPerimeter' 'pupilEllipse' 'cornea'}, ...
+                'modelEyePlotColors', {'.w' '.b' '-g' '.y'}, ...
+                'modelEyeSymbolSizeScaler',1.5,...
+                'modelEyeAlpha', 0.25);
         end
+        % Get the frame
+        drawnow;
+        thisFrame=getframe(hFig);
+        % Add a text label for the frame number
+        frameLabel = sprintf('frame: %d',idx);
+        thisFrame.cdata = insertText(thisFrame.cdata,[20 20],frameLabel,'FontSize',30);
+        % Store the frame
+        framesToMontage(:,:,:,ii) = thisFrame.cdata;
+        % hold off
+        hold off
     end
-    
+
     % Close the temporary figure
     close(hFig);
     
@@ -927,22 +970,20 @@ if exist(fitVideoName,'file') && ~isempty(ellipseArrayList)
     warning(warningState);
 
     % Save the montage
-    [tmpA, tmpB, tmpC] = fileparts(ellipseArrayMontageFileName);
-    saveFileName = fullfile(tmpA,[tmpB '_eyeModel' tmpC]);
-    saveas(figHandle,saveFileName)
+    saveas(figHandle,montageFileName)
         
     % Close the figure
     close(figHandle)
 
     % Rotate the figure by 90 degrees clockwise, because I can't get the
     % MATLAB plotting routines to output the image how I want it.
-    A = imread(saveFileName);
+    A = imread(montageFileName);
     A = rot90(A,3);
-    imwrite(A,saveFileName);
+    imwrite(A,montageFileName);
     
     % close the video object
     clear videoInObj
     
 end % There is a file to plot
 
-end % saveEllipseArrayMontage
+end % saveEyeModelMontage
