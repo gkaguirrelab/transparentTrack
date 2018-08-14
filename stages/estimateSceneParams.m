@@ -310,14 +310,15 @@ else
     end
     
     % Obtain the "best" search result, which is defined as the smallest
-    % product of the rankings of the three types of error
+    % product of the rankings of the three types of error (downweighting
+    % the area error to have half the effect of shape and center)
     medianCenterErrorBySearch = cellfun(@(x) sqrt(nansum((x.meta.estimateSceneParams.search.centerDistanceErrorByEllipse).^2)),searchResults);
     medianShapeErrorBySearch = cellfun(@(x) sqrt(nansum((x.meta.estimateSceneParams.search.shapeErrorByEllipse).^2)),searchResults);
     medianAreaErrorBySearch = cellfun(@(x) sqrt(nansum((x.meta.estimateSceneParams.search.areaErrorByEllipse).^2)),searchResults);
     [~,centerErrorRank]  = ismember(medianCenterErrorBySearch,unique(medianCenterErrorBySearch));
     [~,shapeErrorRank]  = ismember(medianShapeErrorBySearch,unique(medianShapeErrorBySearch));
     [~,areaErrorRank]  = ismember(medianAreaErrorBySearch,unique(medianAreaErrorBySearch));
-    rankProduct = centerErrorRank.*shapeErrorRank.*areaErrorRank;
+    rankProduct = centerErrorRank.*shapeErrorRank.*(areaErrorRank./2);
     [~,rankOrder]=sort(rankProduct);
     [~,bestSearchIdx] = min(rankProduct);
     sceneGeometry = searchResults{bestSearchIdx};
