@@ -160,7 +160,7 @@ while notDoneFlag
             text_str = 'clockwise torsion';
             x(1)=x(1)+1;
         case 13
-            x = input('Enter values in square brackets, separated by semi-colons [tor;x;y;z]:');
+            x(1:4) = input('Enter values in square brackets, separated by semi-colons [tor;x;y;z]:');
             text_str = 'manual param entry';
         case 27
             notDoneFlag = false;
