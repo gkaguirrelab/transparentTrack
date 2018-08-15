@@ -277,6 +277,8 @@ if p.Results.nBADSsearches==0
         sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList = ellipseArrayList';
         sceneGeometry.meta.estimateSceneParams.search.ellipseFitRMSE = ellipseFitRMSE(ellipseArrayList);
         rankOrder = 1;
+        
+        searchResults{1}=sceneGeometry;
 
 else
     % Loop over the requested number of BADS searches
