@@ -353,11 +353,11 @@ if ~isempty(sceneGeometryFileName)
     
     % Save the ellipse fit montage
     montageFileName = fullfile(diagnosticDirName,[sceneGeomName '_sceneDiagnosticMontage_ellipses.png']);
-	fitVideoName = strrep(pupilFileName,p.Results.pupilFileToVideoSuffixSwitch{1},p.Results.pupilFileToVideoSuffixSwitch{2});    
+	grayVideoName = strrep(pupilFileName,p.Results.pupilFileToVideoSuffixSwitch{1},p.Results.pupilFileToVideoSuffixSwitch{2});    
     saveEllipseArrayMontage(sceneGeometry, ...
         ellipseArrayList, ...
         ellipses, ...
-        fitVideoName, ...
+        grayVideoName, ...
         montageFileName ...
         );
         
@@ -386,7 +386,7 @@ if ~isempty(sceneGeometryFileName)
         saveEyeModelMontage(tmpSceneGeometry, ...
             ellipseArrayList, ...
             ellipses, ...
-            fitVideoName, ...
+            grayVideoName, ...
             montageFileName ...
             );
         
@@ -784,7 +784,7 @@ close(figHandle)
 end % saveSceneDiagnosticPlot
 
 
-function [] = saveEllipseArrayMontage(sceneGeometry, ellipseArrayList, allEllipses, fitVideoName, montageFileName)
+function [] = saveEllipseArrayMontage(sceneGeometry, ellipseArrayList, allEllipses, grayVideoName, montageFileName)
 % Saves a montage of the video frames illustrating the ellipses used for
 % the sceneGeometry estimation.
 
@@ -792,10 +792,10 @@ function [] = saveEllipseArrayMontage(sceneGeometry, ellipseArrayList, allEllips
 ellipseArrayList = sort(ellipseArrayList);
 
 % Check that the file exists
-if exist(fitVideoName,'file') && ~isempty(ellipseArrayList)
+if exist(grayVideoName,'file') && ~isempty(ellipseArrayList)
 
     % Open the video object
-    videoInObj = videoIOWrapper(fitVideoName,'ioAction','read');
+    videoInObj = videoIOWrapper(grayVideoName,'ioAction','read');
     
     % Get the video properties
     videoSizeX = videoInObj.Width;
@@ -887,17 +887,17 @@ end % saveEllipseArrayMontage
 
 
 
-function [] = saveEyeModelMontage(sceneGeometry, ellipseArrayList, allEllipses, fitVideoName, montageFileName)
+function [] = saveEyeModelMontage(sceneGeometry, ellipseArrayList, allEllipses, grayVideoName, montageFileName)
 % Saves a montage with the model eye superimposed.
 
 % Sort the ellipse array list so that the frames appear in temporal order
 ellipseArrayList = sort(ellipseArrayList);
 
 % Check that the file exists
-if exist(fitVideoName,'file') && ~isempty(ellipseArrayList)
+if exist(grayVideoName,'file') && ~isempty(ellipseArrayList)
 
     % Open the video object
-    videoInObj = videoIOWrapper(fitVideoName,'ioAction','read');
+    videoInObj = videoIOWrapper(grayVideoName,'ioAction','read');
     
     % Get the video properties
     videoSizeX = videoInObj.Width;
