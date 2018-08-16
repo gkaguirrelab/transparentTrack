@@ -32,7 +32,7 @@ sceneGeometry=dataLoad.sceneGeometry;
 clear dataLoad
 
 % Identify the frames of the ellipse array
-ellipseArrayList = sceneGeometry.meta.estimateSceneParams.ellipseArrayList;
+ellipseArrayList = sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList;
 
 % Load the pupil perimeter data. It will be a structure variable
 % "perimeter", with the fields .data and .meta
