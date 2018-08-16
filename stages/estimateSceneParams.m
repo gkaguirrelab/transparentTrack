@@ -556,6 +556,10 @@ function [] = saveSceneDiagnosticPlot(Xedges, Yedges, eyePoseLB, eyePoseUB, scen
 %   none
 %
 
+% Silence some errors that can arise during the forward projection
+warningState = warning;
+warning('off','pupilProjection_fwd:ellipseFitFailed');
+
 % Obtain the set of ellipse parameters from the sceneGeometry structure
 ellipses = sceneGeometry.meta.estimateSceneParams.search.ellipses;
 
@@ -783,6 +787,9 @@ legend({'0',num2str(sceneGeometry.constraintTolerance/2), ['=> ' num2str(sceneGe
 saveas(figHandle,sceneDiagnosticPlotFileName)
 close(figHandle)
 
+% Restore the warning state
+warning(warningState);
+
 end % saveSceneDiagnosticPlot
 
 
@@ -892,6 +899,10 @@ end % saveEllipseArrayMontage
 function [] = saveEyeModelMontage(sceneGeometry, ellipseArrayList, allEllipses, grayVideoName, montageFileName)
 % Saves a montage with the model eye superimposed.
 
+% Silence some errors that can arise during the forward projection
+warningState = warning;
+warning('off','pupilProjection_fwd:ellipseFitFailed');
+
 % Sort the ellipse array list so that the frames appear in temporal order
 ellipseArrayList = sort(ellipseArrayList);
 
@@ -984,5 +995,8 @@ if exist(grayVideoName,'file') && ~isempty(ellipseArrayList)
     clear videoInObj
     
 end % There is a file to plot
+
+% Restore the warning state
+warning(warningState);
 
 end % saveEyeModelMontage
