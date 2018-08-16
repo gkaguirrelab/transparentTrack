@@ -367,13 +367,7 @@ if ~isempty(sceneGeometryFileName)
     parfor (ii = 1:min([length(rankOrder),p.Results.nDiagnosticPlots]))
         % Assemble the candidate sceneGeometry
         sceneDiagnosticPlotFileName = fullfile(diagnosticDirName,[sceneGeomName '_Rank' num2str(ii) '_Search' num2str(rankOrder(ii)) '_sceneDiagnosticPlot.pdf']);
-        tmpSceneGeometry = searchResults{rankOrder(ii)};
-        tmpHold = tmpSceneGeometry.meta.estimateSceneParams.search;
-        tmpSceneGeometry.meta.estimateSceneParams = sceneGeometry.meta.estimateSceneParams;
-        tmpSceneGeometry.meta.estimateSceneParams.search = tmpHold;
-        tmpSceneGeometry.meta.estimateSceneParams.search.ellipseArrayList = ellipseArrayList';
-        tmpSceneGeometry.meta.estimateSceneParams.search.ellipseFitRMSE = ellipseFitRMSE(ellipseArrayList);
-        
+        tmpSceneGeometry = searchResults{rankOrder(ii)};        
         
         % Create a sceneGeometry plot
         saveSceneDiagnosticPlot(...
