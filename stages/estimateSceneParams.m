@@ -163,7 +163,7 @@ p.addParameter('nBinsPerDimension',4,@isnumeric);
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
 p.addParameter('nBADSsearches',10,@isnumeric);
 p.addParameter('nDiagnosticPlots',5,@isnumeric);
-p.addParameter('rankScaling',[3 2 1],@isnumeric);
+p.addParameter('rankScaling',[4 2 1],@isnumeric);
 
 % parse
 p.parse(pupilFileName, sceneGeometryFileName, varargin{:})
