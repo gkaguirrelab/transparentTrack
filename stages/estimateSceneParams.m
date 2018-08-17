@@ -93,6 +93,11 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
 %                           a value of zero is passed, then a sceneGeometry
 %                           file and diagnostic plots are created using the
 %                           midpoint of the passed bounds.
+%  'nDiagnosticPlots'     - Scalar. Plots the n best solutions. If set to
+%                           zero, no plots are saved.
+%  'rankScaling'          - The relative influence of matching ellipse
+%                           center, shape, and area (respectively) in
+%                           judging the best solution.
 %
 % Outputs
 %	sceneGeometry         - A structure that contains the components of the
@@ -157,7 +162,8 @@ p.addParameter('ellipseArrayList',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nBinsPerDimension',4,@isnumeric);
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
 p.addParameter('nBADSsearches',10,@isnumeric);
-p.addParameter('nDiagnosticPlots',10,@isnumeric);
+p.addParameter('nDiagnosticPlots',5,@isnumeric);
+p.addParameter('rankScaling',[3 2 1],@isnumeric);
 
 % parse
 p.parse(pupilFileName, sceneGeometryFileName, varargin{:})
@@ -320,7 +326,9 @@ else
     [~,centerErrorRank]  = ismember(medianCenterErrorBySearch,unique(medianCenterErrorBySearch));
     [~,shapeErrorRank]  = ismember(medianShapeErrorBySearch,unique(medianShapeErrorBySearch));
     [~,areaErrorRank]  = ismember(medianAreaErrorBySearch,unique(medianAreaErrorBySearch));
-    rankProduct = centerErrorRank.*shapeErrorRank.*(areaErrorRank./2);
+    rankProduct = (centerErrorRank.*rankScaling(1)) .* ...
+        (shapeErrorRank.*rankScaling(2)) .* ...
+        (areaErrorRank.*rankScaling(3));
     [~,rankOrder]=sort(rankProduct);
     [~,bestSearchIdx] = min(rankProduct);
     sceneGeometry = searchResults{bestSearchIdx};
@@ -340,7 +348,7 @@ if ~isempty(sceneGeometryFileName)
 end
 
 %% Save sceneGeometry diagnostics
-if ~isempty(sceneGeometryFileName)
+if ~isempty(sceneGeometryFileName) && p.Results.nDiagnosticPlots~=0
     if p.Results.verbose
         fprintf('Creating diagnostic plots.\n');
     end
