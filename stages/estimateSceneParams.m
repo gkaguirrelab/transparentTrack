@@ -326,9 +326,10 @@ else
     [~,centerErrorRank]  = ismember(medianCenterErrorBySearch,unique(medianCenterErrorBySearch));
     [~,shapeErrorRank]  = ismember(medianShapeErrorBySearch,unique(medianShapeErrorBySearch));
     [~,areaErrorRank]  = ismember(medianAreaErrorBySearch,unique(medianAreaErrorBySearch));
-    rankProduct = (centerErrorRank.*rankScaling(1)) .* ...
-        (shapeErrorRank.*rankScaling(2)) .* ...
-        (areaErrorRank.*rankScaling(3));
+    b = p.Results.rankScaling;
+    rankProduct = (centerErrorRank.*b(1)) .* ...
+        (shapeErrorRank.*b(2)) .* ...
+        (areaErrorRank.*b(3));
     [~,rankOrder]=sort(rankProduct);
     [~,bestSearchIdx] = min(rankProduct);
     sceneGeometry = searchResults{bestSearchIdx};
