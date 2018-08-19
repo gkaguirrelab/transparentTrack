@@ -501,6 +501,7 @@ areaErrorByEllipse=zeros(size(ellipses,1),1);
 recoveredEyePoses =zeros(size(ellipses,1),4);
 objEvalCounter = 0;
 regParams = [];
+fValPath = [];
 
 % Tic
 tic
@@ -560,6 +561,7 @@ end
             % We have to keep the fval non-infinite to keep BADS happy
             fval = min([fval realmax]);
         end
+        fValPath(objEvalCounter)=fval;
     end
 
 
@@ -593,6 +595,7 @@ sceneGeometry.meta.estimateSceneParams.search.areaErrorByEllipse = areaErrorByEl
 sceneGeometry.meta.estimateSceneParams.search.recoveredEyePoses = recoveredEyePoses;
 sceneGeometry.meta.estimateSceneParams.search.fixationTransform = regParams;
 sceneGeometry.meta.estimateSceneParams.search.objEvalCounter = objEvalCounter;
+sceneGeometry.meta.estimateSceneParams.search.fValPath = fValPath;
 sceneGeometry.meta.estimateSceneParams.search.searchTimeSecs = searchTimeSecs;
 
 end % local search function
