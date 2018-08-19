@@ -75,10 +75,20 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
 %  'fitLabel'             - Identifies the field in pupilData that contains
 %                           the ellipse fit params for which the search
 %                           will be conducted.
-%  'ellipseArrayList'     - A vector of frame numbers (indexed from 1)
+%  'ellipseArrayList'     - A vector of m frame numbers (indexed from 1)
 %                           which identify the ellipses to be used for the
 %                           estimation of scene geometry. If left empty,
 %                           a list of ellipses will be generated.
+%  'fixationTargetArray'  - A 2xm matrix that provides the positions, in
+%                           degrees of visual angle, of fixation targets
+%                           that correspond to each of the frames
+%                           identified in the ellipseArrayList. If defined,
+%                           the routine will find the scene geometry that
+%                           best aligns the recovered eye poses with the
+%                           fixation targets, subject to a translation and
+%                           rotation matrix. If left empty, the search will
+%                           minimize error in the joint specification of
+%                           ellipse centers and shape.
 %  'nBinsPerDimension'    - Scalar. Defines the number of divisions with
 %                           which the ellipse centers are binned.
 %  'badFrameErrorThreshold' - Frames with RMSE fitting error above this
@@ -310,6 +320,7 @@ else
     % Loop over the requested number of BADS searches
     searchResults = {};
     parfor (ss = 1:p.Results.nBADSsearches,nWorkers)
+%    for ss = 1:p.Results.nBADSsearches
         
         searchResults{ss} = ...
             performSceneSearch(initialSceneGeometry, ...
