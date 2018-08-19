@@ -28,9 +28,9 @@ function [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, 
 %
 % Examples:
 %{
-    pupilFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal02_pupil.mat';
-    LTdatFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal02_LTdat.mat';
-    rawVidStartFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal02_rawVidStart.mat';
+    pupilFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal03_pupil.mat';
+    LTdatFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal03_LTdat.mat';
+    rawVidStartFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal03_rawVidStart.mat';
     [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, LTdatFileName, rawVidStartFileName,'showPlots',true,'verbose',true);
 %}
 
@@ -78,7 +78,7 @@ yPos = pupilData.initial.ellipses.values(:,2);
 
 % Define temporal support
 tmpDiff = diff(pupilData.timebase.values);
-deltaT = tempDiff(1);
+deltaT = tmpDiff(1);
 
 support = 1:min([times(end)+5*(1/deltaT),size(xPos,1)]);
 support=support(~isnan(xPos(support)));
