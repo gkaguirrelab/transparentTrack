@@ -310,7 +310,6 @@ else
     % Loop over the requested number of BADS searches
     searchResults = {};
     parfor (ss = 1:p.Results.nBADSsearches,nWorkers)
-%    for ss = 1:p.Results.nBADSsearches
         
         searchResults{ss} = ...
             performSceneSearch(initialSceneGeometry, ...
@@ -490,6 +489,7 @@ shapeErrorByEllipse=zeros(size(ellipses,1),1);
 areaErrorByEllipse=zeros(size(ellipses,1),1);
 recoveredEyePoses =zeros(size(ellipses,1),4);
 objEvalCounter = 0;
+regParams = [];
 
 % Tic
 tic
@@ -535,7 +535,12 @@ end
         if ~isempty(fixationTargetArray)
             % Compute the distance between the recovered eye rotation
             % angles and the fixation target positions
-            [~,~,ErrorStats]=absor(recoveredEyePoses(:,1:2)',fixationTargetArray,'weights',ellipseFitRMSE);
+            [regParams,~,ErrorStats]=absor(...
+                recoveredEyePoses(:,1:2)',...
+                fixationTargetArray,...
+                'weights',ellipseFitRMSE,...
+                'doScale',false,...
+                'doTrans',true);
             fval = ErrorStats.errlsq;
         else
             % Compute objective function as the RMSE of the distance
@@ -551,7 +556,7 @@ end
 warning(warningState);
 
 % Toc
-searchTime = toc;
+searchTimeSecs = toc;
 
 % Assemble the sceneGeometry file to return
 sceneGeometry = initialSceneGeometry;
@@ -575,8 +580,9 @@ sceneGeometry.meta.estimateSceneParams.search.centerDistanceErrorByEllipse = cen
 sceneGeometry.meta.estimateSceneParams.search.shapeErrorByEllipse = shapeErrorByEllipse;
 sceneGeometry.meta.estimateSceneParams.search.areaErrorByEllipse = areaErrorByEllipse;
 sceneGeometry.meta.estimateSceneParams.search.recoveredEyePoses = recoveredEyePoses;
+sceneGeometry.meta.estimateSceneParams.search.fixationTransform = regParams;
 sceneGeometry.meta.estimateSceneParams.search.objEvalCounter = objEvalCounter;
-sceneGeometry.meta.estimateSceneParams.search.searchTime = searchTime;
+sceneGeometry.meta.estimateSceneParams.search.searchTimeSecs = searchTimeSecs;
 
 end % local search function
 
