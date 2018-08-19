@@ -141,6 +141,7 @@ p.addParameter('glintThreshold', 0.8, @isnumeric);
 p.addParameter('glintFrameMask',[] , @isnumeric);
 p.addParameter('frameMaskValue', 30, @isnumeric);
 p.addParameter('centroidsAllocation', 5, @isnumeric);
+p.addParameter('timebaseField',[],@(x)(isempty(x) || ischar(x) || isnumeric(x) || isstruct(x)));
 
 % parse
 p.parse(grayVideoName, glintFileName, varargin{:})
@@ -466,6 +467,24 @@ glintData.meta = p.Results;
 glintData.meta.centroidsByFrame.X = centroidsByFrame_X;
 glintData.meta.centroidsByFrame.Y = centroidsByFrame_Y;
 glintData.meta.coordinateSystem = 'intrinsicCoordinates(pixels)';
+
+% If a timebase has been passed, add it to the structure
+if ~isempty(p.Results.timebaseField)
+    switch class(p.Results.timebaseField)
+        case {'char' 'string'}
+            dataLoad=load(p.Results.timebaseField);
+            timebase=dataLoad.timebase;
+            clear dataLoad
+            glintData.timebase = timebase;
+            glintData.timebase.values = glintData.timebase.values(1:nFrames);
+        case {'struct'}
+            glintData.timebase = p.Results.timebaseField;
+            glintData.timebase.values = glintData.timebase.values(1:nFrames);            
+        case {'double'}
+            glintData.timebase.values = p.Results.timebaseField;
+            glintData.timebase.values = glintData.timebase.values(1:nFrames);            
+    end
+end
 
 % close the video object
 clear videoInObj
