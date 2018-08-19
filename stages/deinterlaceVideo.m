@@ -188,16 +188,24 @@ end % Check if we are only producing a timebase file
 if ~isempty(p.Results.timebaseFileName)
     % Get the creation date/time of the video file
     if ismac
-        sysCommand = ['GetFileInfo -d ' videoInFileName];
+        % Clean up the horrible DropBox directory name
+        cleanFileName = videoInFileName;
+        cleanFileName = strrep(cleanFileName,' ','\ ');
+        cleanFileName = strrep(cleanFileName,'(','\(');
+        cleanFileName = strrep(cleanFileName,')','\)');
+        sysCommand = ['GetFileInfo -d ' cleanFileName];
         [~,videoCreationDateTime] = system(sysCommand);
+        % Remove the trailing carriage return
+        videoCreationDateTime = videoCreationDateTime(1:end-1);
     else
         videoCreationDateTime='';
     end    
-    frameDur = (1/Bob.FrameRate)*1000;
+    frameRate = videoInObj.FrameRate * 2;
+    frameDur = (1/frameRate)*1000;
     timebase.values = ((p.Results.startFrame-1)*frameDur:frameDur:((p.Results.startFrame+nFrames-1)*2-1)*frameDur)';
     timebase.meta.deinterlaceVideo = p.Results;
     timebase.meta.deinterlaceVideo.nFrames = nFrames;
-    timebase.meta.deinterlaceVideo.frameRate = Bob.FrameRate;
+    timebase.meta.deinterlaceVideo.frameRate = frameRate;
     timebase.meta.deinterlaceVideo.units = 'milliseconds';
     timebase.meta.deinterlaceVideo.videoCreationDateTime = videoCreationDateTime;
     save(p.Results.timebaseFileName,'timebase');
