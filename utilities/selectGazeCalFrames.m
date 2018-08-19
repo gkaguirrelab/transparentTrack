@@ -1,17 +1,17 @@
 function [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, LTdatFileName, rawVidStartFileName, varargin)
-% Select frames from gaze calibrtaion target fixation periods
+% Select frames from gaze calibration target fixation periods
 %
 % Syntax:
 %  [frameArray, targetArray] = selectGazeCalFrames(pupilFileName, LTdatFileName, rawVidStartFileName, varargin)
 %
 % Description:
+%   During gaze calibration acquisitions, the subject fixates a series of
+%   targets of known position on a screen.
 %
 % Inputs:
-%	pupilFileName         - Full path to a pupilData file, a cell array
-%                           of such paths, or a pupilData structure itself.
-%                           If a single path, the pupilData file is loaded.
-%                           If a cell array, the ellipse data from each
-%                           pupilData file is loaded and concatenated.
+%	pupilFileName         - Full path to a pupilData file.
+%   LTdatFileName         - 
+%   rawVidStartFileName   -
 %
 % Optional key/value pairs (display and I/O):
 %  'verbose'              - Logical. Default false.
@@ -21,6 +21,7 @@ function [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, 
 %  'fitLabel'             - Identifies the field in pupilData that contains
 %                           the ellipse fit params for which the search
 %                           will be conducted.
+%  'targetDeg'            - Scalar.
 %
 % Outputs
 %	frameArray            - Vector.
@@ -61,6 +62,7 @@ if ischar(pupilFileName)
     ellipseFitRMSE = pupilData.(p.Results.fitLabel).ellipses.RMSE;
 end
 
+
 %% Load live-track info files
 LTGazeCalData=load(LTdatFileName);
 dataLoad = load(rawVidStartFileName);
@@ -75,7 +77,10 @@ yPos = pupilData.initial.ellipses.values(:,2);
 
 
 % Define temporal support
-support = 1:min([times(end)+5*60,size(xPos,1)]);
+tmpDiff = diff(pupilData.timebase.values);
+deltaT = tempDiff(1);
+
+support = 1:min([times(end)+5*(1/deltaT),size(xPos,1)]);
 support=support(~isnan(xPos(support)));
 support=support(~isnan(yPos(support)));
 
@@ -138,17 +143,17 @@ end
 if p.Results.showPlots
 figure
 subplot(2,1,1)
-plot(support/60,xPos(support),'-k');
+plot(pupilData.timebase.values(support)./1000,xPos(support),'-k');
 hold on
-plot(support/60,circshift(xTarget(support)./p.Results.targetDeg,xShift),'-b');
-plot(frameArray/60,xPos(frameArray),'*r');
+plot(pupilData.timebase.values(support)./1000,circshift(xTarget(support)./p.Results.targetDeg,xShift),'-b');
+plot(pupilData.timebase.values(frameArray)./1000,xPos(frameArray),'*r');
 ylabel('xPos')
 xlabel('time [sec]')
 subplot(2,1,2)
-plot(support/60,yPos(support),'-k');
+plot(pupilData.timebase.values(support)./1000,yPos(support),'-k');
 hold on
-plot(support/60,circshift(yTarget(support)./p.Results.targetDeg,xShift),'-b');
-plot(frameArray/60,yPos(frameArray),'*r');
+plot(pupilData.timebase.values(support)./1000,circshift(yTarget(support)./p.Results.targetDeg,xShift),'-b');
+plot(pupilData.timebase.values(frameArray)./1000,yPos(frameArray),'*r');
 ylabel('yPos')
 xlabel('time [sec]')
 
