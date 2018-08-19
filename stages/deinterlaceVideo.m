@@ -186,12 +186,20 @@ end % Check if we are only producing a timebase file
 
 % Save a timebase file if requested
 if ~isempty(p.Results.timebaseFileName)
+    % Get the creation date/time of the video file
+    if ismac
+        sysCommand = ['GetFileInfo -d ' videoInFileName];
+        [~,videoCreationDateTime] = system(sysCommand);
+    else
+        videoCreationDateTime='';
+    end    
     frameDur = (1/Bob.FrameRate)*1000;
     timebase.values = ((p.Results.startFrame-1)*frameDur:frameDur:((p.Results.startFrame+nFrames-1)*2-1)*frameDur)';
     timebase.meta.deinterlaceVideo = p.Results;
     timebase.meta.deinterlaceVideo.nFrames = nFrames;
     timebase.meta.deinterlaceVideo.frameRate = Bob.FrameRate;
     timebase.meta.deinterlaceVideo.units = 'milliseconds';
+    timebase.meta.deinterlaceVideo.videoCreationDateTime = videoCreationDateTime;
     save(p.Results.timebaseFileName,'timebase');
 end
 
