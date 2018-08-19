@@ -28,9 +28,9 @@ function [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, 
 %
 % Examples:
 %{
-    pupilFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal03_pupil.mat';
-    LTdatFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal03_LTdat.mat';
-    rawVidStartFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal03_rawVidStart.mat';
+    pupilFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal02_pupil.mat';
+    LTdatFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal02_LTdat.mat';
+    rawVidStartFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal02_rawVidStart.mat';
     [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, LTdatFileName, rawVidStartFileName,'showPlots',true,'verbose',true);
 %}
 
@@ -101,15 +101,15 @@ yPos = yPos-mean(yPos(support));
 yPos = yPos./max(yPos(support));
 
 % Create the target vector
-xTargetDegrees = -sign(LTGazeCalData.targets(:,1))*p.Results.targetDeg;
-yTargetDegrees =  sign(LTGazeCalData.targets(:,2))*p.Results.targetDeg;
+xTargetDegrees = sign(LTGazeCalData.targets(:,1))*p.Results.targetDeg;
+yTargetDegrees = sign(LTGazeCalData.targets(:,2))*p.Results.targetDeg;
 fixationTargetArray = [xTargetDegrees'; yTargetDegrees'];
 
 % 
 xTarget = zeros(size(xPos));
 yTarget = zeros(size(yPos));
 for ii=1:size(LTGazeCalData.targets)
-    xTarget(times(ii):times(ii+1))= xTargetDegrees(ii);
+    xTarget(times(ii):times(ii+1))= -xTargetDegrees(ii);
     yTarget(times(ii):times(ii+1))= yTargetDegrees(ii);
 end
 
