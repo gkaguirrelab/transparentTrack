@@ -472,14 +472,17 @@ glintData.meta.coordinateSystem = 'intrinsicCoordinates(pixels)';
 if ~isempty(p.Results.timebaseField)
     switch class(p.Results.timebaseField)
         case {'char' 'string'}
-            dataLoad=load(p.Results.timebaseField);
-            timebase=dataLoad.timebase;
-            clear dataLoad
-            glintData.timebase = timebase;
-            glintData.timebase.values = glintData.timebase.values(1:nFrames);
+            fileExists = exist(p.Results.timebaseField, 'file') == 2;
+            if fileExists
+                dataLoad=load(p.Results.timebaseField);
+                timebase=dataLoad.timebase;
+                clear dataLoad
+                glintData.timebase = timebase;
+                glintData.timebase.values = glintData.timebase.values(1:nFrames);
+            end
         case {'struct'}
             glintData.timebase = p.Results.timebaseField;
-            glintData.timebase.values = glintData.timebase.values(1:nFrames);            
+            glintData.timebase.values = glintData.timebase.values(1:nFrames);
         case {'double'}
             glintData.timebase.values = p.Results.timebaseField;
             glintData.timebase.values = glintData.timebase.values(1:nFrames);            

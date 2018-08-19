@@ -390,11 +390,14 @@ end
 if ~isempty(p.Results.timebaseField)
     switch class(p.Results.timebaseField)
         case {'char' 'string'}
-            dataLoad=load(p.Results.timebaseField);
-            timebase=dataLoad.timebase;
-            clear dataLoad
-            pupilData.timebase = timebase;
-            pupilData.timebase.values = pupilData.timebase.values(1:nFrames);
+            fileExists = exist(p.Results.timebaseField, 'file') == 2;
+            if fileExists
+                dataLoad=load(p.Results.timebaseField);
+                timebase=dataLoad.timebase;
+                clear dataLoad
+                pupilData.timebase = timebase;
+                pupilData.timebase.values = pupilData.timebase.values(1:nFrames);
+            end
         case {'struct'}
             pupilData.timebase = p.Results.timebaseField;
             pupilData.timebase.values = pupilData.timebase.values(1:nFrames);            
