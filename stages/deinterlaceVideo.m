@@ -13,12 +13,12 @@ function deinterlaceVideo (videoInFileName, videoOutFileName, varargin)
 %   Four deinterlace strategies are available (bobMode):
 %       'Raw' - extract 2 fields for every frame. Save progressive video.
 %               Final spatial resolution is half the original resolution.
-%       'Zero' - extract 2 fields for every frame. Alternate every row with a
-%               row of zeros to preserve aspect ratio.
+%       'Zero' - extract 2 fields for every frame. Alternate every row with
+%               a row of zeros to preserve aspect ratio.
 %       'Double' - extract 2 fields for every frame. Duplicate each raw to
 %               preserve aspect ratio.
-%       'Mean' - extract 2 fields for every frame. Add a row with the mean of
-%               two consecutive rows to preserve aspect ratio.
+%       'Mean' - extract 2 fields for every frame. Add a row with the mean
+%               of two consecutive rows to preserve aspect ratio.
 %
 %   References on bob techniques for deinterlacing and on deinterlacing in
 %   general:
