@@ -28,9 +28,9 @@ function [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, 
 %
 % Examples:
 %{
-    pupilFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal02_pupil.mat';
-    LTdatFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal02_LTdat.mat';
-    rawVidStartFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal02_rawVidStart.mat';
+    pupilFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal03_pupil.mat';
+    LTdatFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal03_LTdat.mat';
+    rawVidStartFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal03_rawVidStart.mat';
     [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, LTdatFileName, rawVidStartFileName,'showPlots',true,'verbose',true);
 %}
 
@@ -62,6 +62,9 @@ if ischar(pupilFileName)
     ellipseFitRMSE = pupilData.(p.Results.fitLabel).ellipses.RMSE;
 end
 
+% Define temporal support
+tmpDiff = diff(pupilData.timebase.values);
+deltaT = tmpDiff(1);
 
 %% Load live-track info files
 LTGazeCalData=load(LTdatFileName);
@@ -71,14 +74,9 @@ clear dataLoad
 
 nTargets = size(LTGazeCalData.targets,1);
 
-times = round((LTGazeCalData.dotTimes-LTGazeCalData.rawVidStart).*60);
+times = round((LTGazeCalData.dotTimes-LTGazeCalData.rawVidStart).*((1/deltaT)*1000));
 xPos = pupilData.initial.ellipses.values(:,1);
 yPos = pupilData.initial.ellipses.values(:,2);
-
-
-% Define temporal support
-tmpDiff = diff(pupilData.timebase.values);
-deltaT = tmpDiff(1);
 
 support = 1:min([times(end)+5*(1/deltaT),size(xPos,1)]);
 support=support(~isnan(xPos(support)));
@@ -101,16 +99,16 @@ yPos = yPos-mean(yPos(support));
 yPos = yPos./max(yPos(support));
 
 % Create the target vector
-xTargetDegrees = sign(LTGazeCalData.targets(:,1))*p.Results.targetDeg;
-yTargetDegrees = sign(LTGazeCalData.targets(:,2))*p.Results.targetDeg;
+xTargetDegrees = -sign(LTGazeCalData.targets(:,1))*p.Results.targetDeg;
+yTargetDegrees = -sign(LTGazeCalData.targets(:,2))*p.Results.targetDeg;
 fixationTargetArray = [xTargetDegrees'; yTargetDegrees'];
 
 % 
 xTarget = zeros(size(xPos));
 yTarget = zeros(size(yPos));
 for ii=1:size(LTGazeCalData.targets)
-    xTarget(times(ii):times(ii+1))= -xTargetDegrees(ii);
-    yTarget(times(ii):times(ii+1))= yTargetDegrees(ii);
+    xTarget(times(ii):times(ii+1))= xTargetDegrees(ii);
+    yTarget(times(ii):times(ii+1))= -yTargetDegrees(ii);
 end
 
 
