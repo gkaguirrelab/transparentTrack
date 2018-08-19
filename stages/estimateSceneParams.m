@@ -350,21 +350,30 @@ else
         fprintf('\n');
     end
     
-    % Obtain the "best" search result, which is defined as the smallest
-    % product of the rankings of the three types of error (downweighting
-    % the area error to have half the effect of shape and center)
-    medianCenterErrorBySearch = cellfun(@(x) sqrt(nansum((x.meta.estimateSceneParams.search.centerDistanceErrorByEllipse).^2)),searchResults);
-    medianShapeErrorBySearch = cellfun(@(x) sqrt(nansum((x.meta.estimateSceneParams.search.shapeErrorByEllipse).^2)),searchResults);
-    medianAreaErrorBySearch = cellfun(@(x) sqrt(nansum((x.meta.estimateSceneParams.search.areaErrorByEllipse).^2)),searchResults);
-    [~,centerErrorRank]  = ismember(medianCenterErrorBySearch,unique(medianCenterErrorBySearch));
-    [~,shapeErrorRank]  = ismember(medianShapeErrorBySearch,unique(medianShapeErrorBySearch));
-    [~,areaErrorRank]  = ismember(medianAreaErrorBySearch,unique(medianAreaErrorBySearch));
-    b = p.Results.rankScaling;
-    rankProduct = (centerErrorRank.*b(1)) .* ...
-        (shapeErrorRank.*b(2)) .* ...
-        (areaErrorRank.*b(3));
-    [~,rankOrder]=sort(rankProduct);
-    [~,bestSearchIdx] = min(rankProduct);
+    % Obtain the "best" search result.
+    if ~isempty(fixationTargetArray)
+        % Best is defined as the smallest fVal of matching the fixation
+        % targets
+        fixationModelError = cellfun(@(x) x.meta.estimateSceneParams.search.fVal,searchResults);
+        [~,rankOrder]=sort(fixationModelError);
+        [~,bestSearchIdx] = min(fixationModelError);
+    else
+        % Best is defined as the smallest product of the rankings of the
+        % three types of error (downweighting the area error to have half
+        % the effect of shape and center)
+        medianCenterErrorBySearch = cellfun(@(x) sqrt(nansum((x.meta.estimateSceneParams.search.centerDistanceErrorByEllipse).^2)),searchResults);
+        medianShapeErrorBySearch = cellfun(@(x) sqrt(nansum((x.meta.estimateSceneParams.search.shapeErrorByEllipse).^2)),searchResults);
+        medianAreaErrorBySearch = cellfun(@(x) sqrt(nansum((x.meta.estimateSceneParams.search.areaErrorByEllipse).^2)),searchResults);
+        [~,centerErrorRank]  = ismember(medianCenterErrorBySearch,unique(medianCenterErrorBySearch));
+        [~,shapeErrorRank]  = ismember(medianShapeErrorBySearch,unique(medianShapeErrorBySearch));
+        [~,areaErrorRank]  = ismember(medianAreaErrorBySearch,unique(medianAreaErrorBySearch));
+        b = p.Results.rankScaling;
+        rankProduct = (centerErrorRank.*b(1)) .* ...
+            (shapeErrorRank.*b(2)) .* ...
+            (areaErrorRank.*b(3));
+        [~,rankOrder]=sort(rankProduct);
+        [~,bestSearchIdx] = min(rankProduct);
+    end
     sceneGeometry = searchResults{bestSearchIdx};
 
     % Store the search results in the meta field
