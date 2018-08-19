@@ -159,6 +159,7 @@ p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 p.addParameter('fitLabel','initial',@ischar);
 p.addParameter('ellipseArrayList',[],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('fixationTargetArray',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nBinsPerDimension',4,@isnumeric);
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
 p.addParameter('nBADSsearches',10,@isnumeric);
@@ -178,6 +179,10 @@ end
 
 %% Create initial sceneGeometry structure
 initialSceneGeometry = createSceneGeometry(varargin{:});
+
+
+%% Define the fixationTargetArray
+fixationTargetArray = p.Results.fixationTargetArray;
 
 
 %% Set up the parallel pool
@@ -217,6 +222,13 @@ if ~isempty(p.Results.ellipseArrayList)
     ellipseArrayList = p.Results.ellipseArrayList;
     Xedges = [];
     Yedges = [];
+    
+    % If there is a fixationTargetArray, make sure it is the same length
+    if ~isempty(fixationTargetArray)
+        if length(fixationTargetArray) ~= length(ellipseArrayList)
+            error('Unequal fixationTargetArray and ellipseArrayList');
+        end
+    end
 else
     if p.Results.verbose
         fprintf('Selecting ellipses to guide the search.\n');
@@ -250,6 +262,12 @@ else
     [~, idxMinErrorEllipseWithinBin] = arrayfun(@(x) nanmin(ellipseFitRMSE(goodFitIdx(idxByBinPosition{x}))), filledBinIdx, 'UniformOutput', false);
     returnTheMin = @(binContents, x)  binContents(idxMinErrorEllipseWithinBin{x});
     ellipseArrayList = cellfun(@(x) returnTheMin(goodFitIdx(idxByBinPosition{filledBinIdx(x)}),x),num2cell(1:1:length(filledBinIdx)));
+
+    % If there is a fixationTargetArray, make sure it is empty
+    if ~isempty(fixationTargetArray)
+    	warning('Cannot use fixationTargetArray unless ellipseArrayList is defined');
+    end
+    fixationTargetArray=[];
 end
 
 
@@ -269,6 +287,8 @@ if p.Results.nBADSsearches==0
         sceneGeometry = ...
             performSceneSearch(initialSceneGeometry, ...
             ellipses(ellipseArrayList,:), ...
+            ellipseFitRMSE(ellipseArrayList), ...
+            fixationTargetArray, ...
             sceneParams, ...
             sceneParams, ...
             sceneParams, ...
@@ -289,11 +309,14 @@ if p.Results.nBADSsearches==0
 else
     % Loop over the requested number of BADS searches
     searchResults = {};
-    parfor (ss = 1:p.Results.nBADSsearches,nWorkers)
+%    parfor (ss = 1:p.Results.nBADSsearches,nWorkers)
+    for ss = 1:p.Results.nBADSsearches
         
         searchResults{ss} = ...
             performSceneSearch(initialSceneGeometry, ...
             ellipses(ellipseArrayList,:), ...
+            ellipseFitRMSE(ellipseArrayList), ...
+            fixationTargetArray, ...
             p.Results.sceneParamsLB, ...
             p.Results.sceneParamsUB, ...
             p.Results.sceneParamsLBp, ...
@@ -411,8 +434,7 @@ end % main function
 
 
 %% LOCAL FUNCTIONS
-
-function sceneGeometry = performSceneSearch(initialSceneGeometry, ellipses, LB, UB, LBp, UBp, eyePoseLB, eyePoseUB)
+function sceneGeometry = performSceneSearch(initialSceneGeometry, ellipses, ellipseFitRMSE, fixationTargetArray, LB, UB, LBp, UBp, eyePoseLB, eyePoseUB)
 % Pattern search for best fitting sceneGeometry parameters
 %
 % Description:
@@ -467,6 +489,10 @@ centerDistanceErrorByEllipse=zeros(size(ellipses,1),1);
 shapeErrorByEllipse=zeros(size(ellipses,1),1);
 areaErrorByEllipse=zeros(size(ellipses,1),1);
 recoveredEyePoses =zeros(size(ellipses,1),4);
+objEvalCounter = 0;
+
+% Tic
+tic
 
 % Detect if we have pinned the parameters, in which case just evaluate the
 % objective function
@@ -479,6 +505,8 @@ else
 end
 % Nested function computes the objective
     function fval = objfun(x)
+        % Iterate the counter
+        objEvalCounter = objEvalCounter+1;
         % Assemble a candidate sceneGeometry structure
         candidateSceneGeometry = initialSceneGeometry;
         % Store the camera torsion
@@ -502,16 +530,28 @@ end
                     'eyePoseUB',eyePoseUB,...
                     'nMaxSearches',1);
         end
-        % Now compute objective function as the RMSE of the distance
-        % between the taget and modeled ellipses in shape and area
-        fval = sqrt(mean(shapeErrorByEllipse.^2 + areaErrorByEllipse.^2));
-        % We have to keep the fval non-infinite to keep BADS happy
-        fval = min([fval realmax]);
+        % Objective function behavior varies depending upon if a fixation
+        % target array list was provided
+        if ~isempty(fixationTargetArray)
+            % Compute the distance between the recovered eye rotation
+            % angles and the fixation target positions
+            [~,~,ErrorStats]=absor(recoveredEyePoses(:,1:2)',fixationTargetArray,'weights',ellipseFitRMSE);
+            fval = ErrorStats.errlsq;
+        else
+            % Compute objective function as the RMSE of the distance
+            % between the taget and modeled ellipses in shape and area
+            fval = sqrt(mean(shapeErrorByEllipse.^2 + areaErrorByEllipse.^2));
+            % We have to keep the fval non-infinite to keep BADS happy
+            fval = min([fval realmax]);
+        end
     end
 
 
 % Restore the warning state
 warning(warningState);
+
+% Toc
+searchTime = toc;
 
 % Assemble the sceneGeometry file to return
 sceneGeometry = initialSceneGeometry;
@@ -535,6 +575,8 @@ sceneGeometry.meta.estimateSceneParams.search.centerDistanceErrorByEllipse = cen
 sceneGeometry.meta.estimateSceneParams.search.shapeErrorByEllipse = shapeErrorByEllipse;
 sceneGeometry.meta.estimateSceneParams.search.areaErrorByEllipse = areaErrorByEllipse;
 sceneGeometry.meta.estimateSceneParams.search.recoveredEyePoses = recoveredEyePoses;
+sceneGeometry.meta.estimateSceneParams.search.objEvalCounter = objEvalCounter;
+sceneGeometry.meta.estimateSceneParams.search.searchTime = searchTime;
 
 end % local search function
 
