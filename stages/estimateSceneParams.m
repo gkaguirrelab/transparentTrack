@@ -427,6 +427,12 @@ if ~isempty(sceneGeometryFileName) && p.Results.nDiagnosticPlots~=0
             grayVideoName, ...
             montageFileName ...
             );
+
+        % Create an fixation target model
+        if ~isempty(fixationTargetArray)
+            montageFileName = fullfile(diagnosticDirName,[sceneGeomName '_Rank' num2str(ii) '_Search' num2str(rankOrder(ii)) '_sceneDiagnosticFixationTargetModel.pdf']);
+            saveFixationTargetModel(tmpSceneGeometry,montageFileName);
+        end
         
     end
 end
@@ -1065,3 +1071,56 @@ end % There is a file to plot
 warning(warningState);
 
 end % saveEyeModelMontage
+
+function [] = saveFixationTargetModel(sceneGeometry,montageFileName)
+poses = sceneGeometry.meta.estimateSceneParams.search.recoveredEyePoses(:,1:2);
+t= sceneGeometry.meta.estimateSceneParams.search.fixationTransform.t;
+R = sceneGeometry.meta.estimateSceneParams.search.fixationTransform.R;
+modeled = poses*R +t';
+targets = sceneGeometry.meta.estimateSceneParams.fixationTargetArray';
+
+% Prepare the figure
+figHandle=figure('visible','off');
+set(gcf,'PaperOrientation','landscape');
+set(figHandle, 'Units','inches')
+height = 6;
+width = 11;
+
+% The last two parameters of 'Position' define the figure size
+set(figHandle, 'Position',[25 5 width height],...
+    'PaperSize',[width height],...
+    'PaperPositionMode','auto',...
+    'Color','w');
+
+% Plot the targets and model
+subplot(5,1,1:4)
+plot(targets(:,1),targets(:,2),'ok')
+hold on
+plot(modeled(:,1),modeled(:,2),'xr')
+
+% label and clean up the plot
+axis equal
+title('Fixation targets (o) and modeled positions (x)')
+ylim([-10 10]);
+xlim([-10 10]);
+
+% Create a legend
+subplot(5,1,5);
+axis off
+
+% Add text to report the camera position parameters
+theta = sceneGeometry.meta.estimateSceneParams.search.fixationTransform.theta;
+myString = sprintf('screen torsion [deg] = %4.1f; translation vector [visual angle deg] = %4.1f, %4.1f',theta,t(1),t(2));
+text(0.5,1.0,myString,'Units','normalized','HorizontalAlignment','center')
+
+% Add text to report the model error
+myString = sprintf('Model error [deg] = %4.2f',sceneGeometry.meta.estimateSceneParams.search.fVal);
+text(0.5,0.25,myString,'Units','normalized','HorizontalAlignment','center')
+
+% Save the figure
+saveas(figHandle,montageFileName)
+
+% Close the figure
+close(figHandle)
+
+end
