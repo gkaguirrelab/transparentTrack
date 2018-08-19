@@ -1,8 +1,8 @@
-function frameArray = selectGazeCalFrames(pupilFileName, LTdatFileName, rawVidStartFileName, varargin)
+function [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, LTdatFileName, rawVidStartFileName, varargin)
 % Select frames from gaze calibrtaion target fixation periods
 %
 % Syntax:
-%  frameArray = selectGazeCalFrames(pupilFileName, LTdatFileName, rawVidStartFileName, varargin)
+%  [frameArray, targetArray] = selectGazeCalFrames(pupilFileName, LTdatFileName, rawVidStartFileName, varargin)
 %
 % Description:
 %
@@ -27,10 +27,10 @@ function frameArray = selectGazeCalFrames(pupilFileName, LTdatFileName, rawVidSt
 %
 % Examples:
 %{
-    pupilFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal02_pupil.mat';
-    LTdatFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal02_LTdat.mat';
-    rawVidStartFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal02_rawVidStart.mat';
-    frameArray = selectGazeCalFrames(pupilFileName, LTdatFileName, rawVidStartFileName,'showPlots',true,'verbose',true);
+    pupilFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal02_pupil.mat';
+    LTdatFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal02_LTdat.mat';
+    rawVidStartFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal02_rawVidStart.mat';
+    [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, LTdatFileName, rawVidStartFileName,'showPlots',true,'verbose',true);
 %}
 
 
@@ -48,6 +48,7 @@ p.addParameter('showPlots',false,@islogical);
 
 % Optional analysis params
 p.addParameter('fitLabel','initial',@ischar);
+p.addParameter('targetDeg',7,@isscalar);
 
 % parse
 p.parse(pupilFileName, LTdatFileName, rawVidStartFileName, varargin{:})
@@ -95,11 +96,16 @@ yPos = yPos-mean(yPos(support));
 yPos = yPos./max(yPos(support));
 
 % Create the target vector
+xTargetDegrees = -sign(LTGazeCalData.targets(:,1))*p.Results.targetDeg;
+yTargetDegrees =  sign(LTGazeCalData.targets(:,2))*p.Results.targetDeg;
+fixationTargetArray = [xTargetDegrees'; yTargetDegrees'];
+
+% 
 xTarget = zeros(size(xPos));
 yTarget = zeros(size(yPos));
 for ii=1:size(LTGazeCalData.targets)
-    xTarget(times(ii):times(ii+1))=-sign(LTGazeCalData.targets(ii,1));
-    yTarget(times(ii):times(ii+1))=sign(LTGazeCalData.targets(ii,2));
+    xTarget(times(ii):times(ii+1))= xTargetDegrees(ii);
+    yTarget(times(ii):times(ii+1))= yTargetDegrees(ii);
 end
 
 
@@ -113,14 +119,18 @@ xShift = round(xShift*nonInteger);
 
 % Find the lowest RMSE ellipse fit frame for each target
 frames = times+xShift;
-frameBoundEarly = frames(1:9)+round(diff(frames).*.35);
-frameBoundLate = frames(1:9)+round(diff(frames).*.65);
+frameBoundEarly = frames(1:9)+round(diff(frames).*.15);
+frameBoundLate = frames(1:9)+round(diff(frames).*.85);
 
 for ii=1:nTargets
     supportStartIdx=find(frameBoundEarly(ii)<=support,1);
     supportEndIdx=find(frameBoundLate(ii)<=support,1);
-    localSupport = support(supportStartIdx:supportEndIdx);
-    [~,idx]=nanmin(ellipseFitRMSE(localSupport));
+    localSupport = support(supportStartIdx:supportEndIdx);    
+    xPosMedian=weightedMedian(xPos(localSupport), ellipseFitRMSE(localSupport));
+    yPosMedian=weightedMedian(yPos(localSupport), ellipseFitRMSE(localSupport));
+    distanceFromMedian = ...
+        sqrt(sum([(xPos(localSupport)-xPosMedian)';(yPos(localSupport)-yPosMedian)'].^2));
+    [~,idx]=min(distanceFromMedian);
     frameArray(ii)=localSupport(idx);
 end
 
@@ -130,14 +140,14 @@ figure
 subplot(2,1,1)
 plot(support/60,xPos(support),'-k');
 hold on
-plot(support/60,circshift(xTarget(support),xShift),'-b');
+plot(support/60,circshift(xTarget(support)./p.Results.targetDeg,xShift),'-b');
 plot(frameArray/60,xPos(frameArray),'*r');
 ylabel('xPos')
 xlabel('time [sec]')
 subplot(2,1,2)
 plot(support/60,yPos(support),'-k');
 hold on
-plot(support/60,circshift(yTarget(support),xShift),'-b');
+plot(support/60,circshift(yTarget(support)./p.Results.targetDeg,xShift),'-b');
 plot(frameArray/60,yPos(frameArray),'*r');
 ylabel('yPos')
 xlabel('time [sec]')
@@ -148,15 +158,50 @@ end
 
 if p.Results.verbose
     fprintf('Temporal offset of targets and pupil position: %0.0f frames (correlation: %0.2f) \n',xShift,1-fVal);
-    outLine='ellipseArrayList: [ ';
+    outLine1='ellipseArrayList: [ ';
+    outLine2='target array deg: [ ';
+    outLine3=' ';
     for ii=1:nTargets
-        outLine = [outLine num2str(frameArray(ii))];
+        outLine1 = [outLine1 num2str(frameArray(ii))];
+        outLine2 = [outLine2 num2str(xTargetDegrees(ii))];
+        outLine3 = [outLine3 num2str(yTargetDegrees(ii))];
         if ii ~= nTargets
-            outLine = [outLine ', '];
+            outLine1 = [outLine1 ', '];
+            outLine2 = [outLine2 ', '];
+            outLine3 = [outLine3 ', '];
         end
     end
-    outLine = [outLine ' ]\n'];
-    fprintf(outLine);
+    fprintf([outLine1 ' ]\n']);
+    fprintf([outLine2 ' ;' outLine3 ']\n']);
+end
+
+end
+
+
+function value = weightedMedian(data, weights)
+
+weights = weights / sum(weights);
+
+% sort the weights
+[data,I] = sort(data);
+weights = weights(I);
+
+wd = weights.*data;
+targetVal = sum(wd)/2;
+
+value = [];      
+j = 0;         
+while isempty(value)
+    j = j + 1;
+    if targetVal >0
+    if sum(wd(1:j)) >=targetVal
+        value = data(j);    % value of the weighted median
+    end
+    else
+    if sum(wd(1:j)) <=targetVal
+        value = data(j);    % value of the weighted median
+    end
+    end
 end
 
 end
