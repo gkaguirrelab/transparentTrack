@@ -124,7 +124,7 @@ p.addParameter('rawVideoSuffix', {'_raw.mov' '.mov'}, @iscell);
 p.addParameter('videoTypeChoice', 'LiveTrackWithVTOP_eye', @ischar);
 p.addParameter('customFunCalls', {}, @iscell);
 p.addParameter('customSceneGeometryFile', [], @(x)(isempty(x) | iscell(x) | ischar(x)));
-p.addParameter('catchErrors', true, @islogical);
+p.addParameter('catchErrors', false, @islogical);
 p.addParameter('maxAttempts',3,@isnueric);
 p.addParameter('makeFitVideoByName',{},@iscell);
 p.addParameter('makeFitVideoByNumber',[],@isnumeric);
