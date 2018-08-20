@@ -164,15 +164,11 @@ if ~p.Results.generateTimebaseOnly
             otherwise
                 error('Unknown bobMode. Type help deinterlaceVideo for available deinterlacing methods.')
         end
-        
-        
+                
         % write the fields as frames
         writeVideo(Bob,oddFields);
         writeVideo(Bob,evenFields);
-        
-        % close the output video object
-        clear Bob
-        
+                
         % report completion of analysis
         if p.Results.verbose
             fprintf('\n');
@@ -181,8 +177,12 @@ if ~p.Results.generateTimebaseOnly
         end
         
     end
-    
+
+    % close the output video object
+    clear Bob
+
 end % Check if we are only producing a timebase file
+
 
 % Save a timebase file if requested
 if ~isempty(p.Results.timebaseFileName)
