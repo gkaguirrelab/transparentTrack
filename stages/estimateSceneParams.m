@@ -309,7 +309,6 @@ if p.Results.nBADSsearches==0
         % Store the search results in the meta field
         tmpHold=sceneGeometry.meta.estimateSceneParams.search;
         sceneGeometry.meta.estimateSceneParams = p.Results;
-        sceneGeometry.meta.estimateSceneParams.fixationTargetArray = fixationTargetArray;
         sceneGeometry.meta.estimateSceneParams.search = tmpHold;
         sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList = ellipseArrayList';
         sceneGeometry.meta.estimateSceneParams.search.ellipseFitRMSE = ellipseFitRMSE(ellipseArrayList);
@@ -379,7 +378,6 @@ else
 
     % Store the search results in the meta field
     sceneGeometry.meta.estimateSceneParams = p.Results;
-    sceneGeometry.meta.estimateSceneParams.fixationTargetArray = fixationTargetArray;
     sceneGeometry.meta.estimateSceneParams.allSearches = searchResults;
     sceneGeometry.meta.estimateSceneParams.bestSearchIdx = bestSearchIdx;
     sceneGeometry.meta.estimateSceneParams.search = searchResults{bestSearchIdx}.meta.estimateSceneParams.search;
@@ -598,6 +596,7 @@ sceneGeometry.meta.estimateSceneParams.search.x = x';
 sceneGeometry.meta.estimateSceneParams.search.options = options;
 sceneGeometry.meta.estimateSceneParams.search.initialSceneGeometry = initialSceneGeometry;
 sceneGeometry.meta.estimateSceneParams.search.ellipses = ellipses;
+sceneGeometry.meta.estimateSceneParams.search.ellipses = ellipseFitRMSE;
 sceneGeometry.meta.estimateSceneParams.search.x0 = x0;
 sceneGeometry.meta.estimateSceneParams.search.LB = LB;
 sceneGeometry.meta.estimateSceneParams.search.UB = UB;
@@ -611,6 +610,7 @@ sceneGeometry.meta.estimateSceneParams.search.shapeErrorByEllipse = shapeErrorBy
 sceneGeometry.meta.estimateSceneParams.search.areaErrorByEllipse = areaErrorByEllipse;
 sceneGeometry.meta.estimateSceneParams.search.recoveredEyePoses = recoveredEyePoses;
 sceneGeometry.meta.estimateSceneParams.search.fixationTransform = regParams;
+sceneGeometry.meta.estimateSceneParams.search.fixationTargetArray = fixationTargetArray;
 sceneGeometry.meta.estimateSceneParams.search.objEvalCounter = objEvalCounter;
 sceneGeometry.meta.estimateSceneParams.search.fValPath = fValPath;
 sceneGeometry.meta.estimateSceneParams.search.searchTimeSecs = searchTimeSecs;
@@ -1085,10 +1085,10 @@ end % saveEyeModelMontage
 
 function [] = saveFixationTargetModel(sceneGeometry,montageFileName)
 poses = sceneGeometry.meta.estimateSceneParams.search.recoveredEyePoses(:,1:2);
-t= sceneGeometry.meta.estimateSceneParams.search.fixationTransform.t;
+t = sceneGeometry.meta.estimateSceneParams.search.fixationTransform.t;
 R = sceneGeometry.meta.estimateSceneParams.search.fixationTransform.R;
 modeled = poses*R +t';
-targets = sceneGeometry.meta.estimateSceneParams.fixationTargetArray';
+targets = sceneGeometry.meta.estimateSceneParams.search.fixationTargetArray';
 
 % Prepare the figure
 figHandle=figure('visible','off');
