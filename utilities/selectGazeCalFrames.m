@@ -63,6 +63,11 @@ if ischar(pupilFileName)
 end
 
 % Define temporal support
+if ~isfield(pupilData,'timebase')
+    warning('This pupil data file does not include a timebase; exiting')
+    return
+end
+
 tmpDiff = diff(pupilData.timebase.values);
 deltaT = tmpDiff(1);
 

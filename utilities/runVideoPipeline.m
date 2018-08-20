@@ -173,6 +173,10 @@ if ~any(strcmp(p.Results.skipStageByName,'deinterlaceVideo')) && ~any(p.Results.
     end
 end
 
+% LiveTrack gaze calibration data files
+LTdatFileName = fullfile(pathParams.dataSourceDirFull, [pathParams.runName '_LTdat.mat']);
+rawVidStartFileName = fullfile(pathParams.dataSourceDirFull, [pathParams.runName '_rawVidStart.mat']);
+
 %% Define output filenames
 if isfield(pathParams,'grayVideoName')
     grayVideoName = pathParams.grayVideoName;
@@ -247,6 +251,12 @@ switch p.Results.videoTypeChoice
             '''pupilFileName'', pupilFileName, ''sceneGeometryFileName'', sceneGeometryFileNameInput,' ...
             '''modelEyeAlpha'', 0.25,' ...
             '''controlFileName'',controlFileName,varargin{:});']...
+            };
+    case 'gazeCalInfo_HighResWithDotTimes'
+        funCalls = {...
+            ['selectGazeCalFrames(pupilFileName, LTdatFileName, rawVidStartFileName,'...
+            '''showPlots'', false, ''verbose'', true, ' ...
+            'varargin{:});']...
             };
     case 'custom'
         funCalls = p.Results.customFunCalls;
