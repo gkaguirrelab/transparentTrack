@@ -309,6 +309,7 @@ if p.Results.nBADSsearches==0
         % Store the search results in the meta field
         tmpHold=sceneGeometry.meta.estimateSceneParams.search;
         sceneGeometry.meta.estimateSceneParams = p.Results;
+        sceneGeometry.meta.estimateSceneParams.fixationTargetArray = fixationTargetArray;
         sceneGeometry.meta.estimateSceneParams.search = tmpHold;
         sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList = ellipseArrayList';
         sceneGeometry.meta.estimateSceneParams.search.ellipseFitRMSE = ellipseFitRMSE(ellipseArrayList);
@@ -378,6 +379,7 @@ else
 
     % Store the search results in the meta field
     sceneGeometry.meta.estimateSceneParams = p.Results;
+    sceneGeometry.meta.estimateSceneParams.fixationTargetArray = fixationTargetArray;
     sceneGeometry.meta.estimateSceneParams.allSearches = searchResults;
     sceneGeometry.meta.estimateSceneParams.bestSearchIdx = bestSearchIdx;
     sceneGeometry.meta.estimateSceneParams.search = searchResults{bestSearchIdx}.meta.estimateSceneParams.search;
