@@ -112,12 +112,13 @@ p.addParameter('hostname',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional analysis params
-p.addParameter('ellipseTransparentLB',[0,0,800,0,0],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('ellipseTransparentUB',[640,480,20000,0.6,pi],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('ellipseTransparentLB',[0,0,800,0,0],@(x)(isempty(x) || isnumeric(x)));
+p.addParameter('ellipseTransparentUB',[640,480,20000,0.6,pi],@(x)(isempty(x) || isnumeric(x)));
 p.addParameter('nSplits',2,@isnumeric);
-p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) | ischar(x)));
+p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) || ischar(x)));
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
 p.addParameter('fitLabel',[],@(x)(isempty(x) | ischar(x)));
+p.addParameter('timebaseField',[],@(x)(isempty(x) || ischar(x) || isnumeric(x) || isstruct(x)));
 
 
 %% Parse and check the parameters
@@ -383,6 +384,27 @@ end
 % pupilData
 if isfield(perimeter,'instructions')
     pupilData.instructions = perimeter.instructions;
+end
+
+% If a timebase has been passed, add it to the structure
+if ~isempty(p.Results.timebaseField)
+    switch class(p.Results.timebaseField)
+        case {'char' 'string'}
+            fileExists = exist(p.Results.timebaseField, 'file') == 2;
+            if fileExists
+                dataLoad=load(p.Results.timebaseField);
+                timebase=dataLoad.timebase;
+                clear dataLoad
+                pupilData.timebase = timebase;
+                pupilData.timebase.values = pupilData.timebase.values(1:nFrames);
+            end
+        case {'struct'}
+            pupilData.timebase = p.Results.timebaseField;
+            pupilData.timebase.values = pupilData.timebase.values(1:nFrames);            
+        case {'double'}
+            pupilData.timebase.values = p.Results.timebaseField;
+            pupilData.timebase.values = pupilData.timebase.values(1:nFrames);            
+    end
 end
 
 % add meta data

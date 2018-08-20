@@ -194,7 +194,7 @@ p.parse(controlFileName, perimeterFileName, glintFileName, varargin{:})
 % We decline to over-write an existing control file, as it may contain
 % instructions lovingly crafted by a human
 if exist(controlFileName, 'file') == 2 && ~(p.Results.overwriteControlFile)
-    warning(['The control file ' controlFileName ' exists already and cannot be over-written. Exiting.']);
+    warning('makeControlFile:overwrittingControlFile',['The control file ' controlFileName ' exists already and cannot be over-written. Exiting.']);
     return
 end
 
