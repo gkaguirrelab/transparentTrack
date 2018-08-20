@@ -319,8 +319,8 @@ if p.Results.nBADSsearches==0
 else
     % Loop over the requested number of BADS searches
     searchResults = {};
-    parfor (ss = 1:p.Results.nBADSsearches,nWorkers)
-%    for ss = 1:p.Results.nBADSsearches
+%    parfor (ss = 1:p.Results.nBADSsearches,nWorkers)
+    for ss = 1:p.Results.nBADSsearches
         
         searchResults{ss} = ...
             performSceneSearch(initialSceneGeometry, ...
@@ -527,7 +527,7 @@ if all(x0==LB) && all(x0==UB)
     x=x0';
     fVal = objfun(x);
 else
-    % Perform the seach using bads
+    % Perform the seach using bads.
     [x, fVal] = bads(@objfun,x0',LB',UB',LBp',UBp',[],options);
 end
 % Nested function computes the objective
@@ -562,13 +562,16 @@ end
         if ~isempty(fixationTargetArray)
             % Compute the distance between the recovered eye rotation
             % angles and the fixation target positions
-            [regParams,~,ErrorStats]=absor(...
+            regParams = absor(...
                 recoveredEyePoses(:,1:2)',...
                 fixationTargetArray,...
                 'weights',ellipseFitRMSE,...
                 'doScale',false,...
                 'doTrans',true);
-            fval = ErrorStats.errlsq;
+            % Obtain the RMSE of the Euclidean distance of the fixation
+            % targets and the modeled eye fixation locations
+            modeled = recoveredEyePoses(:,1:2)*regParams.R + regParams.t';
+            fval = sqrt(mean(sum((fixationTargetArray'-modeled).^2,2)));
         else
             % Compute objective function as the RMSE of the distance
             % between the taget and modeled ellipses in shape and area
