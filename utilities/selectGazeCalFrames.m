@@ -196,6 +196,12 @@ xTargetDegrees = xTargetDegrees(notNanFrames);
 yTargetDegrees = yTargetDegrees(notNanFrames);
 nTargets = length(xTargetDegrees);
 
+if nTargets==0
+    warning('No valid targets found; exiting')
+    return
+    
+end
+
 % Plot the time series and the selected points
 if p.Results.showPlot
     figHandle=figure('visible','on');
