@@ -104,16 +104,16 @@ end
 nTargets = size(LTGazeCalData.targets,1);
 
 times = round((LTGazeCalData.dotTimes-LTGazeCalData.rawVidStart).*((1/deltaT)*1000));
-xPos = pupilData.initial.ellipses.values(:,1);
-yPos = pupilData.initial.ellipses.values(:,2);
+xPosOriginal = pupilData.initial.ellipses.values(:,1);
+yPosOriginal = pupilData.initial.ellipses.values(:,2);
 
-support = 1:round(min([times(end)+5000*(1/deltaT),size(xPos,1)]));
-support=support(~isnan(xPos(support)));
-support=support(~isnan(yPos(support)));
+support = 1:round(min([times(end)+5000*(1/deltaT),size(xPosOriginal,1)]));
+support=support(~isnan(xPosOriginal(support)));
+support=support(~isnan(yPosOriginal(support)));
 
 % Remove blinks
-xVelocity = diff(xPos(support));
-yVelocity = diff(yPos(support));
+xVelocity = diff(xPosOriginal(support));
+yVelocity = diff(yPosOriginal(support));
 blinks = [0; (xVelocity>25) + (yVelocity>25)]';
 for ii=-3:3
     blinks = blinks + circshift(blinks,ii);
@@ -122,9 +122,9 @@ blinks(blinks>0)=1;
 support=support(~blinks);
 
 % Normalize pupil position values
-xPos = xPos-mean(xPos(support));
+xPos = xPosOriginal-mean(xPosOriginal(support));
 xPos = xPos./max(xPos(support));
-yPos = yPos-mean(yPos(support));
+yPos = yPosOriginal-mean(yPosOriginal(support));
 yPos = yPos./max(yPos(support));
 
 % Create the target vector
@@ -229,21 +229,25 @@ plot(pupilData.timebase.values(frameArray)./1000,xPos(frameArray),'*r');
 ylabel('xPos')
 xlabel('time [sec]')
 title(plotTitle,'Interpreter','none','HorizontalAlignment','left');
+
 subplot(2,4,[5 6])
 plot(pupilData.timebase.values(support).*(1/deltaT),yPos(support),'-k');
 hold on
 plot(pupilData.timebase.values(support).*(1/deltaT),circshift(yTarget(support)./p.Results.targetDeg,xShift),'-b');
 plot(pupilData.timebase.values(frameArray).*(1/deltaT),yPos(frameArray),'*r');
+set(gca,'Ydir','reverse')
 ylabel('yPos')
 xlabel('time [frames]')
 plotInfo = sprintf('Temporal offset: %0.0f frames; correlation: %0.2f \n',xShift,1-fVal);
 title(plotInfo,'Interpreter','none');
+
 subplot(2,4,[3 4 7 8])
-plot(xPos(frameArray),yPos(frameArray),'bx');
+plot(xPosOriginal(frameArray),yPosOriginal(frameArray),'bx');
 hold on
-text(xPos(frameArray)+0.075,yPos(frameArray)+.075,num2str(frameArray'));
-ylim([min(yPos(frameArray)) max(yPos(frameArray))]*1.25);
-xlim([min(xPos(frameArray)) max(xPos(frameArray))]*1.25);
+text(xPosOriginal(frameArray)+2,yPosOriginal(frameArray)+2,num2str(frameArray'));
+ylim([min(yPosOriginal(frameArray)).*0.95 max(yPosOriginal(frameArray)).*1.05]);
+xlim([min(xPosOriginal(frameArray)).*0.95 max(xPosOriginal(frameArray)).*1.05]);
+set(gca,'Ydir','reverse')
 axis equal
 
 if ~isempty(p.Results.plotFileName)
