@@ -227,8 +227,8 @@ subplot(2,4,[3 4 7 8])
 plot(xPos(frameArray),yPos(frameArray),'bx');
 hold on
 text(xPos(frameArray)+0.075,yPos(frameArray)+.075,num2str(frameArray'));
-ylim([-1 1]);
-xlim([-1 1]);
+ylim([min(yPos(frameArray)) max(yPos(frameArray))]*1.25);
+xlim([min(xPos(frameArray)) max(xPos(frameArray))]*1.25);
 axis equal
 
 if ~isempty(p.Results.plotFileName)
