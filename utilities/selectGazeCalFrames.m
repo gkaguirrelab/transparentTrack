@@ -72,10 +72,22 @@ tmpDiff = diff(pupilData.timebase.values);
 deltaT = tmpDiff(1);
 
 %% Load live-track info files
-LTGazeCalData=load(LTdatFileName);
-dataLoad = load(rawVidStartFileName);
-LTGazeCalData.rawVidStart = dataLoad.rawVidStart;
-clear dataLoad
+fileExists = exist(p.Results.LTdatFileName, 'file') == 2;
+if fileExists
+    LTGazeCalData=load(LTdatFileName);
+else
+    warning('There is no LTdata file for this acquisition; exiting')
+    return
+end
+fileExists = exist(p.Results.rawVidStartFileName, 'file') == 2;
+if fileExists
+    dataLoad = load(rawVidStartFileName);
+    LTGazeCalData.rawVidStart = dataLoad.rawVidStart;
+    clear dataLoad
+else
+    warning('There is no raw video start file for this acquisition; exiting')
+    return
+end
 
 nTargets = size(LTGazeCalData.targets,1);
 
