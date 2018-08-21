@@ -10,7 +10,7 @@ function [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, 
 %
 % Inputs:
 %	pupilFileName         - Full path to a pupilData file.
-%   LTdatFileName         - 
+%   LTdatFileName         -
 %   rawVidStartFileName   -
 %
 % Optional key/value pairs (display and I/O):
@@ -28,9 +28,9 @@ function [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, 
 %
 % Examples:
 %{
-    pupilFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal03_pupil.mat';
-    LTdatFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal03_LTdat.mat';
-    rawVidStartFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal03_rawVidStart.mat';
+    pupilFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal01_pupil.mat';
+    LTdatFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal01_LTdat.mat';
+    rawVidStartFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal01_rawVidStart.mat';
     [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, LTdatFileName, rawVidStartFileName,'showPlots',true,'verbose',true);
 %}
 
@@ -46,6 +46,7 @@ p.addRequired('rawVidStartFileName',@ischar);
 % Optional display and I/O params
 p.addParameter('verbose',false,@islogical);
 p.addParameter('showPlots',false,@islogical);
+p.addParameter('plotTitle','',@(x)(isempty(x) || ischar(x)));
 
 % Optional analysis params
 p.addParameter('fitLabel','initial',@ischar);
@@ -104,7 +105,7 @@ xVelocity = diff(xPos(support));
 yVelocity = diff(yPos(support));
 blinks = [0; (xVelocity>25) + (yVelocity>25)]';
 for ii=-3:3
-     blinks = blinks + circshift(blinks,ii);
+    blinks = blinks + circshift(blinks,ii);
 end
 blinks(blinks>0)=1;
 support=support(~blinks);
@@ -120,7 +121,7 @@ xTargetDegrees = -sign(LTGazeCalData.targets(:,1))*p.Results.targetDeg;
 yTargetDegrees = -sign(LTGazeCalData.targets(:,2))*p.Results.targetDeg;
 fixationTargetArray = [xTargetDegrees'; yTargetDegrees'];
 
-% 
+%
 xTarget = zeros(size(xPos));
 yTarget = zeros(size(yPos));
 for ii=1:size(LTGazeCalData.targets)
@@ -145,9 +146,9 @@ frameBoundLate = frames(1:9)+round(diff(frames).*.85);
 for ii=1:nTargets
     supportStartIdx=find(frameBoundEarly(ii)<=support,1);
     supportEndIdx=find(frameBoundLate(ii)<=support,1);
-    localSupport = support(supportStartIdx:supportEndIdx);    
-    xPosMedian=weightedMedian(xPos(localSupport), ellipseFitRMSE(localSupport));
-    yPosMedian=weightedMedian(yPos(localSupport), ellipseFitRMSE(localSupport));
+    localSupport = support(supportStartIdx:supportEndIdx);
+    xPosMedian=weightedMedian(xPos(localSupport), 1./ellipseFitRMSE(localSupport));
+    yPosMedian=weightedMedian(yPos(localSupport), 1./ellipseFitRMSE(localSupport));
     distanceFromMedian = ...
         sqrt(sum([(xPos(localSupport)-xPosMedian)';(yPos(localSupport)-yPosMedian)'].^2));
     [~,idx]=min(distanceFromMedian);
@@ -156,24 +157,33 @@ end
 
 % Plot the time series and the selected points
 if p.Results.showPlots
-figure
-subplot(2,1,1)
-plot(pupilData.timebase.values(support)./1000,xPos(support),'-k');
-hold on
-plot(pupilData.timebase.values(support)./1000,circshift(xTarget(support)./p.Results.targetDeg,xShift),'-b');
-plot(pupilData.timebase.values(frameArray)./1000,xPos(frameArray),'*r');
-ylabel('xPos')
-xlabel('time [sec]')
-subplot(2,1,2)
-plot(pupilData.timebase.values(support)./1000,yPos(support),'-k');
-hold on
-plot(pupilData.timebase.values(support)./1000,circshift(yTarget(support)./p.Results.targetDeg,xShift),'-b');
-plot(pupilData.timebase.values(frameArray)./1000,yPos(frameArray),'*r');
-ylabel('yPos')
-xlabel('time [sec]')
-
-figure
-plot(xPos(frameArray),yPos(frameArray),'bx');
+    if isempty(p.Results.plotTitle)
+        nameParts = strsplit(pupilFileName,filesep);
+        plotTitle = [nameParts{end-4} ' - ' nameParts{end-3} ' - ' nameParts{end-2} ' - ' nameParts{end}];
+    else
+        plotTitle = p.Results.plotTitle;
+    end
+    figure
+    subplot(2,4,[1 2])
+    plot(pupilData.timebase.values(support)./1000,xPos(support),'-k');
+    hold on
+    plot(pupilData.timebase.values(support)./1000,circshift(xTarget(support)./p.Results.targetDeg,xShift),'-b');
+    plot(pupilData.timebase.values(frameArray)./1000,xPos(frameArray),'*r');
+    ylabel('xPos')
+    xlabel('time [sec]')
+    title(plotTitle,'Interpreter','none','HorizontalAlignment','left');
+    subplot(2,4,[5 6])
+    plot(pupilData.timebase.values(support)./1000,yPos(support),'-k');
+    hold on
+    plot(pupilData.timebase.values(support)./1000,circshift(yTarget(support)./p.Results.targetDeg,xShift),'-b');
+    plot(pupilData.timebase.values(frameArray)./1000,yPos(frameArray),'*r');
+    ylabel('yPos')
+    xlabel('time [sec]')
+    subplot(2,4,[3 4 7 8])
+    plot(xPos(frameArray),yPos(frameArray),'bx');
+    ylim([-1 1]);
+    xlim([-1 1]);
+    axis equal
 end
 
 if p.Results.verbose
@@ -201,27 +211,13 @@ end
 function value = weightedMedian(data, weights)
 
 weights = weights / sum(weights);
-
-% sort the weights
-[data,I] = sort(data);
-weights = weights(I);
-
 wd = weights.*data;
-targetVal = sum(wd)/2;
 
-value = [];      
-j = 0;         
-while isempty(value)
-    j = j + 1;
-    if targetVal >0
-    if sum(wd(1:j)) >=targetVal
-        value = data(j);    % value of the weighted median
-    end
-    else
-    if sum(wd(1:j)) <=targetVal
-        value = data(j);    % value of the weighted median
-    end
-    end
-end
+% sort the weighted data
+[wd,I] = sort(wd);
+data = data(I);
 
+% Report the data value that corresponds to the median of the weighted
+% values
+value = data(find(wd>=median(wd),1));
 end
