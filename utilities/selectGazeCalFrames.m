@@ -16,6 +16,7 @@ function [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, 
 % Optional key/value pairs (display and I/O):
 %  'verbose'              - Logical. Default false.
 %  'showPlots'            - Logical. Default false.
+%  'plotTitle'            - Char or empty.
 %
 % Optional key/value pairs (analysis)
 %  'fitLabel'             - Identifies the field in pupilData that contains
