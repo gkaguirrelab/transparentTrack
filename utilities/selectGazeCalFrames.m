@@ -29,11 +29,11 @@ function [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, 
 %
 % Examples:
 %{
-    pupilFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3019/050317/EyeTracking/GazeCal01_pupil.mat';
-    gazeCalFramesDiagnosticPlot = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3019/050317/EyeTracking/GazeCal01_fixFramesSelectPlot.pdf';
-    LTdatFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3019/050317/EyeTracking/GazeCal01_LTdat.mat';
-    rawVidStartFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3019/050317/EyeTracking/GazeCal01_rawVidStart.mat';
-    pupilCalInfoFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3019/050317/EyeTracking/GazeCal01_pupilCal_Info.mat';
+    pupilFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3022/061617/EyeTracking/GazeCal03_pupil.mat';
+    gazeCalFramesDiagnosticPlot = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3022/061617/EyeTracking/GazeCal03_fixFramesSelectPlot.pdf';
+    LTdatFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3022/061617/EyeTracking/GazeCal03_LTdat.mat';
+    rawVidStartFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3022/061617/EyeTracking/GazeCal03_rawVidStart.mat';
+    pupilCalInfoFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3022/061617/EyeTracking/GazeCal03_pupilCal_Info.mat';
     [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, LTdatFileName, rawVidStartFileName,pupilCalInfoFileName,'plotFilename',gazeCalFramesDiagnosticPlot,'showPlot',true,'verbose',true);
 %}
 
@@ -146,7 +146,14 @@ myObjX = @(x) 1-corr2(xPos(support),circshift(xTarget(support),round(x*nonIntege
 myObjY = @(x) 1-corr2(yPos(support),circshift(yTarget(support),round(x*nonInteger)));
 myObj = @(x) sqrt(mean([myObjX(x),myObjY(x)].^2));
 
-[xShift,fVal]=fminsearch(myObj,0);
+options = optimset('Display','off');
+[xShift,fVal]=fminsearch(myObj,0,options);
+if isnan(xShift)
+    [xShift,fVal]=fminsearch(myObj,-20,options);
+    if isnan(xShift)
+        [xShift,fVal]=fminsearch(myObj,20,options);
+    end
+end
 xShift = round(xShift*nonInteger);
 
 % Find the lowest RMSE ellipse fit frame for each target
@@ -157,6 +164,11 @@ frameBoundLate = frames(1:9)+round(diff(frames).*.85);
 for ii=1:nTargets
     supportStartIdx=find(frameBoundEarly(ii)<=support,1);
     supportEndIdx=find(frameBoundLate(ii)<=support,1);
+    if isempty(supportEndIdx)
+        if ii==9
+            supportEndIdx=length(support);
+        end
+    end
     localSupport = support(supportStartIdx:supportEndIdx);
     xPosMedian=weightedMedian(xPos(localSupport), 1./ellipseFitRMSE(localSupport));
     yPosMedian=weightedMedian(yPos(localSupport), 1./ellipseFitRMSE(localSupport));
