@@ -167,12 +167,12 @@ for ii=1:nTargets
 end
 
 % Plot the time series and the selected points
-if p.Results.showPlots
+if p.Results.showPlot
     figHandle=figure('visible','on');
 else
     figHandle=figure('visible','off');
 end
-    % Configure the figure
+% Configure the figure
 set(gcf,'PaperOrientation','landscape');
 set(figHandle, 'Units','inches')
 height = 6;
@@ -185,43 +185,43 @@ set(figHandle, 'Position',[25 5 width height],...
     'Color','w');
 
 % Plot the data
-    if isempty(p.Results.plotTitle)
-        nameParts = strsplit(pupilFileName,filesep);
-        plotTitle = [nameParts{end-4} ' - ' nameParts{end-3} ' - ' nameParts{end-2} ' - ' nameParts{end}];
-    else
-        plotTitle = p.Results.plotTitle;
-    end
-    subplot(2,4,[1 2])
-    plot(pupilData.timebase.values(support)./1000,xPos(support),'-k');
-    hold on
-    plot(pupilData.timebase.values(support)./1000,circshift(xTarget(support)./p.Results.targetDeg,xShift),'-b');
-    plot(pupilData.timebase.values(frameArray)./1000,xPos(frameArray),'*r');
-    ylabel('xPos')
-    xlabel('time [sec]')
-    title(plotTitle,'Interpreter','none','HorizontalAlignment','left');
-    subplot(2,4,[5 6])
-    plot(pupilData.timebase.values(support)./1000,yPos(support),'-k');
-    hold on
-    plot(pupilData.timebase.values(support)./1000,circshift(yTarget(support)./p.Results.targetDeg,xShift),'-b');
-    plot(pupilData.timebase.values(frameArray)./1000,yPos(frameArray),'*r');
-    ylabel('yPos')
-    xlabel('time [sec]')
-    plotInfo = sprintf('Temporal offset of targets and pupil position: %0.0f frames (correlation: %0.2f) \n',xShift,1-fVal);
-    title(plotInfo,'Interpreter','none');    
-    subplot(2,4,[3 4 7 8])
-    plot(xPos(frameArray),yPos(frameArray),'bx');
-    ylim([-1 1]);
-    xlim([-1 1]);
-    axis equal
+if isempty(p.Results.plotTitle)
+    nameParts = strsplit(pupilFileName,filesep);
+    plotTitle = [nameParts{end-4} ' - ' nameParts{end-3} ' - ' nameParts{end-2} ' - ' nameParts{end}];
+else
+    plotTitle = p.Results.plotTitle;
+end
+subplot(2,4,[1 2])
+plot(pupilData.timebase.values(support)./1000,xPos(support),'-k');
+hold on
+plot(pupilData.timebase.values(support)./1000,circshift(xTarget(support)./p.Results.targetDeg,xShift),'-b');
+plot(pupilData.timebase.values(frameArray)./1000,xPos(frameArray),'*r');
+ylabel('xPos')
+xlabel('time [sec]')
+title(plotTitle,'Interpreter','none','HorizontalAlignment','left');
+subplot(2,4,[5 6])
+plot(pupilData.timebase.values(support)./1000,yPos(support),'-k');
+hold on
+plot(pupilData.timebase.values(support)./1000,circshift(yTarget(support)./p.Results.targetDeg,xShift),'-b');
+plot(pupilData.timebase.values(frameArray)./1000,yPos(frameArray),'*r');
+ylabel('yPos')
+xlabel('time [sec]')
+plotInfo = sprintf('Temporal offset of targets and pupil position: %0.0f frames (correlation: %0.2f) \n',xShift,1-fVal);
+title(plotInfo,'Interpreter','none');
+subplot(2,4,[3 4 7 8])
+plot(xPos(frameArray),yPos(frameArray),'bx');
+ylim([-1 1]);
+xlim([-1 1]);
+axis equal
 
-    if ~isempty(p.Results.plotFileName)
-        saveas(figHandle,p.Results.plotFileName)
-    end
+if ~isempty(p.Results.plotFileName)
+    saveas(figHandle,p.Results.plotFileName)
+end
 
-    if ~p.Results.showPlots
-        close(figHandle)
-    end
-    
+if ~p.Results.showPlot
+    close(figHandle)
+end
+
 if p.Results.verbose
     fprintf('Temporal offset of targets and pupil position: %0.0f frames (correlation: %0.2f) \n',xShift,1-fVal);
     outLine1='ellipseArrayList: [ ';
