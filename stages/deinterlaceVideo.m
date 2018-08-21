@@ -164,25 +164,23 @@ if ~p.Results.generateTimebaseOnly
             otherwise
                 error('Unknown bobMode. Type help deinterlaceVideo for available deinterlacing methods.')
         end
-                
+        
         % write the fields as frames
         writeVideo(Bob,oddFields);
         writeVideo(Bob,evenFields);
-                
-        % report completion of analysis
-        if p.Results.verbose
-            fprintf('\n');
-            toc
-            fprintf('\n');
-        end
-        
     end
-
+    
+    % report completion of analysis
+    if p.Results.verbose
+        fprintf('\n');
+        toc
+        fprintf('\n');        
+    end
+    
     % close the output video object
     clear Bob
-
+    
 end % Check if we are only producing a timebase file
-
 
 % Save a timebase file if requested
 if ~isempty(p.Results.timebaseFileName)
@@ -199,7 +197,7 @@ if ~isempty(p.Results.timebaseFileName)
         videoCreationDateTime = videoCreationDateTime(1:end-1);
     else
         videoCreationDateTime='';
-    end    
+    end
     frameRate = videoInObj.FrameRate * 2;
     frameDur = (1/frameRate)*1000;
     timebase.values = ((p.Results.startFrame-1)*frameDur:frameDur:((p.Results.startFrame+nFrames-1)*2-1)*frameDur)';
