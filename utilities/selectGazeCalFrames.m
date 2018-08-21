@@ -29,11 +29,11 @@ function [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, 
 %
 % Examples:
 %{
-    pupilFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3022/061617/EyeTracking/GazeCal03_pupil.mat';
-    gazeCalFramesDiagnosticPlot = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3022/061617/EyeTracking/GazeCal03_fixFramesSelectPlot.pdf';
-    LTdatFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3022/061617/EyeTracking/GazeCal03_LTdat.mat';
-    rawVidStartFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3022/061617/EyeTracking/GazeCal03_rawVidStart.mat';
-    pupilCalInfoFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3022/061617/EyeTracking/GazeCal03_pupilCal_Info.mat';
+    pupilFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3030/011018/EyeTracking/GazeCal01_pupil.mat';
+    gazeCalFramesDiagnosticPlot = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3030/011018/EyeTracking/GazeCal01_fixFramesSelectPlot.pdf';
+    LTdatFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3030/011018/EyeTracking/GazeCal01_LTdat.mat';
+    rawVidStartFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3030/011018/EyeTracking/GazeCal01_rawVidStart.mat';
+    pupilCalInfoFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3030/011018/EyeTracking/GazeCal01_pupilCal_Info.mat';
     [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, LTdatFileName, rawVidStartFileName,pupilCalInfoFileName,'plotFilename',gazeCalFramesDiagnosticPlot,'showPlot',true,'verbose',true);
 %}
 
@@ -140,6 +140,9 @@ for ii=1:size(LTGazeCalData.targets)
     yTarget(times(ii):times(ii+1))= -yTargetDegrees(ii);
 end
 
+% Sometimes the target not tracked, and so was set as nans. Handles this
+% here.
+support=support(~isnan(xTarget(support)));
 
 nonInteger = 1e6;
 myObjX = @(x) 1-corr2(xPos(support),circshift(xTarget(support),round(x*nonInteger)));
