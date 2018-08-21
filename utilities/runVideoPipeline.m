@@ -173,9 +173,11 @@ if ~any(strcmp(p.Results.skipStageByName,'deinterlaceVideo')) && ~any(p.Results.
     end
 end
 
-% LiveTrack gaze calibration data files
+% LiveTrack gaze calibration data files and diagnostic plots
 LTdatFileName = fullfile(pathParams.dataSourceDirFull, [pathParams.runName '_LTdat.mat']);
 rawVidStartFileName = fullfile(pathParams.dataSourceDirFull, [pathParams.runName '_rawVidStart.mat']);
+pupilCalInfoFileName = fullfile(pathParams.dataSourceDirFull, [pathParams.runName '_pupilCal_Info.mat']);
+gazeCalFramesDiagnosticPlot = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_fixFramesSelectPlot.pdf']);
 
 %% Define output filenames
 if isfield(pathParams,'grayVideoName')
@@ -254,8 +256,8 @@ switch p.Results.videoTypeChoice
             };
     case 'gazeCalInfo_HighResWithDotTimes'
         funCalls = {...
-            ['selectGazeCalFrames(pupilFileName, LTdatFileName, rawVidStartFileName,'...
-            '''showPlots'', false, ''verbose'', true, ' ...
+            ['selectGazeCalFrames(pupilFileName, LTdatFileName, rawVidStartFileName, pupilCalInfoFileName, '...
+            '''showPlots'', false, ''verbose'', true, ''plotFileName'' gazeCalFramesDiagnosticPlot, ' ...
             'varargin{:});']...
             };
     case 'custom'

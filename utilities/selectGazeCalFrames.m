@@ -1,4 +1,4 @@
-function [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, LTdatFileName, rawVidStartFileName, varargin)
+function [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, LTdatFileName, rawVidStartFileName, pupilCalInfoFileName, varargin)
 % Select frames from gaze calibration target fixation periods
 %
 % Syntax:
@@ -29,10 +29,12 @@ function [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, 
 %
 % Examples:
 %{
-    pupilFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal01_pupil.mat';
-    LTdatFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal01_LTdat.mat';
-    rawVidStartFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3012/020317/EyeTracking/GazeCal01_rawVidStart.mat';
-    [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, LTdatFileName, rawVidStartFileName,'showPlots',true,'verbose',true);
+    pupilFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3019/050317/EyeTracking/GazeCal01_pupil.mat';
+    gazeCalFramesDiagnosticPlot = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3019/050317/EyeTracking/GazeCal01_fixFramesSelectPlot.pdf';
+    LTdatFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3019/050317/EyeTracking/GazeCal01_LTdat.mat';
+    rawVidStartFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3019/050317/EyeTracking/GazeCal01_rawVidStart.mat';
+    pupilCalInfoFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3019/050317/EyeTracking/GazeCal01_pupilCal_Info.mat';
+    [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, LTdatFileName, rawVidStartFileName,pupilCalInfoFileName,'plotFilename',gazeCalFramesDiagnosticPlot,'showPlot',true,'verbose',true);
 %}
 
 
@@ -43,18 +45,20 @@ p = inputParser; p.KeepUnmatched = true;
 p.addRequired('pupilFileName',@ischar);
 p.addRequired('LTdatFileName',@ischar);
 p.addRequired('rawVidStartFileName',@ischar);
+p.addRequired('pupilCalInfoFileName',@ischar);
 
 % Optional display and I/O params
 p.addParameter('verbose',false,@islogical);
-p.addParameter('showPlots',false,@islogical);
+p.addParameter('showPlot',false,@islogical);
 p.addParameter('plotTitle','',@(x)(isempty(x) || ischar(x)));
+p.addParameter('plotFileName','',@(x)(isempty(x) || ischar(x)));
 
 % Optional analysis params
 p.addParameter('fitLabel','initial',@ischar);
 p.addParameter('targetDeg',7,@isscalar);
 
 % parse
-p.parse(pupilFileName, LTdatFileName, rawVidStartFileName, varargin{:})
+p.parse(pupilFileName, LTdatFileName, rawVidStartFileName, pupilCalInfoFileName,varargin{:})
 
 
 %% Load pupil data
@@ -74,21 +78,27 @@ tmpDiff = diff(pupilData.timebase.values);
 deltaT = tmpDiff(1);
 
 %% Load live-track info files
-fileExists = exist(p.Results.LTdatFileName, 'file') == 2;
-if fileExists
-    LTGazeCalData=load(LTdatFileName);
-else
-    warning('There is no LTdata file for this acquisition; exiting')
-    return
-end
-fileExists = exist(p.Results.rawVidStartFileName, 'file') == 2;
-if fileExists
-    dataLoad = load(rawVidStartFileName);
-    LTGazeCalData.rawVidStart = dataLoad.rawVidStart;
+if exist(pupilCalInfoFileName, 'file') == 2
+    dataLoad = load(pupilCalInfoFileName);
+    LTGazeCalData.dotTimes = dataLoad.dotTimes;
+    LTGazeCalData.targets = dataLoad.targets;
+    LTGazeCalData.rawVidStart = dataLoad.rawVidStart.getSecsPre;
     clear dataLoad
 else
-    warning('There is no raw video start file for this acquisition; exiting')
-    return
+    if exist(LTdatFileName, 'file') == 2
+        LTGazeCalData=load(LTdatFileName);
+    else
+        warning('There is no LTdata file for this acquisition; exiting')
+        return
+    end
+    if exist(rawVidStartFileName, 'file') == 2
+        dataLoad = load(rawVidStartFileName);
+        LTGazeCalData.rawVidStart = dataLoad.rawVidStart;
+        clear dataLoad
+    else
+        warning('There is no raw video start file for this acquisition; exiting')
+        return
+    end
 end
 
 nTargets = size(LTGazeCalData.targets,1);
@@ -158,13 +168,29 @@ end
 
 % Plot the time series and the selected points
 if p.Results.showPlots
+    figHandle=figure('visible','on');
+else
+    figHandle=figure('visible','off');
+end
+    % Configure the figure
+set(gcf,'PaperOrientation','landscape');
+set(figHandle, 'Units','inches')
+height = 6;
+width = 11;
+
+% The last two parameters of 'Position' define the figure size
+set(figHandle, 'Position',[25 5 width height],...
+    'PaperSize',[width height],...
+    'PaperPositionMode','auto',...
+    'Color','w');
+
+% Plot the data
     if isempty(p.Results.plotTitle)
         nameParts = strsplit(pupilFileName,filesep);
         plotTitle = [nameParts{end-4} ' - ' nameParts{end-3} ' - ' nameParts{end-2} ' - ' nameParts{end}];
     else
         plotTitle = p.Results.plotTitle;
     end
-    figure
     subplot(2,4,[1 2])
     plot(pupilData.timebase.values(support)./1000,xPos(support),'-k');
     hold on
@@ -180,13 +206,22 @@ if p.Results.showPlots
     plot(pupilData.timebase.values(frameArray)./1000,yPos(frameArray),'*r');
     ylabel('yPos')
     xlabel('time [sec]')
+    plotInfo = sprintf('Temporal offset of targets and pupil position: %0.0f frames (correlation: %0.2f) \n',xShift,1-fVal);
+    title(plotInfo,'Interpreter','none');    
     subplot(2,4,[3 4 7 8])
     plot(xPos(frameArray),yPos(frameArray),'bx');
     ylim([-1 1]);
     xlim([-1 1]);
     axis equal
-end
 
+    if ~isempty(p.Results.plotFileName)
+        saveas(figHandle,p.Results.plotFileName)
+    end
+
+    if ~p.Results.showPlots
+        close(figHandle)
+    end
+    
 if p.Results.verbose
     fprintf('Temporal offset of targets and pupil position: %0.0f frames (correlation: %0.2f) \n',xShift,1-fVal);
     outLine1='ellipseArrayList: [ ';
