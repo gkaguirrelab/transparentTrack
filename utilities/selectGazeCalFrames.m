@@ -165,21 +165,36 @@ frameBoundEarly = frames(1:9)+round(diff(frames).*.15);
 frameBoundLate = frames(1:9)+round(diff(frames).*.85);
 
 for ii=1:nTargets
-    supportStartIdx=find(frameBoundEarly(ii)<=support,1);
-    supportEndIdx=find(frameBoundLate(ii)<=support,1);
-    if isempty(supportEndIdx)
-        if ii==9
-            supportEndIdx=length(support);
+    if isnan(xTargetDegrees(ii))
+        frameArray(ii)=nan;
+    else
+        supportStartIdx=find(frameBoundEarly(ii)<=support,1);
+        supportEndIdx=find(frameBoundLate(ii)<=support,1);
+        if isempty(supportEndIdx)
+            if ii==9
+                supportEndIdx=length(support);
+            end
+        end
+        localSupport = support(supportStartIdx:supportEndIdx);
+        xPosMedian=weightedMedian(xPos(localSupport), 1./ellipseFitRMSE(localSupport));
+        yPosMedian=weightedMedian(yPos(localSupport), 1./ellipseFitRMSE(localSupport));
+        distanceFromMedian = ...
+            sqrt(sum([(xPos(localSupport)-xPosMedian)';(yPos(localSupport)-yPosMedian)'].^2));
+        [~,idx]=min(distanceFromMedian);
+        if isempty(idx)
+            frameArray(ii)=nan;
+        else
+            frameArray(ii)=localSupport(idx);
         end
     end
-    localSupport = support(supportStartIdx:supportEndIdx);
-    xPosMedian=weightedMedian(xPos(localSupport), 1./ellipseFitRMSE(localSupport));
-    yPosMedian=weightedMedian(yPos(localSupport), 1./ellipseFitRMSE(localSupport));
-    distanceFromMedian = ...
-        sqrt(sum([(xPos(localSupport)-xPosMedian)';(yPos(localSupport)-yPosMedian)'].^2));
-    [~,idx]=min(distanceFromMedian);
-    frameArray(ii)=localSupport(idx);
 end
+
+% Remove any nan frames
+notNanFrames = ~isnan(frameArray);
+frameArray = frameArray(notNanFrames);
+xTargetDegrees = xTargetDegrees(notNanFrames);
+yTargetDegrees = yTargetDegrees(notNanFrames);
+nTargets = length(xTargetDegrees);
 
 % Plot the time series and the selected points
 if p.Results.showPlot
@@ -215,12 +230,12 @@ ylabel('xPos')
 xlabel('time [sec]')
 title(plotTitle,'Interpreter','none','HorizontalAlignment','left');
 subplot(2,4,[5 6])
-plot(pupilData.timebase.values(support)./1000,yPos(support),'-k');
+plot(pupilData.timebase.values(support).*(1/deltaT),yPos(support),'-k');
 hold on
-plot(pupilData.timebase.values(support)./1000,circshift(yTarget(support)./p.Results.targetDeg,xShift),'-b');
-plot(pupilData.timebase.values(frameArray)./1000,yPos(frameArray),'*r');
+plot(pupilData.timebase.values(support).*(1/deltaT),circshift(yTarget(support)./p.Results.targetDeg,xShift),'-b');
+plot(pupilData.timebase.values(frameArray).*(1/deltaT),yPos(frameArray),'*r');
 ylabel('yPos')
-xlabel('time [sec]')
+xlabel('time [frames]')
 plotInfo = sprintf('Temporal offset: %0.0f frames; correlation: %0.2f \n',xShift,1-fVal);
 title(plotInfo,'Interpreter','none');
 subplot(2,4,[3 4 7 8])
