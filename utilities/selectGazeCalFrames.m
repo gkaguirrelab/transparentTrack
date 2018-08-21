@@ -107,7 +107,7 @@ times = round((LTGazeCalData.dotTimes-LTGazeCalData.rawVidStart).*((1/deltaT)*10
 xPos = pupilData.initial.ellipses.values(:,1);
 yPos = pupilData.initial.ellipses.values(:,2);
 
-support = 1:min([times(end)+5*(1/deltaT),size(xPos,1)]);
+support = 1:round(min([times(end)+5000*(1/deltaT),size(xPos,1)]));
 support=support(~isnan(xPos(support)));
 support=support(~isnan(yPos(support)));
 
@@ -206,7 +206,7 @@ plot(pupilData.timebase.values(support)./1000,circshift(yTarget(support)./p.Resu
 plot(pupilData.timebase.values(frameArray)./1000,yPos(frameArray),'*r');
 ylabel('yPos')
 xlabel('time [sec]')
-plotInfo = sprintf('Temporal offset of targets and pupil position: %0.0f frames (correlation: %0.2f) \n',xShift,1-fVal);
+plotInfo = sprintf('Temporal offset: %0.0f frames; correlation: %0.2f \n',xShift,1-fVal);
 title(plotInfo,'Interpreter','none');
 subplot(2,4,[3 4 7 8])
 plot(xPos(frameArray),yPos(frameArray),'bx');
