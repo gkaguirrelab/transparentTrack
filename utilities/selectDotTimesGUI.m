@@ -1,4 +1,31 @@
-function [] = selectDotTimesGUI(pupilFileName)
+function selectDotTimesGUI(pupilFileName)
+% A GUI interface to select the borders between gaze cal fixation trials
+%
+% Syntax:
+%  selectDotTimesGUI(pupilFileName)
+%
+% Description:
+%   During gaze calibration acquisitions, the subject fixates a series of
+%   targets of known position on a screen. In some cases, the timing
+%   of those fixation events is not known. This tool allows the user to
+%   select a pupil.mat file that was derived from a gaze cal acquisition,
+%   and then click on a plot to select the onset, transition times, and
+%   final offset of fixation target events. The routine attempts to
+%   determine the spatial positiom of those targets within a 3x3 grid, and
+%   then passes the spatial position and timing of fixation events to the
+%   routine selectGazeCalFrames.
+%
+% Inputs:
+%	pupilFileName         - Full path to a pupilData file.
+%
+% Outputs
+%	none
+%
+% Examples:
+%{
+    pupilFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_spatialStimuli/TOME_3008/102116/EyeTracking/GazeCal_pupil.mat';
+    selectDotTimesGUI(pupilFileName)
+%}
 
 %% Load pupil data
 if isempty(pupilFileName)
@@ -10,6 +37,7 @@ if isempty(pupilFileName)
 end
 load(pupilFileName)
 
+% Extract the pupil X and Y positions from the initial ellipse fitting.
 xPosOriginal = pupilData.initial.ellipses.values(:,1);
 yPosOriginal = pupilData.initial.ellipses.values(:,2);
 
@@ -18,7 +46,6 @@ if ~isfield(pupilData,'timebase')
     warning('This pupil data file does not include a timebase; exiting')
     return
 end
-
 
 % Define a suppot that cleans up the time series
 support = 1:size(xPosOriginal,1);
@@ -40,18 +67,27 @@ xPosForPlotting(support) = xPosOriginal(support);
 yPosForPlotting = nan(size(yPosOriginal));
 yPosForPlotting(support) = yPosOriginal(support);
 
+% Plot the x and y pupil position time series
 figure
 subplot(2,1,1)
-xPosHandle = plot(xPosForPlotting,'-b');
+plot(xPosForPlotting,'-b');
+ylabel('x pupil position [pixels]');
 hold on
 subplot(2,1,2)
-yPosHandle = plot(yPosForPlotting,'-b');
+plot(yPosForPlotting,'-b');
 set(gca,'Ydir','reverse')
+ylabel('y pupil position [pixels]');
+xlabel('time [frames]');
 hold on
 
-% Select border points
+% Select border points. Press return when done
 notDoneFlag = true;
 frames = [];
+fprintf('Click on either the upper or lower plot to select the point of onset, \n');
+fprintf('the transitions between, and the point of offset, of the fixation trials.\n');
+fprintf('This will usually correspond to vertical lines in the pupil position plots.\n');
+fprintf('To define the temporal boundaries of nine targets, place 10 markers.\n');
+fprintf('Press return when finished placing markers.\n');
 while notDoneFlag
     [x1,y1] = ginput(1);
     if isempty(x1)
@@ -62,20 +98,23 @@ while notDoneFlag
     end
 end
 
-
+% Obtain the median vertical and horizontal pupil position for each of the
+% periods marked by the defined frame bounds.
 nTargets = length(frames)-1;
-
 frameBoundEarly = frames(1:nTargets);
 frameBoundLate = frames(2:nTargets+1);
-
 for ii=1:nTargets
-        supportStartIdx=find(frameBoundEarly(ii)<=support,1);
-        supportEndIdx=find(frameBoundLate(ii)<=support,1);
-        localSupport = support(supportStartIdx:supportEndIdx);
-        xPosMedian(ii)=median(xPosOriginal(localSupport));
-        yPosMedian(ii)=median(yPosOriginal(localSupport));
+    supportStartIdx=find(frameBoundEarly(ii)<=support,1);
+    supportEndIdx=find(frameBoundLate(ii)<=support,1);
+    localSupport = support(supportStartIdx:supportEndIdx);
+    xPosMedian(ii)=median(xPosOriginal(localSupport));
+    yPosMedian(ii)=median(yPosOriginal(localSupport));
 end
 
+% Convert the medians into guesses regarding the target positions. This is
+% well defined for the case of 9 targets (a 3x3 grid). If there are not 10
+% boundary points (9 targets) the routine makes some guesses using
+% clustering, but this is probably not trustworthy.
 if nTargets==9
     [~,targetRankX]=sort(xPosMedian);
     [~,targetRankY]=sort(yPosMedian);
@@ -104,15 +143,17 @@ else
     end
 end
 
-targets = [xTarget; yTarget]';
-
+% Assemble the timing and spatial position information into a structure
 pupilCalInfo.dotTimes = pupilData.timebase.values(round(frames))./1000;
-pupilCalInfo.targets = targets;
+pupilCalInfo.targets = [xTarget; yTarget]';
 pupilCalInfo.rawVidStart = 0;
 
+% Define the filepath to be used to save a subsequent plot of gaze cal
+% frames
 [a,b,c]=fileparts(pupilFileName);
 plotFileName = fullfile(a,strrep([b c],'_pupil.mat','_fixFramesSelectPlot.pdf'));
 
+% Pass the assembled information to selectGazeCalFrames
 selectGazeCalFrames(pupilFileName, '', '', pupilCalInfo ,'showPlot',true,'verbose',true,'plotFileName',plotFileName)
 
 end

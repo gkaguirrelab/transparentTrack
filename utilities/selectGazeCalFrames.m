@@ -6,24 +6,37 @@ function [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, 
 %
 % Description:
 %   During gaze calibration acquisitions, the subject fixates a series of
-%   targets of known position on a screen.
+%   targets of known position on a screen. This routine uses information
+%   regarding the timing and spatial position of fixation targets to
+%   identify a set of video frames that best represent the position of the
+%   eye during each of these fixation target periods.
 %
 % Inputs:
 %	pupilFileName         - Full path to a pupilData file.
 %   LTdatFileName         -
-%   rawVidStartFileName   -
+%   rawVidStartFileName   - Full path to a rawVidStart file.
+%   pupilCalInfoFileName  - Full path to a pupilCalInfo file. This file
+%                           contains the information found in both the
+%                           LTdat and the rawVidStart files. If defined,
+%                           the values passed for LTdatFileName and
+%                           rawVidStartFileName are ignored. A structure
+%                           can also be passed for this file name, in which
+%                           case the values in the structure are used
+%                           instead of attempting to load the data from a
+%                           file.
 %
 % Optional key/value pairs (display and I/O):
 %  'verbose'              - Logical. Default false.
 %  'showPlots'            - Logical. Default false.
 %  'plotTitle'            - Char or empty.
+%  'plotFileName'         - Char or empty. Full path that indicates where a
+%                           diagnostic plot is to be saved. If empty, no
+%                           file is saved.
 %
 % Optional key/value pairs (analysis)
 %  'fitLabel'             - Identifies the field in pupilData that contains
 %                           the ellipse fit params for which the search
 %                           will be conducted.
-%  'frameBoundaries'      - Scalar.
-%  'frameBoundaries'      - Scalar.
 %  'targetDeg'            - Scalar.
 %
 % Outputs
@@ -79,7 +92,7 @@ deltaT = tmpDiff(1);
 %% Load live-track info files
 if isstruct(pupilCalInfoFileName)
     LTGazeCalData = pupilCalInfoFileName;
-    xShift = 0
+    xShift = 0;
 else
     xShift = [];
     if exist(pupilCalInfoFileName, 'file') == 2
