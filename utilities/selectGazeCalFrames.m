@@ -22,6 +22,8 @@ function [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, 
 %  'fitLabel'             - Identifies the field in pupilData that contains
 %                           the ellipse fit params for which the search
 %                           will be conducted.
+%  'frameBoundaries'      - Scalar.
+%  'frameBoundaries'      - Scalar.
 %  'targetDeg'            - Scalar.
 %
 % Outputs
@@ -45,7 +47,7 @@ p = inputParser; p.KeepUnmatched = true;
 p.addRequired('pupilFileName',@ischar);
 p.addRequired('LTdatFileName',@ischar);
 p.addRequired('rawVidStartFileName',@ischar);
-p.addRequired('pupilCalInfoFileName',@ischar);
+p.addRequired('pupilCalInfoFileName',@(x)(ischar(x) || isstruct(x)));
 
 % Optional display and I/O params
 p.addParameter('verbose',false,@islogical);
@@ -62,11 +64,8 @@ p.parse(pupilFileName, LTdatFileName, rawVidStartFileName, pupilCalInfoFileName,
 
 
 %% Load pupil data
-if ischar(pupilFileName)
-    load(pupilFileName)
-    ellipses = pupilData.(p.Results.fitLabel).ellipses.values;
-    ellipseFitRMSE = pupilData.(p.Results.fitLabel).ellipses.RMSE;
-end
+load(pupilFileName)
+ellipseFitRMSE = pupilData.(p.Results.fitLabel).ellipses.RMSE;
 
 % Define temporal support
 if ~isfield(pupilData,'timebase')
@@ -78,26 +77,32 @@ tmpDiff = diff(pupilData.timebase.values);
 deltaT = tmpDiff(1);
 
 %% Load live-track info files
-if exist(pupilCalInfoFileName, 'file') == 2
-    dataLoad = load(pupilCalInfoFileName);
-    LTGazeCalData.dotTimes = dataLoad.dotTimes;
-    LTGazeCalData.targets = dataLoad.targets;
-    LTGazeCalData.rawVidStart = dataLoad.rawVidStart.getSecsPre;
-    clear dataLoad
+if isstruct(pupilCalInfoFileName)
+    LTGazeCalData = pupilCalInfoFileName;
+    xShift = 0
 else
-    if exist(LTdatFileName, 'file') == 2
-        LTGazeCalData=load(LTdatFileName);
-    else
-        warning('There is no LTdata file for this acquisition; exiting')
-        return
-    end
-    if exist(rawVidStartFileName, 'file') == 2
-        dataLoad = load(rawVidStartFileName);
-        LTGazeCalData.rawVidStart = dataLoad.rawVidStart;
+    xShift = [];
+    if exist(pupilCalInfoFileName, 'file') == 2
+        dataLoad = load(pupilCalInfoFileName);
+        LTGazeCalData.dotTimes = dataLoad.dotTimes;
+        LTGazeCalData.targets = dataLoad.targets;
+        LTGazeCalData.rawVidStart = dataLoad.rawVidStart.getSecsPre;
         clear dataLoad
     else
-        warning('There is no raw video start file for this acquisition; exiting')
-        return
+        if exist(LTdatFileName, 'file') == 2
+            LTGazeCalData=load(LTdatFileName);
+        else
+            warning('There is no LTdata file for this acquisition; exiting')
+            return
+        end
+        if exist(rawVidStartFileName, 'file') == 2
+            dataLoad = load(rawVidStartFileName);
+            LTGazeCalData.rawVidStart = dataLoad.rawVidStart;
+            clear dataLoad
+        else
+            warning('There is no raw video start file for this acquisition; exiting')
+            return
+        end
     end
 end
 
@@ -149,15 +154,19 @@ myObjX = @(x) 1-corr2(xPos(support),circshift(xTarget(support),round(x*nonIntege
 myObjY = @(x) 1-corr2(yPos(support),circshift(yTarget(support),round(x*nonInteger)));
 myObj = @(x) sqrt(mean([myObjX(x),myObjY(x)].^2));
 
-options = optimset('Display','off');
-[xShift,fVal]=fminsearch(myObj,0,options);
-if isnan(xShift)
-    [xShift,fVal]=fminsearch(myObj,-20,options);
+if isempty(xShift)
+    options = optimset('Display','off');
+    [xShift,fVal]=fminsearch(myObj,0,options);
     if isnan(xShift)
-        [xShift,fVal]=fminsearch(myObj,20,options);
+        [xShift,fVal]=fminsearch(myObj,-20,options);
+        if isnan(xShift)
+            [xShift,fVal]=fminsearch(myObj,20,options);
+        end
     end
+    xShift = round(xShift*nonInteger);
+else
+    fVal = myObj(xShift);
 end
-xShift = round(xShift*nonInteger);
 
 % Find the lowest RMSE ellipse fit frame for each target
 frames = times+xShift;
@@ -198,8 +207,7 @@ nTargets = length(xTargetDegrees);
 
 if nTargets==0
     warning('No valid targets found; exiting')
-    return
-    
+    return    
 end
 
 % Plot the time series and the selected points
@@ -220,6 +228,32 @@ set(figHandle, 'Position',[25 5 width height],...
     'PaperPositionMode','auto',...
     'Color','w');
 
+% Assemble some report text
+
+outLineA = sprintf('Temporal offset: %0.0f frames; correlation: %0.2f',xShift,1-fVal);
+outLine1='ellipseArrayList: [ ';
+outLine2='target array deg: [ ';
+outLine3=' ';
+for ii=1:nTargets
+    outLine1 = [outLine1 num2str(frameArray(ii))];
+    outLine2 = [outLine2 num2str(xTargetDegrees(ii))];
+    outLine3 = [outLine3 num2str(yTargetDegrees(ii))];
+    if ii ~= nTargets
+        outLine1 = [outLine1 ', '];
+        outLine2 = [outLine2 ', '];
+        outLine3 = [outLine3 ', '];
+    end
+end
+outLineB = [outLine1 ' ]'];
+outLineC = [outLine2 ' ;' outLine3 ']'];
+
+if p.Results.verbose
+    fprintf([outLineA ' \n']);
+    fprintf([outLineB ' \n']);
+    fprintf([outLineC ' \n']);
+end
+
+
 % Plot the data
 if isempty(p.Results.plotTitle)
     nameParts = strsplit(pupilFileName,filesep);
@@ -227,7 +261,7 @@ if isempty(p.Results.plotTitle)
 else
     plotTitle = p.Results.plotTitle;
 end
-subplot(2,4,[1 2])
+subplot(3,4,[1 2])
 plot(pupilData.timebase.values(support)./1000,xPos(support),'-k');
 hold on
 plot(pupilData.timebase.values(support)./1000,circshift(xTarget(support)./p.Results.targetDeg,xShift),'-b');
@@ -236,7 +270,7 @@ ylabel('xPos')
 xlabel('time [sec]')
 title(plotTitle,'Interpreter','none','HorizontalAlignment','left');
 
-subplot(2,4,[5 6])
+subplot(3,4,[5 6])
 plot(pupilData.timebase.values(support).*(1/deltaT),yPos(support),'-k');
 hold on
 plot(pupilData.timebase.values(support).*(1/deltaT),circshift(yTarget(support)./p.Results.targetDeg,xShift),'-b');
@@ -244,10 +278,8 @@ plot(pupilData.timebase.values(frameArray).*(1/deltaT),yPos(frameArray),'*r');
 set(gca,'Ydir','reverse')
 ylabel('yPos')
 xlabel('time [frames]')
-plotInfo = sprintf('Temporal offset: %0.0f frames; correlation: %0.2f \n',xShift,1-fVal);
-title(plotInfo,'Interpreter','none');
 
-subplot(2,4,[3 4 7 8])
+subplot(3,4,[3 4 7 8])
 plot(xPosOriginal(frameArray),yPosOriginal(frameArray),'bx');
 hold on
 text(xPosOriginal(frameArray)+2,yPosOriginal(frameArray)+2,num2str(frameArray'));
@@ -256,31 +288,19 @@ xlim([min(xPosOriginal(frameArray)).*0.95 max(xPosOriginal(frameArray)).*1.05]);
 set(gca,'Ydir','reverse')
 axis equal
 
+subplot(3,4,[9:12])
+axis off
+text(0.5,0.75,outLineA,'Units','normalized','HorizontalAlignment','center')
+text(0.5,0.5,outLineB,'Units','normalized','HorizontalAlignment','center')
+text(0.5,0.25,outLineC,'Units','normalized','HorizontalAlignment','center')
+
+
 if ~isempty(p.Results.plotFileName)
     saveas(figHandle,p.Results.plotFileName)
 end
 
 if ~p.Results.showPlot
     close(figHandle)
-end
-
-if p.Results.verbose
-    fprintf('Temporal offset of targets and pupil position: %0.0f frames (correlation: %0.2f) \n',xShift,1-fVal);
-    outLine1='ellipseArrayList: [ ';
-    outLine2='target array deg: [ ';
-    outLine3=' ';
-    for ii=1:nTargets
-        outLine1 = [outLine1 num2str(frameArray(ii))];
-        outLine2 = [outLine2 num2str(xTargetDegrees(ii))];
-        outLine3 = [outLine3 num2str(yTargetDegrees(ii))];
-        if ii ~= nTargets
-            outLine1 = [outLine1 ', '];
-            outLine2 = [outLine2 ', '];
-            outLine3 = [outLine3 ', '];
-        end
-    end
-    fprintf([outLine1 ' ]\n']);
-    fprintf([outLine2 ' ;' outLine3 ']\n']);
 end
 
 end
