@@ -1024,6 +1024,7 @@ if exist(grayVideoName,'file') && ~isempty(ellipseArrayList)
                 'modelEyeLabelNames', {'retina' 'irisPerimeter' 'pupilEllipse' 'cornea'}, ...
                 'modelEyePlotColors', {'.w' '.b' '-g' '.y'}, ...
                 'modelEyeSymbolSizeScaler',1.5,...
+                'showAzimuthPlane',true,...
                 'modelEyeAlpha', 0.25);
         end
         % Get the frame
@@ -1085,6 +1086,7 @@ end % There is a file to plot
 warning(warningState);
 
 end % saveEyeModelMontage
+
 
 function [] = saveFixationTargetModel(sceneGeometry,montageFileName)
 poses = sceneGeometry.meta.estimateSceneParams.search.recoveredEyePoses(:,1:2);
