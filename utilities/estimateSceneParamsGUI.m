@@ -21,7 +21,7 @@ p.parse(sceneGeometryFileName)
 if isempty(sceneGeometryFileName)
     [fileName, path] = uigetfile({'*_sceneGeometry.mat'});
     if isempty(fileName)
-        returne
+        return
     end
     sceneGeometryFileName = [path, fileName];
 end
