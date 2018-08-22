@@ -19,30 +19,6 @@ if ~isfield(pupilData,'timebase')
     return
 end
 
-tmpDiff = diff(pupilData.timebase.values);
-deltaT = tmpDiff(1);
-
-figure
-subplot(2,1,1)
-xPosHandle = plot(xPosOriginal,'-b');
-hold on
-subplot(2,1,2)
-yPosHandle = plot(yPosOriginal,'-b');
-set(gca,'Ydir','reverse')
-hold on
-
-% Select border points
-notDoneFlag = true;
-frames = [];
-while notDoneFlag
-    [x1,y1] = ginput(1);
-    if isempty(x1)
-        notDoneFlag = false;
-    else
-    	plot(x1 ,y1, '+', 'Color', 'red');
-        frames(end+1)=x1;
-    end
-end
 
 % Define a suppot that cleans up the time series
 support = 1:size(xPosOriginal,1);
@@ -58,6 +34,33 @@ for ii=-3:3
 end
 blinks(blinks>0)=1;
 support=support(~blinks);
+
+xPosForPlotting = nan(size(xPosOriginal));
+xPosForPlotting(support) = xPosOriginal(support);
+yPosForPlotting = nan(size(yPosOriginal));
+yPosForPlotting(support) = yPosOriginal(support);
+
+figure
+subplot(2,1,1)
+xPosHandle = plot(xPosForPlotting,'-b');
+hold on
+subplot(2,1,2)
+yPosHandle = plot(yPosForPlotting,'-b');
+set(gca,'Ydir','reverse')
+hold on
+
+% Select border points
+notDoneFlag = true;
+frames = [];
+while notDoneFlag
+    [x1,y1] = ginput(1);
+    if isempty(x1)
+        notDoneFlag = false;
+    else
+    	plot(x1 ,y1, '+', 'Color', 'red');
+        frames(end+1)=x1;
+    end
+end
 
 
 nTargets = length(frames)-1;
