@@ -382,6 +382,19 @@ else
     sceneGeometry.meta.estimateSceneParams.bestSearchIdx = bestSearchIdx;
     sceneGeometry.meta.estimateSceneParams.search = searchResults{bestSearchIdx}.meta.estimateSceneParams.search;
 
+    % Test to see if the search result is at the search bounds or outside
+    % the plausible bounds
+    xBest = sceneGeometry.meta.estimateSceneParams.search.x;
+    if min(abs(xBest-p.Results.sceneParamsLB))<1e-6 || ...
+            min(abs(xBest-p.Results.sceneParamsLB))<1e-6
+        warning('estimateSceneParams:searchResultAtBounds','One or more search result parameters hit a boundary');
+    else
+        if any(xBest>p.Results.sceneParamsUBp) || ...
+                any(xBest<p.Results.sceneParamsLBp)
+            warning('estimateSceneParams:searchResultNotPlausible','One or more search result parameters outside plausible bounds');
+        end
+    end
+    
 end % Check for zero requested searches
 
 
@@ -593,6 +606,11 @@ searchTimeSecs = toc;
 sceneGeometry = initialSceneGeometry;
 sceneGeometry.cameraPosition.torsion = x(1);
 sceneGeometry.cameraPosition.translation = x(2:4)';
+if ~isempty(regParams)
+    sceneGeometry.screenPosition.fixationAngles(1:2) = regParams.t;
+    sceneGeometry.screenPosition.R = regParams.R;
+    sceneGeometry.screenPosition.torsion = regParams.theta;
+end
 sceneGeometry.eye.rotationCenters.azi = sceneGeometry.eye.rotationCenters.azi .* x(5) .* x(6);
 sceneGeometry.eye.rotationCenters.ele = sceneGeometry.eye.rotationCenters.ele .* x(5) ./ x(6);
 sceneGeometry.meta.estimateSceneParams.search.x = x';
@@ -1113,6 +1131,7 @@ subplot(5,1,1:4)
 plot(targets(:,1),targets(:,2),'ok')
 hold on
 plot(modeled(:,1),modeled(:,2),'xr')
+set(gca,'Ydir','reverse')
 
 % label and clean up the plot
 axis equal
