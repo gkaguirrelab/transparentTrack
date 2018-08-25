@@ -175,6 +175,7 @@ end
 
 % LiveTrack gaze calibration data files and diagnostic plots
 LTdatFileName = fullfile(pathParams.dataSourceDirFull, [pathParams.runName '_LTdat.mat']);
+LTReportFileName = fullfile(pathParams.dataSourceDirFull, [pathParams.runName '_report.mat']);
 rawVidStartFileName = fullfile(pathParams.dataSourceDirFull, [pathParams.runName '_rawVidStart.mat']);
 pupilCalInfoFileName = fullfile(pathParams.dataSourceDirFull, [pathParams.runName '_pupilCal_Info.mat']);
 gazeCalFramesDiagnosticPlot = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_fixFramesSelectPlot.pdf']);
@@ -259,6 +260,10 @@ switch p.Results.videoTypeChoice
             ['selectGazeCalFrames(pupilFileName, LTdatFileName, rawVidStartFileName, pupilCalInfoFileName, '...
             '''showPlots'', false, ''verbose'', true, ''plotFileName'', gazeCalFramesDiagnosticPlot, ' ...
             'varargin{:});']...
+            };
+    case 'adjustTimeBase'
+        funCalls = {...
+            'alignTimebaseWithLTData(timebaseFileName,glintFileName,ltReportFileName,varargin{:});'...
             };
     case 'custom'
         funCalls = p.Results.customFunCalls;
