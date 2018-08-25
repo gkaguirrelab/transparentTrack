@@ -103,6 +103,14 @@ function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 %                           that is masked by frameMask. This should be a
 %                           gray that is neither pupil nor glint.
 %  'centroidsAllocation'  - Max number of centroids to be saved in memory
+%  'timebaseField'        - Char, struct, or vector. This param provides
+%                           the time of each frame of the video in units of
+%                           msecs. A char vector identifies the full path
+%                           to a timebase file, which is a structure that
+%                           contains the single field "timebase". The param
+%                           may also be passed as the structure, or as a
+%                           vector of timebase values. In every case, the
+%                           length of the timebase must be => nFrames.
 %
 % Output
 %	glintData             - Structure with fields that contain the X and Y

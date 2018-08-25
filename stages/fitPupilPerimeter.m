@@ -81,6 +81,14 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %                           the eye pose search.
 %  'fitLabel'             - The field name in the pupilData structure where
 %                           the results of the fitting will be stored.
+%  'timebaseField'        - Char, struct, or vector. This param provides
+%                           the time of each frame of the video in units of
+%                           msecs. A char vector identifies the full path
+%                           to a timebase file, which is a structure that
+%                           contains the single field "timebase". The param
+%                           may also be passed as the structure, or as a
+%                           vector of timebase values. In every case, the
+%                           length of the timebase must be => nFrames.
 %
 % Outputs:
 %	pupilData             - A structure with multiple fields corresponding
