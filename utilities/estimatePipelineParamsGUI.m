@@ -256,7 +256,7 @@ if ~isempty(p.Results.maskBox)
 end
 
 if isempty(grayVideoName)
-    [fileName, path] = uigetfile({'*.mp4;*.mov'});
+    [fileName, path] = uigetfile({'*.mp4;*.mov;*.avi'});
     grayVideoName = [path, fileName];
 end
 
