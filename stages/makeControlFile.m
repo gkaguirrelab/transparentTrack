@@ -339,6 +339,12 @@ frameCellArray = perimeter.data(1:nFrames);
 frameSize = perimeter.size;
 clear perimeter
 
+% Silence a warning that can arise regarding a nearly singular matrix
+% during ellipse fitting
+warnState = warning;
+warning('off','MATLAB:nearlySingularMatrix');
+warning('off','MATLAB:singularMatrix');
+    
 % Loop through the video frames
 parfor (ii = 1:nFrames, nWorkers)
     
@@ -453,6 +459,9 @@ parfor (ii = 1:nFrames, nWorkers)
     end % not an empty frame
     
 end % parloop over frames
+
+% Restore the warning state
+warning(warnState);
 
 % report completion of preliminary control file generation
 if p.Results.verbose

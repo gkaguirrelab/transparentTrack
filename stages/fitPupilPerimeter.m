@@ -241,6 +241,8 @@ parfor (ii = 1:nFrames, nWorkers)
 
         % Turn off expected warnings
         warning('off','pupilProjection_fwd:ellipseFitFailed');
+        warning('off','MATLAB:nearlySingularMatrix');
+        warning('off','MATLAB:singularMatrix');
 
         % Obtain the fit to the veridical data
         if isempty(sceneGeometry)
