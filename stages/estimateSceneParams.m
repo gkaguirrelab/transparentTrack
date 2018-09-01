@@ -161,6 +161,7 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional analysis params
+p.addParameter('glintFileName','',@(x)(isempty(x) | ischar(x)));
 p.addParameter('sceneParamsLB',[-30; -20; -20; 90; 0.75; .9],@isnumeric);
 p.addParameter('sceneParamsUB',[30; 20; 20; 200; 1.25; 1.1],@isnumeric);
 p.addParameter('sceneParamsLBp',[-15; -5; -5; 100; 0.85; 0.95],@isnumeric);
@@ -272,10 +273,10 @@ else
     [~, idxMinErrorEllipseWithinBin] = arrayfun(@(x) nanmin(ellipseFitRMSE(goodFitIdx(idxByBinPosition{x}))), filledBinIdx, 'UniformOutput', false);
     returnTheMin = @(binContents, x)  binContents(idxMinErrorEllipseWithinBin{x});
     ellipseArrayList = cellfun(@(x) returnTheMin(goodFitIdx(idxByBinPosition{filledBinIdx(x)}),x),num2cell(1:1:length(filledBinIdx)));
-
+    
     % If there is a fixationTargetArray, make sure it is empty
     if ~isempty(fixationTargetArray)
-    	warning('Cannot use fixationTargetArray unless ellipseArrayList is defined');
+        warning('Cannot use fixationTargetArray unless ellipseArrayList is defined');
     end
     fixationTargetArray=[];
 end
@@ -294,33 +295,33 @@ end
 % bounds.
 if p.Results.nBADSsearches==0
     sceneParams = (p.Results.sceneParamsLBp+p.Results.sceneParamsUBp)./2;
-        sceneGeometry = ...
-            performSceneSearch(initialSceneGeometry, ...
-            ellipses(ellipseArrayList,:), ...
-            ellipseFitRMSE(ellipseArrayList), ...
-            fixationTargetArray, ...
-            sceneParams, ...
-            sceneParams, ...
-            sceneParams, ...
-            sceneParams, ...
-            p.Results.eyePoseLB, ...
-            p.Results.eyePoseUB);
-        
-        % Store the search results in the meta field
-        tmpHold=sceneGeometry.meta.estimateSceneParams.search;
-        sceneGeometry.meta.estimateSceneParams = p.Results;
-        sceneGeometry.meta.estimateSceneParams.search = tmpHold;
-        sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList = ellipseArrayList';
-        sceneGeometry.meta.estimateSceneParams.search.ellipseFitRMSE = ellipseFitRMSE(ellipseArrayList);
-        rankOrder = 1;
-        
-        searchResults{1}=sceneGeometry;
-
+    sceneGeometry = ...
+        performSceneSearch(initialSceneGeometry, ...
+        ellipses(ellipseArrayList,:), ...
+        ellipseFitRMSE(ellipseArrayList), ...
+        fixationTargetArray, ...
+        sceneParams, ...
+        sceneParams, ...
+        sceneParams, ...
+        sceneParams, ...
+        p.Results.eyePoseLB, ...
+        p.Results.eyePoseUB);
+    
+    % Store the search results in the meta field
+    tmpHold=sceneGeometry.meta.estimateSceneParams.search;
+    sceneGeometry.meta.estimateSceneParams = p.Results;
+    sceneGeometry.meta.estimateSceneParams.search = tmpHold;
+    sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList = ellipseArrayList';
+    sceneGeometry.meta.estimateSceneParams.search.ellipseFitRMSE = ellipseFitRMSE(ellipseArrayList);
+    rankOrder = 1;
+    
+    searchResults{1}=sceneGeometry;
+    
 else
     % Loop over the requested number of BADS searches
     searchResults = {};
     parfor (ss = 1:p.Results.nBADSsearches,nWorkers)
-%    for ss = 1:p.Results.nBADSsearches
+        %    for ss = 1:p.Results.nBADSsearches
         
         searchResults{ss} = ...
             performSceneSearch(initialSceneGeometry, ...
@@ -337,7 +338,7 @@ else
         % Save the ellipse details in the search results
         searchResults{ss}.meta.estimateSceneParams.search.ellipseArrayList = ellipseArrayList';
         searchResults{ss}.meta.estimateSceneParams.search.ellipseFitRMSE = ellipseFitRMSE(ellipseArrayList);
-
+        
         % update progress
         if p.Results.verbose
             for pp=1:floor(50/p.Results.nBADSsearches(1))
@@ -375,13 +376,13 @@ else
         [~,bestSearchIdx] = min(rankProduct);
     end
     sceneGeometry = searchResults{bestSearchIdx};
-
+    
     % Store the search results in the meta field
     sceneGeometry.meta.estimateSceneParams = p.Results;
     sceneGeometry.meta.estimateSceneParams.allSearches = searchResults;
     sceneGeometry.meta.estimateSceneParams.bestSearchIdx = bestSearchIdx;
     sceneGeometry.meta.estimateSceneParams.search = searchResults{bestSearchIdx}.meta.estimateSceneParams.search;
-
+    
     % Test to see if the search result is at the search bounds or outside
     % the plausible bounds
     xBest = sceneGeometry.meta.estimateSceneParams.search.x;
@@ -396,6 +397,36 @@ else
     end
     
 end % Check for zero requested searches
+
+
+%% Calculate glint difference matrix
+% If a fixation target array and a glintDataFile have been provided,
+% calculate the transformation matrix that relates the difference between
+% pupil center and glint to target position
+if ~isempty(p.Results.glintFileName) && ~isempty(fixationTargetArray)
+    % Load the glint data
+    dataLoad = load(p.Results.glintFileName);
+    glintData = dataLoad.glintData;
+    clear dataLoad
+    % Obtain the pupil center - glint data array
+    glintTransform.sign = [1;-1];
+    centerDiff = (ellipses(ellipseArrayList,1:2) - [glintData.X(ellipseArrayList) glintData.Y(ellipseArrayList)])' .* ...
+        glintTransform.sign;
+    [regParams, bfit] = absor(...
+        centerDiff,...
+        fixationTargetArray,...
+        'weights',1./ellipseFitRMSE(ellipseArrayList),...
+        'doScale',true,...
+        'doTrans',true);
+    glintTransform.R = regParams.s*regParams.R;
+    glintTransform.t = regParams.t;
+    glintTransform.meta.error = sqrt(mean(sum((bfit-fixationTargetArray).^2,1)));
+    glintTransform.meta.glints = [glintData.X(ellipseArrayList) glintData.Y(ellipseArrayList)];
+    glintTransform.meta.pupilCenters = ellipses(ellipseArrayList,1:2);
+    glintTransform.meta.notes = 'Transform [pupilCenter - glint] pixels --> visual degrees';
+    % Add the glint transform to the search resullts
+    sceneGeometry.glintTransform = glintTransform;
+end
 
 
 %% Save the sceneGeometry file
@@ -419,19 +450,20 @@ if ~isempty(sceneGeometryFileName) && p.Results.nDiagnosticPlots~=0
     
     % Save the ellipse fit montage
     montageFileName = fullfile(diagnosticDirName,[sceneGeomName '_sceneDiagnosticMontage_ellipses.png']);
-	grayVideoName = strrep(pupilFileName,p.Results.pupilFileToVideoSuffixSwitch{1},p.Results.pupilFileToVideoSuffixSwitch{2});    
+    grayVideoName = strrep(pupilFileName,p.Results.pupilFileToVideoSuffixSwitch{1},p.Results.pupilFileToVideoSuffixSwitch{2});
     saveEllipseArrayMontage(sceneGeometry, ...
         ellipseArrayList, ...
         ellipses, ...
         grayVideoName, ...
         montageFileName ...
         );
-        
+    
     % Create a set of plots for the n best solutions
     parfor (ii = 1:min([length(rankOrder),p.Results.nDiagnosticPlots]))
         % Assemble the candidate sceneGeometry
         sceneDiagnosticPlotFileName = fullfile(diagnosticDirName,[sceneGeomName '_Rank' num2str(ii) '_Search' num2str(rankOrder(ii)) '_sceneDiagnosticPlot.pdf']);
-        tmpSceneGeometry = searchResults{rankOrder(ii)};        
+        tmpSceneGeometry = searchResults{rankOrder(ii)};
+        tmpSceneGeometry.glintTransform = glintTransform;
         
         % Create a sceneGeometry plot
         saveSceneDiagnosticPlot(...
@@ -449,8 +481,8 @@ if ~isempty(sceneGeometryFileName) && p.Results.nDiagnosticPlots~=0
             grayVideoName, ...
             montageFileName ...
             );
-
-        % Create an fixation target model
+        
+        % Create a fixation target model
         if ~isempty(fixationTargetArray)
             montageFileName = fullfile(diagnosticDirName,[sceneGeomName '_Rank' num2str(ii) '_Search' num2str(rankOrder(ii)) '_sceneDiagnosticFixationTargetModel.pdf']);
             saveFixationTargetModel(tmpSceneGeometry,montageFileName);
@@ -552,7 +584,7 @@ end
         % Store the camera torsion
         candidateSceneGeometry.cameraPosition.torsion = x(1);
         % Store the extrinsic camera translation vector
-        candidateSceneGeometry.cameraPosition.translation = x(2:4);
+        candidateSceneGeometry.cameraPosition.translation = x(2:4)';
         % Scale the rotation center values by the joint and differential
         % parameters
         candidateSceneGeometry.eye.rotationCenters.azi = candidateSceneGeometry.eye.rotationCenters.azi .* x(5) .* x(6);
@@ -564,11 +596,11 @@ end
         for ii = 1:size(ellipses,1)
             [recoveredEyePoses(ii,:), ~, centerDistanceErrorByEllipse(ii), shapeErrorByEllipse(ii), areaErrorByEllipse(ii)] = ...
                 pupilProjection_inv(...
-                    ellipses(ii,:),...
-                    candidateSceneGeometry, ...
-                    'eyePoseLB',eyePoseLB,...
-                    'eyePoseUB',eyePoseUB,...
-                    'nMaxSearches',1);
+                ellipses(ii,:),...
+                candidateSceneGeometry, ...
+                'eyePoseLB',eyePoseLB,...
+                'eyePoseUB',eyePoseUB,...
+                'nMaxSearches',1);
         end
         % Objective function behavior varies depending upon if a fixation
         % target array list was provided
@@ -583,8 +615,8 @@ end
                 'doTrans',true);
             % Obtain the RMSE of the Euclidean distance of the fixation
             % targets and the modeled eye fixation locations
-            modeled = recoveredEyePoses(:,1:2)*regParams.R + regParams.t';
-            fval = sqrt(mean(sum((fixationTargetArray'-modeled).^2,2)));
+            modeled = regParams.R * recoveredEyePoses(:,1:2)' + regParams.t;
+            fval = sqrt(mean(sum((fixationTargetArray-modeled).^2,2)));
         else
             % Compute objective function as the RMSE of the distance
             % between the taget and modeled ellipses in shape and area
@@ -905,7 +937,7 @@ ellipseArrayList = sort(ellipseArrayList);
 
 % Check that the file exists
 if exist(grayVideoName,'file') && ~isempty(ellipseArrayList)
-
+    
     % Open the video object
     videoInObj = videoIOWrapper(grayVideoName,'ioAction','read');
     
@@ -916,12 +948,12 @@ if exist(grayVideoName,'file') && ~isempty(ellipseArrayList)
     
     % Define a variable to hold the selected frames
     framesToMontage = zeros(videoSizeY,videoSizeX,3,length(ellipseArrayList),'uint8');
-
+    
     % Define a figure
     hFig = figure( 'Visible', 'off');
     hAxes = gca();
     
-    % Loop through the frames 
+    % Loop through the frames
     for ii = 1:length(ellipseArrayList)
         idx = ellipseArrayList(ii);
         videoInObj.CurrentTime = (idx - 1)/(videoInObj.FrameRate);
@@ -956,7 +988,7 @@ if exist(grayVideoName,'file') && ~isempty(ellipseArrayList)
     
     % Prepare the figure
     figHandle=figure('visible','off');
-    set(gcf,'PaperOrientation','landscape');    
+    set(gcf,'PaperOrientation','landscape');
     set(figHandle, 'Units','inches')
     height = 6;
     width = 11;
@@ -966,7 +998,7 @@ if exist(grayVideoName,'file') && ~isempty(ellipseArrayList)
         'PaperSize',[width height],...
         'PaperPositionMode','auto',...
         'Color','w');
-
+    
     % Turn off a warning that can occur during the montage step
     warningState = warning;
     warning('off','images:initSize:adjustingMag');
@@ -976,13 +1008,13 @@ if exist(grayVideoName,'file') && ~isempty(ellipseArrayList)
     
     % Restore the warning state
     warning(warningState);
-
+    
     % Save the montage
     saveas(figHandle,montageFileName)
-        
+    
     % Close the figure
     close(figHandle)
-
+    
     % Rotate the figure by 90 degrees clockwise, because I can't get the
     % MATLAB plotting routines to output the image how I want it.
     A = imread(montageFileName);
@@ -991,7 +1023,7 @@ if exist(grayVideoName,'file') && ~isempty(ellipseArrayList)
     
     % close the video object
     clear videoInObj
-
+    
     
 end % There is a file to plot
 
@@ -1011,7 +1043,7 @@ ellipseArrayList = sort(ellipseArrayList);
 
 % Check that the file exists
 if exist(grayVideoName,'file') && ~isempty(ellipseArrayList)
-
+    
     % Open the video object
     videoInObj = videoIOWrapper(grayVideoName,'ioAction','read');
     
@@ -1022,7 +1054,7 @@ if exist(grayVideoName,'file') && ~isempty(ellipseArrayList)
     
     % Define a variable to hold the selected frames
     framesToMontage = zeros(videoSizeY,videoSizeX,3,length(ellipseArrayList),'uint8');
-
+    
     % Define a figure
     hFig = figure( 'Visible', 'off');
     hAxes = gca();
@@ -1056,13 +1088,13 @@ if exist(grayVideoName,'file') && ~isempty(ellipseArrayList)
         % hold off
         hold off
     end
-
+    
     % Close the temporary figure
     close(hFig);
     
     % Prepare the figure
     figHandle=figure('visible','off');
-    set(gcf,'PaperOrientation','landscape');    
+    set(gcf,'PaperOrientation','landscape');
     set(figHandle, 'Units','inches')
     height = 6;
     width = 11;
@@ -1072,7 +1104,7 @@ if exist(grayVideoName,'file') && ~isempty(ellipseArrayList)
         'PaperSize',[width height],...
         'PaperPositionMode','auto',...
         'Color','w');
-
+    
     % Turn off a warning that can occur during the montage step
     warningState = warning;
     warning('off','images:initSize:adjustingMag');
@@ -1082,13 +1114,13 @@ if exist(grayVideoName,'file') && ~isempty(ellipseArrayList)
     
     % Restore the warning state
     warning(warningState);
-
+    
     % Save the montage
     saveas(figHandle,montageFileName)
-        
+    
     % Close the figure
     close(figHandle)
-
+    
     % Rotate the figure by 90 degrees clockwise, because I can't get the
     % MATLAB plotting routines to output the image how I want it.
     A = imread(montageFileName);
@@ -1110,7 +1142,7 @@ function [] = saveFixationTargetModel(sceneGeometry,montageFileName)
 poses = sceneGeometry.meta.estimateSceneParams.search.recoveredEyePoses(:,1:2);
 t = sceneGeometry.meta.estimateSceneParams.search.fixationTransform.t;
 R = sceneGeometry.meta.estimateSceneParams.search.fixationTransform.R;
-modeled = poses*R +t';
+modeled = R * poses(:,1:2)' + t;
 targets = sceneGeometry.meta.estimateSceneParams.search.fixationTargetArray';
 
 % Prepare the figure
@@ -1133,9 +1165,19 @@ hold on
 plot(modeled(:,1),modeled(:,2),'xr')
 set(gca,'Ydir','reverse')
 
+% If the glintTransform is defined, add these plot points
+if isfield(sceneGeometry,'glintTransform')
+    centerDiff = (sceneGeometry.glintTransform.meta.pupilCenters - sceneGeometry.glintTransform.meta.glints)' .* ...
+        sceneGeometry.glintTransform.sign;
+    modeled = sceneGeometry.glintTransform.R * centerDiff + sceneGeometry.glintTransform.t;
+    plot(modeled(1,:),modeled(2,:),'.b')
+    title('Fixation targets (o) modeled by pupil only (x) and with glint (.)')
+else
+    title('Fixation targets (o) modeled by pupil only (x)')
+end
+
 % label and clean up the plot
 axis equal
-title('Fixation targets (o) and modeled positions (x)')
 ylim([-10 10]);
 xlim([-10 10]);
 
@@ -1146,11 +1188,16 @@ axis off
 % Add text to report the camera position parameters
 theta = sceneGeometry.meta.estimateSceneParams.search.fixationTransform.theta;
 myString = sprintf('screen torsion [deg] = %4.1f; translation vector [visual angle deg] = %4.1f, %4.1f',theta,t(1),t(2));
-text(0.5,1.0,myString,'Units','normalized','HorizontalAlignment','center')
+text(0.5,0.75,myString,'Units','normalized','HorizontalAlignment','center')
 
 % Add text to report the model error
-myString = sprintf('Model error [deg] = %4.2f',sceneGeometry.meta.estimateSceneParams.search.fVal);
-text(0.5,0.25,myString,'Units','normalized','HorizontalAlignment','center')
+myString = sprintf('Position from pupil model error [deg] = %4.2f',sceneGeometry.meta.estimateSceneParams.search.fVal);
+text(0.5,0.5,myString,'Units','normalized','HorizontalAlignment','center')
+
+if isfield(sceneGeometry,'glintTransform')
+    myString = sprintf('Position from pupil-glint model error [deg] = %4.2f',sceneGeometry.glintTransform.meta.error);
+    text(0.5,0.25,myString,'Units','normalized','HorizontalAlignment','center')
+end
 
 % Save the figure
 saveas(figHandle,montageFileName)
