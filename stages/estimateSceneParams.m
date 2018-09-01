@@ -552,7 +552,7 @@ end
         % Store the camera torsion
         candidateSceneGeometry.cameraPosition.torsion = x(1);
         % Store the extrinsic camera translation vector
-        candidateSceneGeometry.cameraPosition.translation = x(2:4)';
+        candidateSceneGeometry.cameraPosition.translation = x(2:4);
         % Scale the rotation center values by the joint and differential
         % parameters
         candidateSceneGeometry.eye.rotationCenters.azi = candidateSceneGeometry.eye.rotationCenters.azi .* x(5) .* x(6);
