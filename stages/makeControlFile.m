@@ -20,7 +20,7 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 %       apply a black circular patch on the glint location to prevent that.
 %       This will have no effect if the glint location is well within (or
 %       outside) the pupil boudary. This routine operates in a parfor loop.
-% 	  - Pupil cutting. A more time-consuming step examines if removing a 
+% 	  - Pupil cutting. A more time-consuming step examines if removing a
 %       portion of the perimeter of the pupil boundary produces an
 %       improvement in an initial ellipse fit. This routine operates in a
 %       parfor loop.
@@ -37,7 +37,7 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 %
 % Inputs:
 %	controlFileName       - Full path (including csv extension) to the
-%                           control file 
+%                           control file
 %   perimeterFileName     - Full path to the perimeter file
 %   glintFileName         - Full path to the glint file
 %
@@ -129,7 +129,7 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 % Outputs:
 %   The routine does not return any variables, but does output a file.
 %
-%   Format of controlFile - Each line of the control file contains an 
+%   Format of controlFile - Each line of the control file contains an
 %       "instruction" of the form:
 %       FRAME NUMBER, INSTRUCTION TYPE, INSTRUCTION PARAMS (variable #)
 %
@@ -185,7 +185,7 @@ p.addParameter('cutErrorThreshold', 1, @isnumeric);
 p.addParameter('candidateThetas',pi/2:pi/16:pi,@isnumeric);
 p.addParameter('radiusDivisions',5,@isnumeric);
 p.addParameter('minRadiusProportion',0,@isnumeric);
-    
+
 % parse
 p.parse(controlFileName, perimeterFileName, glintFileName, varargin{:})
 
@@ -339,12 +339,10 @@ frameCellArray = perimeter.data(1:nFrames);
 frameSize = perimeter.size;
 clear perimeter
 
-% Silence a warning that can arise regarding a nearly singular matrix
-% during ellipse fitting
-warnState = warning;
-warning('off','MATLAB:nearlySingularMatrix');
-warning('off','MATLAB:singularMatrix');
-    
+
+% Store the warning state
+warnState = warning();
+
 % Loop through the video frames
 parfor (ii = 1:nFrames, nWorkers)
     
@@ -391,6 +389,11 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % proceed if the frame is not empty
     if ~isempty(Xp)
+        
+        % Silence a warning that can arise regarding a nearly singular matrix
+        % during ellipse fitting
+        warning('off','MATLAB:nearlySingularMatrix');
+        warning('off','MATLAB:singularMatrix');
         
         % The try - catch allows processing to proceed if an attempt to
         % fit the ellipse fails
@@ -458,10 +461,11 @@ parfor (ii = 1:nFrames, nWorkers)
         
     end % not an empty frame
     
+    % Restore the warning state
+    warning(warnState);
+    
 end % parloop over frames
 
-% Restore the warning state
-warning(warnState);
 
 % report completion of preliminary control file generation
 if p.Results.verbose
