@@ -555,13 +555,16 @@ warning('off','bads:meshOverflow');
 warning('off','pupilProjection_fwd:ellipseFitFailed');
 
 % Define nested variables for within the search
-centerDistanceErrorByEllipse=zeros(size(ellipses,1),1);
-shapeErrorByEllipse=zeros(size(ellipses,1),1);
-areaErrorByEllipse=zeros(size(ellipses,1),1);
-recoveredEyePoses =zeros(size(ellipses,1),4);
+centerDistanceErrorByEllipseAtBest=zeros(size(ellipses,1),1);
+shapeErrorByEllipseAtBest=zeros(size(ellipses,1),1);
+areaErrorByEllipseAtBest=zeros(size(ellipses,1),1);
+recoveredEyePosesAtBest =zeros(size(ellipses,1),4);
 objEvalCounter = 0;
-regParams = [];
+regParamsAtBest = [];
 fValPath = [];
+fValAtBest = 1e6;
+xAtBest = nan(6,1);
+
 
 % Tic
 tic
@@ -569,11 +572,10 @@ tic
 % Detect if we have pinned the parameters, in which case just evaluate the
 % objective function
 if all(x0==LB) && all(x0==UB)
-    x=x0';
-    fVal = objfun(x);
+    objfun(x0');
 else
     % Perform the seach using bads.
-    [x, fVal] = bads(@objfun,x0',LB',UB',LBp',UBp',[],options);
+    bads(@objfun,x0',LB',UB',LBp',UBp',[],options);
 end
 % Nested function computes the objective
     function fval = objfun(x)
@@ -618,6 +620,7 @@ end
             modeled = regParams.R * recoveredEyePoses(:,1:2)' + regParams.t;
             fval = sqrt(mean(sum((fixationTargetArray-modeled).^2,2)));
         else
+            regParams = [];
             % Compute objective function as the RMSE of the distance
             % between the taget and modeled ellipses in shape and area
             fval = sqrt(mean(shapeErrorByEllipse.^2 + areaErrorByEllipse.^2));
@@ -625,6 +628,15 @@ end
             fval = min([fval realmax]);
         end
         fValPath(objEvalCounter)=fval;
+        if fval < fValAtBest
+            fValAtBest = fval;
+            centerDistanceErrorByEllipseAtBest = centerDistanceErrorByEllipse;
+            shapeErrorByEllipseAtBest = shapeErrorByEllipse;
+            areaErrorByEllipseAtBest = areaErrorByEllipse;
+            recoveredEyePosesAtBest = recoveredEyePoses;
+            regParamsAtBest = regParams;
+            xAtBest = x;
+        end
     end
 
 
@@ -635,13 +647,14 @@ warning(warningState);
 searchTimeSecs = toc;
 
 % Assemble the sceneGeometry file to return
+x = xAtBest;
 sceneGeometry = initialSceneGeometry;
 sceneGeometry.cameraPosition.torsion = x(1);
 sceneGeometry.cameraPosition.translation = x(2:4)';
-if ~isempty(regParams)
-    sceneGeometry.screenPosition.fixationAngles(1:2) = regParams.t;
-    sceneGeometry.screenPosition.R = regParams.R;
-    sceneGeometry.screenPosition.torsion = regParams.theta;
+if ~isempty(regParamsAtBest)
+    sceneGeometry.screenPosition.fixationAngles(1:2) = regParamsAtBest.t;
+    sceneGeometry.screenPosition.R = regParamsAtBest.R;
+    sceneGeometry.screenPosition.torsion = regParamsAtBest.theta;
 end
 sceneGeometry.eye.rotationCenters.azi = sceneGeometry.eye.rotationCenters.azi .* x(5) .* x(6);
 sceneGeometry.eye.rotationCenters.ele = sceneGeometry.eye.rotationCenters.ele .* x(5) ./ x(6);
@@ -658,11 +671,11 @@ sceneGeometry.meta.estimateSceneParams.search.UBp = UBp;
 sceneGeometry.meta.estimateSceneParams.search.eyePoseLB = eyePoseLB;
 sceneGeometry.meta.estimateSceneParams.search.eyePoseUB = eyePoseUB;
 sceneGeometry.meta.estimateSceneParams.search.fVal = fVal;
-sceneGeometry.meta.estimateSceneParams.search.centerDistanceErrorByEllipse = centerDistanceErrorByEllipse;
-sceneGeometry.meta.estimateSceneParams.search.shapeErrorByEllipse = shapeErrorByEllipse;
-sceneGeometry.meta.estimateSceneParams.search.areaErrorByEllipse = areaErrorByEllipse;
-sceneGeometry.meta.estimateSceneParams.search.recoveredEyePoses = recoveredEyePoses;
-sceneGeometry.meta.estimateSceneParams.search.fixationTransform = regParams;
+sceneGeometry.meta.estimateSceneParams.search.centerDistanceErrorByEllipse = centerDistanceErrorByEllipseAtBest;
+sceneGeometry.meta.estimateSceneParams.search.shapeErrorByEllipse = shapeErrorByEllipseAtBest;
+sceneGeometry.meta.estimateSceneParams.search.areaErrorByEllipse = areaErrorByEllipseAtBest;
+sceneGeometry.meta.estimateSceneParams.search.recoveredEyePoses = recoveredEyePosesAtBest;
+sceneGeometry.meta.estimateSceneParams.search.fixationTransform = regParamsAtBest;
 sceneGeometry.meta.estimateSceneParams.search.fixationTargetArray = fixationTargetArray;
 sceneGeometry.meta.estimateSceneParams.search.objEvalCounter = objEvalCounter;
 sceneGeometry.meta.estimateSceneParams.search.fValPath = fValPath;
@@ -1142,7 +1155,7 @@ function [] = saveFixationTargetModel(sceneGeometry,montageFileName)
 poses = sceneGeometry.meta.estimateSceneParams.search.recoveredEyePoses(:,1:2);
 t = sceneGeometry.meta.estimateSceneParams.search.fixationTransform.t;
 R = sceneGeometry.meta.estimateSceneParams.search.fixationTransform.R;
-modeled = R * poses(:,1:2)' + t;
+modeled = (R * poses(:,1:2)' + t)';
 targets = sceneGeometry.meta.estimateSceneParams.search.fixationTargetArray';
 
 % Prepare the figure
@@ -1169,8 +1182,8 @@ set(gca,'Ydir','reverse')
 if isfield(sceneGeometry,'glintTransform')
     centerDiff = (sceneGeometry.glintTransform.meta.pupilCenters - sceneGeometry.glintTransform.meta.glints)' .* ...
         sceneGeometry.glintTransform.sign;
-    modeled = sceneGeometry.glintTransform.R * centerDiff + sceneGeometry.glintTransform.t;
-    plot(modeled(1,:),modeled(2,:),'.b')
+    modeled = (sceneGeometry.glintTransform.R * centerDiff + sceneGeometry.glintTransform.t)';
+    plot(modeled(:,1),modeled(:,2),'.b')
     title('Fixation targets (o) modeled by pupil only (x) and with glint (.)')
 else
     title('Fixation targets (o) modeled by pupil only (x)')
