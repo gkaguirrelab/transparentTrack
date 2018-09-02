@@ -409,7 +409,7 @@ if ~isempty(p.Results.glintFileName) && ~isempty(fixationTargetArray)
     glintData = dataLoad.glintData;
     clear dataLoad
     % Obtain the pupil center - glint data array
-    glintTransform.sign = [1;-1];
+    tmp.glintTransform.sign = [1;-1];
     centerDiff = (ellipses(ellipseArrayList,1:2) - [glintData.X(ellipseArrayList) glintData.Y(ellipseArrayList)])' .* ...
         glintTransform.sign;
     [regParams, bfit] = absor(...
@@ -418,14 +418,14 @@ if ~isempty(p.Results.glintFileName) && ~isempty(fixationTargetArray)
         'weights',1./ellipseFitRMSE(ellipseArrayList),...
         'doScale',true,...
         'doTrans',true);
-    glintTransform.R = regParams.s*regParams.R;
-    glintTransform.t = regParams.t;
-    glintTransform.meta.error = sqrt(mean(sum((bfit-fixationTargetArray).^2,1)));
-    glintTransform.meta.glints = [glintData.X(ellipseArrayList) glintData.Y(ellipseArrayList)];
-    glintTransform.meta.pupilCenters = ellipses(ellipseArrayList,1:2);
-    glintTransform.meta.notes = 'Transform [pupilCenter - glint] pixels --> visual degrees';
+    tmp.glintTransform.R = regParams.s*regParams.R;
+    tmp.glintTransform.t = regParams.t;
+    tmp.glintTransform.meta.error = sqrt(mean(sum((bfit-fixationTargetArray).^2,1)));
+    tmp.glintTransform.meta.glints = [glintData.X(ellipseArrayList) glintData.Y(ellipseArrayList)];
+    tmp.glintTransform.meta.pupilCenters = ellipses(ellipseArrayList,1:2);
+    tmp.glintTransform.meta.notes = 'Transform [pupilCenter - glint] pixels --> visual degrees';
     % Add the glint transform to the search resullts
-    sceneGeometry.glintTransform = glintTransform;
+    sceneGeometry.glintTransform = tmp;
 end
 
 
@@ -463,7 +463,7 @@ if ~isempty(sceneGeometryFileName) && p.Results.nDiagnosticPlots~=0
         % Assemble the candidate sceneGeometry
         sceneDiagnosticPlotFileName = fullfile(diagnosticDirName,[sceneGeomName '_Rank' num2str(ii) '_Search' num2str(rankOrder(ii)) '_sceneDiagnosticPlot.pdf']);
         tmpSceneGeometry = searchResults{rankOrder(ii)};
-        tmpSceneGeometry.glintTransform = glintTransform;
+        tmpSceneGeometry.glintTransform = sceneGeometry.glintTransform;
         
         % Create a sceneGeometry plot
         saveSceneDiagnosticPlot(...
