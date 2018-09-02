@@ -409,7 +409,7 @@ if ~isempty(p.Results.glintFileName) && ~isempty(fixationTargetArray)
     glintData = dataLoad.glintData;
     clear dataLoad
     % Obtain the pupil center - glint data array
-    tmp.glintTransform.sign = [1;-1];
+    tmpGlintResults.glintTransform.sign = [1;-1];
     centerDiff = (ellipses(ellipseArrayList,1:2) - [glintData.X(ellipseArrayList) glintData.Y(ellipseArrayList)])' .* ...
         glintTransform.sign;
     [regParams, bfit] = absor(...
@@ -418,14 +418,14 @@ if ~isempty(p.Results.glintFileName) && ~isempty(fixationTargetArray)
         'weights',1./ellipseFitRMSE(ellipseArrayList),...
         'doScale',true,...
         'doTrans',true);
-    tmp.glintTransform.R = regParams.s*regParams.R;
-    tmp.glintTransform.t = regParams.t;
-    tmp.glintTransform.meta.error = sqrt(mean(sum((bfit-fixationTargetArray).^2,1)));
-    tmp.glintTransform.meta.glints = [glintData.X(ellipseArrayList) glintData.Y(ellipseArrayList)];
-    tmp.glintTransform.meta.pupilCenters = ellipses(ellipseArrayList,1:2);
-    tmp.glintTransform.meta.notes = 'Transform [pupilCenter - glint] pixels --> visual degrees';
+    tmpGlintResults.glintTransform.R = regParams.s*regParams.R;
+    tmpGlintResults.glintTransform.t = regParams.t;
+    tmpGlintResults.glintTransform.meta.error = sqrt(mean(sum((bfit-fixationTargetArray).^2,1)));
+    tmpGlintResults.glintTransform.meta.glints = [glintData.X(ellipseArrayList) glintData.Y(ellipseArrayList)];
+    tmpGlintResults.glintTransform.meta.pupilCenters = ellipses(ellipseArrayList,1:2);
+    tmpGlintResults.glintTransform.meta.notes = 'Transform [pupilCenter - glint] pixels --> visual degrees';
     % Add the glint transform to the search resullts
-    sceneGeometry.glintTransform = tmp;
+    sceneGeometry.glintTransform = tmpGlintResults;
 end
 
 
