@@ -426,6 +426,8 @@ if ~isempty(p.Results.glintFileName) && ~isempty(fixationTargetArray)
     tmpGlintResults.glintTransform.meta.notes = 'Transform [pupilCenter - glint] pixels --> visual degrees';
     % Add the glint transform to the search resullts
     sceneGeometry.glintTransform = tmpGlintResults.glintTransform;
+else
+    sceneGeometry.glintTransform = [];
 end
 
 
@@ -1179,7 +1181,7 @@ plot(modeled(:,1),modeled(:,2),'xr')
 set(gca,'Ydir','reverse')
 
 % If the glintTransform is defined, add these plot points
-if isfield(sceneGeometry,'glintTransform')
+if ~isempty(sceneGeometry.glintTransform)
     centerDiff = (sceneGeometry.glintTransform.meta.pupilCenters - sceneGeometry.glintTransform.meta.glints)' .* ...
         sceneGeometry.glintTransform.sign;
     modeled = (sceneGeometry.glintTransform.R * centerDiff + sceneGeometry.glintTransform.t)';
