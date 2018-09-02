@@ -411,7 +411,7 @@ if ~isempty(p.Results.glintFileName) && ~isempty(fixationTargetArray)
     % Obtain the pupil center - glint data array
     tmpGlintResults.glintTransform.sign = [1;-1];
     centerDiff = (ellipses(ellipseArrayList,1:2) - [glintData.X(ellipseArrayList) glintData.Y(ellipseArrayList)])' .* ...
-        glintTransform.sign;
+        tmpGlintResults.glintTransform.sign;
     [regParams, bfit] = absor(...
         centerDiff,...
         fixationTargetArray,...
@@ -425,7 +425,7 @@ if ~isempty(p.Results.glintFileName) && ~isempty(fixationTargetArray)
     tmpGlintResults.glintTransform.meta.pupilCenters = ellipses(ellipseArrayList,1:2);
     tmpGlintResults.glintTransform.meta.notes = 'Transform [pupilCenter - glint] pixels --> visual degrees';
     % Add the glint transform to the search resullts
-    sceneGeometry.glintTransform = tmpGlintResults;
+    sceneGeometry.glintTransform = tmpGlintResults.glintTransform;
 end
 
 
