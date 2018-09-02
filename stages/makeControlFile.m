@@ -114,8 +114,8 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 %  'radiusDivisions'      - Controls how many divisions between the
 %                           geometric center of the pupil perimeter and the
 %                           outer edge are to be examined with a pupil cut.
-%                           A larger number results in a longer
-%                           search of finer sizes of cuts.
+%                           A larger number results in a longer search of
+%                           finer sizes of cuts.
 %  'minRadiusProportion'  - This defines the stopping point for the amount
 %                           of the pupil that can be cut. When set to zero
 %                           (the default) the largest cut that will be
