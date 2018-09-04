@@ -340,9 +340,6 @@ frameSize = perimeter.size;
 clear perimeter
 
 
-% Store the warning state
-warnState = warning();
-
 % Loop through the video frames
 parfor (ii = 1:nFrames, nWorkers)
     
@@ -389,12 +386,7 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % proceed if the frame is not empty
     if ~isempty(Xp)
-        
-        % Silence a warning that can arise regarding a nearly singular matrix
-        % during ellipse fitting
-        warning('off','MATLAB:nearlySingularMatrix');
-        warning('off','MATLAB:singularMatrix');
-        
+                
         % The try - catch allows processing to proceed if an attempt to
         % fit the ellipse fails
         try
@@ -460,10 +452,7 @@ parfor (ii = 1:nFrames, nWorkers)
         end % try-catch
         
     end % not an empty frame
-    
-    % Restore the warning state
-    warning(warnState);
-    
+        
 end % parloop over frames
 
 
