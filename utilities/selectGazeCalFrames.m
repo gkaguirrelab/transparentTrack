@@ -1,4 +1,4 @@
-function [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, LTdatFileName, rawVidStartFileName, pupilCalInfoFileName, varargin)
+function [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, timebaseFileName, LTdatFileName, rawVidStartFileName, pupilCalInfoFileName, varargin)
 % Select frames from gaze calibration target fixation periods
 %
 % Syntax:
@@ -13,6 +13,7 @@ function [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, 
 %
 % Inputs:
 %	pupilFileName         - Full path to a pupilData file.
+%	pupilFileName         - Full path to a timebase file.
 %   LTdatFileName         -
 %   rawVidStartFileName   - Full path to a rawVidStart file.
 %   pupilCalInfoFileName  - Full path to a pupilCalInfo file. This file
@@ -45,6 +46,7 @@ function [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, 
 % Examples:
 %{
     pupilFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3030/011018/EyeTracking/GazeCal01_pupil.mat';
+    timebaseFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3030/011018/EyeTracking/GazeCal01_timebase.mat';
     gazeCalFramesDiagnosticPlot = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3030/011018/EyeTracking/GazeCal01_fixFramesSelectPlot.pdf';
     LTdatFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3030/011018/EyeTracking/GazeCal01_LTdat.mat';
     rawVidStartFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_data/session2_spatialStimuli/TOME_3030/011018/EyeTracking/GazeCal01_rawVidStart.mat';
@@ -58,6 +60,7 @@ p = inputParser; p.KeepUnmatched = true;
 
 % Required
 p.addRequired('pupilFileName',@ischar);
+p.addRequired('timebaseFileName',@ischar);
 p.addRequired('LTdatFileName',@ischar);
 p.addRequired('rawVidStartFileName',@ischar);
 p.addRequired('pupilCalInfoFileName',@(x)(ischar(x) || isstruct(x)));
@@ -77,16 +80,17 @@ p.parse(pupilFileName, LTdatFileName, rawVidStartFileName, pupilCalInfoFileName,
 
 
 %% Load pupil data
-load(pupilFileName)
+dataLoad = load(pupilFileName);
+pupilData = dataLoad.pupilData;
+clear dataLoad
 ellipseFitRMSE = pupilData.(p.Results.fitLabel).ellipses.RMSE;
 
-% Define temporal support
-if ~isfield(pupilData,'timebase')
-    warning('This pupil data file does not include a timebase; exiting')
-    return
-end
+%% Load timebase
+dataLoad = load(timebaseFileName);
+timebase = dataLoad.timebase;
+clear dataLoad
 
-tmpDiff = diff(pupilData.timebase.values);
+tmpDiff = diff(timebase.values);
 deltaT = tmpDiff(1);
 
 %% Load live-track info files
@@ -275,19 +279,19 @@ else
     plotTitle = p.Results.plotTitle;
 end
 subplot(3,4,[1 2])
-plot(pupilData.timebase.values(support)./1000,xPos(support),'-k');
+plot(timebase.values(support)./1000,xPos(support),'-k');
 hold on
-plot(pupilData.timebase.values(support)./1000,circshift(xTarget(support)./p.Results.targetDeg,xShift),'-b');
-plot(pupilData.timebase.values(frameArray)./1000,xPos(frameArray),'*r');
+plot(timebase.values(support)./1000,circshift(xTarget(support)./p.Results.targetDeg,xShift),'-b');
+plot(timebase.values(frameArray)./1000,xPos(frameArray),'*r');
 ylabel('xPos')
 xlabel('time [sec]')
 title(plotTitle,'Interpreter','none','HorizontalAlignment','left');
 
 subplot(3,4,[5 6])
-plot(pupilData.timebase.values(support).*(1/deltaT),yPos(support),'-k');
+plot(timebase.values(support).*(1/deltaT),yPos(support),'-k');
 hold on
-plot(pupilData.timebase.values(support).*(1/deltaT),circshift(yTarget(support)./p.Results.targetDeg,xShift),'-b');
-plot(pupilData.timebase.values(frameArray).*(1/deltaT),yPos(frameArray),'*r');
+plot(timebase.values(support).*(1/deltaT),circshift(yTarget(support)./p.Results.targetDeg,xShift),'-b');
+plot(timebase.values(frameArray).*(1/deltaT),yPos(frameArray),'*r');
 set(gca,'Ydir','reverse')
 ylabel('yPos')
 xlabel('time [frames]')
