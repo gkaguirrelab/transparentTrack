@@ -23,7 +23,7 @@ function selectDotTimesGUI(pupilFileName)
 %
 % Examples:
 %{
-    pupilFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_spatialStimuli/TOME_3008/102116/EyeTracking/GazeCal_pupil.mat';
+    pupilFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure/TOME_3008/102116/EyeTracking/GazeCal_pupil.mat';
     selectDotTimesGUI(pupilFileName)
 %}
 
@@ -35,17 +35,21 @@ if isempty(pupilFileName)
     end
     pupilFileName = [path, fileName];
 end
-load(pupilFileName)
+
+dataLoad=load(pupilFileName);
+pupilData = dataLoad.pupilData;
+clear dataLoad
 
 % Extract the pupil X and Y positions from the initial ellipse fitting.
 xPosOriginal = pupilData.initial.ellipses.values(:,1);
 yPosOriginal = pupilData.initial.ellipses.values(:,2);
 
-% Define temporal support
-if ~isfield(pupilData,'timebase')
-    warning('This pupil data file does not include a timebase; exiting')
-    return
-end
+% Load the corresponding timebase file
+[a,b,c]=fileparts(pupilFileName);
+timebaseFileName = fullfile(a,[strrep(b,'_pupil','_timebase') c]);
+dataLoad=load(timebaseFileName);
+timebase = dataLoad.timebase;
+clear dataLoad
 
 % Define a suppot that cleans up the time series
 support = 1:size(xPosOriginal,1);
@@ -144,7 +148,7 @@ else
 end
 
 % Assemble the timing and spatial position information into a structure
-pupilCalInfo.dotTimes = pupilData.timebase.values(round(frames))./1000;
+pupilCalInfo.dotTimes = timebase.values(round(frames))./1000;
 pupilCalInfo.targets = [xTarget; yTarget]';
 pupilCalInfo.rawVidStart = 0;
 
