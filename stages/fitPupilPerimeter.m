@@ -81,14 +81,6 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %                           the eye pose search.
 %  'fitLabel'             - The field name in the pupilData structure where
 %                           the results of the fitting will be stored.
-%  'timebaseField'        - Char, struct, or vector. This param provides
-%                           the time of each frame of the video in units of
-%                           msecs. A char vector identifies the full path
-%                           to a timebase file, which is a structure that
-%                           contains the single field "timebase". The param
-%                           may also be passed as the structure, or as a
-%                           vector of timebase values. In every case, the
-%                           length of the timebase must be => nFrames.
 %
 % Outputs:
 %	pupilData             - A structure with multiple fields corresponding
@@ -126,7 +118,6 @@ p.addParameter('nSplits',2,@isnumeric);
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) || ischar(x)));
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
 p.addParameter('fitLabel',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('timebaseField',[],@(x)(isempty(x) || ischar(x) || isnumeric(x) || isstruct(x)));
 
 
 %% Parse and check the parameters
@@ -399,27 +390,6 @@ end
 % pupilData
 if isfield(perimeter,'instructions')
     pupilData.instructions = perimeter.instructions;
-end
-
-% If a timebase has been passed, add it to the structure
-if ~isempty(p.Results.timebaseField)
-    switch class(p.Results.timebaseField)
-        case {'char' 'string'}
-            fileExists = exist(p.Results.timebaseField, 'file') == 2;
-            if fileExists
-                dataLoad=load(p.Results.timebaseField);
-                timebase=dataLoad.timebase;
-                clear dataLoad
-                pupilData.timebase = timebase;
-                pupilData.timebase.values = pupilData.timebase.values(1:nFrames);
-            end
-        case {'struct'}
-            pupilData.timebase = p.Results.timebaseField;
-            pupilData.timebase.values = pupilData.timebase.values(1:nFrames);            
-        case {'double'}
-            pupilData.timebase.values = p.Results.timebaseField;
-            pupilData.timebase.values = pupilData.timebase.values(1:nFrames);            
-    end
 end
 
 % add meta data
