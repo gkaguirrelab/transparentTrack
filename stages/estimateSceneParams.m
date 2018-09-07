@@ -620,7 +620,7 @@ end
             % Obtain the RMSE of the Euclidean distance of the fixation
             % targets and the modeled eye fixation locations
             modeled = regParams.R * recoveredEyePoses(:,1:2)' + regParams.t;
-            fval = sqrt(mean(sum((fixationTargetArray-modeled).^2,2)));
+            fval = sqrt(mean(sum((fixationTargetArray-modeled).^2,1)));
         else
             regParams = [];
             % Compute objective function as the RMSE of the distance
