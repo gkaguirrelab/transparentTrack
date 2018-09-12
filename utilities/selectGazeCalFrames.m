@@ -56,7 +56,7 @@ function [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, 
 
 
 %% input parser
-p = inputParser; p.KeepUnmatched = false;
+p = inputParser; p.KeepUnmatched = true;
 
 % Required
 p.addRequired('pupilFileName',@ischar);
