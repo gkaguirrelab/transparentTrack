@@ -56,11 +56,10 @@ function [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, 
 
 
 %% input parser
-p = inputParser; p.KeepUnmatched = true;
+p = inputParser; p.KeepUnmatched = false;
 
 % Required
 p.addRequired('pupilFileName',@ischar);
-p.addRequired('timebaseFileName',@ischar);
 p.addRequired('LTdatFileName',@ischar);
 p.addRequired('rawVidStartFileName',@ischar);
 p.addRequired('pupilCalInfoFileName',@(x)(ischar(x) || isstruct(x)));
