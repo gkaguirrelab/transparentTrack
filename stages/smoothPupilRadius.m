@@ -55,10 +55,11 @@ function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, scene
 %  'exponentialTauParam'  - The time constant (in video frames) of the
 %                           decaying exponential weighting function for
 %                           pupil radius.
-%  'likelihoodErrorExponent' - The SD of the parameters estimated for each
-%                           frame are raised to this exponent, to either to
-%                           weaken (>1) or strengthen (<1) the influence of
-%                           the current measure on the posterior.
+%  'likelihoodErrorMultiplier' - The SD of the parameters estimated for 
+%                           each frame are multiplied by this value, to
+%                           either to weaken (>1) or strengthen (<1) the
+%                           influence of the current measure on the
+%                           posterior.
 %  'badFrameErrorThreshold' - Frames with RMSE fitting error above this
 %                           threshold have their posterior values
 %                           determined entirely by the prior. Additionally,
@@ -102,7 +103,7 @@ p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@i
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 p.addParameter('exponentialTauParam',3,@isnumeric);
-p.addParameter('likelihoodErrorExponent',1.0,@isnumeric);
+p.addParameter('likelihoodErrorMultiplier',1.0,@isnumeric);
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
 p.addParameter('fitLabel','sceneConstrained',@ischar);
 p.addParameter('initialFitLabel','initial',@ischar);
@@ -164,7 +165,7 @@ clear perimeter
 
 % Set-up other variables to be non-broadcast
 verbose = p.Results.verbose;
-likelihoodErrorExponent = p.Results.likelihoodErrorExponent;
+likelihoodErrorMultiplier = p.Results.likelihoodErrorMultiplier;
 eyePoseLB = p.Results.eyePoseLB;
 eyePoseUB = p.Results.eyePoseUB;
 badFrameErrorThreshold = p.Results.badFrameErrorThreshold;
@@ -199,7 +200,7 @@ warnState = warning();
 
 % Loop through the frames
 parfor (ii = 1:nFrames, nWorkers)
-% for ii = 1:nFrames
+%for ii = 1:nFrames
 
     % update progress
     if verbose
@@ -210,6 +211,8 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % initialize some variables so that their use is transparent to the
     % parfor loop
+    priorPupilRadius = NaN;
+    priorPupilRadiusSD = NaN;
     posteriorEllipseParams = NaN(1,nEllipseParams);
     posteriorEyePoseObjectiveError = NaN;
     posteriorEyePose = NaN(1,nEyePoseParams);
@@ -242,8 +245,8 @@ parfor (ii = 1:nFrames, nWorkers)
         precisionVector = squeeze(pupilData.(fitLabel).eyePoses.splitsSD(:,radiusIdx))';
         precisionVector = precisionVector(rangeLowSignal:rangeHiSignal);
         
-        % Occasionally bad fits can yield an SD value of zero. Remove these
-        precisionVector(precisionVector==0)=nan;
+        % Occasionally bad fits can yield very small SD values. Remove these
+        precisionVector(precisionVector<0.1)=nan;
 
         % Take the inverse of SD.
         precisionVector = precisionVector.^(-1);
@@ -288,8 +291,8 @@ parfor (ii = 1:nFrames, nWorkers)
         
         % Raise the estimate of the SD from the initial fit to an
         % exponent. This is used to adjust the relative weighting of
-        % the current frame realtive to the prior
-        likelihoodPupilRadiusSD = likelihoodPupilRadiusSD .^ likelihoodErrorExponent;
+        % the current frame relative to the prior
+        likelihoodPupilRadiusSD = likelihoodPupilRadiusSD .* likelihoodErrorMultiplier;
         
         % Check if the RMSE for the likelihood initial fit was above the
         % bad threshold. If so, inflate the SD for the likelihood so that
@@ -343,6 +346,8 @@ parfor (ii = 1:nFrames, nWorkers)
     end % check if there are any perimeter points to fit
     
     % store results
+    loopVar_priorPupilRadiusMean(ii) = priorPupilRadius;
+    loopVar_priorPupilRadiusSD(ii) = priorPupilRadiusSD;
     loopVar_posteriorEllipseParams(ii,:) = posteriorEllipseParams';
     loopVar_posterioreyePosesObjectiveError(ii) = posteriorEyePoseObjectiveError;
     loopVar_posterioreyePoses(ii,:) = posteriorEyePose;
@@ -371,9 +376,11 @@ pupilData.radiusSmoothed.eyePoses.radiusSD=loopVar_posteriorPupilRadiusSD';
 pupilData.radiusSmoothed.eyePoses.meta.labels = {'azimuth','elevation','torsion','pupil radius'};
 pupilData.radiusSmoothed.eyePoses.meta.units = {'deg','deg','deg','mm'};
 pupilData.radiusSmoothed.eyePoses.meta.coordinateSystem = 'head fixed (extrinsic)';
+pupilData.radiusSmoothed.eyePoses.meta.priorPupilRadiusMean = loopVar_priorPupilRadiusMean;
+pupilData.radiusSmoothed.eyePoses.meta.priorPupilRadiusSD = loopVar_priorPupilRadiusSD;
 
 % add a meta field with analysis details
-pupilData.radiusSmoothed.meta.smoothPupilRadius = p.Results;
+pupilData.radiusSmoothed.meta = p.Results;
 
 % save the pupilData
 save(p.Results.pupilFileName,'pupilData')
