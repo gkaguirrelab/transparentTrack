@@ -245,8 +245,8 @@ parfor (ii = 1:nFrames, nWorkers)
         precisionVector = squeeze(pupilData.(fitLabel).eyePoses.splitsSD(:,radiusIdx))';
         precisionVector = precisionVector(rangeLowSignal:rangeHiSignal);
         
-        % Occasionally bad fits can yield very small SD values. Remove these
-        precisionVector(precisionVector<0.1)=nan;
+        % Occasionally bad fits can yield near-zero SD values; remove these
+        precisionVector(precisionVector<1e-2)=nan;
 
         % Take the inverse of SD.
         precisionVector = precisionVector.^(-1);
@@ -299,6 +299,13 @@ parfor (ii = 1:nFrames, nWorkers)
         % the prior dictates the value of the posterior
         if pupilData.(initialFitLabel).ellipses.RMSE(ii) > badFrameErrorThreshold
             likelihoodPupilRadiusSD = likelihoodPupilRadiusSD .* 1e20;
+        end
+        
+        % Check if the likelihoodPupilRadiusSD is nan, in which case set it
+        % to an arbitrarily large number so that the prior dictates the
+        % posterior
+        if isnan(likelihoodPupilRadiusSD)
+            likelihoodPupilRadiusSD = 1e20;
         end
         
         % Calculate the posterior values for the pupil fits, given the
