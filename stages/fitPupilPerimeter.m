@@ -79,6 +79,9 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %                           scene constrained fitting. The value is used to
 %                           detect a possible local minimum when performing
 %                           the eye pose search.
+%  'badFramePixelThreshold' - If the pupil perimeter is composed of fewer
+%                           than this many points, the routine does not
+%                           attempt to calculate a splits SD.
 %  'fitLabel'             - The field name in the pupilData structure where
 %                           the results of the fitting will be stored.
 %
@@ -117,6 +120,7 @@ p.addParameter('ellipseTransparentUB',[640,480,20000,0.6,pi],@(x)(isempty(x) || 
 p.addParameter('nSplits',2,@isnumeric);
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) || ischar(x)));
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
+p.addParameter('badFramePixelThreshold',30, @isnumeric);
 p.addParameter('fitLabel',[],@(x)(isempty(x) | ischar(x)));
 
 
@@ -190,6 +194,7 @@ ellipseTransparentLB = p.Results.ellipseTransparentLB;
 ellipseTransparentUB = p.Results.ellipseTransparentUB;
 nSplits = p.Results.nSplits;
 badFrameErrorThreshold = p.Results.badFrameErrorThreshold;
+badFramePixelThreshold = p.Results.badFramePixelThreshold;
 
 % Alert the user
 if p.Results.verbose
@@ -253,7 +258,7 @@ parfor (ii = 1:nFrames, nWorkers)
         end
         
         % Re-calculate fit for splits of data points, if requested
-        if nSplits == 0
+        if nSplits == 0 || length(Xp)<badFramePixelThreshold
             if isempty(sceneGeometry)
                 ellipseParamsSplitsSD=NaN(1,nEllipseParams);
             else
