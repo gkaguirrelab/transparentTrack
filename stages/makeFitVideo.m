@@ -57,8 +57,9 @@ p.addParameter('pupilColor', 'green', @ischar);
 p.addParameter('sceneGeometryColor', 'magenta', @ischar);
 p.addParameter('modelEyeLabelNames', {'retina' 'irisPerimeter' 'cornea'}, @iscell);
 p.addParameter('modelEyePlotColors', {'.w' '.b' '.y'}, @iscell);
-p.addParameter('modelEyeAlpha', 0, @isnumeric);
-p.addParameter('modelEyeSymbolSizeScaler',1.5,@isnumeric);
+p.addParameter('modelEyeMaxAlpha', 0, @isnumeric);
+p.addParameter('modelEyeRMSERangeAlphaScaler',[1,2],@isnumeric);
+p.addParameter('modelEyeSymbolSizeScaler',1,@isnumeric);
 p.addParameter('fitLabel', 'radiusSmoothed', @(x)(isempty(x) | ischar(x)));
 p.addParameter('controlFileName', [], @(x)(isempty(x) | ischar(x)));
 
@@ -91,6 +92,7 @@ if ~isempty(p.Results.pupilFileName)
     pupilData = dataLoad.pupilData;
     clear dataLoad
     ellipseFitParams = pupilData.(p.Results.fitLabel).ellipses.values;
+    ellipseFitRMSE = pupilData.(p.Results.fitLabel).ellipses.RMSE;
     if isfield(pupilData.(p.Results.fitLabel),'eyePoses')
         eyePoses = pupilData.(p.Results.fitLabel).eyePoses.values;
     else
@@ -98,6 +100,7 @@ if ~isempty(p.Results.pupilFileName)
     end
 else
     ellipseFitParams=[];
+    ellipseFitRMSE=[];
     eyePoses=[];
 end
 
@@ -231,13 +234,18 @@ for ii = 1:nFrames
     end
 
     % superimpose the model eye
-    if ~isempty(eyePoses) && sum(p.Results.modelEyeAlpha)~=0
+    if ~isempty(eyePoses) && sum(p.Results.modelEyeMaxAlpha)~=0
+        % Scale the model eye alpha by the RMSE ellipse fit value for this
+        % frame
+        RMSEVal = max([ellipseFitRMSE(ii) p.Results.modelEyeRMSERangeAlphaScaler(1)]);
+        RMSEVal = min([RMSEVal p.Results.modelEyeRMSERangeAlphaScaler(2)]);
+        alphaVal = p.Results.modelEyeMaxAlpha - p.Results.modelEyeMaxAlpha*( (RMSEVal-p.Results.modelEyeRMSERangeAlphaScaler(1))/(p.Results.modelEyeRMSERangeAlphaScaler(2)-p.Results.modelEyeRMSERangeAlphaScaler(1)));
         % If we have a defined eyePose for this frame, display the modelEye
         if ~any(isnan(eyePoses(ii,:)))
             [~, hRender] = renderEyePose(eyePoses(ii,:), sceneGeometry, 'newFigure', false, ...
                 'modelEyeLabelNames', p.Results.modelEyeLabelNames, ...
                 'modelEyePlotColors', p.Results.modelEyePlotColors, ...
-                'modelEyeAlpha', p.Results.modelEyeAlpha, ...
+                'modelEyeAlpha', alphaVal, ...
                 'modelEyeSymbolSizeScaler', p.Results.modelEyeSymbolSizeScaler);   
         end
     end
