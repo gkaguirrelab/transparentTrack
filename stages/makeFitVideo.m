@@ -54,7 +54,7 @@ p.addParameter('sceneGeometryFileName', [], @(x)(isempty(x) | ischar(x)));
 p.addParameter('glintColor', 'r', @ischar);
 p.addParameter('perimeterColor', 'w', @ischar);
 p.addParameter('pupilColor', 'green', @ischar);
-p.addParameter('sceneGeometryColor', 'magenta', @ischar);
+p.addParameter('pupilRMSERangeAlphaScaler',[1,2],@isnumeric);
 p.addParameter('modelEyeLabelNames', {'retina' 'irisPerimeter' 'cornea'}, @iscell);
 p.addParameter('modelEyePlotColors', {'.w' '.b' '.y'}, @iscell);
 p.addParameter('modelEyeMaxAlpha', 0, @isnumeric);
@@ -229,6 +229,19 @@ for ii = 1:nFrames
                     set(hPlot(end), 'Color', p.Results.pupilColor)
                     set(hPlot(end), 'LineWidth',1);
                 end
+                % To support alpha transparency, we need to re-plot the
+                % ellipse as a conventional MATLAB line object, and not as
+                % an implicit function or a contour.
+                xData = hPlot(end).XData;
+                yData = hPlot(end).YData;
+                delete(hPlot(end));
+                hPlot(end)=plot(xData,yData,'Color', p.Results.pupilColor,'LineWidth',1);                
+                % Scale the ellipse line alpha by the RMSE ellipse fit
+                % value for this frame
+                RMSEVal = max([ellipseFitRMSE(ii) p.Results.modelEyeRMSERangeAlphaScaler(1)]);
+                RMSEVal = min([RMSEVal p.Results.modelEyeRMSERangeAlphaScaler(2)]);
+                alphaVal = 1 - ( (RMSEVal-p.Results.pupilRMSERangeAlphaScaler(1))/(p.Results.pupilRMSERangeAlphaScaler(2)-p.Results.pupilRMSERangeAlphaScaler(1)));
+                hPlot(end).Color(4) = alphaVal;
             end
         end
     end
