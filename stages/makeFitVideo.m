@@ -241,6 +241,7 @@ for ii = 1:nFrames
                 RMSEVal = max([ellipseFitRMSE(ii) p.Results.modelEyeRMSERangeAlphaScaler(1)]);
                 RMSEVal = min([RMSEVal p.Results.modelEyeRMSERangeAlphaScaler(2)]);
                 alphaVal = 1 - ( (RMSEVal-p.Results.pupilRMSERangeAlphaScaler(1))/(p.Results.pupilRMSERangeAlphaScaler(2)-p.Results.pupilRMSERangeAlphaScaler(1)));
+                alphaVal = max([alphaVal 0.25]);
                 hPlot(end).Color(4) = alphaVal;
             end
         end
