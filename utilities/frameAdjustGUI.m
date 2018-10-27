@@ -137,7 +137,7 @@ for ff=1:length(fileList)
     % translation
     fileStem = strsplit(fileList(ff).name,'_gray.avi');
     fileStem = fileStem{1};
-    outFileName =  fullfile(path,[fileStem '_sceneGeomtry.mat']);
+    outFileName =  fullfile(path,[fileStem '_sceneGeometry.mat']);
     sceneGeometry = mySG(p);
     sceneGeometry.meta.frameAdjust.sourceSceneGeometry = sceneGeometryIn;
     sceneGeometry.meta.frameAdjust.xAdjust = x;
