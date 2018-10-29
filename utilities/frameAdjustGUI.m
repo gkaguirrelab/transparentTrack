@@ -43,7 +43,7 @@ if exist('startPath')
     [path,file,suffix]=fileparts(startPath);
     file=[file suffix];
 else
-    [file,path] = uigetfile(fullfile(startPath,'*_sceneGeometry.mat'),'Choose a sceneGeometry file');
+    [file,path] = uigetfile(fullfile('.','*_sceneGeometry.mat'),'Choose a sceneGeometry file');
 end
 
 % Load the selected sceneGeometry file
