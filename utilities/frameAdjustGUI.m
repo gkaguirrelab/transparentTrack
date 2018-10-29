@@ -33,10 +33,10 @@
 %   calculated, and then reported to the console and placed in an updated
 %   sceneGeometry file that is saved for the adjusted acquisition.
 %
-
-
+% Examples:
 %{
-startPath = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure/TOME_3002/082616/EyeTracking/dMRI_dir98_AP_sceneGeometry.mat';
+    startPath = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure/TOME_3002/082616/EyeTracking/dMRI_dir98_AP_sceneGeometry.mat';
+    frameAdjustGUI
 %}
 
 if exist(startPath)
