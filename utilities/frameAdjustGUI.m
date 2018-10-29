@@ -39,7 +39,7 @@
     frameAdjustGUI
 %}
 
-if exist(startPath)
+if exist('startPath')
     [path,file,suffix]=fileparts(startPath);
     file=[file suffix];
 else
