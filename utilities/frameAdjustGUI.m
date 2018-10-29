@@ -1,4 +1,43 @@
+% frameAdjustGUI
+% Script to determine the change in camera position between acqusitions
+%
+% Description:
+%   A sceneGeometry file is created for a given acquisition. Included in
+%   the sceneGeometry is a specification of properties of the extrinsic
+%   camera matrix, including the position of the camera in space relative
+%   to the coordinates, which have as their origin the anterior surface of
+%   the cornea along the optical axis of the eye. If we wish to use this
+%   sceneGeometry file for the analysis of data from other acqusitions for
+%   a given subject, we need to deal with the possibility that the subject
+%   has moved their head between acquisitions. As the coordinate system is
+%   based upon a fixed anatomical landmark of the eye, the effect of head
+%   translation in this system is to change the camera position. This
+%   routine assists in calculating an updated camera position for a given
+%   acquisition.
+%
+%   To start, the full path to a sceneGeometry file is needed. This may be
+%   defined in the variable startParth. If undefined, a GUI file selection
+%   is used. The user is then prompted to select which acquisitions in the
+%   directory that contains the sceneGeometry file should be adjusted.
+%   Next, the median image from the video corresponding to the
+%   sceneGeometry file is obtained. This is the "fixed" image. The user is
+%   prompted to select three points that are used to define a triangle over
+%   the nasal canthus. Then, the video for an acquition to be adjusted is
+%   loaded and a median image is created. This is the "moving" image. The
+%   user landmarks the nasal canthus on the moving image. The fixed and
+%   moving images are then displayed in the same window, and the arrow keys
+%   may be used to adjust the location of the moving image until it is in
+%   register with the fixed image. The "a" key is used to switch the view
+%   between the fixed and moving. When the registration is satisfactory,
+%   the user presses the esc key. The change in camera position is
+%   calculated, and then reported to the console and placed in an updated
+%   sceneGeometry file that is saved for the adjusted acquisition.
+%
+
+
+%{
 startPath = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure/TOME_3002/082616/EyeTracking/dMRI_dir98_AP_sceneGeometry.mat';
+%}
 
 if exist(startPath)
     [path,file,suffix]=fileparts(startPath);
@@ -145,3 +184,4 @@ for ff=1:length(fileList)
     
 end
 close(figHandle);
+clear startPath
