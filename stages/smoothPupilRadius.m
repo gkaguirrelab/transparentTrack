@@ -101,12 +101,13 @@ p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@i
 
 % Optional fitting params
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
-p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
+p.addParameter('eyePoseUB',[89,89,0,5],@isnumeric);
 p.addParameter('exponentialTauParam',3,@isnumeric);
 p.addParameter('likelihoodErrorMultiplier',1.0,@isnumeric);
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
 p.addParameter('fitLabel','sceneConstrained',@ischar);
 p.addParameter('initialFitLabel','initial',@ischar);
+p.addParameter('fixedPriorPupilRadius',[3.5,1],@isnumeric);
 
 
 %% Parse and check the parameters
@@ -171,7 +172,8 @@ eyePoseUB = p.Results.eyePoseUB;
 badFrameErrorThreshold = p.Results.badFrameErrorThreshold;
 fitLabel = p.Results.fitLabel;
 initialFitLabel = p.Results.initialFitLabel;
-
+fixedPriorPupilRadiusMean = p.Results.fixedPriorPupilRadius(1);
+fixedPriorPupilRadiusSD = p.Results.fixedPriorPupilRadius(2);
 
 %% Conduct empirical Bayes smoothing
 
@@ -211,8 +213,8 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % initialize some variables so that their use is transparent to the
     % parfor loop
-    priorPupilRadius = NaN;
-    priorPupilRadiusSD = NaN;
+    empiricalPriorPupilRadiusMean = NaN;
+    empiricalPriorPupilRadiusSD = NaN;
     posteriorEllipseParams = NaN(1,nEllipseParams);
     posteriorEyePoseObjectiveError = NaN;
     posteriorEyePose = NaN(1,nEyePoseParams);
@@ -277,14 +279,22 @@ parfor (ii = 1:nFrames, nWorkers)
             exponentialWeights(1+restrictLowWindow:end-restrictHiWindow);
         
         % Combine the precision and time weights, and calculate the
-        % prior mean
+        % empirical prior pupil radius mean
         combinedWeightVector=precisionVector.*temporalWeightVector;
-        priorPupilRadius = nansum(dataVector.*combinedWeightVector,2)./ ...
+        empiricalPriorPupilRadiusMean = nansum(dataVector.*combinedWeightVector,2)./ ...
             nansum(combinedWeightVector(~isnan(dataVector)),2);
         
         % Obtain the standard deviation of the prior, weighted over time
-        priorPupilRadiusSD = nanstd(dataVector,temporalWeightVector);
-        
+        empiricalPriorPupilRadiusSD = nanstd(dataVector,temporalWeightVector);
+
+        % Obtain the combined prior, which is the posterior of the fixed
+        % and empirical priors
+        combinedPriorPupilRadiusMean = fixedPriorPupilRadiusSD.^2.*empiricalPriorPupilRadiusMean./(fixedPriorPupilRadiusSD.^2+empiricalPriorPupilRadiusSD.^2) + ...
+            empiricalPriorPupilRadiusSD.^2.*fixedPriorPupilRadiusMean./(fixedPriorPupilRadiusSD.^2+empiricalPriorPupilRadiusSD.^2);
+
+        combinedPriorPupilRadiusSD = sqrt((fixedPriorPupilRadiusSD.^2.*empiricalPriorPupilRadiusSD.^2) ./ ...
+            (fixedPriorPupilRadiusSD.^2+empiricalPriorPupilRadiusSD.^2));
+
         % Retrieve the initialFit for this frame
         likelihoodPupilRadiusMean = pupilData.(fitLabel).eyePoses.values(ii,radiusIdx);
         likelihoodPupilRadiusSD = pupilData.(fitLabel).eyePoses.splitsSD(ii,radiusIdx);
@@ -310,17 +320,17 @@ parfor (ii = 1:nFrames, nWorkers)
         
         % Calculate the posterior values for the pupil fits, given the
         % likelihood and the prior
-        posteriorPupilRadius = priorPupilRadiusSD.^2.*likelihoodPupilRadiusMean./(priorPupilRadiusSD.^2+likelihoodPupilRadiusSD.^2) + ...
-            likelihoodPupilRadiusSD.^2.*priorPupilRadius./(priorPupilRadiusSD.^2+likelihoodPupilRadiusSD.^2);
+        posteriorPupilRadius = combinedPriorPupilRadiusSD.^2.*likelihoodPupilRadiusMean./(combinedPriorPupilRadiusSD.^2+likelihoodPupilRadiusSD.^2) + ...
+            likelihoodPupilRadiusSD.^2.*combinedPriorPupilRadiusMean./(combinedPriorPupilRadiusSD.^2+likelihoodPupilRadiusSD.^2);
         
         % Calculate the SD of the posterior of the pupil radius
-        posteriorPupilRadiusSD = sqrt((priorPupilRadiusSD.^2.*likelihoodPupilRadiusSD.^2) ./ ...
-            (priorPupilRadiusSD.^2+likelihoodPupilRadiusSD.^2));
+        posteriorPupilRadiusSD = sqrt((combinedPriorPupilRadiusSD.^2.*likelihoodPupilRadiusSD.^2) ./ ...
+            (combinedPriorPupilRadiusSD.^2+likelihoodPupilRadiusSD.^2));
 
         % It can be the case that the prior mean is nan, due to this frame
         % having a measurement, but all surrounding frames being bad.
         % Detect this case, and set the posterior to the likelihood.
-        if isnan(priorPupilRadius)
+        if isnan(empiricalPriorPupilRadiusMean)
             posteriorPupilRadius = likelihoodPupilRadiusMean;
             posteriorPupilRadiusSD = inf;
         end
@@ -353,11 +363,11 @@ parfor (ii = 1:nFrames, nWorkers)
     end % check if there are any perimeter points to fit
     
     % store results
-    loopVar_priorPupilRadiusMean(ii) = priorPupilRadius;
-    loopVar_priorPupilRadiusSD(ii) = priorPupilRadiusSD;
+    loopVar_empiricalPriorPupilRadiusMean(ii) = empiricalPriorPupilRadiusMean;
+    loopVar_empiricalPriorPupilRadiusSD(ii) = empiricalPriorPupilRadiusSD;
     loopVar_posteriorEllipseParams(ii,:) = posteriorEllipseParams';
     loopVar_posterioreyePosesObjectiveError(ii) = posteriorEyePoseObjectiveError;
-    loopVar_posterioreyePoses(ii,:) = posteriorEyePose;
+    loopVar_posteriorEyePoses(ii,:) = posteriorEyePose;
     loopVar_posteriorPupilRadiusSD(ii) = posteriorPupilRadiusSD;
     
 end % loop over frames to calculate the posterior
@@ -378,13 +388,13 @@ pupilData.radiusSmoothed.ellipses.meta.labels = {'x','y','area','eccentricity','
 pupilData.radiusSmoothed.ellipses.meta.units = {'pixels','pixels','squared pixels','non-linear eccentricity','rads'};
 pupilData.radiusSmoothed.ellipses.meta.coordinateSystem = 'intrinsic image';
 
-pupilData.radiusSmoothed.eyePoses.values=loopVar_posterioreyePoses;
+pupilData.radiusSmoothed.eyePoses.values=loopVar_posteriorEyePoses;
 pupilData.radiusSmoothed.eyePoses.radiusSD=loopVar_posteriorPupilRadiusSD';
 pupilData.radiusSmoothed.eyePoses.meta.labels = {'azimuth','elevation','torsion','pupil radius'};
 pupilData.radiusSmoothed.eyePoses.meta.units = {'deg','deg','deg','mm'};
 pupilData.radiusSmoothed.eyePoses.meta.coordinateSystem = 'head fixed (extrinsic)';
-pupilData.radiusSmoothed.eyePoses.meta.priorPupilRadiusMean = loopVar_priorPupilRadiusMean;
-pupilData.radiusSmoothed.eyePoses.meta.priorPupilRadiusSD = loopVar_priorPupilRadiusSD;
+pupilData.radiusSmoothed.eyePoses.meta.empiricalPriorPupilRadiusMean = loopVar_empiricalPriorPupilRadiusMean;
+pupilData.radiusSmoothed.eyePoses.meta.empiricalPriorPupilRadiusSD = loopVar_empiricalPriorPupilRadiusSD;
 
 % add a meta field with analysis details
 pupilData.radiusSmoothed.meta = p.Results;
