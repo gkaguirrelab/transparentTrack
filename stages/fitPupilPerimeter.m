@@ -250,11 +250,8 @@ parfor (ii = 1:nFrames, nWorkers)
         else
             % Identify the best fitting eye parameters for the pupil
             % perimeter
-            [eyePose, eyePoseObjectiveError] = ...
+            [eyePose, eyePoseObjectiveError, ellipseParamsTransparent] = ...
                 eyePoseEllipseFit(Xp, Yp, sceneGeometry, 'repeatSearchThresh', badFrameErrorThreshold);
-            % Obtain the parameters of the ellipse
-            ellipseParamsTransparent = ...
-                pupilProjection_fwd(eyePose, sceneGeometry);
         end
         
         % Re-calculate fit for splits of data points, if requested
