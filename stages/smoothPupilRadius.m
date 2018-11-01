@@ -200,6 +200,19 @@ end
 % Store the warning state
 warnState = warning();
 
+% Obtain a measure for each frame of how completely the perimeter points
+% define the full circle of the pupil. The resulting "distVal" ranges from 
+rmse = @(x) sqrt(mean((x-mean(x)).^2));
+nDivisions = 20;
+for ii = 1:nFrames
+    distVals(ii) = rmse(histcounts(atan2(perimeter.data{ii}.Yp-pupilData.(p.Results.fitLabel).ellipses.values(ii,2),perimeter.data{ii}.Xp-pupilData.(p.Results.fitLabel).ellipses.values(ii,1)),linspace(-pi,pi,nDivisions)));
+end
+distVals(distVals==0)=nan;
+distVals = distVals./nDivisions;
+RMSE = pupilData.(p.Results.fitLabel).ellipses.RMSE';
+RMSE(RMSE==1e12)=nan;
+likelihoodPupilRadiusSDVector = distVals.*RMSE;
+
 % Loop through the frames
 parfor (ii = 1:nFrames, nWorkers)
 %for ii = 1:nFrames
@@ -242,31 +255,8 @@ parfor (ii = 1:nFrames, nWorkers)
         % Get the dataVector, restricted to the window range
         dataVector=squeeze(pupilData.(fitLabel).eyePoses.values(rangeLowSignal:rangeHiSignal,radiusIdx))';
         
-        % The precisionVector is based upon the measurement of standard
-        % deviation of eyePose values across pupil perimeter splits
-        precisionVector = squeeze(pupilData.(fitLabel).eyePoses.splitsSD(:,radiusIdx))';
-        precisionVector = precisionVector(rangeLowSignal:rangeHiSignal);
-        
-        % Occasionally bad fits can yield near-zero SD values; remove these
-        precisionVector(precisionVector<1e-2)=nan;
-
-        % Take the inverse of SD.
-        precisionVector = precisionVector.^(-1);
-        
-        % Identify any time points within the window for which the intial
-        % fit RMSE was greater than threshold. We use the initial fit (as
-        % opposed to a scene constrained fit) as we wish to identify pupil
-        % boundaries that are not elliptical, and not necessarily those
-        % that are poorly fit when constrained by sceneGeometry. We set the
-        % precision vector for these to zero, so that they do not
-        % contribute to the prior. We detect the edge case in which every
-        % frame in the window is "bad", in which case we retain them all.
-        rmseVector = pupilData.(initialFitLabel).ellipses.RMSE(rangeLowSignal:rangeHiSignal)';
-        badFrameIdx = (rmseVector > badFrameErrorThreshold);
-        nanFrameIdx = isnan(rmseVector);
-        if sum(badFrameIdx+nanFrameIdx) > 0 && sum(badFrameIdx+nanFrameIdx) < length(badFrameIdx)
-            precisionVector(badFrameIdx)=0;
-        end
+        % The precisionVector is the inverse of the likelihood SD vector
+        precisionVector = likelihoodPupilRadiusSDVector(rangeLowSignal:rangeHiSignal).^(-1);
         
         % Scale the precision vector within the window from zero to unity.
         % Thus, the noisiest measurement will not influence the prior.
