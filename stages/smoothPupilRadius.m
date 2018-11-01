@@ -214,8 +214,8 @@ RMSE(RMSE==1e12)=nan;
 likelihoodPupilRadiusSDVector = distVals.*RMSE;
 
 % Loop through the frames
-parfor (ii = 1:nFrames, nWorkers)
-%for ii = 1:nFrames
+%parfor (ii = 1:nFrames, nWorkers)
+for ii = 1:nFrames
 
     % update progress
     if verbose
@@ -339,13 +339,8 @@ parfor (ii = 1:nFrames, nWorkers)
         warning('off','pupilProjection_fwd:ellipseFitFailed');
         
         % Perform the fit
-        [posteriorEyePose, posteriorEyePoseObjectiveError] = ...
+        [posteriorEyePose, posteriorEyePoseObjectiveError, posteriorEllipseParams] = ...
             eyePoseEllipseFit(Xp, Yp, sceneGeometry, 'eyePoseLB', lb_pin, 'eyePoseUB', ub_pin, 'x0', x0, 'repeatSearchThresh', badFrameErrorThreshold);
-
-        % Calculate and store the ellipe parameters for this eyePose
-        if ~any(isnan(posteriorEyePose))
-            posteriorEllipseParams = pupilProjection_fwd(posteriorEyePose, sceneGeometry);
-        end
         
         % Restore the warning state
         warning(warnState);
