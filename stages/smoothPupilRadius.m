@@ -205,7 +205,7 @@ warnState = warning();
 rmse = @(x) sqrt(mean((x-mean(x)).^2));
 nDivisions = 20;
 for ii = 1:nFrames
-    distVals(ii) = rmse(histcounts(atan2(perimeter.data{ii}.Yp-pupilData.(p.Results.fitLabel).ellipses.values(ii,2),perimeter.data{ii}.Xp-pupilData.(p.Results.fitLabel).ellipses.values(ii,1)),linspace(-pi,pi,nDivisions)));
+    distVals(ii) = rmse(histcounts(atan2(frameCellArray{ii}.Yp-pupilData.(p.Results.fitLabel).ellipses.values(ii,2),frameCellArray{ii}.Xp-pupilData.(p.Results.fitLabel).ellipses.values(ii,1)),linspace(-pi,pi,nDivisions)));
 end
 distVals(distVals==0)=nan;
 distVals = distVals./nDivisions;
