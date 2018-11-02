@@ -106,6 +106,7 @@ p.addParameter('exponentialTauParam',3,@isnumeric);
 p.addParameter('likelihoodErrorMultiplier',1.0,@isnumeric);
 p.addParameter('fitLabel','sceneConstrained',@ischar);
 p.addParameter('fixedPriorPupilRadius',[3.5,1],@isnumeric);
+p.addParameter('badFrameErrorThreshold',2,@isnumeric);
 
 
 %% Parse and check the parameters
@@ -169,7 +170,6 @@ eyePoseLB = p.Results.eyePoseLB;
 eyePoseUB = p.Results.eyePoseUB;
 badFrameErrorThreshold = p.Results.badFrameErrorThreshold;
 fitLabel = p.Results.fitLabel;
-initialFitLabel = p.Results.initialFitLabel;
 fixedPriorPupilRadiusMean = p.Results.fixedPriorPupilRadius(1);
 fixedPriorPupilRadiusSD = p.Results.fixedPriorPupilRadius(2);
 
