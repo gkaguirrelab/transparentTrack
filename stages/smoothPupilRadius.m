@@ -104,9 +104,7 @@ p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,5],@isnumeric);
 p.addParameter('exponentialTauParam',3,@isnumeric);
 p.addParameter('likelihoodErrorMultiplier',1.0,@isnumeric);
-p.addParameter('badFrameErrorThreshold',2, @isnumeric);
 p.addParameter('fitLabel','sceneConstrained',@ischar);
-p.addParameter('initialFitLabel','initial',@ischar);
 p.addParameter('fixedPriorPupilRadius',[3.5,1],@isnumeric);
 
 
@@ -175,8 +173,6 @@ initialFitLabel = p.Results.initialFitLabel;
 fixedPriorPupilRadiusMean = p.Results.fixedPriorPupilRadius(1);
 fixedPriorPupilRadiusSD = p.Results.fixedPriorPupilRadius(2);
 
-%% Conduct empirical Bayes smoothing
-
 % Set up the decaying exponential weighting function. The relatively large
 % window (10 times the time constant) is used to handle the case in which
 % there is a stretch of missing data, in which case the long tails of the
@@ -189,16 +185,13 @@ baseExpFunc=exp(-1/p.Results.exponentialTauParam*windowSupport);
 % current time point is excluded (set to nan)
 exponentialWeights=[fliplr(baseExpFunc) NaN baseExpFunc];
 
-% Alert the user
-if p.Results.verbose
-    tic
-    fprintf(['Bayesian smoothing. Started ' char(datetime('now')) '\n']);
-    fprintf('| 0                      50                   100%% |\n');
-    fprintf('.\n');
-end
+% Obtain the RMSE of the fit of the elipse to the perimeter points for each
+% frame
+RMSE = pupilData.(p.Results.fitLabel).ellipses.RMSE';
 
-% Store the warning state
-warnState = warning();
+% A prior version of the code set a value of 1e12 for frames where the
+% fitting failed. Just make these nans here.
+RMSE(RMSE==1e12)=nan;
 
 % Obtain a measure for each frame of how completely the perimeter points
 % define the full circle of the pupil. The resulting "distVal" ranges from 
@@ -209,9 +202,23 @@ for ii = 1:nFrames
 end
 distVals(distVals==0)=nan;
 distVals = distVals./nDivisions;
-RMSE = pupilData.(p.Results.fitLabel).ellipses.RMSE';
-RMSE(RMSE==1e12)=nan;
+
+% The likelihood SD for each frame is the RMSE multiplied by the distVal
 likelihoodPupilRadiusSDVector = distVals.*RMSE;
+
+
+%% Perform the calculation across frames
+
+% Alert the user
+if p.Results.verbose
+    tic
+    fprintf(['Bayesian smoothing. Started ' char(datetime('now')) '\n']);
+    fprintf('| 0                      50                   100%% |\n');
+    fprintf('.\n');
+end
+
+% Store the warning state
+warnState = warning();
 
 % Loop through the frames
 parfor (ii = 1:nFrames, nWorkers)
@@ -287,20 +294,12 @@ parfor (ii = 1:nFrames, nWorkers)
 
         % Retrieve the initialFit for this frame
         likelihoodPupilRadiusMean = pupilData.(fitLabel).eyePoses.values(ii,radiusIdx);
-        likelihoodPupilRadiusSD = pupilData.(fitLabel).eyePoses.splitsSD(ii,radiusIdx);
+        likelihoodPupilRadiusSD = likelihoodPupilRadiusSDVector(ii);
         
-        % Raise the estimate of the SD from the initial fit to an
-        % exponent. This is used to adjust the relative weighting of
-        % the current frame relative to the prior
+        % Apply a multiplier that is used to adjust the relative weighting
+        % of the current frame relative to the prior
         likelihoodPupilRadiusSD = likelihoodPupilRadiusSD .* likelihoodErrorMultiplier;
-        
-        % Check if the RMSE for the likelihood initial fit was above the
-        % bad threshold. If so, inflate the SD for the likelihood so that
-        % the prior dictates the value of the posterior
-        if pupilData.(initialFitLabel).ellipses.RMSE(ii) > badFrameErrorThreshold
-            likelihoodPupilRadiusSD = likelihoodPupilRadiusSD .* 1e20;
-        end
-        
+                
         % Check if the likelihoodPupilRadiusSD is nan, in which case set it
         % to an arbitrarily large number so that the prior dictates the
         % posterior
