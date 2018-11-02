@@ -184,9 +184,7 @@ frameCellArray = perimeter.data(1:nFrames);
 verbose = p.Results.verbose;
 ellipseTransparentLB = p.Results.ellipseTransparentLB;
 ellipseTransparentUB = p.Results.ellipseTransparentUB;
-nSplits = p.Results.nSplits;
 badFrameErrorThreshold = p.Results.badFrameErrorThreshold;
-badFramePixelThreshold = p.Results.badFramePixelThreshold;
 
 % Alert the user
 if p.Results.verbose
