@@ -214,8 +214,8 @@ RMSE(RMSE==1e12)=nan;
 likelihoodPupilRadiusSDVector = distVals.*RMSE;
 
 % Loop through the frames
-%parfor (ii = 1:nFrames, nWorkers)
-for ii = 1:nFrames
+parfor (ii = 1:nFrames, nWorkers)
+%for ii = 1:nFrames
 
     % update progress
     if verbose
