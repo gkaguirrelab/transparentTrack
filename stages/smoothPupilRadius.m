@@ -67,9 +67,9 @@ function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, scene
 %  'fitLabel'             - Identifies the field in pupilData that contains
 %                           the ellipse fit params for which the search
 %                           will be conducted.
-%  'initialFitLabel'      - The field in pupilData that contains the
-%                           initial, not scene constrained, ellipse fit to
-%                           the pupil perimeter.
+%  'fixedPriorPupilRadius' - A 2x1 vector that provides the mean and SD (in 
+%                           mm) of the expected radius of the pupil
+%                           aperture during this acquisition.
 %
 % Outputs:
 %   pupilData             - A structure with multiple fields corresponding
@@ -104,9 +104,9 @@ p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,5],@isnumeric);
 p.addParameter('exponentialTauParam',3,@isnumeric);
 p.addParameter('likelihoodErrorMultiplier',1.0,@isnumeric);
+p.addParameter('badFrameErrorThreshold',2,@isnumeric);
 p.addParameter('fitLabel','sceneConstrained',@ischar);
 p.addParameter('fixedPriorPupilRadius',[3.5,1.5],@isnumeric);
-p.addParameter('badFrameErrorThreshold',2,@isnumeric);
 
 
 %% Parse and check the parameters

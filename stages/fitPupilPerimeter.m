@@ -81,10 +81,10 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %
 % Outputs:
 %	pupilData             - A structure with multiple fields corresponding
-%                           to the parameters, SDs, and errors of the
-%                           fit. Different field names are used
-%                           depending upon if a sceneGeometry constraint
-%                           was or was not used.
+%                           to the parameters and errors of the fit.
+%                           Different field names are used depending upon
+%                           if a sceneGeometry constraint was or was not
+%                           used.
 %
 
 %% Parse vargin for options passed here
@@ -169,6 +169,9 @@ if ~isempty(p.Results.sceneGeometryFileName)
     dataLoad=load(p.Results.sceneGeometryFileName);
     sceneGeometry=dataLoad.sceneGeometry;
     clear dataLoad
+    % An earlier version of the code defined a non-zero iris thickness. We
+    % force this to zero here to speed computation
+    sceneGeometry.eye.iris.thickness=0;
 else
     sceneGeometry = [];
 end
