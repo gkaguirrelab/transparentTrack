@@ -210,13 +210,9 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % Initialize the results variables
     ellipseParamsTransparent=NaN(1,nEllipseParams);
-    ellipseParamsSplitsSD=NaN(1,nEllipseParams);
     ellipseParamsObjectiveError=NaN(1);
     eyePose=NaN(1,nEyePoseParams);
-    eyePoseSplitsSD=NaN(1,nEyePoseParams);
     eyePoseObjectiveError=NaN(1);
-    pFitTransparentSplit=NaN(1,nSplits,nEllipseParams);
-    pFitEyePoseSplit=NaN(1,nSplits,nEyePoseParams);
     
     % get the boundary points
     Xp = frameCellArray{ii}.Xp;
