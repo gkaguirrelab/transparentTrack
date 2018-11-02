@@ -132,6 +132,10 @@ dataLoad=load(sceneGeometryFileName);
 sceneGeometry=dataLoad.sceneGeometry;
 clear dataLoad
 
+% An earlier version of the code defined a non-zero iris thickness. We
+% force this to zero here to speed computation
+sceneGeometry.eye.iris.thickness=0;
+
 % determine how many frames we will process
 if p.Results.nFrames == Inf
     nFrames=size(perimeter.data,1);
@@ -222,7 +226,7 @@ warnState = warning();
 
 % Loop through the frames
 parfor (ii = 1:nFrames, nWorkers)
-%for ii = 1:nFrames
+%for ii = 300:nFrames
 
     % update progress
     if verbose
