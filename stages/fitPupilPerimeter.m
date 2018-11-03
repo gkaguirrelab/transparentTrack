@@ -67,6 +67,8 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %                           by the scene geometry. A mild constraint (0.6)
 %                           is placed upon the eccentricity, corresponding
 %                           to an aspect ration of 4:5.
+%  'eyePoseLB'            - Lower bound on the eyePose
+%  'eyePoseUB'            - Upper bound on the eyePose
 %  'sceneGeometryFileName' - Full path to a sceneGeometry file. When the
 %                           sceneGeometry is available, fitting is
 %                           performed in terms of eye parameters instead of
@@ -111,6 +113,8 @@ p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@i
 % Optional analysis params
 p.addParameter('ellipseTransparentLB',[0,0,800,0,0],@(x)(isempty(x) || isnumeric(x)));
 p.addParameter('ellipseTransparentUB',[640,480,20000,0.6,pi],@(x)(isempty(x) || isnumeric(x)));
+p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
+p.addParameter('eyePoseUB',[89,89,0,5],@isnumeric);
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) || ischar(x)));
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
 p.addParameter('fitLabel',[],@(x)(isempty(x) | ischar(x)));
@@ -187,6 +191,8 @@ frameCellArray = perimeter.data(1:nFrames);
 verbose = p.Results.verbose;
 ellipseTransparentLB = p.Results.ellipseTransparentLB;
 ellipseTransparentUB = p.Results.ellipseTransparentUB;
+eyePoseLB = p.Results.eyePoseLB;
+eyePoseUB = p.Results.eyePoseUB;
 badFrameErrorThreshold = p.Results.badFrameErrorThreshold;
 
 % Alert the user
@@ -241,7 +247,9 @@ parfor (ii = 1:nFrames, nWorkers)
             % We do have sceneGeometry. Find the eyePose parameters that
             % best fit the pupil perimeter
             [eyePose, eyePoseObjectiveError, ellipseParamsTransparent] = ...
-                eyePoseEllipseFit(Xp, Yp, sceneGeometry, 'repeatSearchThresh', badFrameErrorThreshold);
+                eyePoseEllipseFit(Xp, Yp, sceneGeometry, ...
+                'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB, ...
+                'repeatSearchThresh', badFrameErrorThreshold);
         end       
         
         % Restore the warning state
