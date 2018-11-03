@@ -67,9 +67,9 @@ function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, scene
 %  'fitLabel'             - Identifies the field in pupilData that contains
 %                           the ellipse fit params for which the search
 %                           will be conducted.
-%  'initialFitLabel'      - The field in pupilData that contains the
-%                           initial, not scene constrained, ellipse fit to
-%                           the pupil perimeter.
+%  'fixedPriorPupilRadius' - A 2x1 vector that provides the mean and SD (in 
+%                           mm) of the expected radius of the pupil
+%                           aperture during this acquisition.
 %
 % Outputs:
 %   pupilData             - A structure with multiple fields corresponding
@@ -104,10 +104,9 @@ p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,5],@isnumeric);
 p.addParameter('exponentialTauParam',3,@isnumeric);
 p.addParameter('likelihoodErrorMultiplier',1.0,@isnumeric);
-p.addParameter('badFrameErrorThreshold',2, @isnumeric);
+p.addParameter('badFrameErrorThreshold',2,@isnumeric);
 p.addParameter('fitLabel','sceneConstrained',@ischar);
-p.addParameter('initialFitLabel','initial',@ischar);
-p.addParameter('fixedPriorPupilRadius',[3.5,1],@isnumeric);
+p.addParameter('fixedPriorPupilRadius',[3.5,1.5],@isnumeric);
 
 
 %% Parse and check the parameters
@@ -132,6 +131,10 @@ clear dataLoad
 dataLoad=load(sceneGeometryFileName);
 sceneGeometry=dataLoad.sceneGeometry;
 clear dataLoad
+
+% An earlier version of the code defined a non-zero iris thickness. We
+% force this to zero here to speed computation
+sceneGeometry.eye.iris.thickness=0;
 
 % determine how many frames we will process
 if p.Results.nFrames == Inf
@@ -171,11 +174,8 @@ eyePoseLB = p.Results.eyePoseLB;
 eyePoseUB = p.Results.eyePoseUB;
 badFrameErrorThreshold = p.Results.badFrameErrorThreshold;
 fitLabel = p.Results.fitLabel;
-initialFitLabel = p.Results.initialFitLabel;
 fixedPriorPupilRadiusMean = p.Results.fixedPriorPupilRadius(1);
 fixedPriorPupilRadiusSD = p.Results.fixedPriorPupilRadius(2);
-
-%% Conduct empirical Bayes smoothing
 
 % Set up the decaying exponential weighting function. The relatively large
 % window (10 times the time constant) is used to handle the case in which
@@ -188,6 +188,30 @@ baseExpFunc=exp(-1/p.Results.exponentialTauParam*windowSupport);
 % The weighting function is symmetric about the current time point. The
 % current time point is excluded (set to nan)
 exponentialWeights=[fliplr(baseExpFunc) NaN baseExpFunc];
+
+% Obtain the RMSE of the fit of the elipse to the perimeter points for each
+% frame
+RMSE = pupilData.(p.Results.fitLabel).ellipses.RMSE';
+
+% A prior version of the code set a value of 1e12 for frames where the
+% fitting failed. Just make these nans here.
+RMSE(RMSE==1e12)=nan;
+
+% Obtain a measure for each frame of how completely the perimeter points
+% define the full circle of the pupil. The resulting "distVal" ranges from 
+rmse = @(x) sqrt(mean((x-mean(x)).^2));
+nDivisions = 20;
+for ii = 1:nFrames
+    distVals(ii) = rmse(histcounts(atan2(frameCellArray{ii}.Yp-pupilData.(p.Results.fitLabel).ellipses.values(ii,2),frameCellArray{ii}.Xp-pupilData.(p.Results.fitLabel).ellipses.values(ii,1)),linspace(-pi,pi,nDivisions)));
+end
+distVals(distVals==0)=nan;
+distVals = distVals./nDivisions;
+
+% The likelihood SD for each frame is the RMSE multiplied by the distVal
+likelihoodPupilRadiusSDVector = distVals.*RMSE;
+
+
+%% Perform the calculation across frames
 
 % Alert the user
 if p.Results.verbose
@@ -202,7 +226,7 @@ warnState = warning();
 
 % Loop through the frames
 parfor (ii = 1:nFrames, nWorkers)
-%for ii = 1:nFrames
+%for ii = 300:nFrames
 
     % update progress
     if verbose
@@ -242,31 +266,8 @@ parfor (ii = 1:nFrames, nWorkers)
         % Get the dataVector, restricted to the window range
         dataVector=squeeze(pupilData.(fitLabel).eyePoses.values(rangeLowSignal:rangeHiSignal,radiusIdx))';
         
-        % The precisionVector is based upon the measurement of standard
-        % deviation of eyePose values across pupil perimeter splits
-        precisionVector = squeeze(pupilData.(fitLabel).eyePoses.splitsSD(:,radiusIdx))';
-        precisionVector = precisionVector(rangeLowSignal:rangeHiSignal);
-        
-        % Occasionally bad fits can yield near-zero SD values; remove these
-        precisionVector(precisionVector<1e-2)=nan;
-
-        % Take the inverse of SD.
-        precisionVector = precisionVector.^(-1);
-        
-        % Identify any time points within the window for which the intial
-        % fit RMSE was greater than threshold. We use the initial fit (as
-        % opposed to a scene constrained fit) as we wish to identify pupil
-        % boundaries that are not elliptical, and not necessarily those
-        % that are poorly fit when constrained by sceneGeometry. We set the
-        % precision vector for these to zero, so that they do not
-        % contribute to the prior. We detect the edge case in which every
-        % frame in the window is "bad", in which case we retain them all.
-        rmseVector = pupilData.(initialFitLabel).ellipses.RMSE(rangeLowSignal:rangeHiSignal)';
-        badFrameIdx = (rmseVector > badFrameErrorThreshold);
-        nanFrameIdx = isnan(rmseVector);
-        if sum(badFrameIdx+nanFrameIdx) > 0 && sum(badFrameIdx+nanFrameIdx) < length(badFrameIdx)
-            precisionVector(badFrameIdx)=0;
-        end
+        % The precisionVector is the inverse of the likelihood SD vector
+        precisionVector = likelihoodPupilRadiusSDVector(rangeLowSignal:rangeHiSignal).^(-1);
         
         % Scale the precision vector within the window from zero to unity.
         % Thus, the noisiest measurement will not influence the prior.
@@ -297,20 +298,12 @@ parfor (ii = 1:nFrames, nWorkers)
 
         % Retrieve the initialFit for this frame
         likelihoodPupilRadiusMean = pupilData.(fitLabel).eyePoses.values(ii,radiusIdx);
-        likelihoodPupilRadiusSD = pupilData.(fitLabel).eyePoses.splitsSD(ii,radiusIdx);
+        likelihoodPupilRadiusSD = likelihoodPupilRadiusSDVector(ii);
         
-        % Raise the estimate of the SD from the initial fit to an
-        % exponent. This is used to adjust the relative weighting of
-        % the current frame relative to the prior
+        % Apply a multiplier that is used to adjust the relative weighting
+        % of the current frame relative to the prior
         likelihoodPupilRadiusSD = likelihoodPupilRadiusSD .* likelihoodErrorMultiplier;
-        
-        % Check if the RMSE for the likelihood initial fit was above the
-        % bad threshold. If so, inflate the SD for the likelihood so that
-        % the prior dictates the value of the posterior
-        if pupilData.(initialFitLabel).ellipses.RMSE(ii) > badFrameErrorThreshold
-            likelihoodPupilRadiusSD = likelihoodPupilRadiusSD .* 1e20;
-        end
-        
+                
         % Check if the likelihoodPupilRadiusSD is nan, in which case set it
         % to an arbitrarily large number so that the prior dictates the
         % posterior
@@ -349,13 +342,8 @@ parfor (ii = 1:nFrames, nWorkers)
         warning('off','pupilProjection_fwd:ellipseFitFailed');
         
         % Perform the fit
-        [posteriorEyePose, posteriorEyePoseObjectiveError] = ...
+        [posteriorEyePose, posteriorEyePoseObjectiveError, posteriorEllipseParams] = ...
             eyePoseEllipseFit(Xp, Yp, sceneGeometry, 'eyePoseLB', lb_pin, 'eyePoseUB', ub_pin, 'x0', x0, 'repeatSearchThresh', badFrameErrorThreshold);
-
-        % Calculate and store the ellipe parameters for this eyePose
-        if ~any(isnan(posteriorEyePose))
-            posteriorEllipseParams = pupilProjection_fwd(posteriorEyePose, sceneGeometry);
-        end
         
         % Restore the warning state
         warning(warnState);
