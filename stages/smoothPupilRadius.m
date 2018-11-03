@@ -368,7 +368,7 @@ end
 
 %% Clean up and save the fit results
 
-% gather the loop vars into the ellipse structure
+% gather the loop vars into the ellipses field
 pupilData.radiusSmoothed.ellipses.values=loopVar_posteriorEllipseParams;
 pupilData.radiusSmoothed.ellipses.RMSE=loopVar_posterioreyePosesObjectiveError';
 pupilData.radiusSmoothed.ellipses.meta.ellipseForm = 'transparent';
@@ -376,6 +376,7 @@ pupilData.radiusSmoothed.ellipses.meta.labels = {'x','y','area','eccentricity','
 pupilData.radiusSmoothed.ellipses.meta.units = {'pixels','pixels','squared pixels','non-linear eccentricity','rads'};
 pupilData.radiusSmoothed.ellipses.meta.coordinateSystem = 'intrinsic image';
 
+% gather the loop vars into the eyePoses field
 pupilData.radiusSmoothed.eyePoses.values=loopVar_posteriorEyePoses;
 pupilData.radiusSmoothed.eyePoses.radiusSD=loopVar_posteriorPupilRadiusSD';
 pupilData.radiusSmoothed.eyePoses.meta.labels = {'azimuth','elevation','torsion','pupil radius'};
