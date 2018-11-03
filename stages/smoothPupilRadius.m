@@ -150,9 +150,6 @@ end
 if ~isfield(pupilData.(p.Results.fitLabel).ellipses,'RMSE')
     error('This fit field does not have the required subfield: ellipse.RMSE');
 end
-if ~isfield(pupilData.(p.Results.fitLabel).eyePoses,'splitsSD')
-    error('This fit field does not have the required subfield: eyePoses.splitsSD');
-end
 
 
 %% Set up the parallel pool
