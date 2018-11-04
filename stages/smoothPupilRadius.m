@@ -5,11 +5,11 @@ function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, scene
 %  [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, sceneGeometryFileName)
 %
 % Description:
-%   This routine implements a smoothing operation upon pupil radius using
-%   an empirical Bayes approach. A non-causal, exponentially weighted
-%   window of surrounding radius values serves as a prior. The posterior
-%   value of the radius is then used as a constraint and the ellipse in the
-%   image plane is re-fit.
+%   This routine implements a temporal smoothing operation upon pupil
+%   radius using an empirical Bayes approach. A non-causal, exponentially
+%   weighted window of surrounding radius values serves as an empirical
+%   prior. The posterior value of the radius is then used as a constraint
+%   and the ellipse in the image plane is re-fit.
 %
 % Notes:
 %   Parallel pool - Controlled by the key/value pair 'useParallel'. The
@@ -69,7 +69,9 @@ function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, scene
 %                           will be conducted.
 %  'fixedPriorPupilRadius' - A 2x1 vector that provides the mean and SD (in 
 %                           mm) of the expected radius of the pupil
-%                           aperture during this acquisition.
+%                           aperture during this acquisition. The defauklt
+%                           values correspond to the pupil radius in a
+%                           young adult in complete darkness.
 %
 % Outputs:
 %   pupilData             - A structure with multiple fields corresponding
@@ -190,19 +192,23 @@ exponentialWeights=[fliplr(baseExpFunc) NaN baseExpFunc];
 % frame
 RMSE = pupilData.(p.Results.fitLabel).ellipses.RMSE';
 
-% A prior version of the code set a value of 1e12 for frames where the
+% An older version of the code set a value of 1e12 for frames where the
 % fitting failed. Just make these nans here.
 RMSE(RMSE==1e12)=nan;
 
 % Obtain a measure for each frame of how completely the perimeter points
-% define the full circle of the pupil. The resulting "distVal" ranges from 
-rmse = @(x) sqrt(mean((x-mean(x)).^2));
+% define the full circle of the pupil. If there is a perfectly uniform
+% distribution of points around the pupil perimeter, then the distVals
+% value will be zero. If there are perimeter points only at a single
+% location around the pupil cirle, then the distVal will be ~4.35.
+rmse = @(x) (sqrt(mean((x-mean(x)).^2)))/mean(x);
 nDivisions = 20;
 for ii = 1:nFrames
     distVals(ii) = rmse(histcounts(atan2(frameCellArray{ii}.Yp-pupilData.(p.Results.fitLabel).ellipses.values(ii,2),frameCellArray{ii}.Xp-pupilData.(p.Results.fitLabel).ellipses.values(ii,1)),linspace(-pi,pi,nDivisions)));
 end
+% Frames which have no perimeter points will return a distVal of zero. We
+% set these to be nan.
 distVals(distVals==0)=nan;
-distVals = distVals./nDivisions;
 
 % The likelihood SD for each frame is the RMSE multiplied by the distVal
 likelihoodPupilRadiusSDVector = distVals.*RMSE;
@@ -282,7 +288,8 @@ parfor (ii = 1:nFrames, nWorkers)
         empiricalPriorPupilRadiusMean = nansum(dataVector.*combinedWeightVector,2)./ ...
             nansum(combinedWeightVector(~isnan(dataVector)),2);
         
-        % Obtain the standard deviation of the prior, weighted over time
+        % Obtain the standard deviation of the empirical prior, weighted
+        % over time
         empiricalPriorPupilRadiusSD = nanstd(dataVector,temporalWeightVector);
 
         % Obtain the combined prior, which is the posterior of the fixed
