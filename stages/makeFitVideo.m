@@ -58,7 +58,7 @@ p.addParameter('pupilRMSERangeAlphaScaler',[1,2],@isnumeric);
 p.addParameter('modelEyeLabelNames', {'retina' 'irisPerimeter' 'cornea'}, @iscell);
 p.addParameter('modelEyePlotColors', {'.w' '.b' '.y'}, @iscell);
 p.addParameter('modelEyeMaxAlpha', 0, @isnumeric);
-p.addParameter('modelEyeRMSERangeAlphaScaler',[1,2],@isnumeric);
+p.addParameter('modelEyeRMSERangeAlphaScaler',[1,4],@isnumeric);
 p.addParameter('modelEyeSymbolSizeScaler',1,@isnumeric);
 p.addParameter('fitLabel', 'radiusSmoothed', @(x)(isempty(x) | ischar(x)));
 p.addParameter('controlFileName', [], @(x)(isempty(x) | ischar(x)));
