@@ -118,6 +118,7 @@ p.addParameter('eyePoseUB',[89,89,0,5],@isnumeric);
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) || ischar(x)));
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
 p.addParameter('fitLabel',[],@(x)(isempty(x) | ischar(x)));
+p.addParameter('relativeCameraPositionFileName',[],@ischar);
 
 
 %% Parse and check the parameters
@@ -146,18 +147,25 @@ else
     pupilData=[];
 end
 
+% Load the relativeCameraPosition file if passed and it exists
+if ~isempty(p.Results.relativeCameraPositionFileName)
+    if exist(p.Results.pupilFileName, 'file')==2
+        dataLoad=load(p.Results.relativeCameraPositionFileName);
+        relativeCameraPosition=dataLoad.relativeCameraPosition;
+        clear dataLoad
+    else
+        relativeCameraPosition=[];
+    end
+else
+    relativeCameraPosition=[];
+end
+
 % determine how many frames we will process
 if p.Results.nFrames == Inf
     nFrames=size(perimeter.data,1);
 else
     nFrames = p.Results.nFrames;
 end
-
-
-%% Prepare some functions
-% Create an anonymous function to return a rotation matrix given theta in
-% radians
-returnRotMat = @(theta) [cos(theta) -sin(theta); sin(theta) cos(theta)];
 
 
 %% Set up the parallel pool
@@ -244,10 +252,18 @@ parfor (ii = 1:nFrames, nWorkers)
                 ellipseTransparentUB, ...
                 []);
         else
-            % We do have sceneGeometry. Find the eyePose parameters that
-            % best fit the pupil perimeter
+            % We do have sceneGeometry. 
+            adjustedSceneGeometry = sceneGeometry;
+            % If a relativeCameraPosition is defined, update the
+            % sceneGeometry
+            if ~isempty(relativeCameraPosition)
+                cameraPosition = sceneGeometry.cameraPosition.translation;
+                cameraPosition = cameraPosition + relativeCameraPosition(:,ii);
+                adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
+            end
+            % Find the eyePose parameters that best fit the pupil perimeter
             [eyePose, eyePoseObjectiveError, ellipseParamsTransparent] = ...
-                eyePoseEllipseFit(Xp, Yp, sceneGeometry, ...
+                eyePoseEllipseFit(Xp, Yp, adjustedSceneGeometry, ...
                 'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB, ...
                 'repeatSearchThresh', badFrameErrorThreshold);
         end       

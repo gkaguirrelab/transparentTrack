@@ -109,6 +109,7 @@ p.addParameter('likelihoodErrorMultiplier',1.0,@isnumeric);
 p.addParameter('badFrameErrorThreshold',2,@isnumeric);
 p.addParameter('fitLabel','sceneConstrained',@ischar);
 p.addParameter('fixedPriorPupilRadius',[3.5,1.5],@isnumeric);
+p.addParameter('relativeCameraPositionFileName',[],@ischar);
 
 
 %% Parse and check the parameters
@@ -137,6 +138,19 @@ clear dataLoad
 % An earlier version of the code defined a non-zero iris thickness. We
 % force this to zero here to speed computation
 sceneGeometry.eye.iris.thickness=0;
+
+% Load the relativeCameraPosition file if passed and it exists
+if ~isempty(p.Results.relativeCameraPositionFileName)
+    if exist(p.Results.pupilFileName, 'file')==2
+        dataLoad=load(p.Results.relativeCameraPositionFileName);
+        relativeCameraPosition=dataLoad.relativeCameraPosition;
+        clear dataLoad
+    else
+        relativeCameraPosition=[];
+    end
+else
+    relativeCameraPosition=[];
+end
 
 % determine how many frames we will process
 if p.Results.nFrames == Inf
@@ -341,13 +355,21 @@ parfor (ii = 1:nFrames, nWorkers)
         x0 = pupilData.(fitLabel).eyePoses.values(ii,:);
         x0(radiusIdx)=posteriorPupilRadius;
         
+        % If a relativeCameraPosition is defined, update the sceneGeometry
+        adjustedSceneGeometry = sceneGeometry;
+        if ~isempty(relativeCameraPosition)
+            cameraPosition = sceneGeometry.cameraPosition.translation;
+            cameraPosition = cameraPosition + relativeCameraPosition(:,ii);
+            adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
+        end        
+        
         % Turn off warnings that can arise when fitting bad frames
         warning('off','pupilProjection_fwd:rayTracingError');
         warning('off','pupilProjection_fwd:ellipseFitFailed');
         
         % Perform the fit
         [posteriorEyePose, posteriorEyePoseObjectiveError, posteriorEllipseParams] = ...
-            eyePoseEllipseFit(Xp, Yp, sceneGeometry, 'eyePoseLB', lb_pin, 'eyePoseUB', ub_pin, 'x0', x0, 'repeatSearchThresh', badFrameErrorThreshold);
+            eyePoseEllipseFit(Xp, Yp, adjustedSceneGeometry, 'eyePoseLB', lb_pin, 'eyePoseUB', ub_pin, 'x0', x0, 'repeatSearchThresh', badFrameErrorThreshold);
         
         % Restore the warning state
         warning(warnState);

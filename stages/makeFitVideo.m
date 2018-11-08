@@ -62,6 +62,7 @@ p.addParameter('modelEyeRMSERangeAlphaScaler',[1,4],@isnumeric);
 p.addParameter('modelEyeSymbolSizeScaler',1,@isnumeric);
 p.addParameter('fitLabel', 'radiusSmoothed', @(x)(isempty(x) | ischar(x)));
 p.addParameter('controlFileName', [], @(x)(isempty(x) | ischar(x)));
+p.addParameter('relativeCameraPositionFileName',[],@ischar);
 
 % parse
 p.parse(videoInFileName, videoOutFileName, varargin{:})
@@ -121,6 +122,19 @@ if ~isempty(p.Results.sceneGeometryFileName)
     clear dataLoad
 else
     sceneGeometry = [];
+end
+
+% Load the relativeCameraPosition file if passed and it exists
+if ~isempty(p.Results.relativeCameraPositionFileName)
+    if exist(p.Results.pupilFileName, 'file')==2
+        dataLoad=load(p.Results.relativeCameraPositionFileName);
+        relativeCameraPosition=dataLoad.relativeCameraPosition;
+        clear dataLoad
+    else
+        relativeCameraPosition=[];
+    end
+else
+    relativeCameraPosition=[];
 end
 
 % Prepare the video object
@@ -249,6 +263,14 @@ for ii = 1:nFrames
 
     % superimpose the model eye
     if ~isempty(eyePoses) && sum(p.Results.modelEyeMaxAlpha)~=0
+        % If a relativeCameraPosition is defined, update the
+        % sceneGeometry
+        adjustedSceneGeometry = sceneGeometry;
+        if ~isempty(relativeCameraPosition)
+            cameraPosition = sceneGeometry.cameraPosition.translation;
+            cameraPosition = cameraPosition + relativeCameraPosition(:,ii);
+            adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
+        end
         % Scale the model eye alpha by the RMSE ellipse fit value for this
         % frame
         RMSEVal = max([ellipseFitRMSE(ii) p.Results.modelEyeRMSERangeAlphaScaler(1)]);
@@ -256,11 +278,11 @@ for ii = 1:nFrames
         alphaVal = p.Results.modelEyeMaxAlpha - p.Results.modelEyeMaxAlpha*( (RMSEVal-p.Results.modelEyeRMSERangeAlphaScaler(1))/(p.Results.modelEyeRMSERangeAlphaScaler(2)-p.Results.modelEyeRMSERangeAlphaScaler(1)));
         % If we have a defined eyePose for this frame, display the modelEye
         if ~any(isnan(eyePoses(ii,:)))
-            [~, hRender] = renderEyePose(eyePoses(ii,:), sceneGeometry, 'newFigure', false, ...
+            [~, hRender] = renderEyePose(eyePoses(ii,:), adjustedSceneGeometry, 'newFigure', false, ...
                 'modelEyeLabelNames', p.Results.modelEyeLabelNames, ...
                 'modelEyePlotColors', p.Results.modelEyePlotColors, ...
                 'modelEyeAlpha', alphaVal, ...
-                'modelEyeSymbolSizeScaler', p.Results.modelEyeSymbolSizeScaler);   
+                'modelEyeSymbolSizeScaler', p.Results.modelEyeSymbolSizeScaler);
         end
     end
 
