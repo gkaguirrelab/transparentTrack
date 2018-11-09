@@ -52,9 +52,12 @@ dataLoad=load(sceneGeometryIn);
 sceneGeometrySource=dataLoad.sceneGeometry;
 clear dataLoad
 
-
+% Derive from the path to the sceneGeometry file the path to the timebase
+% for this acquisition.
 fileStem = strsplit(file,'_sceneGeometry.mat');
 fileStem = fileStem{1};
+
+% Select which avi videos we wish to adjiust
 videoInFileName = fullfile(path,[fileStem '_gray.avi']);
 fixedFrame = makeMedianVideoImage(videoInFileName);
 blankFrame = ones(size(fixedFrame))*128;
@@ -88,9 +91,24 @@ fprintf([path '\n']);
 % Loop over the selected acquisitions
 for ff=1:length(fileList)
     
-    videoInFileName = fullfile(path,fileList(ff).name);
-    movingFrame = makeMedianVideoImage(videoInFileName);
+    % Load the timebase for this acquisition
+    acqFileStem = strsplit(fileList(ff).name,'_gray.avi');
+    acqFileStem = acqFileStem{1};    
+    timebaseFileName = fullfile(path,[acqFileStem '_timebase.mat']);
+    dataLoad=load(timebaseFileName);
+    timebase=dataLoad.timebase;
+    clear dataLoad
+
+    % Identify the startFrame
+    startFrame = find(min(abs(timebase.values)));
     
+    % Define the video file name
+    videoInFileName = fullfile(path,fileList(ff).name);
+    
+    % Obtain the median image from the video
+    movingFrame = makeMedianVideoImage(videoInFileName,'startFrame',startFrame,'nFrames',10*60,'chunkSizeSecs',0.2);
+
+    % Report which video we are working on
     fprintf(fileList(ff).name);
     
     % Define the medial canthus for the moving image
