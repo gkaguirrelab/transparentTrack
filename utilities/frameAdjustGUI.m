@@ -39,6 +39,8 @@
     frameAdjustGUI
 %}
 
+% If we have a variable defined in the environment that has the path to the
+% sceneGeometry file, use it. Otherwise, open a file picker UI.
 if exist('startPath')
     [path,file,suffix]=fileparts(startPath);
     file=[file suffix];
@@ -57,15 +59,19 @@ clear dataLoad
 fileStem = strsplit(file,'_sceneGeometry.mat');
 fileStem = fileStem{1};
 
-% Select which avi videos we wish to adjiust
+% Load in the median image from the first 5 seconds of video corresponding
+% to the acquisition for the sceneGeometry file. This is the "fixed" frame.
 videoInFileName = fullfile(path,[fileStem '_gray.avi']);
-fixedFrame = makeMedianVideoImage(videoInFileName);
-blankFrame = ones(size(fixedFrame))*128;
+fixedFrame = makeMedianVideoImage(videoInFileName,'startFrame',1,'nFrames',5*60,'chunkSizeSecs',0.2);
 
+% Get a list of all gray.avi videos in this directory
 fileList = dir(fullfile(path,'*_gray.avi'));
+
+% Exclude the video that is the source of the fixed image
 keep=cellfun(@(x) ~strcmp(x,[fileStem '_gray.avi']),extractfield(fileList,'name'));
 fileList = fileList(keep);
 
+% Ask the operator which of the videos we wish to adjust
 fprintf('\n\nSelect the acquisition to adjust:\n')
 for pp=1:length(fileList)
     optionName=['\t' num2str(pp) '. ' fileList(pp).name '\n'];
@@ -75,6 +81,7 @@ fprintf('\nYou can enter a single acquisition number (e.g. 4),\n  a range define
 choice = input('\nYour choice: ','s');
 fileList = fileList(eval(choice));
 
+% Create a figure and invite the operator to define a landmark on the eye
 figHandle = figure();
 imshow(fixedFrame,[]);
 hold on
@@ -88,6 +95,9 @@ fprintf('Switch between moving and fixed image by pressing a.\n');
 fprintf('Press esc to exit.\n\n');
 fprintf([path '\n']);
 
+% Define a blank frame that we will need during display
+blankFrame = ones(size(fixedFrame))*128;
+
 % Loop over the selected acquisitions
 for ff=1:length(fileList)
     
@@ -99,13 +109,15 @@ for ff=1:length(fileList)
     timebase=dataLoad.timebase;
     clear dataLoad
 
-    % Identify the startFrame
+    % Identify the startFrame, which is the time point at which the fMRI
+    % acquisition began
     [~, startFrame] = min(abs(timebase.values));
     
     % Define the video file name
     videoInFileName = fullfile(path,fileList(ff).name);
     
-    % Obtain the median image from the video
+    % Obtain the median image from the first 10 seconds of the video after
+    % fMRI scanning began
     movingFrame = makeMedianVideoImage(videoInFileName,'startFrame',startFrame,'nFrames',10*60,'chunkSizeSecs',0.2);
 
     % Report which video we are working on
