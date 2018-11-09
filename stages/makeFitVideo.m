@@ -54,9 +54,9 @@ p.addParameter('sceneGeometryFileName', [], @(x)(isempty(x) | ischar(x)));
 p.addParameter('glintColor', 'r', @ischar);
 p.addParameter('perimeterColor', 'w', @ischar);
 p.addParameter('pupilColor', 'green', @ischar);
-p.addParameter('pupilRMSERangeAlphaScaler',[1,2],@isnumeric);
-p.addParameter('modelEyeLabelNames', {'retina' 'irisPerimeter' 'cornea'}, @iscell);
-p.addParameter('modelEyePlotColors', {'.w' '.b' '.y'}, @iscell);
+p.addParameter('pupilRMSERangeAlphaScaler',[1,4],@isnumeric);
+p.addParameter('modelEyeLabelNames', {'retina' 'irisPerimeter' 'cornea' 'aziRotationCenter'}, @iscell);
+p.addParameter('modelEyePlotColors', {'.w' '.b' '.y' '>r'}, @iscell);
 p.addParameter('modelEyeMaxAlpha', 0, @isnumeric);
 p.addParameter('modelEyeRMSERangeAlphaScaler',[1,4],@isnumeric);
 p.addParameter('modelEyeSymbolSizeScaler',1,@isnumeric);
@@ -96,13 +96,20 @@ if ~isempty(p.Results.pupilFileName)
     ellipseFitRMSE = pupilData.(p.Results.fitLabel).ellipses.RMSE;
     if isfield(pupilData.(p.Results.fitLabel),'eyePoses')
         eyePoses = pupilData.(p.Results.fitLabel).eyePoses.values;
-    else
-        eyePoses = [];
+    end
+    % Get the fitAtBound field. Use the eyePose vector if available
+    fitAtBound = [];
+    if isfield(pupilData.(p.Results.fitLabel).ellipses,'fitAtBound')
+        fitAtBound = pupilData.(p.Results.fitLabel).eyePoses.fitAtBound;
+    end
+    if isfield(pupilData.(p.Results.fitLabel).eyePoses,'fitAtBound')
+        fitAtBound = pupilData.(p.Results.fitLabel).eyePoses.fitAtBound;
     end
 else
     ellipseFitParams=[];
     ellipseFitRMSE=[];
     eyePoses=[];
+    fitAtBound = [];
 end
 
 % Read in and parse the control file if passed
@@ -229,18 +236,25 @@ for ii = 1:nFrames
     if ~isempty(p.Results.pupilFileName)
         if ~isempty(ellipseFitParams)
             if sum(isnan(ellipseFitParams(ii,:)))==0
+                % If the pupilEllipse (or corresponding eyePose ellipse)
+                % hit a bound, then force the pupil plot color to be red
+                if fitAtBound(ii)
+                    pupilColor = 'red';
+                else
+                    pupilColor = p.Results.pupilColor;
+                end
                 % build ellipse impicit equation
                 pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(ellipseFitParams(ii,:)));
                 fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
                 % superimpose the ellipse using fimplicit or ezplot (ezplot
                 % is the fallback option for older Matlab versions)
                 if exist('fimplicit','file')==2
-                    hPlot(end+1) = fimplicit(fh,[1, videoSizeX, 1, videoSizeY],'Color', p.Results.pupilColor,'LineWidth',1);
+                    hPlot(end+1) = fimplicit(fh,[1, videoSizeX, 1, videoSizeY],'Color', pupilColor,'LineWidth',1);
                     set(gca,'position',[0 0 1 1],'units','normalized')
                     axis off;
                 else
                     hPlot(end+1) = ezplot(fh,[1, videoSizeX, 1, videoSizeY]);
-                    set(hPlot(end), 'Color', p.Results.pupilColor)
+                    set(hPlot(end), 'Color', pupilColor)
                     set(hPlot(end), 'LineWidth',1);
                 end
                 % To support alpha transparency, we need to re-plot the
@@ -249,7 +263,7 @@ for ii = 1:nFrames
                 xData = hPlot(end).XData;
                 yData = hPlot(end).YData;
                 delete(hPlot(end));
-                hPlot(end)=plot(xData,yData,'Color', p.Results.pupilColor,'LineWidth',1);                
+                hPlot(end)=plot(xData,yData,'Color', pupilColor,'LineWidth',1);                
                 % Scale the ellipse line alpha by the RMSE ellipse fit
                 % value for this frame
                 RMSEVal = max([ellipseFitRMSE(ii) p.Results.modelEyeRMSERangeAlphaScaler(1)]);
