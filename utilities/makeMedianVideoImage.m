@@ -48,7 +48,7 @@ end
 
 % get start and end times
 startTime = (ceil(p.Results.startFrame / videoInObj.FrameRate)/chunkSizeSecs)*chunkSizeSecs;
-endTime = floor((nFrames / videoInObj.Duration) /chunkSizeSecs)*chunkSizeSecs;
+endTime = floor(((p.Results.startFrame+nFrames) / videoInObj.FrameRate) /chunkSizeSecs)*chunkSizeSecs;
 
 % get video dimensions
 videoSizeX = videoInObj.Width;

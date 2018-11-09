@@ -35,7 +35,7 @@
 %
 % Examples:
 %{
-    startPath = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure/TOME_3002/082616/EyeTracking/dMRI_dir98_AP_sceneGeometry.mat';
+    startPath = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure/TOME_3003/090216/EyeTracking/dMRI_dir98_PA_sceneGeometry.mat';
     frameAdjustGUI
 %}
 
@@ -100,7 +100,7 @@ for ff=1:length(fileList)
     clear dataLoad
 
     % Identify the startFrame
-    startFrame = find(min(abs(timebase.values)));
+    [~, startFrame] = min(abs(timebase.values));
     
     % Define the video file name
     videoInFileName = fullfile(path,fileList(ff).name);
