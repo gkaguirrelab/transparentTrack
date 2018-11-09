@@ -394,6 +394,9 @@ end
 
 %% Clean up and save the fit results
 
+% Clear out any prior results in the radiusSmoothed field
+pupilData.radiusSmoothed = [];
+
 % gather the loop vars into the ellipses field
 pupilData.radiusSmoothed.ellipses.values=loopVar_posteriorEllipseParams;
 pupilData.radiusSmoothed.ellipses.RMSE=loopVar_posterioreyePosesObjectiveError';
