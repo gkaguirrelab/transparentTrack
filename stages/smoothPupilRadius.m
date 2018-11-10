@@ -109,6 +109,7 @@ p.addParameter('likelihoodErrorMultiplier',1.0,@isnumeric);
 p.addParameter('badFrameErrorThreshold',2,@isnumeric);
 p.addParameter('fitLabel','sceneConstrained',@ischar);
 p.addParameter('fixedPriorPupilRadius',[3.5,1.5],@isnumeric);
+p.addParameter('relativeCameraPositionFileName',[],@ischar);
 
 
 %% Parse and check the parameters
@@ -137,6 +138,19 @@ clear dataLoad
 % An earlier version of the code defined a non-zero iris thickness. We
 % force this to zero here to speed computation
 sceneGeometry.eye.iris.thickness=0;
+
+% Load the relativeCameraPosition file if passed and it exists
+if ~isempty(p.Results.relativeCameraPositionFileName)
+    if exist(p.Results.pupilFileName, 'file')==2
+        dataLoad=load(p.Results.relativeCameraPositionFileName);
+        relativeCameraPosition=dataLoad.relativeCameraPosition;
+        clear dataLoad
+    else
+        relativeCameraPosition=[];
+    end
+else
+    relativeCameraPosition=[];
+end
 
 % determine how many frames we will process
 if p.Results.nFrames == Inf
@@ -229,7 +243,7 @@ warnState = warning();
 
 % Loop through the frames
 parfor (ii = 1:nFrames, nWorkers)
-%for ii = 300:nFrames
+%for ii = 1:nFrames
 
     % update progress
     if verbose
@@ -246,6 +260,7 @@ parfor (ii = 1:nFrames, nWorkers)
     posteriorEyePoseObjectiveError = NaN;
     posteriorEyePose = NaN(1,nEyePoseParams);
     posteriorPupilRadiusSD = NaN;
+    fitAtBound = false;
     
     % get the boundary points
     Xp = frameCellArray{ii}.Xp;
@@ -341,13 +356,21 @@ parfor (ii = 1:nFrames, nWorkers)
         x0 = pupilData.(fitLabel).eyePoses.values(ii,:);
         x0(radiusIdx)=posteriorPupilRadius;
         
+        % If a relativeCameraPosition is defined, update the sceneGeometry
+        adjustedSceneGeometry = sceneGeometry;
+        if ~isempty(relativeCameraPosition)
+            cameraPosition = sceneGeometry.cameraPosition.translation;
+            cameraPosition = cameraPosition + relativeCameraPosition(:,ii);
+            adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
+        end        
+        
         % Turn off warnings that can arise when fitting bad frames
         warning('off','pupilProjection_fwd:rayTracingError');
         warning('off','pupilProjection_fwd:ellipseFitFailed');
         
         % Perform the fit
-        [posteriorEyePose, posteriorEyePoseObjectiveError, posteriorEllipseParams] = ...
-            eyePoseEllipseFit(Xp, Yp, sceneGeometry, 'eyePoseLB', lb_pin, 'eyePoseUB', ub_pin, 'x0', x0, 'repeatSearchThresh', badFrameErrorThreshold);
+        [posteriorEyePose, posteriorEyePoseObjectiveError, posteriorEllipseParams, fitAtBound] = ...
+            eyePoseEllipseFit(Xp, Yp, adjustedSceneGeometry, 'eyePoseLB', lb_pin, 'eyePoseUB', ub_pin, 'x0', x0, 'repeatSearchThresh', badFrameErrorThreshold);
         
         % Restore the warning state
         warning(warnState);
@@ -359,6 +382,7 @@ parfor (ii = 1:nFrames, nWorkers)
     loopVar_empiricalPriorPupilRadiusSD(ii) = empiricalPriorPupilRadiusSD;
     loopVar_posteriorEllipseParams(ii,:) = posteriorEllipseParams';
     loopVar_posterioreyePosesObjectiveError(ii) = posteriorEyePoseObjectiveError;
+    loopVar_fitAtBound(ii) = fitAtBound;
     loopVar_posteriorEyePoses(ii,:) = posteriorEyePose;
     loopVar_posteriorPupilRadiusSD(ii) = posteriorPupilRadiusSD;
     
@@ -372,6 +396,9 @@ end
 
 %% Clean up and save the fit results
 
+% Clear out any prior results in the radiusSmoothed field
+pupilData.radiusSmoothed = [];
+
 % gather the loop vars into the ellipses field
 pupilData.radiusSmoothed.ellipses.values=loopVar_posteriorEllipseParams;
 pupilData.radiusSmoothed.ellipses.RMSE=loopVar_posterioreyePosesObjectiveError';
@@ -383,6 +410,7 @@ pupilData.radiusSmoothed.ellipses.meta.coordinateSystem = 'intrinsic image';
 % gather the loop vars into the eyePoses field
 pupilData.radiusSmoothed.eyePoses.values=loopVar_posteriorEyePoses;
 pupilData.radiusSmoothed.eyePoses.radiusSD=loopVar_posteriorPupilRadiusSD';
+pupilData.radiusSmoothed.eyePoses.fitAtBound = loopVar_fitAtBound';
 pupilData.radiusSmoothed.eyePoses.meta.labels = {'azimuth','elevation','torsion','pupil radius'};
 pupilData.radiusSmoothed.eyePoses.meta.units = {'deg','deg','deg','mm'};
 pupilData.radiusSmoothed.eyePoses.meta.coordinateSystem = 'head fixed (extrinsic)';

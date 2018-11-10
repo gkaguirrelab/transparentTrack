@@ -118,6 +118,7 @@ p.addParameter('eyePoseUB',[89,89,0,5],@isnumeric);
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) || ischar(x)));
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
 p.addParameter('fitLabel',[],@(x)(isempty(x) | ischar(x)));
+p.addParameter('relativeCameraPositionFileName',[],@ischar);
 
 
 %% Parse and check the parameters
@@ -146,18 +147,25 @@ else
     pupilData=[];
 end
 
+% Load the relativeCameraPosition file if passed and it exists
+if ~isempty(p.Results.relativeCameraPositionFileName)
+    if exist(p.Results.pupilFileName, 'file')==2
+        dataLoad=load(p.Results.relativeCameraPositionFileName);
+        relativeCameraPosition=dataLoad.relativeCameraPosition;
+        clear dataLoad
+    else
+        relativeCameraPosition=[];
+    end
+else
+    relativeCameraPosition=[];
+end
+
 % determine how many frames we will process
 if p.Results.nFrames == Inf
     nFrames=size(perimeter.data,1);
 else
     nFrames = p.Results.nFrames;
 end
-
-
-%% Prepare some functions
-% Create an anonymous function to return a rotation matrix given theta in
-% radians
-returnRotMat = @(theta) [cos(theta) -sin(theta); sin(theta) cos(theta)];
 
 
 %% Set up the parallel pool
@@ -219,9 +227,9 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % Initialize the results variables
     ellipseParamsTransparent=NaN(1,nEllipseParams);
-    ellipseParamsObjectiveError=NaN(1);
+    objectiveError=NaN(1);
     eyePose=NaN(1,nEyePoseParams);
-    eyePoseObjectiveError=NaN(1);
+    fitAtBound=false;
     
     % get the boundary points
     Xp = frameCellArray{ii}.Xp;
@@ -238,16 +246,24 @@ parfor (ii = 1:nFrames, nWorkers)
         % Fit approach depends upon whether or not we have sceneGeometry
         if isempty(sceneGeometry)
             % No sceneGeometry. Fit an ellipse to the perimeter.
-            [ellipseParamsTransparent, ellipseParamsObjectiveError] = ...
+            [ellipseParamsTransparent, objectiveError, ~, fitAtBound] = ...
                 constrainedEllipseFit(Xp, Yp, ...
                 ellipseTransparentLB, ...
                 ellipseTransparentUB, ...
                 []);
         else
-            % We do have sceneGeometry. Find the eyePose parameters that
-            % best fit the pupil perimeter
-            [eyePose, eyePoseObjectiveError, ellipseParamsTransparent] = ...
-                eyePoseEllipseFit(Xp, Yp, sceneGeometry, ...
+            % We do have sceneGeometry. 
+            adjustedSceneGeometry = sceneGeometry;
+            % If a relativeCameraPosition is defined, update the
+            % sceneGeometry
+            if ~isempty(relativeCameraPosition)
+                cameraPosition = sceneGeometry.cameraPosition.translation;
+                cameraPosition = cameraPosition + relativeCameraPosition(:,ii);
+                adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
+            end
+            % Find the eyePose parameters that best fit the pupil perimeter
+            [eyePose, objectiveError, ellipseParamsTransparent, fitAtBound] = ...
+                eyePoseEllipseFit(Xp, Yp, adjustedSceneGeometry, ...
                 'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB, ...
                 'repeatSearchThresh', badFrameErrorThreshold);
         end       
@@ -259,10 +275,10 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % store results
     loopVar_ellipseParamsTransparent(ii,:) = ellipseParamsTransparent';
-    loopVar_ellipseParamsObjectiveError(ii) = ellipseParamsObjectiveError;
+    loopVar_objectiveError(ii) = objectiveError;
+    loopVar_fitAtBound(ii) = fitAtBound;
     if ~isempty(sceneGeometry)
         loopVar_eyePoses(ii,:) = eyePose';
-        loopVar_eyePosesObjectiveError(ii) = eyePoseObjectiveError;
     end
     
 end % loop over frames
@@ -286,12 +302,16 @@ else
     fitLabel = p.Results.fitLabel;
 end
 
+% Clear out any old results in this fit label field
+pupilData.(fitLabel) = [];
+
 % Store the ellipse fit data in informative fields
 pupilData.(fitLabel).ellipses.values = loopVar_ellipseParamsTransparent;
+pupilData.(fitLabel).ellipses.RMSE = loopVar_objectiveError';
 if isempty(sceneGeometry)
-    pupilData.(fitLabel).ellipses.RMSE = loopVar_ellipseParamsObjectiveError';
+    pupilData.(fitLabel).ellipses.fitAtBound = loopVar_fitAtBound';
 else
-    pupilData.(fitLabel).ellipses.RMSE = loopVar_eyePosesObjectiveError';
+    pupilData.(fitLabel).eyePoses.fitAtBound = loopVar_fitAtBound';
 end
 pupilData.(fitLabel).ellipses.meta.ellipseForm = 'transparent';
 pupilData.(fitLabel).ellipses.meta.labels = {'x','y','area','eccentricity','theta'};

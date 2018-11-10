@@ -35,10 +35,12 @@
 %
 % Examples:
 %{
-    startPath = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure/TOME_3002/082616/EyeTracking/dMRI_dir98_AP_sceneGeometry.mat';
+    startPath = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure/TOME_3003/090216/EyeTracking/dMRI_dir98_PA_sceneGeometry.mat';
     frameAdjustGUI
 %}
 
+% If we have a variable defined in the environment that has the path to the
+% sceneGeometry file, use it. Otherwise, open a file picker UI.
 if exist('startPath')
     [path,file,suffix]=fileparts(startPath);
     file=[file suffix];
@@ -52,17 +54,24 @@ dataLoad=load(sceneGeometryIn);
 sceneGeometrySource=dataLoad.sceneGeometry;
 clear dataLoad
 
-
+% Derive from the path to the sceneGeometry file the path to the timebase
+% for this acquisition.
 fileStem = strsplit(file,'_sceneGeometry.mat');
 fileStem = fileStem{1};
-videoInFileName = fullfile(path,[fileStem '_gray.avi']);
-fixedFrame = makeMedianVideoImage(videoInFileName);
-blankFrame = ones(size(fixedFrame))*128;
 
+% Load in the median image from the first 5 seconds of video corresponding
+% to the acquisition for the sceneGeometry file. This is the "fixed" frame.
+videoInFileName = fullfile(path,[fileStem '_gray.avi']);
+fixedFrame = makeMedianVideoImage(videoInFileName,'startFrame',1,'nFrames',5*60,'chunkSizeSecs',0.2);
+
+% Get a list of all gray.avi videos in this directory
 fileList = dir(fullfile(path,'*_gray.avi'));
+
+% Exclude the video that is the source of the fixed image
 keep=cellfun(@(x) ~strcmp(x,[fileStem '_gray.avi']),extractfield(fileList,'name'));
 fileList = fileList(keep);
 
+% Ask the operator which of the videos we wish to adjust
 fprintf('\n\nSelect the acquisition to adjust:\n')
 for pp=1:length(fileList)
     optionName=['\t' num2str(pp) '. ' fileList(pp).name '\n'];
@@ -72,6 +81,7 @@ fprintf('\nYou can enter a single acquisition number (e.g. 4),\n  a range define
 choice = input('\nYour choice: ','s');
 fileList = fileList(eval(choice));
 
+% Create a figure and invite the operator to define a landmark on the eye
 figHandle = figure();
 imshow(fixedFrame,[]);
 hold on
@@ -85,12 +95,32 @@ fprintf('Switch between moving and fixed image by pressing a.\n');
 fprintf('Press esc to exit.\n\n');
 fprintf([path '\n']);
 
+% Define a blank frame that we will need during display
+blankFrame = ones(size(fixedFrame))*128;
+
 % Loop over the selected acquisitions
 for ff=1:length(fileList)
     
-    videoInFileName = fullfile(path,fileList(ff).name);
-    movingFrame = makeMedianVideoImage(videoInFileName);
+    % Load the timebase for this acquisition
+    acqFileStem = strsplit(fileList(ff).name,'_gray.avi');
+    acqFileStem = acqFileStem{1};    
+    timebaseFileName = fullfile(path,[acqFileStem '_timebase.mat']);
+    dataLoad=load(timebaseFileName);
+    timebase=dataLoad.timebase;
+    clear dataLoad
+
+    % Identify the startFrame, which is the time point at which the fMRI
+    % acquisition began
+    [~, startFrame] = min(abs(timebase.values));
     
+    % Define the video file name
+    videoInFileName = fullfile(path,fileList(ff).name);
+    
+    % Obtain the median image from the first 10 seconds of the video after
+    % fMRI scanning began
+    movingFrame = makeMedianVideoImage(videoInFileName,'startFrame',startFrame,'nFrames',10*60,'chunkSizeSecs',0.2);
+
+    % Report which video we are working on
     fprintf(fileList(ff).name);
     
     % Define the medial canthus for the moving image

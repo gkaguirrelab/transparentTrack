@@ -23,6 +23,7 @@ p = inputParser; p.KeepUnmatched = true;
 p.addRequired('videoInFileName', @ischar);
 
 % Optional flow control params
+p.addParameter('startFrame', 1, @isnumeric);
 p.addParameter('nFrames', Inf, @isnumeric);
 
 % Optional video items
@@ -45,6 +46,10 @@ else
     nFrames = p.Results.nFrames;
 end
 
+% get start and end times
+startTime = (ceil(p.Results.startFrame / videoInObj.FrameRate)/chunkSizeSecs)*chunkSizeSecs;
+endTime = floor(((p.Results.startFrame+nFrames) / videoInObj.FrameRate) /chunkSizeSecs)*chunkSizeSecs;
+
 % get video dimensions
 videoSizeX = videoInObj.Width;
 videoSizeY = videoInObj.Height;
@@ -53,7 +58,7 @@ sourceFrames = zeros(1,videoSizeY,videoSizeX);
 
 %% Loop through the frames
 % Obtain the median for each second of video
-for ii = chunkSizeSecs:chunkSizeSecs:floor(videoInObj.Duration/chunkSizeSecs)*chunkSizeSecs
+for ii = startTime:chunkSizeSecs:endTime
     % read the source video frame into memory
     videoInObj.CurrentTime=ii;
     frame = rgb2gray(readFrame(videoInObj));
