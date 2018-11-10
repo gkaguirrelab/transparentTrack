@@ -141,7 +141,7 @@ sceneGeometry.eye.iris.thickness=0;
 
 % Load the relativeCameraPosition file if passed and it exists
 if ~isempty(p.Results.relativeCameraPositionFileName)
-    if exist(p.Results.pupilFileName, 'file')==2
+    if exist(p.Results.relativeCameraPositionFileName, 'file')==2
         dataLoad=load(p.Results.relativeCameraPositionFileName);
         relativeCameraPosition=dataLoad.relativeCameraPosition;
         clear dataLoad
