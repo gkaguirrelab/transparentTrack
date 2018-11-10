@@ -368,7 +368,7 @@ parfor (ii = 1:nFrames, nWorkers)
         warning('off','pupilProjection_fwd:ellipseFitFailed');
         
         % Perform the fit
-        [posteriorEyePose, posteriorEyePoseObjectiveError, posteriorEllipseParams] = ...
+        [posteriorEyePose, posteriorEyePoseObjectiveError, posteriorEllipseParams, fitAtBound] = ...
             eyePoseEllipseFit(Xp, Yp, adjustedSceneGeometry, 'eyePoseLB', lb_pin, 'eyePoseUB', ub_pin, 'x0', x0, 'repeatSearchThresh', badFrameErrorThreshold);
         
         % Restore the warning state
@@ -381,6 +381,7 @@ parfor (ii = 1:nFrames, nWorkers)
     loopVar_empiricalPriorPupilRadiusSD(ii) = empiricalPriorPupilRadiusSD;
     loopVar_posteriorEllipseParams(ii,:) = posteriorEllipseParams';
     loopVar_posterioreyePosesObjectiveError(ii) = posteriorEyePoseObjectiveError;
+    loopVar_fitAtBound(ii) = fitAtBound;
     loopVar_posteriorEyePoses(ii,:) = posteriorEyePose;
     loopVar_posteriorPupilRadiusSD(ii) = posteriorPupilRadiusSD;
     
@@ -408,6 +409,7 @@ pupilData.radiusSmoothed.ellipses.meta.coordinateSystem = 'intrinsic image';
 % gather the loop vars into the eyePoses field
 pupilData.radiusSmoothed.eyePoses.values=loopVar_posteriorEyePoses;
 pupilData.radiusSmoothed.eyePoses.radiusSD=loopVar_posteriorPupilRadiusSD';
+pupilData.radiusSmoothed.eyePoses.fitAtBound = loopVar_fitAtBound';
 pupilData.radiusSmoothed.eyePoses.meta.labels = {'azimuth','elevation','torsion','pupil radius'};
 pupilData.radiusSmoothed.eyePoses.meta.units = {'deg','deg','deg','mm'};
 pupilData.radiusSmoothed.eyePoses.meta.coordinateSystem = 'head fixed (extrinsic)';
