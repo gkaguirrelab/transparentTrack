@@ -229,7 +229,7 @@ parfor (ii = 1:nFrames, nWorkers)
     ellipseParamsTransparent=NaN(1,nEllipseParams);
     objectiveError=NaN(1);
     eyePose=NaN(1,nEyePoseParams);
-    fitAtBound=NaN(1);
+    fitAtBound=false;
     
     % get the boundary points
     Xp = frameCellArray{ii}.Xp;

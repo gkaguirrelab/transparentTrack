@@ -260,7 +260,7 @@ parfor (ii = 1:nFrames, nWorkers)
     posteriorEyePoseObjectiveError = NaN;
     posteriorEyePose = NaN(1,nEyePoseParams);
     posteriorPupilRadiusSD = NaN;
-    fitAtBound = NaN;
+    fitAtBound = false;
     
     % get the boundary points
     Xp = frameCellArray{ii}.Xp;
