@@ -200,18 +200,8 @@ for ff=1:length(fileList)
     p = fmincon(myError,p0,[],[],[],[],lb,ub,[],options);
     
     % Report the value    
-    fprintf(': camera translation [x,y,z] = [%2.2f; %2.2f; %2.2f] \n',p(1),p(2),p(3));
-    
-    % Save a sceneGeometry file with the adjusted extrinsic camera
-    % translation
-    fileStem = strsplit(fileList(ff).name,'_gray.avi');
-    fileStem = fileStem{1};
-    outFileName =  fullfile(path,[fileStem '_sceneGeometry.mat']);
-    sceneGeometry = mySG(p);
-    sceneGeometry.meta.frameAdjust.sourceSceneGeometry = sceneGeometryIn;
-    sceneGeometry.meta.frameAdjust.xAdjust = x;
-    save(outFileName,'sceneGeometry');
-    
+    fprintf(': adjustedCameraPositionTranslation [x; y; z] = [%2.2f; %2.2f; %2.2f] \n',p(1),p(2),p(3));
+        
 end
 close(figHandle);
 clear startPath
