@@ -80,6 +80,22 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %                           the eye pose search.
 %  'fitLabel'             - The field name in the pupilData structure where
 %                           the results of the fitting will be stored.
+%  'adjustedCameraPositionTranslation' - 3x1 vector that provides position
+%                           of the camera relative to the origin of the
+%                           world coordinate system (which is the anterior
+%                           surface of the cornea in primary gaze). This
+%                           value is used to update the sceneGeometry file
+%                           to account for head movement that has taken
+%                           place between the sceneGeometry acquisition and
+%                           the acquisition undergoing analysis. This
+%                           updated camera position should reflect the
+%                           camera position at the start of the current
+%                           acquisition.
+%  'relativeCameraPositionFileName' - Char. This is the full path to a
+%                           relativeCameraPosition.mat file that provides
+%                           the movement of the camera at each
+%                           video frame relative to the initial position of
+%                           the camera.
 %
 % Outputs:
 %	pupilData             - A structure with multiple fields corresponding
@@ -118,6 +134,7 @@ p.addParameter('eyePoseUB',[89,89,0,5],@isnumeric);
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) || ischar(x)));
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
 p.addParameter('fitLabel',[],@(x)(isempty(x) | ischar(x)));
+p.addParameter('adjustedCameraPositionTranslation',[],@isnumeric);
 p.addParameter('relativeCameraPositionFileName',[],@ischar);
 
 
@@ -147,6 +164,24 @@ else
     pupilData=[];
 end
 
+% Load the sceneGeometry file if passed
+if ~isempty(p.Results.sceneGeometryFileName)
+    % Load the sceneGeometry file
+    dataLoad=load(p.Results.sceneGeometryFileName);
+    sceneGeometry=dataLoad.sceneGeometry;
+    clear dataLoad
+    % An earlier version of the code defined a non-zero iris thickness. We
+    % force this to zero here to speed computation
+    sceneGeometry.eye.iris.thickness=0;
+    % If an adjustedCameraPositionTranslation value has been passed, update this field
+    % of the sceneGeometry
+    if ~isempty(p.Results.adjustedCameraPositionTranslation)
+        sceneGeometry.cameraPosition.translation = p.Results.adjustedCameraPositionTranslation;
+    end
+else
+    sceneGeometry = [];
+end
+
 % Load the relativeCameraPosition file if passed and it exists
 if ~isempty(p.Results.relativeCameraPositionFileName)
     if exist(p.Results.relativeCameraPositionFileName, 'file')==2
@@ -173,19 +208,6 @@ if p.Results.useParallel
     nWorkers = startParpool( p.Results.nWorkers, p.Results.verbose );
 else
     nWorkers=0;
-end
-
-% Load the sceneGeometry file if passed
-if ~isempty(p.Results.sceneGeometryFileName)
-    % Load the sceneGeometry file
-    dataLoad=load(p.Results.sceneGeometryFileName);
-    sceneGeometry=dataLoad.sceneGeometry;
-    clear dataLoad
-    % An earlier version of the code defined a non-zero iris thickness. We
-    % force this to zero here to speed computation
-    sceneGeometry.eye.iris.thickness=0;
-else
-    sceneGeometry = [];
 end
 
 

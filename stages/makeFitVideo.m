@@ -26,6 +26,22 @@ function makeFitVideo(videoInFileName, videoOutFileName, varargin)
 %  'fitLabel'             - The field of the pupilData file that contains
 %                           ellipse fit params to be added to the video.
 %  'controlFileName'      - Full path to the control file to be included.
+%  'adjustedCameraPositionTranslation' - 3x1 vector that provides position
+%                           of the camera relative to the origin of the
+%                           world coordinate system (which is the anterior
+%                           surface of the cornea in primary gaze). This
+%                           value is used to update the sceneGeometry file
+%                           to account for head movement that has taken
+%                           place between the sceneGeometry acquisition and
+%                           the acquisition undergoing analysis. This
+%                           updated camera position should reflect the
+%                           camera position at the start of the current
+%                           acquisition.
+%  'relativeCameraPositionFileName' - Char. This is the full path to a
+%                           relativeCameraPosition.mat file that provides
+%                           the movement of the camera at each
+%                           video frame relative to the initial position of
+%                           the camera.
 %
 % Outputs:
 %   None
@@ -62,6 +78,7 @@ p.addParameter('modelEyeRMSERangeAlphaScaler',[1,4],@isnumeric);
 p.addParameter('modelEyeSymbolSizeScaler',1,@isnumeric);
 p.addParameter('fitLabel', 'radiusSmoothed', @(x)(isempty(x) | ischar(x)));
 p.addParameter('controlFileName', [], @(x)(isempty(x) | ischar(x)));
+p.addParameter('adjustedCameraPositionTranslation',[],@isnumeric);
 p.addParameter('relativeCameraPositionFileName',[],@ischar);
 
 % parse
@@ -127,6 +144,14 @@ if ~isempty(p.Results.sceneGeometryFileName)
     dataLoad=load(p.Results.sceneGeometryFileName);
     sceneGeometry=dataLoad.sceneGeometry;
     clear dataLoad
+    % An earlier version of the code defined a non-zero iris thickness. We
+    % force this to zero here to speed computation
+    sceneGeometry.eye.iris.thickness=0;
+    % If an adjustedCameraPositionTranslation value has been passed, update this field
+    % of the sceneGeometry
+    if ~isempty(p.Results.adjustedCameraPositionTranslation)
+        sceneGeometry.cameraPosition.translation = p.Results.adjustedCameraPositionTranslation;
+    end
 else
     sceneGeometry = [];
 end
