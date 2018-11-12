@@ -280,7 +280,7 @@ parfor (ii = 1:nFrames, nWorkers)
             % sceneGeometry
             if ~isempty(relativeCameraPosition)
                 cameraPosition = sceneGeometry.cameraPosition.translation;
-                cameraPosition = cameraPosition + relativeCameraPosition.values(:,ii);
+                cameraPosition = cameraPosition - relativeCameraPosition.values(:,ii);
                 adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
             end
             % Find the eyePose parameters that best fit the pupil perimeter
