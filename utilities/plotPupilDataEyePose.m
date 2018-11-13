@@ -110,7 +110,7 @@ if ~isempty(fileListStruct)
     nameTags=cellfun(@(x) strrep(x,filesep,'_'),nameTags,'UniformOutput',false);
     
     % Loop through the set of sessions
-    for ii = 1:length(uniqueDirNames)
+    for ii = 1:6 %length(uniqueDirNames)
         
         % Get the list of acqusition file names
         acqList = find(strcmp(fileListCell(2,:),uniqueDirNames{ii}));
@@ -126,13 +126,12 @@ if ~isempty(fileListStruct)
         % Format the figure
         set(gcf,'PaperOrientation','landscape');
         set(figHandle, 'Units','inches')
-        height = 6;
-        width = 11;
+        height = 6*2;
+        width = 11*2;
         set(figHandle, 'Position',[25 5 width height],...
             'PaperSize',[width height],...
             'PaperPositionMode','auto',...
-            'Color','w',...
-            'Renderer','painters'...
+            'Color','w' ...
             );
         
         % First loop through the acquisitions to determine the y-axis range
@@ -209,16 +208,37 @@ if ~isempty(fileListStruct)
                 % Define the subplot for this acqusition
                 subplot(length(p.Results.eyePoseParamsToPlot),p.Results.nColumns,(kk-1)*p.Results.nColumns+jj,'align');
                 
-                % Plot the time-series
+                % Plot the time-series. Make the red fit dots transparent
                 plot(timebase.values*msecToMin,pupilData.sceneConstrained.eyePoses.values(:,p.Results.eyePoseParamsToPlot(kk)),'-','Color',[0.85 0.85 0.85],'LineWidth',0.5);
                 hold on
-                plot(timebase.values(good)/1000/60,pupilData.radiusSmoothed.eyePoses.values(good,p.Results.eyePoseParamsToPlot(kk)),'.r','MarkerSize',0.5)
+                hLineRed = plot(timebase.values(good)/1000/60,pupilData.radiusSmoothed.eyePoses.values(good,p.Results.eyePoseParamsToPlot(kk)),'o','MarkerSize',1.5);
+                drawnow
+                hMarkerRed = hLineRed.MarkerHandle;
+                hMarkerRed.FaceColorData = uint8(255*[1; 0; 0; 0.25]);
+                hMarkerRed.FaceColorType = 'truecoloralpha';
+                hMarkerRed.EdgeColorData = uint8([0; 0; 0; 0]);
                 
-                % Add the markers for "bad" plot points
+                % Add the markers for high RMSE plot points
                 lowY = lb(kk) + (ub(kk)-lb(kk))/20;
-                plot(timebase.values(highRMSE)/1000/60,repmat(lowY,size(timebase.values(highRMSE))),'.','Color',[0.5 0.5 0.5],'MarkerSize',0.5)
+                hLineGray = plot(timebase.values(highRMSE)/1000/60,repmat(lowY,size(timebase.values(highRMSE))),'o','MarkerSize',1);
+                drawnow
+                if ~isempty(hLineGray)
+                    hMarkerGray = hLineGray.MarkerHandle;
+                    hMarkerGray.FaceColorData = uint8(255*[0.5; 0.5; 0.5; 1]);
+                    hMarkerGray.FaceColorType = 'truecoloralpha';
+                    hMarkerGray.EdgeColorData = uint8([0; 0; 0; 0]);
+                end
+                
+                % Add the markers for at bound plot points                
                 if isfield(pupilData.radiusSmoothed.eyePoses,'fitAtBound')
-                    plot(timebase.values(fitAtBound)/1000/60,repmat(lowY,size(timebase.values(fitAtBound))),'+','Color',[0 0 1],'MarkerSize',0.5)
+                    hLineBlue = plot(timebase.values(fitAtBound)/1000/60,repmat(lowY,size(timebase.values(fitAtBound))),'o','MarkerSize',1);
+                    drawnow
+                    if ~isempty(hLineBlue)
+                        hMarkerBlue = hLineBlue.MarkerHandle;
+                        hMarkerBlue.FaceColorData = uint8(255*[0; 0; 0.5; 1]);
+                        hMarkerBlue.FaceColorType = 'truecoloralpha';
+                        hMarkerBlue.EdgeColorData = uint8([0; 0; 0; 0]);
+                    end
                 end
                 
                 % Set the plot limits
@@ -239,7 +259,12 @@ if ~isempty(fileListStruct)
                 end
                 if kk ~= length(p.Results.eyePoseParamsToPlot)
                     set(gca,'XColor','none')
+                else
+                    if jj==1
+                        xlabel('time from scan start [mins]');
+                    end
                 end
+                
                 box off
                 
             end % loop over eyePose params
@@ -247,11 +272,13 @@ if ~isempty(fileListStruct)
         
         % Save the plot if a plotSaveDir has been defined
         if ~isempty(plotSaveDir)
-            plotFileName =fullfile(plotSaveDir,[nameTags{ii} '_eyePose.pdf']);
-            saveas(figHandle,plotFileName)
+            plotFileName =fullfile(plotSaveDir,[nameTags{ii} '_eyePose.png']);
+            %            saveas(figHandle,plotFileName)
+            orient(figHandle,'landscape')
+            print(figHandle,plotFileName,'-dpng','-r450')
             close(figHandle)
         end
-                
+        
     end % loop over sessions
 end % we have at least one session
 end % plotPupilDataEyePose
