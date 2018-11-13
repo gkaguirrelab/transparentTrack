@@ -1,8 +1,8 @@
-function plotPupilDataQA( dataRootDir, plotSaveDir, varargin )
+function plotPupilDataHistoRMSE( dataRootDir, plotSaveDir, varargin )
 % Saves plots of the quality of ellipse fitting to the pupil perimeter
 %
 % Syntax:
-%  plotPupilDataQA( dataRootDir, plotSaveDir )
+%  plotPupilDataHistoRMSE( dataRootDir, plotSaveDir )
 %
 % Description:
 %   Given a directory, the routine will perform a recursive search through

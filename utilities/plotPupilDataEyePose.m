@@ -1,8 +1,8 @@
-function plotPupilDataQA( dataRootDir, plotSaveDir, varargin )
+function plotPupilDataEyePose( dataRootDir, plotSaveDir, varargin )
 % Saves plots of the quality of ellipse fitting to the pupil perimeter
 %
 % Syntax:
-%  plotPupilDataQA( dataRootDir, plotSaveDir )
+%  plotPupilDataEyePose( dataRootDir, plotSaveDir )
 %
 % Description:
 %   Given a directory, the routine will perform a recursive search through
@@ -37,13 +37,16 @@ function plotPupilDataQA( dataRootDir, plotSaveDir, varargin )
 %  'fitLabel'             - The field of pupilData for which the RMSE
 %                           ellipse fit values are to be analyzed. The
 %                           default value is for the initial ellipse fit.
-%  'reportType'           - Char vector. Determines the type of plots that
-%                           are created. Options include: {'rmseHisto',
-%                           'eyePose'}
 %
 % Outputs:
 %   none
 %
+% Examples:
+%{
+    dataRootDir = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure';
+    plotSaveDir = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure/pupilDataQAPlots_eyePose'
+    plotPupilDataEyePose(dataRootDir,plotSaveDir);
+%}
 
 %% input parser
 p = inputParser;
@@ -53,22 +56,23 @@ p.addRequired('dataRootDir',@ischar);
 p.addOptional('plotSaveDir',[],@(x)(isempty(x) || ischar(x)));
 
 % Optional
-p.addParameter('histMax',4,@isnumeric);
-p.addParameter('numPlotRows',20,@isnumeric);
-p.addParameter('fitLabel','initial',@ischar);
-p.addParameter('reportType','rmseHisto',@ischar);
+p.addParameter('rmseThreshold',3,@isscalar);
+p.addParameter('eyePoseParamsToPlot',[1 2 4],@isnumeric);
+p.addParameter('yRangeIncrement',[5 5 0.25],@isnumeric);
+p.addParameter('xLim',[-0.5 5.6],@isnumeric);
+p.addParameter('yAxisLabels',{'azimuth [deg]','elevation [deg]','radius [mm]'},@iscell);
+p.addParameter('nColumns',4,@isscalar);
+p.addParameter('acquisitionStem','rfMRI_REST',@ischar);
 
 % parse
 p.parse(dataRootDir,plotSaveDir,varargin{:})
 
-
-% Define the edges of the bins to be used for the histogram. The histogram
-% is generated for RMSE values between 0 and histMax, with 50 bins.
-histEdges = 0:p.Results.histMax/50:p.Results.histMax;
+% A constant that we will use later
+msecToMin = 1/1000/60;
 
 % Obtain the paths to all of the pupil data files within the specified
 % directory, including within sub-drectories.
-fileListStruct=subdir(fullfile(dataRootDir,'*_pupil.mat'));
+fileListStruct=subdir(fullfile(dataRootDir,[p.Results.acquisitionStem '*_pupil.mat']));
 
 % If we found at least one pupil data file, then proceed.
 if ~isempty(fileListStruct)
@@ -111,7 +115,7 @@ if ~isempty(fileListStruct)
     plotPos = [];
     
     % Loop through the set of sessions
-    for ii = 1:length(uniqueDirNames)
+    for ii = 1:9 %length(uniqueDirNames)
         
         % Get the list of acqusition file names
         acqList = find(strcmp(fileListCell(2,:),uniqueDirNames{ii}));
@@ -119,7 +123,7 @@ if ~isempty(fileListStruct)
         % Prepare a figure. If a plotSaveDir was not specified, then
         % display the figures. Otherwise, hide them.
         if isempty(plotSaveDir)
-            figHandle=figure('visible','on');
+            figHandle=figure('visible','on','Name',nameTags{ii});
         else
             figHandle=figure('visible','off');
         end
@@ -136,18 +140,50 @@ if ~isempty(fileListStruct)
             'Renderer','painters'...
             );
         
+        % First loop through the acquisitions to determine the y-axis range
+        % for each eye parameter.
+        lb = []; ub = [];
+        for mm = 1:length(p.Results.eyePoseParamsToPlot)
+            lb_byParam = nan(1,length(p.Results.eyePoseParamsToPlot));
+            ub_byParam = nan(1,length(p.Results.eyePoseParamsToPlot));
+            for nn = 1:length(acqList)
+                % Obtain the path to this pupil data file and load it
+                pupilFullFileName = fullfile(fileListCell{1,acqList(nn)});
+                dataLoad=load(pupilFullFileName);
+                pupilData=dataLoad.pupilData;
+                clear dataLoad
+                
+                if ~isfield(pupilData,'radiusSmoothed')
+                    continue
+                else
+                    highRMSE = pupilData.radiusSmoothed.ellipses.RMSE > p.Results.rmseThreshold;
+                    if isfield(pupilData.radiusSmoothed.eyePoses,'fitAtBound')
+                        fitAtBound = pupilData.radiusSmoothed.eyePoses.fitAtBound;
+                        good = logical(~highRMSE .* ~fitAtBound);
+                    else
+                        good = logical(~highRMSE);
+                    end
+                    
+                    lb_byParam(nn) = floor(min(pupilData.radiusSmoothed.eyePoses.values(good,p.Results.eyePoseParamsToPlot(mm))) ./ p.Results.yRangeIncrement(mm)).*p.Results.yRangeIncrement(mm);
+                    ub_byParam(nn) = ceil(max(pupilData.radiusSmoothed.eyePoses.values(good,p.Results.eyePoseParamsToPlot(mm))) ./ p.Results.yRangeIncrement(mm)).*p.Results.yRangeIncrement(mm);
+                end
+            end
+            lb(mm) = nanmin(lb_byParam);
+            ub(mm) = nanmax(ub_byParam);
+        end
+        
         % Loop through the acquisitions
         for jj = 1: length(acqList)
             
             % Obtain the path to this pupil data file and load it
-            pupilFullFileName = fullfile(dataRootDir,fileListCell{1,acqList(jj)});
+            pupilFullFileName = fullfile(fileListCell{1,acqList(jj)});
             dataLoad=load(pupilFullFileName);
             pupilData=dataLoad.pupilData;
             clear dataLoad
             
             % Obtain the modification date for this pupil file
             if isunix
-                sysCommand = ['stat -t %x ' pupilFullFileName];
+                sysCommand = ['stat -t %x ' escapeFileCharacters(pupilFullFileName)];
                 [~,modificationDateString] = system(sysCommand);
                 % This returns a cell array of 4 date stamps
                 modificationDateString = extractBetween(modificationDateString,'"','"');
@@ -160,105 +196,93 @@ if ~isempty(fileListStruct)
             % Grab just the filename for this pupil data, omitting the
             % path. We will use this to label the plot
             [pupilFilePath, pupilFileName] = fileparts(pupilFullFileName);
-
-            % Load the associated timebase file
             fileNameStem = strsplit(pupilFileName,'_pupil');
-            timebaseFileName = fullfile(pupilFilePath,[fileNameStem{1},'_timebase.mat']);
+            fileNameStem = fileNameStem{1};
+            
+            % Load the associated timebase file
+            timebaseFileName = fullfile(pupilFilePath,[fileNameStem,'_timebase.mat']);
             dataLoad=load(timebaseFileName);
             timebase=dataLoad.timebase;
-            clear dataLoad            
-
-            % Check to make sure that the file has the requested field for
-            % the fit result
-            if isfield(pupilData,p.Results.fitLabel)
+            clear dataLoad
+            
+            % Check that there is a smoothed radius field; otherwise
+            % continue
+            if ~isfield(pupilData,'radiusSmoothed')
+                continue
+            end
+            
+            % Obtain the vector of good and bad time points
+            highRMSE = pupilData.radiusSmoothed.ellipses.RMSE > p.Results.rmseThreshold;
+            if isfield(pupilData.radiusSmoothed.eyePoses,'fitAtBound')
+                fitAtBound = pupilData.radiusSmoothed.eyePoses.fitAtBound;
+                good = logical(~highRMSE .* ~fitAtBound);
+            else
+                good = logical(~highRMSE);
+            end
+            
+            % Loop over the 3 eyePose parameters to be plotted
+            for kk=1:length(p.Results.eyePoseParamsToPlot)
                 
                 % Define the subplot for this acqusition
-                sp=subplot(p.Results.numPlotRows+1,1,jj,'align');
+                subplot(length(p.Results.eyePoseParamsToPlot),p.Results.nColumns,(kk-1)*p.Results.nColumns+jj,'align');
                 
-                % Calculate the RMSE histogram
-                errorVector = pupilData.(p.Results.fitLabel).ellipses.RMSE;
-                binCounts = histcounts(errorVector,histEdges);
-                
-                % Plot the RMSE histogram as a filled area plot
-                h=area(histEdges(1:end-1),binCounts);
-                h.FaceColor = [0.5 0 0];
+                % Plot the time-series
+                plot(timebase.values*msecToMin,pupilData.sceneConstrained.eyePoses.values(:,p.Results.eyePoseParamsToPlot(kk)),'-','Color',[0.85 0.85 0.85],'LineWidth',0.5);
                 hold on
+                plot(timebase.values(good)/1000/60,pupilData.radiusSmoothed.eyePoses.values(good,p.Results.eyePoseParamsToPlot(kk)),'.r','MarkerSize',0.5)
                 
-                % Add a line and marker to indicate the number of nans
-                h=plot([histEdges(end) histEdges(end)],[0 sum(isnan(errorVector))],'LineWidth',2);
-                set(h,'Color',[0.5 0 0]);
-                plot(histEdges(end), sum(isnan(errorVector)),'*',...
-                    'MarkerEdgeColor',[0.5 0 0],...
-                    'MarkerFaceColor',[0.5 0 0]);
+                % Add the markers for "bad" plot points
+                lowY = lb(kk) + (ub(kk)-lb(kk))/20;
+                plot(timebase.values(highRMSE)/1000/60,repmat(lowY,size(timebase.values(highRMSE))),'.','Color',[0.5 0.5 0.5],'MarkerSize',0.5)
+                if isfield(pupilData.radiusSmoothed.eyePoses,'fitAtBound')
+                    plot(timebase.values(fitAtBound)/1000/60,repmat(lowY,size(timebase.values(fitAtBound))),'+','Color',[0 0 1],'MarkerSize',0.5)
+                end
+                
+                % Set the plot limits
+                xlim(p.Results.xLim);
+                ylim([lb(kk) ub(kk)]);
                 
                 % Remove the chart junk
-                ax = gca;
-                ax.Visible = 'off';
-                
-                % Force the plots to have the same dimensions
-                outerpos = ax.OuterPosition;
-                ti = ax.TightInset;
-                left = outerpos(1) + ti(1);
-                bottom = outerpos(2) + ti(2);
-                ax_width = outerpos(3) - ti(1) - ti(3);
-                ax_height = outerpos(4) - ti(2) - ti(4);
-                ax.Position = [left bottom ax_width ax_height];
-                
-                % Add text to label the
-                text(0,0.8,[pupilFileName ' (' modificationDate ')'],'Interpreter', 'none','HorizontalAlignment','left','VerticalAlignment','middle','Units','normalized');
-                acqStats=sprintf('%d frames, %.1f%% nans, %.1f%% > %.1f%,',length(errorVector),100*sum(isnan(errorVector))/length(errorVector),100*sum(errorVector>p.Results.histMax)/length(errorVector),p.Results.histMax);
-                text(0.95,0.8,acqStats,'Interpreter', 'none','HorizontalAlignment','right','VerticalAlignment','middle','Units','normalized');
-                
-                % If this is our very first sub-plot on the very first
-                % plot, then plotPos will be empty and we therefore define
-                % it. Otherwise, adjust the right-hand edge of the sub-plot
-                % so that this matches across all plots.
-                if isempty(plotPos)
-                    plotPos = get(sp, 'Position');
+                if jj ~= 1
+                    set(gca,'YColor','none','TickDir','out')
                 else
-                    tmpPos = get(sp, 'Position');
-                    tmpPos([1 3 4])=plotPos([1 3 4]);
-                    set(sp, 'Position',tmpPos);
+                    % Add a y-axis label
+                    ylabel(p.Results.yAxisLabels{kk});
                 end
-            end
-        end % loop over acqusitiions
-        
-        % Add a final sub-plot row that gives the x-axis for all plots
-        sp = subplot(p.Results.numPlotRows+1,1,p.Results.numPlotRows+1,'align');
-        plot([histEdges(1) histEdges(end-1)],[0 0],'.w')
-        hold on
-        plot(histEdges(end),0,'*k')
-        xlabel(['RMSE - ' p.Results.fitLabel]);
-        ax = gca;
-        outerpos = ax.OuterPosition;
-        ti = ax.TightInset;
-        left = outerpos(1) + ti(1);
-        bottom = outerpos(2) + ti(2);
-        ax_width = outerpos(3) - ti(1) - ti(3);
-        ax_height = outerpos(4) - ti(2) - ti(4);
-        ax.Position = [left bottom ax_width ax_height];
-        box off
-        set(gca,'YTickLabel',[],'ytick',[],'color','none');
-        tmpPos = get(sp, 'Position');
-        tmpPos([1 3 4])=plotPos([1 3 4]);
-        set(sp, 'Position',tmpPos);
-        
-        % Add a super-title to the entire plot
-        suptitleTT(uniqueDirNames{ii})
+                if kk == 1
+                    title({fileNameStem,pupilData.radiusSmoothed.meta.timestamp},'Interpreter', 'none');
+                end
+                if kk ~= length(p.Results.eyePoseParamsToPlot)
+                    set(gca,'XColor','none','TickDir','out')
+                end
+                box off
+                
+            end % loop over eyePose params
+        end % loop over acquisitions
         
         % Save the plot if a plotSaveDir has been defined
         if ~isempty(plotSaveDir)
-            plotFileName =fullfile(plotSaveDir,[nameTags{ii} '_' p.Results.fitLabel '.pdf']);
+            plotFileName =fullfile(plotSaveDir,[nameTags{ii} '_eyePose.pdf']);
             saveas(figHandle,plotFileName)
             close(figHandle)
         end
         
-    end
-end
-
+    end % loop over sessions
+end % we have at least one session
 end % plotPupilDataQA
 
 %%% LOCAL FUNCTIONS
+
+
+
+
+function nameOut = escapeFileCharacters(nameIn)
+% Sanitize file strings to be used in system commands
+
+nameOut = strrep(nameIn,' ','\ ');
+nameOut = strrep(nameOut,'(','\(');
+nameOut = strrep(nameOut,')','\)');
+end
 
 
 
