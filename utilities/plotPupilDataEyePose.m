@@ -223,6 +223,7 @@ if ~isempty(fileListStruct)
                 
                 % Set the plot limits
                 xlim(p.Results.xLim);
+                xticks(fix(p.Results.xLim(1)):1:fix(p.Results.xLim(2)))
                 ylim([lb(kk) ub(kk)]);
                 
                 % Remove the chart junk
@@ -232,11 +233,12 @@ if ~isempty(fileListStruct)
                     % Add a y-axis label
                     ylabel(p.Results.yAxisLabels{kk});
                 end
+                set(gca,'TickDir','out')
                 if kk == 1
                     title({fileNameStem,pupilData.radiusSmoothed.meta.timestamp},'Interpreter', 'none');
                 end
                 if kk ~= length(p.Results.eyePoseParamsToPlot)
-                    set(gca,'XColor','none','TickDir','out')
+                    set(gca,'XColor','none')
                 end
                 box off
                 
