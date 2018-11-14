@@ -110,7 +110,7 @@ if ~isempty(fileListStruct)
     nameTags=cellfun(@(x) strrep(x,filesep,'_'),nameTags,'UniformOutput',false);
     
     % Loop through the set of sessions
-    for ii = 1:6 %length(uniqueDirNames)
+    for ii = 1:length(uniqueDirNames)
         
         % Get the list of acqusition file names
         acqList = find(strcmp(fileListCell(2,:),uniqueDirNames{ii}));
@@ -120,17 +120,18 @@ if ~isempty(fileListStruct)
         if isempty(plotSaveDir)
             figHandle=figure('visible','on','Name',nameTags{ii});
         else
-            figHandle=figure('visible','off');
+            figHandle=figure('visible','on','Name',nameTags{ii});
         end
         
         % Format the figure
         set(gcf,'PaperOrientation','landscape');
         set(figHandle, 'Units','inches')
-        height = 6*2;
-        width = 11*2;
+        height = 6;
+        width = 11;
         set(figHandle, 'Position',[25 5 width height],...
             'PaperSize',[width height],...
             'PaperPositionMode','auto',...
+            'renderer','painters', ...            '
             'Color','w' ...
             );
         
@@ -211,7 +212,7 @@ if ~isempty(fileListStruct)
                 % Plot the time-series. Make the red fit dots transparent
                 plot(timebase.values*msecToMin,pupilData.sceneConstrained.eyePoses.values(:,p.Results.eyePoseParamsToPlot(kk)),'-','Color',[0.85 0.85 0.85],'LineWidth',0.5);
                 hold on
-                hLineRed = plot(timebase.values(good)/1000/60,pupilData.radiusSmoothed.eyePoses.values(good,p.Results.eyePoseParamsToPlot(kk)),'o','MarkerSize',1.5);
+                hLineRed = plot(timebase.values(good)/1000/60,pupilData.radiusSmoothed.eyePoses.values(good,p.Results.eyePoseParamsToPlot(kk)),'o','MarkerSize',1);
                 drawnow
                 hMarkerRed = hLineRed.MarkerHandle;
                 hMarkerRed.FaceColorData = uint8(255*[1; 0; 0; 0.25]);
@@ -220,22 +221,22 @@ if ~isempty(fileListStruct)
                 
                 % Add the markers for high RMSE plot points
                 lowY = lb(kk) + (ub(kk)-lb(kk))/20;
-                hLineGray = plot(timebase.values(highRMSE)/1000/60,repmat(lowY,size(timebase.values(highRMSE))),'o','MarkerSize',1);
+                hLineGray = plot(timebase.values(highRMSE)/1000/60,repmat(lowY,size(timebase.values(highRMSE))),'o','MarkerSize',0.75);
                 drawnow
                 if ~isempty(hLineGray)
                     hMarkerGray = hLineGray.MarkerHandle;
-                    hMarkerGray.FaceColorData = uint8(255*[0.5; 0.5; 0.5; 1]);
+                    hMarkerGray.FaceColorData = uint8(255*[0.5; 0.5; 0.5; .5]);
                     hMarkerGray.FaceColorType = 'truecoloralpha';
                     hMarkerGray.EdgeColorData = uint8([0; 0; 0; 0]);
                 end
                 
                 % Add the markers for at bound plot points                
                 if isfield(pupilData.radiusSmoothed.eyePoses,'fitAtBound')
-                    hLineBlue = plot(timebase.values(fitAtBound)/1000/60,repmat(lowY,size(timebase.values(fitAtBound))),'o','MarkerSize',1);
+                    hLineBlue = plot(timebase.values(fitAtBound)/1000/60,repmat(lowY,size(timebase.values(fitAtBound))),'o','MarkerSize',0.75);
                     drawnow
                     if ~isempty(hLineBlue)
                         hMarkerBlue = hLineBlue.MarkerHandle;
-                        hMarkerBlue.FaceColorData = uint8(255*[0; 0; 0.5; 1]);
+                        hMarkerBlue.FaceColorData = uint8(255*[0; 0; 0.75; 1]);
                         hMarkerBlue.FaceColorType = 'truecoloralpha';
                         hMarkerBlue.EdgeColorData = uint8([0; 0; 0; 0]);
                     end
@@ -273,10 +274,15 @@ if ~isempty(fileListStruct)
         % Save the plot if a plotSaveDir has been defined
         if ~isempty(plotSaveDir)
             plotFileName =fullfile(plotSaveDir,[nameTags{ii} '_eyePose.png']);
-            %            saveas(figHandle,plotFileName)
-            orient(figHandle,'landscape')
-            print(figHandle,plotFileName,'-dpng','-r450')
+            print(gcf,plotFileName,'-dpng','-r600')
             close(figHandle)
+            
+            % Rotate the figure by 90 degrees clockwise, because I can't get the
+            % MATLAB plotting routines to output the image how I want it.
+            A = imread(plotFileName);
+            A = rot90(A,3);
+            imwrite(A,plotFileName);
+
         end
         
     end % loop over sessions
