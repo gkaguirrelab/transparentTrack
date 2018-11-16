@@ -105,6 +105,10 @@ else
 end
 
 % Read in the pupilData file if passed
+ellipseFitParams=[];
+ellipseFitRMSE=[];
+eyePoses=[];
+fitAtBound = [];
 if ~isempty(p.Results.pupilFileName)
     dataLoad = load(p.Results.pupilFileName);
     pupilData = dataLoad.pupilData;
@@ -119,14 +123,11 @@ if ~isempty(p.Results.pupilFileName)
     if isfield(pupilData.(p.Results.fitLabel).ellipses,'fitAtBound')
         fitAtBound = pupilData.(p.Results.fitLabel).eyePoses.fitAtBound;
     end
-    if isfield(pupilData.(p.Results.fitLabel).eyePoses,'fitAtBound')
-        fitAtBound = pupilData.(p.Results.fitLabel).eyePoses.fitAtBound;
+    if isfield(pupilData.(p.Results.fitLabel),'eyePoses')
+        if isfield(pupilData.(p.Results.fitLabel).eyePoses,'fitAtBound')
+            fitAtBound = pupilData.(p.Results.fitLabel).eyePoses.fitAtBound;
+        end
     end
-else
-    ellipseFitParams=[];
-    ellipseFitRMSE=[];
-    eyePoses=[];
-    fitAtBound = [];
 end
 
 % Read in and parse the control file if passed
@@ -263,10 +264,11 @@ for ii = 1:nFrames
             if sum(isnan(ellipseFitParams(ii,:)))==0
                 % If the pupilEllipse (or corresponding eyePose ellipse)
                 % hit a bound, then force the pupil plot color to be red
-                if fitAtBound(ii)
-                    pupilColor = 'red';
-                else
-                    pupilColor = p.Results.pupilColor;
+                pupilColor = p.Results.pupilColor;
+                if ~isempty(fitAtBound)
+                    if fitAtBound(ii)
+                        pupilColor = 'red';
+                    end
                 end
                 % build ellipse impicit equation
                 pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(ellipseFitParams(ii,:)));
