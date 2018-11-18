@@ -155,14 +155,11 @@ function [ initialParams ] = estimatePipelineParamsGUI(grayVideoName, approach, 
 
 % Examples:
 %{
-    initialParams =
-    estimatePipelineParamsGUI('pathToVideoFile/videoFile.extension')
+    initialParams = estimatePipelineParamsGUI('pathToVideoFile/videoFile.extension')
 %}
 %{
-    initialParams =
-    estimatePipelineParamsGUI('pathToVideoFile/videoFile.extension',
-    'TOME') % estimate the parameters using the default parameters for the
-    TOME dataset.
+    % Estimate parameters for the TOME dataset.
+    initialParams = estimatePipelineParamsGUI('','TOME') 
 %}
 
 
