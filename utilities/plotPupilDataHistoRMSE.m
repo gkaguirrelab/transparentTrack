@@ -142,16 +142,7 @@ if ~isempty(fileListStruct)
             clear dataLoad
             
             % Obtain the modification date for this pupil file
-            if isunix
-                sysCommand = ['stat -t %x ' pupilFullFileName];
-                [~,modificationDateString] = system(sysCommand);
-                % This returns a cell array of 4 date stamps
-                modificationDateString = extractBetween(modificationDateString,'"','"');
-                % The second date stamp is the modification date
-                modificationDate = modificationDateString{2};
-            else
-                modificationDate=[];
-            end
+            modificationDate = pupilData.(p.Results.fitLabel).meta.timestamp;
             
             % Grab just the filename for this pupil data, omitting the
             % path. We will use this to label the plot
