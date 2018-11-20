@@ -125,6 +125,13 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 %                           proportion of the radius. A negative proportion
 %                           would allow a cut to remove more than half of
 %                           the total pupil radius.
+%  'doubleCutFlag'        - Logical. If set to true, the routine will
+%                           search across cuts at two different thetas for
+%                           each radius examined. When set to true, the
+%                           candidateThetas key-value must be a 2xn vector,
+%                           where each row provides a set of theta values
+%                           to be considered for a cut. The set of theta
+%                           values may be overlapping or not.
 %
 % Outputs:
 %   The routine does not return any variables, but does output a file.
