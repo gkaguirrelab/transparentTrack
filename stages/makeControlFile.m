@@ -125,6 +125,13 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 %                           proportion of the radius. A negative proportion
 %                           would allow a cut to remove more than half of
 %                           the total pupil radius.
+%  'doubleCutFlag'        - Logical. If set to true, the routine will
+%                           search across cuts at two different thetas for
+%                           each radius examined. When set to true, the
+%                           candidateThetas key-value must be a 2xn vector,
+%                           where each row provides a set of theta values
+%                           to be considered for a cut. The set of theta
+%                           values may be overlapping or not.
 %
 % Outputs:
 %   The routine does not return any variables, but does output a file.
@@ -185,6 +192,7 @@ p.addParameter('cutErrorThreshold', 1, @isnumeric);
 p.addParameter('candidateThetas',pi/2:pi/16:pi,@isnumeric);
 p.addParameter('radiusDivisions',5,@isnumeric);
 p.addParameter('minRadiusProportion',0,@isnumeric);
+p.addParameter('doubleCutFlag',false,@islogical);
 
 % parse
 p.parse(controlFileName, perimeterFileName, glintFileName, varargin{:})
@@ -311,7 +319,11 @@ glintPatchX = nan(nFrames,1);
 glintPatchY = nan(nFrames,1);
 glintPatchRadius = nan(nFrames,1);
 frameRadii=nan(nFrames,1);
-frameThetas=nan(nFrames,1);
+if p.Results.doubleCutFlag
+    frameThetas=nan(nFrames,2);
+else
+    frameThetas=nan(nFrames,1);
+end
 frameErrors=nan(nFrames,1);
 
 % alert the user
@@ -375,10 +387,7 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % index perimeter points
     [Yp, Xp] = ind2sub(size(thisFrame),find(thisFrame));
-    
-    % calculate the number of pixels that make up the perimeter
-    numberPerimeterPixels = length(Yp);
-    
+        
     % define these so that the parfor loop is not concerned that the values
     % will not carry from one loop to the next
     smallestFittingError = NaN;
@@ -412,30 +421,40 @@ parfor (ii = 1:nFrames, nWorkers)
             minRadius = maxRadius * p.Results.minRadiusProportion;
             
             % Keep searching until we have a fit of accetable quality, or
-            % if the candidate radius drops below zero
+            % if the candidate radius drops below the minimum radius
             while stillSearching && candidateRadius > minRadius
                 
                 % Perform a grid search across thetas
-                [gridSearchRadii,gridSearchThetas] = ndgrid(candidateRadius,p.Results.candidateThetas);
-                myCutOptim = @(params) calcErrorForACut(thisFrame, params(1), params(2), p.Results.ellipseTransparentLB, p.Results.ellipseTransparentUB);
-                gridSearchResults=arrayfun(@(k1,k2) myCutOptim([k1,k2]),gridSearchRadii,gridSearchThetas);
-                
-                % Store the best cut from this search
-                bestFitOnThisSearch=min(min(gridSearchResults));
-                
-                if bestFitOnThisSearch < smallestFittingError
-                    smallestFittingError=bestFitOnThisSearch;
-                    [~,col] = find(gridSearchResults==bestFitOnThisSearch);
-                    frameRadii(ii)=candidateRadius;
-                    frameThetas(ii)=p.Results.candidateThetas(col(1));
+                if p.Results.doubleCutFlag
+                    [gridSearchThetasA,gridSearchThetasB] = ndgrid(p.Results.candidateThetas(1,:),p.Results.candidateThetas(2,:));
+                    myCutOptim = @(params) calcErrorForADoubleCut(thisFrame, candidateRadius, params(1), params(2), p.Results.ellipseTransparentLB, p.Results.ellipseTransparentUB);
+                    gridSearchResults=arrayfun(@(k1,k2) myCutOptim([k1,k2]),gridSearchThetasA,gridSearchThetasB);
                     
-                    % determine the number of pixels that remain on the
-                    % pupil boundary for this cut
-                    binPcut = applyPupilCut (thisFrame, frameRadii(ii), frameThetas(ii));
-                    [tmpY, ~] = ind2sub(size(binPcut),find(binPcut));
-                    numberPerimeterPixels = length(tmpY);
+                    % Store the best cut from this search
+                    bestFitOnThisSearch=min(min(gridSearchResults));
+                    
+                    if bestFitOnThisSearch < smallestFittingError
+                        smallestFittingError=bestFitOnThisSearch;
+                        [row,col] = find(gridSearchResults==bestFitOnThisSearch);
+                        frameRadii(ii)=candidateRadius;
+                        frameThetas(ii,:)=[p.Results.candidateThetas(1,row(1)) p.Results.candidateThetas(2,col(1))];
+                    end
+                    
+                else
+                    [gridSearchRadii,gridSearchThetas] = ndgrid(candidateRadius,p.Results.candidateThetas);
+                    myCutOptim = @(params) calcErrorForACut(thisFrame, params(1), params(2), p.Results.ellipseTransparentLB, p.Results.ellipseTransparentUB);
+                    gridSearchResults=arrayfun(@(k1,k2) myCutOptim([k1,k2]),gridSearchRadii,gridSearchThetas);
+                    % Store the best cut from this search
+                    bestFitOnThisSearch=min(min(min(gridSearchResults)));
+                    
+                    if bestFitOnThisSearch < smallestFittingError
+                        smallestFittingError=bestFitOnThisSearch;
+                        [~,col] = find(gridSearchResults==bestFitOnThisSearch);
+                        frameRadii(ii)=candidateRadius;
+                        frameThetas(ii,:)=p.Results.candidateThetas(col(1));
+                    end
                 end
-                
+                                
                 % Are we done searching? If not, shrink the radius
                 if bestFitOnThisSearch < p.Results.cutErrorThreshold
                     stillSearching = false;
@@ -443,7 +462,7 @@ parfor (ii = 1:nFrames, nWorkers)
                     candidateRadius=candidateRadius - stepReducer;
                 end
             end % search over cuts
-            
+
         catch
             % If there is a fitting error, tag this frame error and
             % continue with the parfor loop
@@ -487,12 +506,19 @@ if ~isempty(glintPatchFrames)
 end
 
 % Cuts
-cutFrames=find(~isnan(frameThetas));
+cutFrames=find(~isnan(squeeze(frameThetas(:,1))));
 if ~isempty(cutFrames)
     for kk = 1 : length(cutFrames)
         frameIdx=cutFrames(kk);
-        instruction = [num2str(frameIdx) ',' 'cut' ',' num2str(frameRadii(frameIdx)) ',' num2str(frameThetas(frameIdx))];
-        fprintf(fid,'%s\n',instruction);
+        if p.Results.doubleCutFlag
+            instruction = [num2str(frameIdx) ',' 'cut' ',' num2str(frameRadii(frameIdx)) ',' num2str(frameThetas(frameIdx,1))];
+            fprintf(fid,'%s\n',instruction);
+            instruction = [num2str(frameIdx) ',' 'cut' ',' num2str(frameRadii(frameIdx)) ',' num2str(frameThetas(frameIdx,2))];
+            fprintf(fid,'%s\n',instruction);
+        else
+            instruction = [num2str(frameIdx) ',' 'cut' ',' num2str(frameRadii(frameIdx)) ',' num2str(frameThetas(frameIdx))];
+            fprintf(fid,'%s\n',instruction);
+        end
         clear instruction
     end
 end
@@ -514,7 +540,7 @@ values = struct2cell(p.Results);
 
 % Convert all numerical values to strings
 numericIdx = cellfun(@isnumeric, values);
-values(numericIdx) = cellfun(@num2str, values(numericIdx), 'UniformOutput', 0);
+values(numericIdx) = cellfun(@mat2str, values(numericIdx), 'UniformOutput', 0);
 
 % Convert all logical values to strings
 logicalText = {'false','true'};
@@ -555,6 +581,14 @@ end % function
 
 function [distanceError] = calcErrorForACut(theFrame, radiusThresh, theta, lb, ub)
 [binPcut] = applyPupilCut (theFrame, radiusThresh, theta);
+[Yp, Xp] = ind2sub(size(binPcut),find(binPcut));
+[~, distanceError] = constrainedEllipseFit(Xp, Yp, lb, ub, []);
+end
+
+
+function [distanceError] = calcErrorForADoubleCut(theFrame, radiusThresh, thetaA, thetaB, lb, ub)
+[binPcut] = applyPupilCut (theFrame, radiusThresh, thetaA);
+[binPcut] = applyPupilCut (binPcut, radiusThresh, thetaB);
 [Yp, Xp] = ind2sub(size(binPcut),find(binPcut));
 [~, distanceError] = constrainedEllipseFit(Xp, Yp, lb, ub, []);
 end
