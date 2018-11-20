@@ -455,7 +455,7 @@ parfor (ii = 1:nFrames, nWorkers)
                     candidateRadius=candidateRadius - stepReducer;
                 end
             end % search over cuts
-            
+
         catch
             % If there is a fitting error, tag this frame error and
             % continue with the parfor loop
@@ -533,7 +533,7 @@ values = struct2cell(p.Results);
 
 % Convert all numerical values to strings
 numericIdx = cellfun(@isnumeric, values);
-values(numericIdx) = cellfun(@num2str, values(numericIdx), 'UniformOutput', 0);
+values(numericIdx) = cellfun(@mat2str, values(numericIdx), 'UniformOutput', 0);
 
 % Convert all logical values to strings
 logicalText = {'false','true'};
