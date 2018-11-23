@@ -140,18 +140,18 @@ if ~isempty(fileListStruct)
             dataLoad=load(pupilFullFileName);
             pupilData=dataLoad.pupilData;
             clear dataLoad
-            
-            % Obtain the modification date for this pupil file
-            modificationDate = pupilData.(p.Results.fitLabel).meta.timestamp;
-            
+                        
             % Grab just the filename for this pupil data, omitting the
             % path. We will use this to label the plot
             [~, pupilFileName] = fileparts(pupilFullFileName);
             
             % Check to make sure that the file has the requested field for
             % the fit result
-            if isfield(pupilData,p.Results.fitLabel)
-                
+            if isfield(pupilData,p.Results.fitLabel)            
+            
+                % Obtain the modification date for this pupil file
+                modificationDate = pupilData.(p.Results.fitLabel).meta.timestamp;
+
                 % Define the subplot for this acqusition
                 sp=subplot(p.Results.numPlotRows+1,1,jj,'align');
                 
