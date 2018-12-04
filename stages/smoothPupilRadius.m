@@ -69,7 +69,7 @@ function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, scene
 %                           will be conducted.
 %  'fixedPriorPupilRadius' - A 2x1 vector that provides the mean and SD (in 
 %                           mm) of the expected radius of the pupil
-%                           aperture during this acquisition. The defauklt
+%                           aperture during this acquisition. The default
 %                           values correspond to the pupil radius in a
 %                           young adult in complete darkness.
 %  'adjustedCameraPositionTranslation' - 3x1 vector that provides position
@@ -85,7 +85,7 @@ function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, scene
 %                           acquisition.
 %  'relativeCameraPositionFileName' - Char. This is the full path to a
 %                           relativeCameraPosition.mat file that provides
-%                           the movement of the camera at each
+%                           the relative position of the camera at each
 %                           video frame relative to the initial position of
 %                           the camera.
 %
@@ -136,13 +136,14 @@ nEllipseParams=5; % 5 params in the transparent ellipse form
 nEyePoseParams=4; % 4 eyePose values (azimuth, elevation, torsion, radius) 
 radiusIdx = 4; % The 4th eyePose entry holds the radius value
 
-% Load the pupil perimeter data. It will be a structure variable
-% "perimeter", with the fields .data and .meta
+
+%% Load and check data
+% Load the pupil perimeter data
 dataLoad=load(perimeterFileName);
 perimeter=dataLoad.perimeter;
 clear dataLoad
 
-% Load the pupil data. It will be a structure variable "pupilData"
+% Load the pupil data
 dataLoad=load(pupilFileName);
 pupilData=dataLoad.pupilData;
 clear dataLoad
@@ -154,13 +155,12 @@ clear dataLoad
 % An earlier version of the code defined a non-zero iris thickness. We
 % force this to zero here to speed computation
 sceneGeometry.eye.iris.thickness=0;
+
 % If an adjustedCameraPositionTranslation value has been passed, update this field
 % of the sceneGeometry
 if ~isempty(p.Results.adjustedCameraPositionTranslation)
     sceneGeometry.cameraPosition.translation = p.Results.adjustedCameraPositionTranslation;
 end
-
-
 
 % Load the relativeCameraPosition file if passed and it exists
 if ~isempty(p.Results.relativeCameraPositionFileName)
@@ -191,6 +191,71 @@ if ~isfield(pupilData.(p.Results.fitLabel).ellipses,'RMSE')
 end
 
 
+%% Set up the decaying exponential weighting function
+% The relatively large window (10 times the time constant) is used to
+% handle the case in which there is a stretch of missing data, in which
+% case the long tails of the exponential can provide the prior.
+window=ceil(max([p.Results.exponentialTauParam*10,10]));
+windowSupport=1:1:window;
+baseExpFunc=exp(-1/p.Results.exponentialTauParam*windowSupport);
+
+% The weighting function is symmetric about the current time point. The
+% current time point is excluded (set to nan)
+exponentialWeights=[fliplr(baseExpFunc) NaN baseExpFunc];
+
+
+%% Calculate likelhood SD across frames
+% Obtain a measure for each frame of how completely the perimeter points
+% define a full, 360 degrees around the pupil. This index of coverage of
+% the pupil perimeter is distVals. If there is a perfectly uniform angular
+% distribution of points in space around the pupil perimeter, then the
+% distVals value will be zero. If there are perimeter points only at a
+% single angular location around the pupil cirle, then the distVal will be
+% ~4.35.
+
+% The likelihood SD is based upon the RMSE of the fit of the elipse to the
+% perimeter points for each frame
+RMSE = pupilData.(p.Results.fitLabel).ellipses.RMSE';
+
+% An older version of the code set a value of 1e12 for frames where the
+% fitting failed. Just make these nans here.
+RMSE(RMSE==1e12)=nan;
+
+% Define the bins over which the distribution of perimeter angles will be
+% evaluated
+nDivisions = 20;
+histBins = linspace(-pi,pi,nDivisions);
+
+% Anonymous function which is the root mean square deviation of the passed
+% vector
+myErrorFunc = @(x) (sqrt(mean((x-mean(x)).^2)))/mean(x);
+
+for ii = 1:nFrames
+    
+    % Obtain the center of this fitted ellipse
+    centerX = pupilData.(p.Results.fitLabel).ellipses.values(ii,1);
+    centerY = pupilData.(p.Results.fitLabel).ellipses.values(ii,2);
+
+    % Obtain the set of perimeter points
+    Xp = frameCellArray{ii}.Xp;
+    Yp = frameCellArray{ii}.Xp;
+    
+    % Calculate the deviation of the distribution of points from uniform
+    distVals(ii) = myErrorFunc(histcounts(atan2(Yp-centerY,Xp-centerX),histBins));
+end
+
+% Frames which have no perimeter points will return a distVal of zero. We
+% set these to be nan.
+distVals(distVals==0)=nan;
+
+% The likelihood SD for each frame is the RMSE multiplied by the distVal
+likelihoodPupilRadiusSDVector = distVals.*RMSE;
+
+% Apply a multiplier that is used to adjust the relative weighting of the
+% likelihood SD.
+likelihoodPupilRadiusSDVector = likelihoodPupilRadiusSDVector .* likelihoodErrorMultiplier;
+
+
 %% Set up the parallel pool
 if p.Results.useParallel
     nWorkers = startParpool( p.Results.nWorkers, p.Results.verbose );
@@ -205,50 +270,12 @@ clear perimeter
 
 % Set-up other variables to be non-broadcast
 verbose = p.Results.verbose;
-likelihoodErrorMultiplier = p.Results.likelihoodErrorMultiplier;
 eyePoseLB = p.Results.eyePoseLB;
 eyePoseUB = p.Results.eyePoseUB;
 badFrameErrorThreshold = p.Results.badFrameErrorThreshold;
 fitLabel = p.Results.fitLabel;
 fixedPriorPupilRadiusMean = p.Results.fixedPriorPupilRadius(1);
 fixedPriorPupilRadiusSD = p.Results.fixedPriorPupilRadius(2);
-
-% Set up the decaying exponential weighting function. The relatively large
-% window (10 times the time constant) is used to handle the case in which
-% there is a stretch of missing data, in which case the long tails of the
-% exponential can provide the prior.
-window=ceil(max([p.Results.exponentialTauParam*10,10]));
-windowSupport=1:1:window;
-baseExpFunc=exp(-1/p.Results.exponentialTauParam*windowSupport);
-
-% The weighting function is symmetric about the current time point. The
-% current time point is excluded (set to nan)
-exponentialWeights=[fliplr(baseExpFunc) NaN baseExpFunc];
-
-% Obtain the RMSE of the fit of the elipse to the perimeter points for each
-% frame
-RMSE = pupilData.(p.Results.fitLabel).ellipses.RMSE';
-
-% An older version of the code set a value of 1e12 for frames where the
-% fitting failed. Just make these nans here.
-RMSE(RMSE==1e12)=nan;
-
-% Obtain a measure for each frame of how completely the perimeter points
-% define the full circle of the pupil. If there is a perfectly uniform
-% distribution of points around the pupil perimeter, then the distVals
-% value will be zero. If there are perimeter points only at a single
-% location around the pupil cirle, then the distVal will be ~4.35.
-rmse = @(x) (sqrt(mean((x-mean(x)).^2)))/mean(x);
-nDivisions = 20;
-for ii = 1:nFrames
-    distVals(ii) = rmse(histcounts(atan2(frameCellArray{ii}.Yp-pupilData.(p.Results.fitLabel).ellipses.values(ii,2),frameCellArray{ii}.Xp-pupilData.(p.Results.fitLabel).ellipses.values(ii,1)),linspace(-pi,pi,nDivisions)));
-end
-% Frames which have no perimeter points will return a distVal of zero. We
-% set these to be nan.
-distVals(distVals==0)=nan;
-
-% The likelihood SD for each frame is the RMSE multiplied by the distVal
-likelihoodPupilRadiusSDVector = distVals.*RMSE;
 
 
 %% Perform the calculation across frames
@@ -341,11 +368,7 @@ parfor (ii = 1:nFrames, nWorkers)
         % Retrieve the initialFit for this frame
         likelihoodPupilRadiusMean = pupilData.(fitLabel).eyePoses.values(ii,radiusIdx);
         likelihoodPupilRadiusSD = likelihoodPupilRadiusSDVector(ii);
-        
-        % Apply a multiplier that is used to adjust the relative weighting
-        % of the current frame relative to the prior
-        likelihoodPupilRadiusSD = likelihoodPupilRadiusSD .* likelihoodErrorMultiplier;
-                
+                        
         % Check if the likelihoodPupilRadiusSD is nan, in which case set it
         % to an arbitrarily large number so that the prior dictates the
         % posterior

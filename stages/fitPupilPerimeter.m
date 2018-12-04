@@ -93,7 +93,7 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %                           acquisition.
 %  'relativeCameraPositionFileName' - Char. This is the full path to a
 %                           relativeCameraPosition.mat file that provides
-%                           the movement of the camera at each
+%                           the relative position of the camera at each
 %                           video frame relative to the initial position of
 %                           the camera.
 %
