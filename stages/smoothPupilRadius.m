@@ -60,7 +60,7 @@ function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, scene
  %                          RMSE of the ellipse fits to the pupil perimeter
 %                           points, the non-uniformity of the distribution
 %                           of the points in space (0-1), and by this value.
-%                           Typically set to ~5 to result in an SD of 1
+%                           Typically set to ~4 to result in an SD of 1
 %                           when the fit of the points is good.
 %  'badFrameErrorThreshold' - Frames with RMSE fitting error above this
 %                           threshold have their posterior values
@@ -123,7 +123,7 @@ p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@i
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,5],@isnumeric);
 p.addParameter('exponentialTauParam',3,@isnumeric);
-p.addParameter('likelihoodErrorMultiplier',5.0,@isnumeric);
+p.addParameter('likelihoodErrorMultiplier',4.0,@isnumeric);
 p.addParameter('badFrameErrorThreshold',2,@isnumeric);
 p.addParameter('fitLabel','sceneConstrained',@ischar);
 p.addParameter('fixedPriorPupilRadius',[3.5,1.5],@isnumeric);
