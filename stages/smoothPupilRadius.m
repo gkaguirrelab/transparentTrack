@@ -252,7 +252,7 @@ likelihoodPupilRadiusSDVector = distVals.*RMSE;
 
 % Apply a multiplier that is used to adjust the relative weighting of the
 % likelihood SD.
-likelihoodPupilRadiusSDVector = likelihoodPupilRadiusSDVector .* likelihoodErrorMultiplier;
+likelihoodPupilRadiusSDVector = likelihoodPupilRadiusSDVector .* p.Results.likelihoodErrorMultiplier;
 
 
 %% Set up the parallel pool
