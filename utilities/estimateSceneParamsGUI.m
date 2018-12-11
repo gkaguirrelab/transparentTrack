@@ -1,11 +1,18 @@
-function [ initialParams ] = estimateSceneParamsGUI(sceneGeometryFileName)
+function [ x ] = estimateSceneParamsGUI(sceneGeometryFileName, varargin)
 % Adjust scene parameter values
 %
 % Syntax:
 %  [ initialParams ] = estimatePipelineParamsGUI(grayVideoName, protocol)
 %
 % Description:
-
+%
+% Examples:
+%{
+    sceneGeometryFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure/TOME_3008/102116/EyeTracking/GazeCal_sceneGeometry.mat'
+    grayVideoName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure/TOME_3008/102116/EyeTracking/rfMRI_REST_AP_run01_gray.avi'
+    ellipseArrayList = [494 3698 14498 18476];
+    initialParams = estimateSceneParamsGUI(sceneGeometryFileName, 'grayVideoName', grayVideoName, 'ellipseArrayList', ellipseArrayList)
+%}
 
 
 %% Input parser
@@ -14,8 +21,12 @@ p = inputParser; p.KeepUnmatched = true;
 % Required
 p.addOptional('sceneGeometryFileName', [], @(x)(isempty(x) || ischar(x)));
 
+% Optional
+p.addParameter('grayVideoName',[], @(x)(isempty(x) || ischar(x)));
+p.addParameter('ellipseArrayList',[], @(x)(isempty(x) || isnumeric(x)));
+
 % parse
-p.parse(sceneGeometryFileName)
+p.parse(sceneGeometryFileName, varargin{:})
 
 % offer a file picker dialog if needed
 if isempty(sceneGeometryFileName)
@@ -32,20 +43,21 @@ sceneGeometry=dataLoad.sceneGeometry;
 clear dataLoad
 
 % Identify the frames of the ellipse array
-ellipseArrayList = sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList;
+if ~isempty(p.Results.ellipseArrayList)
+    ellipseArrayList = p.Results.ellipseArrayList;
+else
+    ellipseArrayList = sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList;
+end
 
-% Load the pupil perimeter data. It will be a structure variable
-% "perimeter", with the fields .data and .meta
-perimeterFileName = strrep(sceneGeometryFileName,'_sceneGeometry.mat','_correctedPerimeter.mat');
-dataLoad=load(perimeterFileName);
-perimeter=dataLoad.perimeter;
-clear dataLoad
-
-% Identify and open the corresponding video file
-grayVideoName = strrep(sceneGeometryFileName,'_sceneGeometry.mat','_gray.avi');
-videoInObj = videoIOWrapper(grayVideoName,'ioAction','read');
+% Identify the video file
+if ~isempty(p.Results.grayVideoName)
+    grayVideoName = p.Results.grayVideoName;
+else
+    grayVideoName = strrep(sceneGeometryFileName,'_sceneGeometry.mat','_gray.avi');
+end
 
 % Get the video properties
+videoInObj = videoIOWrapper(grayVideoName,'ioAction','read');
 videoSizeX = videoInObj.Width;
 videoSizeY = videoInObj.Height;
 nFrames = floor(videoInObj.Duration*videoInObj.FrameRate);
@@ -62,6 +74,24 @@ end
 
 % close the video object
 clear videoInObj
+
+% Load the pupil perimeter data. It will be a structure variable
+% "perimeter", with the fields .data and .meta
+perimeterFileName = strrep(grayVideoName,'_gray.avi','_correctedPerimeter.mat');
+dataLoad=load(perimeterFileName);
+perimeter=dataLoad.perimeter;
+clear dataLoad
+
+% Load the relativeCameraPosition file if it exists.
+relativeCameraPositionFileName = strrep(grayVideoName,'_gray.avi','_relativeCameraPosition.mat');
+if exist(relativeCameraPositionFileName, 'file')==2
+    dataLoad=load(relativeCameraPositionFileName);
+    relativeCameraPosition=dataLoad.relativeCameraPosition;
+    clear dataLoad
+else
+    relativeCameraPosition=[];
+end
+
 
 % Provide some instructions for the operator
 fprintf('Adjust horizontal /vertical camera translation with the arrow keys.\n');
@@ -91,11 +121,20 @@ while notDoneFlag
     
     % Identify the frame to display
     frameIdx = ellipseArrayList(arrayIdx);
+
+    % Adjust for relative camera position
+    adjustedSceneGeometry = candidateSceneGeometry;
+    if ~isempty(relativeCameraPosition)
+        cameraPosition = candidateSceneGeometry.cameraPosition.translation;
+        cameraPosition = cameraPosition - relativeCameraPosition.values(:,ii);
+        adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
+    end
+
     
     % Obtain the eye pose from the boundary points from the perimeter
     Xp = perimeter.data{frameIdx}.Xp;
     Yp = perimeter.data{frameIdx}.Yp;
-    eyePose = eyePoseEllipseFit(Xp, Yp, candidateSceneGeometry, 'repeatSearchThresh', 10);
+    eyePose = eyePoseEllipseFit(Xp, Yp, adjustedSceneGeometry, 'repeatSearchThresh', 10);
 
     % Show this video frame
     thisFrame = sourceFrames(:,:,:,arrayIdx);
@@ -105,7 +144,7 @@ while notDoneFlag
 
     % Add the rendered eye model
     if ~any(isnan(eyePose))
-        renderEyePose(eyePose, candidateSceneGeometry, ...
+        renderEyePose(eyePose, adjustedSceneGeometry, ...
             'newFigure', false, 'visible', true, ...
             'showAzimuthPlane', true, ...
             'modelEyeLabelNames', {'retina' 'irisPerimeter' 'pupilEllipse' 'cornea'}, ...
