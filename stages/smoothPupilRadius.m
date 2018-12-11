@@ -56,10 +56,12 @@ function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, scene
 %                           decaying exponential weighting function for
 %                           pupil radius.
 %  'likelihoodErrorMultiplier' - The SD of the parameters estimated for 
-%                           each frame are multiplied by this value, to
-%                           either to weaken (>1) or strengthen (<1) the
-%                           influence of the current measure on the
-%                           posterior.
+%                           each frame are computed as the product of the
+ %                          RMSE of the ellipse fits to the pupil perimeter
+%                           points, the non-uniformity of the distribution
+%                           of the points in space (0-1), and by this value.
+%                           Typically set to ~5 to result in an SD of 1
+%                           when the fit of the points is good.
 %  'badFrameErrorThreshold' - Frames with RMSE fitting error above this
 %                           threshold have their posterior values
 %                           determined entirely by the prior. Additionally,
@@ -121,7 +123,7 @@ p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@i
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,5],@isnumeric);
 p.addParameter('exponentialTauParam',3,@isnumeric);
-p.addParameter('likelihoodErrorMultiplier',1.0,@isnumeric);
+p.addParameter('likelihoodErrorMultiplier',5.0,@isnumeric);
 p.addParameter('badFrameErrorThreshold',2,@isnumeric);
 p.addParameter('fitLabel','sceneConstrained',@ischar);
 p.addParameter('fixedPriorPupilRadius',[3.5,1.5],@isnumeric);
@@ -210,8 +212,7 @@ exponentialWeights=[fliplr(baseExpFunc) NaN baseExpFunc];
 % the pupil perimeter is distVals. If there is a perfectly uniform angular
 % distribution of points in space around the pupil perimeter, then the
 % distVals value will be zero. If there are perimeter points only at a
-% single angular location around the pupil cirle, then the distVal will be
-% ~4.35.
+% single angular location around the pupil cirle, then the distVal will 1.
 
 % The likelihood SD is based upon the RMSE of the fit of the elipse to the
 % perimeter points for each frame
@@ -226,10 +227,12 @@ RMSE(RMSE==1e12)=nan;
 nDivisions = 20;
 histBins = linspace(-pi,pi,nDivisions);
 
-% Anonymous function which is the root mean square deviation of the passed
-% vector
-myErrorFunc = @(x) (sqrt(mean((x-mean(x)).^2)))/mean(x);
+% Anonymous function returns the linear non-uniformity of a set of values,
+% ranging from 0 when perfectly uniform to 1 when completely non-uniorm.
+nonUniformity = @(x) (sum(abs(x/sum(x)-mean(x/sum(x))))/2)/(1-1/length(x));
 
+% Loop over frames. Frames which have no perimeter points will be given a
+% distVal of NaN.
 for ii = 1:nFrames
     
     % Obtain the center of this fitted ellipse
@@ -237,16 +240,12 @@ for ii = 1:nFrames
     centerY = pupilData.(p.Results.fitLabel).ellipses.values(ii,2);
 
     % Obtain the set of perimeter points
-    Xp = frameCellArray{ii}.Xp;
-    Yp = frameCellArray{ii}.Xp;
+    Xp = perimeter.data{ii}.Xp;
+    Yp = perimeter.data{ii}.Xp;
     
     % Calculate the deviation of the distribution of points from uniform
-    distVals(ii) = myErrorFunc(histcounts(atan2(Yp-centerY,Xp-centerX),histBins));
+    distVals(ii) = nonUniformity(histcounts(atan2(Yp-centerY,Xp-centerX),histBins));
 end
-
-% Frames which have no perimeter points will return a distVal of zero. We
-% set these to be nan.
-distVals(distVals==0)=nan;
 
 % The likelihood SD for each frame is the RMSE multiplied by the distVal
 likelihoodPupilRadiusSDVector = distVals.*RMSE;
