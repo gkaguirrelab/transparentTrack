@@ -121,7 +121,7 @@ if ~isempty(p.Results.pupilFileName)
     % Get the fitAtBound field. Use the eyePose vector if available
     fitAtBound = [];
     if isfield(pupilData.(p.Results.fitLabel).ellipses,'fitAtBound')
-        fitAtBound = pupilData.(p.Results.fitLabel).eyePoses.fitAtBound;
+        fitAtBound = pupilData.(p.Results.fitLabel).ellipses.fitAtBound;
     end
     if isfield(pupilData.(p.Results.fitLabel),'eyePoses')
         if isfield(pupilData.(p.Results.fitLabel).eyePoses,'fitAtBound')
