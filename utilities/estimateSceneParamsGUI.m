@@ -9,8 +9,8 @@ function [ x ] = estimateSceneParamsGUI(sceneGeometryFileName, varargin)
 % Examples:
 %{
     sceneGeometryFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure/TOME_3008/102116/EyeTracking/GazeCal_sceneGeometry.mat'
-    grayVideoName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure/TOME_3008/102116/EyeTracking/rfMRI_REST_AP_run01_gray.avi'
-    ellipseArrayList = [494 3698 14498 18476];
+    grayVideoName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure/TOME_3008/102116/EyeTracking/rfMRI_REST_PA_run04_gray.avi'
+    ellipseArrayList = [1 5452 9528 15288 18224];
     initialParams = estimateSceneParamsGUI(sceneGeometryFileName, 'grayVideoName', grayVideoName, 'ellipseArrayList', ellipseArrayList)
 %}
 
