@@ -311,7 +311,7 @@ switch p.Results.numberOfGlints
         % centroid order if necessary
         switch p.Results.glintsMainDirection
             case 'y'
-                for ii = 1:length(unsortedGlintVector)
+                for ii = 1:size(unsortedGlintVector,1)
                     if unsortedGlintVector(ii,2)>0
                          glintData_X(framesWithExpectedCentroids(ii),1) = centroidsByFrame_X(framesWithExpectedCentroids(ii),1);
                          glintData_X(framesWithExpectedCentroids(ii),2) = centroidsByFrame_X(framesWithExpectedCentroids(ii),2);
