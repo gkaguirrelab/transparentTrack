@@ -1,8 +1,8 @@
-function [binPcut] = applyPupilCut(binP, radiusThresh, theta)
+function [binPcut] = applyPupilCut(binP, radius, theta)
 % Trim the pupil perimeter in an image by a specified amount
 %
 % Syntax:
-%  [binPcut] = applyPupilCut(binP, radiusThresh, theta)
+%  [binPcut] = applyPupilCut(binP, radius, theta)
 %
 % Description:
 %   Removes points from the boundary of pupil according to the passed
@@ -13,7 +13,7 @@ function [binPcut] = applyPupilCut(binP, radiusThresh, theta)
 %
 % Inputs:
 %   binP                  - The image that contains the pupil perimeter
-%   radiusThresh          - The distance (in pixels) from the reference 
+%   radius                - The distance (in pixels) from the reference 
 %                           point that defines the extent of boundary point
 %                           removal
 %   theta                 - The angle (radians) with respect to the 
@@ -51,7 +51,7 @@ rotatedPoints = ...
 
 % Identify those points that have a position that exceeds radiusThresh in
 % the Y axis of the rotated points
-toBeKeptIdx = (find(rotatedPoints(2,:) <= (yCenter+radiusThresh)))';
+toBeKeptIdx = (find(rotatedPoints(2,:) <= (yCenter+radius)))';
 
 % Place the retained points in the output matrix
 if ~isempty(toBeKeptIdx)
