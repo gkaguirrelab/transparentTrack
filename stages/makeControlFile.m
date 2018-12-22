@@ -17,13 +17,10 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 %       blinks may also be excluded.
 %     - Glint patching. In case the glint is sitting right on the pupil
 %       boundary, the pupil perimeter might be distorted. This step will
-%       apply a black circular patch on the glint location to prevent that.
-%       This will have no effect if the glint location is well within (or
-%       outside) the pupil boudary. This routine operates in a parfor loop.
+%       remove perimeter points close to the glint location.
 % 	  - Pupil cutting. A more time-consuming step examines if removing a
 %       portion of the perimeter of the pupil boundary produces an
-%       improvement in an initial ellipse fit. This routine operates in a
-%       parfor loop.
+%       improvement in an initial ellipse fit.
 %
 % Notes:
 %   Parallel pool - Controlled by the key/value pair 'useParallel'. The
@@ -96,21 +93,26 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 %                           to an aspect ration of 3:2.
 %  'cutErrorThreshold'    - If the ellipse fit RMSE is larger than this,
 %                           perform a search over pupil cuts
-%  'candidateThetas'      - A grid search of cuts are examined, with the
-%                           cut defined by a theta and a radius. This
-%                           parameter provides a vector of theta values
-%                           that are to be searched. Theta values range
-%                           from 0 (image vertical down), to pi/2 (image
-%                           horizontal right), to pi (image vertical up),
-%                           to 3pi/2 (image horizontal left). The default
-%                           value is pi/2:pi/16:pi, corresponding to a
-%                           search of 9 angles ranging from horizontal
-%                           right to vertical up. We restrict the search to
-%                           these theta angles as we typically observe
-%                           intrusion on to the pupil boundary either by
-%                           the upper eyelid or by a non-uniform "shadow"
-%                           of IR illuination arising from the horizontal
-%                           right side of the image.
+%  'candidateThetas'      - A CxN matrix that provides N theta values to be
+%                           evaluated for each of C cuts. A grid search of
+%                           candidate cuts are examined, with the cut
+%                           defined by a theta and a radius. This parameter
+%                           provides a vector of theta values that are to
+%                           be searched. Theta values range from 0 (image
+%                           vertical down), to pi/2 (image horizontal
+%                           right), to pi (image vertical up), to 3pi/2
+%                           (image horizontal left). The default value is
+%                           pi/2:pi/16:pi, corresponding to a search of 9
+%                           angles ranging from horizontal right to
+%                           vertical up. We restrict the search to these
+%                           theta angles as we typically observe intrusion
+%                           on to the pupil boundary either by the upper
+%                           eyelid or by a non-uniform "shadow" of IR
+%                           illuination arising from the horizontal right
+%                           side of the image. If more than one row of
+%                           theta values are offered, then multiple cuts
+%                           will be attempted. The candidate theta values
+%                           for each cut can be overlapping or separated.
 %  'radiusDivisions'      - Controls how many divisions between the
 %                           geometric center of the pupil perimeter and the
 %                           outer edge are to be examined with a pupil cut.
