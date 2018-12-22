@@ -379,7 +379,8 @@ parfor (ii = 1:nFrames, nWorkers)
     % define these so that the parfor loop is not concerned that the values
     % will not carry from one loop to the next
     smallestFittingError = NaN;
-    bestFitOnThisSearch= NaN;
+    theseRadii = nan(1,nCuts);
+    theseThetas = nan(1,nCuts);
     
     % proceed if the frame is not empty
     if ~isempty(Xp)
@@ -435,8 +436,8 @@ parfor (ii = 1:nFrames, nWorkers)
                     if bestFitOnThisSearch < smallestFittingError
                         smallestFittingError=bestFitOnThisSearch;
                         [~,col] = find(gridSearchResults==bestFitOnThisSearch);
-                        frameRadii(ii,cutIdx)=candidateRadius;
-                        frameThetas(ii,cutIdx)=p.Results.candidateThetas(cutIdx,col);
+                        theseRadii(cutIdx)=candidateRadius;
+                        theseThetas(cutIdx)=p.Results.candidateThetas(cutIdx,col);
                     end
                     
                     % Are we done searching over radii? If not, shrink the
@@ -450,14 +451,17 @@ parfor (ii = 1:nFrames, nWorkers)
                 end % search over radii
                 
                 % Update the cutFrame with the result of this cut
-                if ~isnan(frameRadii(ii,cutIdx))
-                    cutFrame = applyPupilCut (cutFrame, frameRadii(ii,cutIdx), frameThetas(ii,cutIdx));
+                if ~isnan(theseRadii(cutIdx))
+                    cutFrame = applyPupilCut (cutFrame, theseRadii(cutIdx), theseThetas(cutIdx));
                 end
                 
                 % Iterate the cut index
                 cutIdx = cutIdx+1;
 
             end % search over cuts
+
+            frameRadii(ii,:)=theseRadii;
+            frameThetas(ii,:)=theseThetas;
 
         catch
             % If there is a fitting error, tag this frame error and
