@@ -41,6 +41,10 @@ function plotPupilDataHistoRMSE( dataRootDir, plotSaveDir, varargin )
 % Outputs:
 %   none
 %
+% Examples:
+%{
+    plotPupilDataHistoRMSE('','pupilDataQAPlots_initial')
+%}
 
 %% input parser
 p = inputParser;
