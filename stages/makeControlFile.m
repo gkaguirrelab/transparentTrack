@@ -508,7 +508,7 @@ if ~isempty(glintPatchFrames)
 end
 
 % Cuts
-cutFrames=find(~isnan(squeeze(frameThetas(:,1))));
+cutFrames=find(any(~isnan(frameThetas),2));
 if ~isempty(cutFrames)
     for kk = 1 : length(cutFrames)
         frameIdx=cutFrames(kk);
