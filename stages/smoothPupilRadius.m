@@ -309,6 +309,7 @@ parfor (ii = 1:nFrames, nWorkers)
     posteriorEyePoseObjectiveError = NaN;
     posteriorEyePose = NaN(1,nEyePoseParams);
     posteriorPupilRadiusSD = NaN;
+    uniformity = NaN;
     fitAtBound = false;
     
     % get the boundary points
@@ -417,6 +418,10 @@ parfor (ii = 1:nFrames, nWorkers)
         [posteriorEyePose, posteriorEyePoseObjectiveError, posteriorEllipseParams, fitAtBound] = ...
             eyePoseEllipseFit(Xp, Yp, adjustedSceneGeometry, 'eyePoseLB', lb_pin, 'eyePoseUB', ub_pin, 'x0', x0, 'repeatSearchThresh', badFrameErrorThreshold);
         
+        % Calculate the uniformity of the distribution of perimeter points
+        % around the center of the fitted ellipse
+        uniformity = 1-nonUniformity(histcounts(atan2(Yp-posteriorEllipseParams(2),Xp-posteriorEllipseParams(1)),histBins));
+        
         % Restore the warning state
         warning(warnState);
         
@@ -426,6 +431,7 @@ parfor (ii = 1:nFrames, nWorkers)
     loopVar_empiricalPriorPupilRadiusMean(ii) = empiricalPriorPupilRadiusMean;
     loopVar_empiricalPriorPupilRadiusSD(ii) = empiricalPriorPupilRadiusSD;
     loopVar_posteriorEllipseParams(ii,:) = posteriorEllipseParams';
+    loopVar_posteriorUniformity(ii) = uniformity;
     loopVar_posterioreyePosesObjectiveError(ii) = posteriorEyePoseObjectiveError;
     loopVar_fitAtBound(ii) = fitAtBound;
     loopVar_posteriorEyePoses(ii,:) = posteriorEyePose;
@@ -447,6 +453,7 @@ pupilData.radiusSmoothed = [];
 % gather the loop vars into the ellipses field
 pupilData.radiusSmoothed.ellipses.values=loopVar_posteriorEllipseParams;
 pupilData.radiusSmoothed.ellipses.RMSE=loopVar_posterioreyePosesObjectiveError';
+pupilData.radiusSmoothed.ellipses.uniformity=loopVar_posteriorUniformity';
 pupilData.radiusSmoothed.ellipses.meta.ellipseForm = 'transparent';
 pupilData.radiusSmoothed.ellipses.meta.labels = {'x','y','area','eccentricity','theta'};
 pupilData.radiusSmoothed.ellipses.meta.units = {'pixels','pixels','squared pixels','non-linear eccentricity','rads'};
