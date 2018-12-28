@@ -184,7 +184,7 @@ p.addParameter('glintPatchRadius', 20, @isnumeric);
 p.addParameter('ellipseTransparentLB',[0, 0, 800, 0, 0],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('ellipseTransparentUB',[640,480,20000,1, pi],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('cutErrorThreshold', 1, @isnumeric);
-p.addParameter('candidateThetas',pi/2:pi/16:pi,@isnumeric);
+p.addParameter('candidateThetas',pi/2:pi/16:pi,@(x)(iscell(x) | isnumeric(x)));
 p.addParameter('radiusDivisions',5,@isnumeric);
 p.addParameter('minRadiusProportion',0,@isnumeric);
 
@@ -419,6 +419,13 @@ parfor (ii = 1:nFrames, nWorkers)
             % a fit of acceptable quality, or we run out of cuts
             while stillSearching && cutIdx <= nCuts
                 
+                % Get the candidateThetas for this cut
+                if iscell(p.Results.candidateThetas)
+                    thisCutThetas = p.Results.candidateThetas{cutIdx};
+                else
+                    thisCutThetas = p.Results.candidateThetas(cutIdx,:);
+                end
+                
                 % We start with a cut radius that is one division below the
                 % maximum radius in the pupil boundary
                 candidateRadius = maxRadius - stepReducer;
@@ -427,7 +434,7 @@ parfor (ii = 1:nFrames, nWorkers)
                 % if the candidate radius drops below the minimum radius
                 while stillSearching && candidateRadius > minRadius
                     
-                    [gridSearchRadii,gridSearchThetas] = ndgrid(candidateRadius,p.Results.candidateThetas(cutIdx,:));
+                    [gridSearchRadii,gridSearchThetas] = ndgrid(candidateRadius,thisCutThetas);
                     myCutOptim = @(params) calcErrorForACut(cutFrame, params(1), params(2), p.Results.ellipseTransparentLB, p.Results.ellipseTransparentUB);
                     gridSearchResults=arrayfun(@(k1,k2) myCutOptim([k1,k2]),gridSearchRadii,gridSearchThetas);
 
@@ -439,7 +446,7 @@ parfor (ii = 1:nFrames, nWorkers)
                         smallestFittingError=bestFitOnThisSearch;
                         [~,col] = find(gridSearchResults==bestFitOnThisSearch);
                         theseRadii(cutIdx)=candidateRadius;
-                        theseThetas(cutIdx)=p.Results.candidateThetas(cutIdx,col);
+                        theseThetas(cutIdx)=thisCutThetas(col);
                     end
                     
                     % Are we done searching over radii? If not, shrink the
