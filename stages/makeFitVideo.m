@@ -18,14 +18,13 @@ function makeFitVideo(videoInFileName, videoOutFileName, varargin)
 %  'videoOutFrameRate'    - Frame rate (in Hz) of saved video [default 60]
 %  'saveCompressedVideo'  - Default value is true, resulting in a
 %                           a video with a 10x reduction in file size
+%
+% Optional key/value pairs (flow control):
 %  'nFrames'              - Analyze fewer than the total number of frames.
-%  'glint/perimeter/pupil/sceneGeometry/FileName' - Full path to a file
-%                           to be included in the video. 
-%  'glint/perimeter/pupil/sceneGeometry/Color' - Text string that assigns
-%                           a color to the display of this item.
-%  'fitLabel'             - The field of the pupilData file that contains
-%                           ellipse fit params to be added to the video.
-%  'controlFileName'      - Full path to the control file to be included.
+%
+% Optional key/value pairs (video items):
+%  'glint/perimeter/pupil/sceneGeometry/controlFileName' - Full path to a 
+%                           file to be included in the video. 
 %  'adjustedCameraPositionTranslation' - 3x1 vector that provides position
 %                           of the camera relative to the origin of the
 %                           world coordinate system (which is the anterior
@@ -39,9 +38,34 @@ function makeFitVideo(videoInFileName, videoOutFileName, varargin)
 %                           acquisition.
 %  'relativeCameraPositionFileName' - Char. This is the full path to a
 %                           relativeCameraPosition.mat file that provides
-%                           the movement of the camera at each
+%                           the relative position of the camera at each
 %                           video frame relative to the initial position of
 %                           the camera.
+%  'glint/perimeter/pupil/sceneGeometry/Color' - Text string that assigns
+%                           a color to the display of this item.
+%  'pupilRMSERangeAlphaScaler' - 1x2 vector. The alpha transparency of the
+%                           fitted pupil ellipse varies between 0.25
+%                           (somewhat transparent) to 1 (solid). The
+%                           alpha level is determined by the RMSE of the
+%                           ellipse fit to the pupil perimeter, with the
+%                           mapping determined by the minimum and maximum
+%                           RMSE values provided in this vector.
+%  'modelEyeLabelNames/modelEyePlotColors' - Cell arrays that are passed to
+%                           renderEyePose to determine the model eye
+%                           elements that are superimposed on the video.
+%  'modelEyeMaxAlpha'     - Scalar. The alpha value of the superimposed
+%                           model eye. Defaults to zero, which results in
+%                           the model eye not being displayed.
+%  'modelEyeRMSERangeAlphaScaler' - 1x2 vector. Maps the RMSE fit of the
+%                           pupil ellipse to the alpha value of the model
+%                           eye.
+%  'modelEyeSymbolSizeScaler' - Scalar. Determines the size of the plot
+%                           symbols used to render the model eye.
+%  'suppressBlinks'       - Logical. If set to true, the model eye will not
+%                           be rendered for frames marked as "blinks" in 
+%                           the instructions.
+%  'fitLabel'             - The field of the pupilData file that contains
+%                           ellipse fit params to be added to the video.
 %
 % Outputs:
 %   None
@@ -67,6 +91,9 @@ p.addParameter('glintFileName', [], @(x)(isempty(x) | ischar(x)));
 p.addParameter('perimeterFileName', [], @(x)(isempty(x) | ischar(x)));
 p.addParameter('pupilFileName', [], @(x)(isempty(x) | ischar(x)));
 p.addParameter('sceneGeometryFileName', [], @(x)(isempty(x) | ischar(x)));
+p.addParameter('controlFileName', [], @(x)(isempty(x) | ischar(x)));
+p.addParameter('adjustedCameraPositionTranslation',[],@isnumeric);
+p.addParameter('relativeCameraPositionFileName',[],@ischar);
 p.addParameter('glintColor', 'r', @ischar);
 p.addParameter('perimeterColor', 'w', @ischar);
 p.addParameter('pupilColor', 'green', @ischar);
@@ -76,10 +103,8 @@ p.addParameter('modelEyePlotColors', {'.w' '.b' '.y' '+c'}, @iscell);
 p.addParameter('modelEyeMaxAlpha', 0, @isnumeric);
 p.addParameter('modelEyeRMSERangeAlphaScaler',[1,4],@isnumeric);
 p.addParameter('modelEyeSymbolSizeScaler',1,@isnumeric);
+p.addParameter('suppressBlinks',true,@islogical);
 p.addParameter('fitLabel', 'radiusSmoothed', @(x)(isempty(x) | ischar(x)));
-p.addParameter('controlFileName', [], @(x)(isempty(x) | ischar(x)));
-p.addParameter('adjustedCameraPositionTranslation',[],@isnumeric);
-p.addParameter('relativeCameraPositionFileName',[],@ischar);
 
 % parse
 p.parse(videoInFileName, videoOutFileName, varargin{:})
@@ -302,8 +327,14 @@ for ii = 1:nFrames
         end
     end
 
-    % superimpose the model eye
-    if ~isempty(eyePoses) && sum(p.Results.modelEyeMaxAlpha)~=0
+    % Superimpose the model eye
+    % If an instruction field is available, and we should suppress blinks,
+    % check if this frame is a blink
+    notBlinkFrame = true;
+    if ~isfield(pupilData,'instructions') && p.Results.suppressBlinks
+        notBlinkFrame = ~pupilData.instructions.blink(ii); 
+    end
+    if ~isempty(eyePoses) && sum(p.Results.modelEyeMaxAlpha)~=0 && notBlinkFrame
         % If a relativeCameraPosition is defined, update the
         % sceneGeometry
         adjustedSceneGeometry = sceneGeometry;
