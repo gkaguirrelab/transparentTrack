@@ -42,18 +42,28 @@ dataLoad=load(sceneGeometryFileName);
 sceneGeometry=dataLoad.sceneGeometry;
 clear dataLoad
 
-% Identify the frames of the ellipse array
-if ~isempty(p.Results.ellipseArrayList)
-    ellipseArrayList = p.Results.ellipseArrayList;
-else
-    ellipseArrayList = sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList;
-end
-
 % Identify the video file
 if ~isempty(p.Results.grayVideoName)
     grayVideoName = p.Results.grayVideoName;
 else
     grayVideoName = strrep(sceneGeometryFileName,'_sceneGeometry.mat','_gray.avi');
+end
+
+% Identify the frames of the ellipse array
+if ~isempty(p.Results.ellipseArrayList)
+    ellipseArrayList = p.Results.ellipseArrayList;
+else
+    % No frames specified. Try to find the time zero frame
+    timebaseFileName = strrep(grayVideoName,'_gray.avi','_timebase.mat');
+    if exist(timebaseFileName, 'file')==2
+        dataLoad=load(timebaseFileName);
+        timebase=dataLoad.timebase;
+        clear dataLoad
+        [~,ellipseArrayList] = min(abs(timebase.values));
+    else
+        % No ellipse array list, no timebase. Use the list from sceneGeometry
+        ellipseArrayList = sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList;
+    end
 end
 
 % Get the video properties
