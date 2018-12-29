@@ -553,7 +553,10 @@ logicalText = {'false','true'};
 logicalIdx = cellfun(@islogical, values);
 values(logicalIdx) = cellfun(@(x) logicalText{double(x)+1}, values(logicalIdx), 'UniformOutput', 0);
 
-% Replace any remaining structures with an explanation
+% Replace any remaining cells or structures with an explanation
+cellIdx = cellfun(@iscell, values);
+values(cellIdx) = cellfun(@(x) '== cell value not reported here ==', values(cellIdx), 'UniformOutput', 0);
+
 structIdx = cellfun(@isstruct, values);
 values(structIdx) = cellfun(@(x) '== struct value not reported here ==', values(structIdx), 'UniformOutput', 0);
 
