@@ -331,7 +331,7 @@ for ii = 1:nFrames
     % If an instruction field is available, and we should suppress blinks,
     % check if this frame is a blink
     notBlinkFrame = true;
-    if ~isfield(pupilData,'instructions') && p.Results.suppressBlinks
+    if isfield(pupilData,'instructions') && p.Results.suppressBlinks
         notBlinkFrame = ~pupilData.instructions.blink(ii); 
     end
     if ~isempty(eyePoses) && sum(p.Results.modelEyeMaxAlpha)~=0 && notBlinkFrame
