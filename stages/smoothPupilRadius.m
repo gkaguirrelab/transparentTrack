@@ -5,11 +5,12 @@ function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, scene
 %  [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, sceneGeometryFileName)
 %
 % Description:
-%   This routine implements a temporal smoothing operation upon pupil
-%   radius using an empirical Bayes approach. A non-causal, exponentially
-%   weighted window of surrounding radius values serves as an empirical
-%   prior. The posterior value of the radius is then used as a constraint
-%   and the ellipse in the image plane is re-fit.
+%   This routine implements a temporal smoothing operation upon the time
+%   series of pupil radius values using an empirical Bayes approach. A
+%   non-causal, exponentially weighted window of surrounding radius values
+%   serves as an empirical prior. The posterior value of the radius is then
+%   used as a constraint and the perimeter of the pupil in the image plane
+%   is re-fit with the model eye.
 %
 % Notes:
 %   Parallel pool - Controlled by the key/value pair 'useParallel'. The
@@ -154,12 +155,15 @@ clear dataLoad
 dataLoad=load(sceneGeometryFileName);
 sceneGeometry=dataLoad.sceneGeometry;
 clear dataLoad
+
+%% HACK
 % An earlier version of the code defined a non-zero iris thickness. We
-% force this to zero here to speed computation
+% force this to zero here to speed computation. This line should ultimately
+% be removed when Geoff is done processing the session 1 Connectome data.
 sceneGeometry.eye.iris.thickness=0;
 
-% If an adjustedCameraPositionTranslation value has been passed, update this field
-% of the sceneGeometry
+% If an adjustedCameraPositionTranslation value has been passed, update
+% this field of the sceneGeometry
 if ~isempty(p.Results.adjustedCameraPositionTranslation)
     sceneGeometry.cameraPosition.translation = p.Results.adjustedCameraPositionTranslation;
 end
@@ -218,17 +222,19 @@ exponentialWeights=[fliplr(baseExpFunc) NaN baseExpFunc];
 % perimeter points for each frame
 RMSE = pupilData.(p.Results.fitLabel).ellipses.RMSE';
 
+%% HACK
 % An older version of the code set a value of 1e12 for frames where the
 % fitting failed. Just make these nans here.
+% Delete this line once Geoff has processed the session 1 TOME data.
 RMSE(RMSE==1e12)=nan;
 
 % Define the bins over which the distribution of perimeter angles will be
-% evaluated
+% evaluated. 20 bins works pretty well.
 nDivisions = 20;
 histBins = linspace(-pi,pi,nDivisions);
 
 % Anonymous function returns the linear non-uniformity of a set of values,
-% ranging from 0 when perfectly uniform to 1 when completely non-uniorm.
+% ranging from 0 when perfectly uniform to 1 when completely non-uniform.
 nonUniformity = @(x) (sum(abs(x/sum(x)-mean(x/sum(x))))/2)/(1-1/length(x));
 
 % Loop over frames. Frames which have no perimeter points will be given a
@@ -246,6 +252,14 @@ for ii = 1:nFrames
     % Calculate the deviation of the distribution of points from uniform
     distVals(ii) = nonUniformity(histcounts(atan2(Yp-centerY,Xp-centerX),histBins));
 end
+
+% Subject the distvals vector to a non-linear transformation. This has the
+% effect of changing 0 --> 0.1, 0.8 --> 1, and values > 0.8 --> infinity.
+% This causes pupil perimeters with support at a single location (as
+% opposed to fully around the perimeter) to have a markedly increased
+% likelihood SD. Also, set InF values to something arbitrarily large.
+distVals = (1./(1-sqrt(distVals)))./10;
+distVals(isinf(distVals)) = 1e20;
 
 % The likelihood SD for each frame is the RMSE multiplied by the distVal
 likelihoodPupilRadiusSDVector = distVals.*RMSE;
