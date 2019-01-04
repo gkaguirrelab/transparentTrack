@@ -250,15 +250,16 @@ for ii = 1:nFrames
     Yp = perimeter.data{ii}.Xp;
     
     % Calculate the deviation of the distribution of points from uniform
-    distVals(ii) = nonUniformity(histcounts(atan2(Yp-centerY,Xp-centerX),histBins));
+    linearNonUniformity(ii) = nonUniformity(histcounts(atan2(Yp-centerY,Xp-centerX),histBins));
 end
 
-% Subject the distvals vector to a non-linear transformation. This has the
-% effect of changing 0 --> 0.1, 0.8 --> 1, and values > 0.8 --> infinity.
-% This causes pupil perimeters with support at a single location (as
-% opposed to fully around the perimeter) to have a markedly increased
-% likelihood SD. Also, set InF values to something arbitrarily large.
-distVals = (1./(1-sqrt(distVals)))./10;
+% Subject the linearNonUniformity vector to a non-linear transformation.
+% This has the effect of changing 0 --> 0.1, 0.8 --> 1, and values > 0.8
+% --> infinity. This causes pupil perimeters with support at a single
+% location (as opposed to fully around the perimeter) to have a markedly
+% increased likelihood SD. Also, set InF values to something arbitrarily
+% large.
+distVals = (1./(1-sqrt(linearNonUniformity)))./10;
 distVals(isinf(distVals)) = 1e20;
 
 % The likelihood SD for each frame is the RMSE multiplied by the distVal
@@ -472,6 +473,7 @@ pupilData.radiusSmoothed.ellipses.meta.ellipseForm = 'transparent';
 pupilData.radiusSmoothed.ellipses.meta.labels = {'x','y','area','eccentricity','theta'};
 pupilData.radiusSmoothed.ellipses.meta.units = {'pixels','pixels','squared pixels','non-linear eccentricity','rads'};
 pupilData.radiusSmoothed.ellipses.meta.coordinateSystem = 'intrinsic image';
+pupilData.radiusSmoothed.ellipses.meta.linearNonUniformity = linearNonUniformity;
 
 % gather the loop vars into the eyePoses field
 pupilData.radiusSmoothed.eyePoses.values=loopVar_posteriorEyePoses;
@@ -483,6 +485,7 @@ pupilData.radiusSmoothed.eyePoses.meta.coordinateSystem = 'head fixed (extrinsic
 pupilData.radiusSmoothed.eyePoses.meta.empiricalPriorPupilRadiusMean = loopVar_empiricalPriorPupilRadiusMean;
 pupilData.radiusSmoothed.eyePoses.meta.empiricalPriorPupilRadiusSD = loopVar_empiricalPriorPupilRadiusSD;
 pupilData.radiusSmoothed.eyePoses.meta.likelihoodPupilRadiusSD = likelihoodPupilRadiusSDVector;
+
 
 % add a meta field with analysis details
 pupilData.radiusSmoothed.meta = p.Results;
