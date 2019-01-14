@@ -64,6 +64,13 @@ function makeFitVideo(videoInFileName, videoOutFileName, varargin)
 %  'suppressBlinks'       - Logical. If set to true, the model eye will not
 %                           be rendered for frames marked as "blinks" in 
 %                           the instructions.
+%  'uniformityThreshold'  - Scalar. A uniformity score is calculated for
+%                           each frame that describes the extent to which
+%                           the pupil perimeter points are either minimally
+%                           (0) or fully (1) distributed around the
+%                           ellipse. The eyeModel is only displayed for
+%                           those frames in which the linear uniformity
+%                           value is above this threshold.
 %  'fitLabel'             - The field of the pupilData file that contains
 %                           ellipse fit params to be added to the video.
 %
@@ -104,6 +111,7 @@ p.addParameter('modelEyeMaxAlpha', 0, @isnumeric);
 p.addParameter('modelEyeRMSERangeAlphaScaler',[1,4],@isnumeric);
 p.addParameter('modelEyeSymbolSizeScaler',1,@isnumeric);
 p.addParameter('suppressBlinks',true,@islogical);
+p.addParameter('uniformityThreshold',0.33,@isscalar);
 p.addParameter('fitLabel', 'radiusSmoothed', @(x)(isempty(x) | ischar(x)));
 
 % parse
@@ -133,6 +141,7 @@ end
 ellipseFitParams=[];
 ellipseFitRMSE=[];
 eyePoses=[];
+linearUniformity = [];
 fitAtBound = [];
 if ~isempty(p.Results.pupilFileName)
     dataLoad = load(p.Results.pupilFileName);
@@ -142,6 +151,10 @@ if ~isempty(p.Results.pupilFileName)
     ellipseFitRMSE = pupilData.(p.Results.fitLabel).ellipses.RMSE;
     if isfield(pupilData.(p.Results.fitLabel),'eyePoses')
         eyePoses = pupilData.(p.Results.fitLabel).eyePoses.values;
+    end
+    % Get the uniformity field if is available
+    if isfield(pupilData.(p.Results.fitLabel).ellipses,'uniformity')
+        linearUniformity = pupilData.(p.Results.fitLabel).ellipses.uniformity;
     end
     % Get the fitAtBound field. Use the eyePose vector if available
     fitAtBound = [];
@@ -334,7 +347,13 @@ for ii = 1:nFrames
     if isfield(pupilData,'instructions') && p.Results.suppressBlinks
         notBlinkFrame = ~pupilData.instructions.blink(ii); 
     end
-    if ~isempty(eyePoses) && sum(p.Results.modelEyeMaxAlpha)~=0 && notBlinkFrame
+    % If a linear uniformity score is available for the frame, check to see
+    % that the threshold is met to display the eye model
+    sufficientlyUniform = true;
+    if ~isempty(linearUniformity)
+        sufficientlyUniform = linearUniformity(ii) > p.Results.uniformityThreshold;
+    end
+    if ~isempty(eyePoses) && sum(p.Results.modelEyeMaxAlpha)~=0 && notBlinkFrame && sufficientlyUniform
         % If a relativeCameraPosition is defined, update the
         % sceneGeometry
         adjustedSceneGeometry = sceneGeometry;
