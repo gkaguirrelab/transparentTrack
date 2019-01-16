@@ -56,6 +56,7 @@ p.addOptional('plotSaveDir',[],@(x)(isempty(x) || ischar(x)));
 
 % Optional
 p.addParameter('rmseThreshold',3,@isscalar);
+p.addParameter('uniformityThreshold',0.33,@isscalar);
 p.addParameter('eyePoseParamsToPlot',[1 2 4],@isnumeric);
 p.addParameter('yRangeIncrement',[5 5 0.25],@isnumeric);
 p.addParameter('xLim',[-0.5 5.6],@isnumeric);
@@ -196,13 +197,17 @@ if ~isempty(fileListStruct)
             
             % Obtain the vector of good and bad time points
             highRMSE = pupilData.radiusSmoothed.ellipses.RMSE > p.Results.rmseThreshold;
+            fitAtBound = false(size(highRMSE));
+            lowUniformity = false(size(highRMSE));
             if isfield(pupilData.radiusSmoothed.eyePoses,'fitAtBound')
                 fitAtBound = pupilData.radiusSmoothed.eyePoses.fitAtBound;
-                good = logical(~highRMSE .* ~fitAtBound);
-            else
-                good = logical(~highRMSE);
             end
-            
+            if isfield(pupilData.radiusSmoothed.ellipses,'uniformity')
+                lowUniformity = pupilData.radiusSmoothed.ellipses.uniformity < p.Results.uniformityThreshold;
+            end
+
+            good = logical(~highRMSE .* ~fitAtBound .* ~lowUniformity);
+
             % Loop over the 3 eyePose parameters to be plotted
             for kk=1:length(p.Results.eyePoseParamsToPlot)
                 
