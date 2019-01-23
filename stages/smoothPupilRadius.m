@@ -58,11 +58,11 @@ function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, scene
 %                           pupil radius.
 %  'likelihoodErrorMultiplier' - The SD of the parameters estimated for 
 %                           each frame are computed as the product of the
- %                          RMSE of the ellipse fits to the pupil perimeter
-%                           points, the non-uniformity of the distribution
-%                           of the points in space (0-1), and by this value.
-%                           Typically set to ~4 to result in an SD of 1
-%                           when the fit of the points is good.
+%                           RMSE of the ellipse fits to the pupil perimeter
+%                           points, the non-linear non-uniformity of the
+%                           distribution of the points in space, and by
+%                           this value. Typically set to ~4 to result in an
+%                           SD of 1 when the fit of the points is good.
 %  'badFrameErrorThreshold' - Frames with RMSE fitting error above this
 %                           threshold have their posterior values
 %                           determined entirely by the prior. Additionally,
