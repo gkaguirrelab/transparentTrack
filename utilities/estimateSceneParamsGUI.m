@@ -2,7 +2,7 @@ function [ x ] = estimateSceneParamsGUI(sceneGeometryFileName, varargin)
 % Adjust scene parameter values
 %
 % Syntax:
-%  [ initialParams ] = estimatePipelineParamsGUI(grayVideoName, protocol)
+%  [ initialParams ] = estimateSceneParamsGUI(grayVideoName, protocol)
 %
 % Description:
 %
@@ -108,11 +108,16 @@ fprintf('Adjust depth camera translation with + and -.\n');
 fprintf('Adjust camera torsion with j and k.\n');
 fprintf('Move forward and backward in the ellipse frames with a and s\n')
 fprintf('Press return to be prompted to enter scene param values as text.\n');
+fprintf('Press r to be prompted to enter eye rotation params.\n');
 fprintf('Press esc to exit.\n');
 
 % Set the current index and scene params
 arrayIdx = 1;
 x = sceneGeometry.meta.estimateSceneParams.search.x;
+
+% Calculate eye rotatiom centers that correspond to x(5:6) = [1 1]
+defaultAziRotCenter = sceneGeometry.eye.rotationCenters.azi ./ x(5) ./ x(6);
+defaultEleRotCenter = sceneGeometry.eye.rotationCenters.ele ./ x(5) .* x(6);
 
 % Prepare the main figure
 figHandle=figure('Visible','on');
@@ -127,6 +132,8 @@ while notDoneFlag
     candidateSceneGeometry = sceneGeometry;
     candidateSceneGeometry.cameraPosition.torsion = x(1);
     candidateSceneGeometry.cameraPosition.translation = x(2:4);
+    candidateSceneGeometry.eye.rotationCenters.azi = defaultAziRotCenter .* x(5) .* x(6);
+    candidateSceneGeometry.eye.rotationCenters.ele = defaultEleRotCenter .* x(5) ./ x(6);    
     
     % Identify the frame to display
     frameIdx = ellipseArrayList(arrayIdx);
@@ -138,7 +145,6 @@ while notDoneFlag
         cameraPosition = cameraPosition - relativeCameraPosition.values(:,frameIdx);
         adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
     end
-
     
     % Obtain the eye pose from the boundary points from the perimeter
     Xp = perimeter.data{frameIdx}.Xp;
@@ -167,7 +173,7 @@ while notDoneFlag
     end
     
     % Wait for operator input
-    fprintf('torsion: %0.2f, translation [%0.2f; %0.2f; %0.2f]\n',x(1),x(2),x(3),x(4));
+    fprintf('torsion: %0.2f, translation [%0.2f; %0.2f; %0.2f], eye rotation [%0.2f; %0.2f]\n',x(1),x(2),x(3),x(4),x(5),x(6));
     waitforbuttonpress
     keyChoiceValue = double(get(gcf,'CurrentCharacter'));
     switch keyChoiceValue
@@ -209,6 +215,9 @@ while notDoneFlag
             x(1)=x(1)+1;
         case 13
             x(1:4) = input('Enter values in square brackets, separated by semi-colons [tor;x;y;z]:');
+            text_str = 'manual param entry';
+        case 114
+            x(5:6) = input('Enter rotation scale values in square brackets, separated by semi-colons [joint;diff]:');
             text_str = 'manual param entry';
         case 27
             notDoneFlag = false;
