@@ -172,7 +172,7 @@ p.addOptional('grayVideoName', [], @(x)(isempty(x) || ischar(x)));
 p.addOptional('approach', 'SquintToPulse', @(x)(isempty(x) || ischar(x)));
 
 % Optional flow control params
-p.addParameter('frameNumber',1,@isnumeric);
+p.addParameter('frameNumber',3,@isnumeric);
 p.addParameter('openVideo',true,@islogical);
 p.addParameter('verbose',true,@islogical);
 
@@ -192,7 +192,7 @@ p.addParameter('pupilRangeDilator', 1.1, @isnumeric);
 p.addParameter('pupilRangeContractor', 0.9, @isnumeric);
 p.addParameter('innerDilationFactor', 1.1, @isnumeric);
 p.addParameter('outerDilationFactor', 1.3, @isnumeric);
-p.addParameter('potentialThreshValues', [0.001:0.0001:0.2], @isnumeric);
+p.addParameter('potentialThreshValues', [0.001:0.001:0.2], @isnumeric);
 p.addParameter('intensityDividerComputeMethod', 'manual', @isstr);
 p.addParameter('glintMaskPaddingFactor', 75, @isnumeric);
 p.addParameter('intensityDivider', [], @isnumeric);
@@ -217,7 +217,7 @@ elseif strcmp(p.Results.approach, 'SquintToPulse')
     pupilGammaCorrection = 0.75;
     frameMaskValue = 220;
     numberOfGlints = 2;
-    maskBox = [1.3 1.3];
+    maskBox = [1 1];
 end
 
 % allow ability to override defaultParams if necessary by passing key-value
@@ -283,7 +283,7 @@ hold on
 
 % ask the user if we the presented frame is OK, or if we should look for a
 % different one
-if p.Results.frameNumber ==1
+if p.Results.frameNumber ==3
     frameCheckChoice = GetWithDefault('>> Is this a good frame? Enter ''y'' to proceed, or ''n'' to choose new frame. [y/n]', 'y');
     if strcmp(frameCheckChoice, 'n')
         close all
