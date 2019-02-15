@@ -183,6 +183,7 @@ p.addParameter('pupilGammaCorrection', [], @isnumeric);
 p.addParameter('frameMaskValue', [], @isnumeric);
 p.addParameter('numberOfGlints', [], @isnumeric);
 p.addParameter('maskBox', [], @isnumeric);
+p.addParameter('smallObjThresh', [], @isnumeric);
 
 
 % parameters that adjust this initial parameter guessing
@@ -218,6 +219,7 @@ elseif strcmp(p.Results.approach, 'SquintToPulse')
     frameMaskValue = 220;
     numberOfGlints = 2;
     maskBox = [1 1];
+    smallObjThresh = 5000;
 end
 
 % allow ability to override defaultParams if necessary by passing key-value
@@ -705,7 +707,8 @@ for ii = framesToCheck
         'pupilFrameMask', initialParams.pupilFrameMask, ...
         'pupilRange', initialParams.pupilRange, ...
         'pupilCircleThresh', initialParams.pupilCircleThresh, ...
-        'maskBox', maskBox);
+        'maskBox', maskBox, ...
+        'smallObjThresh', smallObjThresh);
     displayFrame=thisFrameDiagnostics;
     if ~isempty(perimeter.data{1}.Xp)
         displayFrame(sub2ind(size(thisFrameDiagnostics),perimeter.data{1}.Yp,perimeter.data{1}.Xp))=255;
@@ -735,7 +738,9 @@ if ~strcmp(adjustParamsChoice, 'y')
         fprintf('\t6. pupilCircleThresh: %g\n', initialParams.pupilCircleThresh);
         fprintf('\t7. maskBox: %g %g\n', maskBox(:));
         fprintf('\t8. pupilRange: %g %g\n', initialParams.pupilRange(:));
+        fprintf('\t9. smallObjThresh: %g\n', smallObjThresh);
 
+        
         choice = input('\nYour choice: ', 's');
         
         switch choice
@@ -760,6 +765,8 @@ if ~strcmp(adjustParamsChoice, 'y')
                 initialParams.maskBox = maskBox;                
             case '8'
                 initialParams.pupilRange = input('Enter new pupilRange:     ');
+            case '9'
+                smallObjThresh = input('Enter new smallObjThresh:       ');
         end
         
         fprintf('New parameters:\n')
@@ -808,7 +815,8 @@ if ~strcmp(adjustParamsChoice, 'y')
                 'pupilFrameMask', initialParams.pupilFrameMask, ...
                 'pupilRange', initialParams.pupilRange, ...
                 'pupilCircleThresh', initialParams.pupilCircleThresh, ...
-                'maskBox', maskBox);
+                'maskBox', maskBox, ...
+                'smallObjThresh', smallObjThresh);
             displayFrame=thisFrameDiagnostics;
             if ~isempty(perimeter.data{1}.Xp)
                 displayFrame(sub2ind(size(thisFrameDiagnostics),perimeter.data{1}.Yp,perimeter.data{1}.Xp))=255;
