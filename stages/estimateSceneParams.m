@@ -209,13 +209,13 @@ if iscell(pupilFileName)
     ellipses = [];
     ellipseFitRMSE = [];
     for cc = 1:length(pupilFileName)
-        load(pupilFileName{cc})
+        load pupilFileName{cc} pupilData
         ellipses = [ellipses; pupilData.(p.Results.fitLabel).ellipses.values];
         ellipseFitRMSE = [ellipseFitRMSE; pupilData.(p.Results.fitLabel).ellipses.RMSE];
     end
 end
 if ischar(pupilFileName)
-    load(pupilFileName)
+    load pupilFileName pupilData
     ellipses = pupilData.(p.Results.fitLabel).ellipses.values;
     ellipseFitRMSE = pupilData.(p.Results.fitLabel).ellipses.RMSE;
 end
