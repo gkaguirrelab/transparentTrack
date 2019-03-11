@@ -33,13 +33,17 @@ function deinterlaceVideo (videoInFileName, videoOutFileName, varargin)
 %  'verbose'              - Logical. Default false.
 %
 % Optional key/value pairs (flow control):
-%  'nFrames'              - Analyze fewer than the total number of frames
-%  'startFrame'           - Which frame to start on
+%  'nFrames'              - Scalar. Analyze fewer than the total number of
+%                           frames
+%  'startFrame'           - Scalar. The frame on which to start.
 %
 % Optional key/value pairs (analysis):
-%  'bobMode'              - deinterlace strategy
-%  'convertToGray'        - if set to true (default), the video will also
-%                           be converted to grayscale.
+%  'bobMode'              - String or char. The deinterlace strategy
+%  'convertToGray'        - Logical. If set to true (default), the video
+%                           will also be converted to grayscale.
+%  'timebaseFileName'     - 
+%  'generateTimebaseOnly' - 
+%
 % Outputs:
 %   None
 %
@@ -56,8 +60,8 @@ p.addRequired('videoOutFileName',@isstr);
 p.addParameter('verbose',false,@islogical);
 
 % Optional flow control params
-p.addParameter('nFrames',Inf,@isnumeric);
-p.addParameter('startFrame',1,@isnumeric);
+p.addParameter('nFrames',Inf,@isscalar);
+p.addParameter('startFrame',1,@isscalar);
 
 % Optional analysis params
 p.addParameter('bobMode', 'Mean', @isstr);
