@@ -110,8 +110,11 @@ if ~p.Results.generateTimebaseOnly
             fprintf('.');
         end
         
-        % get the frame
-        tmp = readFrame(videoInObj);
+        % check & get the frame
+        if ~hasFrame(videoInObj)
+            break
+        else
+            tmp = readFrame(videoInObj);
         
         % if required, convert to gray
         if p.Results.convertToGray
