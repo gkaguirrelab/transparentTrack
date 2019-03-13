@@ -26,8 +26,8 @@ function deinterlaceVideo (videoInFileName, videoOutFileName, varargin)
 %       http://www.100fps.com/
 %
 % Inputs:
-%	videoInFileName       - Full path to the video to deinterlace
-%   videoOutFileName      - Full path to the output .avi file
+%  videoInFileName       - Full path to the video to deinterlace
+%  videoOutFileName      - Full path to the output .avi file
 %
 % Optional key/value pairs (display and I/O):
 %  'verbose'              - Logical. Default false.
@@ -46,7 +46,6 @@ function deinterlaceVideo (videoInFileName, videoOutFileName, varargin)
 %
 % Outputs:
 %   None
-%continue
 
 
 %% parse input and define variables
