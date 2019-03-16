@@ -506,7 +506,7 @@ end % main function
 
 
 %% LOCAL FUNCTIONS
-function sceneGeometry = performSceneSearch(initialSceneGeometry, ellipses, ellipseFitRMSE, fixationTargetArray, LB, UB, LBp, UBp, eyePoseLB, eyePoseUB)
+function sceneGeometry = performSceneSearch(initialSceneGeometry, ellipses, ellipseFitInitialRMSE, fixationTargetArray, LB, UB, LBp, UBp, eyePoseLB, eyePoseUB)
 % Pattern search for best fitting sceneGeometry parameters
 %
 % Description:
@@ -561,6 +561,7 @@ centerDistanceErrorByEllipseAtBest=zeros(size(ellipses,1),1);
 shapeErrorByEllipseAtBest=zeros(size(ellipses,1),1);
 areaErrorByEllipseAtBest=zeros(size(ellipses,1),1);
 recoveredEyePosesAtBest =zeros(size(ellipses,1),4);
+ellipseFitConstrainedRMSEAtBest = zeros(size(ellipses,1));
 objEvalCounter = 0;
 regParamsAtBest = [];
 fValPath = [];
@@ -598,13 +599,15 @@ end
         % inverse projection and use these to assemble the objective
         % function.
         for ii = 1:size(ellipses,1)
-            [recoveredEyePoses(ii,:), ~, centerDistanceErrorByEllipse(ii), shapeErrorByEllipse(ii), areaErrorByEllipse(ii)] = ...
+            [recoveredEyePoses(ii,:), ellipseFitConstrainedRMSE(ii), fittedEllipse] = ...
                 pupilProjection_inv(...
                 ellipses(ii,:),...
                 candidateSceneGeometry, ...
                 'eyePoseLB',eyePoseLB,...
                 'eyePoseUB',eyePoseUB,...
                 'nMaxSearches',1);
+            [centerDistanceErrorByEllipse(ii), shapeErrorByEllipse(ii), areaErrorByEllipse(ii)] = ...
+                csaEllipseError(ellipses(ii,:),fittedEllipse);
         end
         % Objective function behavior varies depending upon if a fixation
         % target array list was provided
@@ -614,7 +617,7 @@ end
             regParams = absor(...
                 recoveredEyePoses(:,1:2)',...
                 fixationTargetArray,...
-                'weights',1./ellipseFitRMSE,...
+                'weights',1./ellipseFitInitialRMSE,...
                 'doScale',false,...
                 'doTrans',true);
             % Obtain the RMSE of the Euclidean distance of the fixation
@@ -631,8 +634,9 @@ end
         end
         fValPath(objEvalCounter)=fval;
         if fval < fValAtBest
-            fValAtBest = fval;
+            fValAtBest = fval
             centerDistanceErrorByEllipseAtBest = centerDistanceErrorByEllipse;
+            ellipseFitConstrainedRMSEAtBest = ellipseFitConstrainedRMSE;
             shapeErrorByEllipseAtBest = shapeErrorByEllipse;
             areaErrorByEllipseAtBest = areaErrorByEllipse;
             recoveredEyePosesAtBest = recoveredEyePoses;
@@ -664,7 +668,7 @@ sceneGeometry.meta.estimateSceneParams.search.x = x';
 sceneGeometry.meta.estimateSceneParams.search.options = options;
 sceneGeometry.meta.estimateSceneParams.search.initialSceneGeometry = initialSceneGeometry;
 sceneGeometry.meta.estimateSceneParams.search.ellipses = ellipses;
-sceneGeometry.meta.estimateSceneParams.search.ellipseFitRMSE = ellipseFitRMSE;
+sceneGeometry.meta.estimateSceneParams.search.ellipseFitRMSE = ellipseFitInitialRMSE;
 sceneGeometry.meta.estimateSceneParams.search.x0 = x0;
 sceneGeometry.meta.estimateSceneParams.search.LB = LB;
 sceneGeometry.meta.estimateSceneParams.search.UB = UB;
@@ -676,6 +680,7 @@ sceneGeometry.meta.estimateSceneParams.search.fVal = fValAtBest;
 sceneGeometry.meta.estimateSceneParams.search.centerDistanceErrorByEllipse = centerDistanceErrorByEllipseAtBest';
 sceneGeometry.meta.estimateSceneParams.search.shapeErrorByEllipse = shapeErrorByEllipseAtBest';
 sceneGeometry.meta.estimateSceneParams.search.areaErrorByEllipse = areaErrorByEllipseAtBest';
+sceneGeometry.meta.estimateSceneParams.search.ellipseFitConstrainedRMSE = ellipseFitConstrainedRMSEAtBest';
 sceneGeometry.meta.estimateSceneParams.search.recoveredEyePoses = recoveredEyePosesAtBest;
 sceneGeometry.meta.estimateSceneParams.search.fixationTransform = regParamsAtBest;
 sceneGeometry.meta.estimateSceneParams.search.fixationTargetArray = fixationTargetArray;
