@@ -115,6 +115,7 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
 %
 % Examples:
 %{
+    % ETTPSkip -- This takes about an hour to run
     %% Recover a veridical camera translation
     % Create a default sceneGeometry
     veridicalSceneGeometry = createSceneGeometry();
