@@ -5,7 +5,7 @@ function makeTimebase(rawVideoInFileName, timebaseFileName, varargin)
 %  makeTimebase(rawVideoInFileName, timebaseFileName, varargin)
 % 
 % Description:
-%	This function finds the number of audio pulses converted from TTL 
+%   This function finds the number of audio pulses converted from TTL 
 %   signals and saves the timebase of those pulses.
 %
 % Inputs:
