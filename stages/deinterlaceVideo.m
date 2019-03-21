@@ -26,8 +26,8 @@ function deinterlaceVideo (videoInFileName, videoOutFileName, varargin)
 %       http://www.100fps.com/
 %
 % Inputs:
-%  videoInFileName       - Full path to the video to deinterlace
-%  videoOutFileName      - Full path to the output .avi file
+%	videoInFileName       - Full path to the video to deinterlace
+%   videoOutFileName      - Full path to the output .avi file
 %
 % Optional key/value pairs (display and I/O):
 %  'verbose'              - Logical. Default false.
@@ -38,14 +38,12 @@ function deinterlaceVideo (videoInFileName, videoOutFileName, varargin)
 %  'startFrame'           - Scalar. The frame on which to start.
 %
 % Optional key/value pairs (analysis):
-%  'bobMode'              - String or char. The deinterlace strategy
+%'bobMode'              - String or char. The deinterlace strategy
 %  'convertToGray'        - Logical. If set to true (default), the video
 %                           will also be converted to grayscale.
-%  'timebaseFileName'     -
-%  'generateTimebaseOnly' -
-%
 % Outputs:
 %   None
+%
 
 
 %% parse input and define variables
@@ -83,138 +81,106 @@ if p.Results.nFrames == Inf
 else
     nFrames = p.Results.nFrames;
 end
+    
+% Create the video out object
+Bob = videoIOWrapper(videoOutFileName,'ioAction','write');
+Bob.FrameRate = videoInObj.FrameRate * 2;
+Bob.Quality = 100;
+open(Bob)
 
-% Check for flag that skips saving the video and only produces timebase
-if ~p.Results.generateTimebaseOnly
+% Alert the user
+if p.Results.verbose
+    tic
+    fprintf(['Deinterlacing video. Started ' char(datetime('now')) '\n']);
+    fprintf('| 0                      50                   100%% |\n');
+    fprintf('.');
+end
+
+% Loop through the frames
+for ii = p.Results.startFrame:nFrames
     
-    % Create the video out object
-    Bob = videoIOWrapper(videoOutFileName,'ioAction','write');
-    Bob.FrameRate = videoInObj.FrameRate * 2;
-    Bob.Quality = 100;
-    open(Bob)
-    
-    % Alert the user
-    if p.Results.verbose
-        tic
-        fprintf(['Deinterlacing video. Started ' char(datetime('now')) '\n']);
-        fprintf('| 0                      50                   100%% |\n');
+    % update progressbar
+    if p.Results.verbose && mod(ii,round(nFrames/50))==0
         fprintf('.');
     end
     
-    % Loop through the frames
-    for ii = p.Results.startFrame:nFrames
-        
-        % update progressbar
-        if p.Results.verbose && mod(ii,round(nFrames/50))==0
-            fprintf('.');
-        end
-        
-        % check & get the frame
-        if ~hasFrame(videoInObj)
-            break
-        else
-            tmp = readFrame(videoInObj);
-            
-            % if required, convert to gray
-            if p.Results.convertToGray
-                thisFrame = rgb2gray(tmp);
-            else
-                thisFrame = tmp;
-            end
-            
-            %get the fields
-            oddFields = thisFrame(1:2:end,:);
-            evenFields = thisFrame(2:2:end,:);
-            
-            %deinterlace
-            switch bobMode
-                case 'Raw'
-                    % shift the even lines to avoid "jumping" from frame to frame. (i.e
-                    % align the two fields)
-                    evenFields = cat(1,zeros(1,size(evenFields,2),'like',evenFields), evenFields(1:end-1,:));
-                    
-                case 'Zero'
-                    % put zero rows in
-                    m = 1;
-                    k = 1;
-                    n = size(oddFields);
-                    oddFields = reshape([reshape(oddFields,m,[]);zeros(k,n(1)/m*n(2))],[],n(2));
-                    evenFields = reshape([reshape(evenFields,m,[]);zeros(k,n(1)/m*n(2))],[],n(2));
-                    evenFields = cat(1,zeros(1,size(evenFields,2),'like',evenFields), evenFields(1:end-1,:));
-                    
-                case 'Double'
-                    % duplicate each row
-                    oddFields = repelem(oddFields, 2, 1);
-                    evenFields = repelem(evenFields, 2, 1);
-                    evenFields = cat(1,zeros(1,size(evenFields,2),'like',evenFields), evenFields(1:end-1,:));
-                    
-                case 'Mean'
-                    % put means in between rows (odd fields)
-                    tmp = [oddFields(1,:); ((oddFields(1,:)+oddFields(2,:))/2);oddFields(2,:)];
-                    for jj = 2 : size(oddFields,1)-1
-                        newLines = [mean([oddFields(jj,:);oddFields(jj+1,:)],1);oddFields(jj+1,:)];
-                        tmp = cat(1,tmp,newLines);
-                    end
-                    oddFields = cat(1,tmp,oddFields(end,:));
-                    clear tmp
-                    clear newLines
-                    % put means in between rows (even fields)
-                    tmp = [evenFields(1,:); ((evenFields(1,:)+evenFields(2,:))./2);evenFields(2,:)];
-                    for jj = 2 : size(evenFields,1)-1
-                        newLines = [mean([evenFields(jj,:);evenFields(jj+1,:)],1);evenFields(jj+1,:)];
-                        tmp = cat(1,tmp,newLines);
-                    end
-                    evenFields = cat(1,evenFields(1,:),tmp);
-                    clear tmp
-                    clear newLines
-                otherwise
-                    error('Unknown bobMode. Type help deinterlaceVideo for available deinterlacing methods.')
-            end
-            
-            % write the fields as frames
-            writeVideo(Bob,oddFields);
-            writeVideo(Bob,evenFields);
-        end
-    end
-    
-    % report completion of analysis
-    if p.Results.verbose
-        fprintf('\n');
-        toc
-        fprintf('\n');
-    end
-    
-    % close the output video object
-    clear Bob
-    
-end % Check if we are only producing a timebase file
-
-% Save a timebase file if requested
-if ~isempty(p.Results.timebaseFileName)
-    % Get the creation date/time of the video file
-    if ismac
-        % Clean up the horrible DropBox directory name
-        cleanFileName = videoInFileName;
-        cleanFileName = strrep(cleanFileName,' ','\ ');
-        cleanFileName = strrep(cleanFileName,'(','\(');
-        cleanFileName = strrep(cleanFileName,')','\)');
-        sysCommand = ['GetFileInfo -d ' cleanFileName];
-        [~,videoCreationDateTime] = system(sysCommand);
-        % Remove the trailing carriage return
-        videoCreationDateTime = videoCreationDateTime(1:end-1);
+    % get the frame
+    if ~hasFrame(videoInObj)
+        break
     else
-        videoCreationDateTime='';
+        tmp = readFrame(videoInObj);
+        
+        % if required, convert to gray
+        if p.Results.convertToGray
+            thisFrame = rgb2gray(tmp);
+        else
+            thisFrame = tmp;
+        end
+        
+        %get the fields
+        oddFields = thisFrame(1:2:end,:);
+        evenFields = thisFrame(2:2:end,:);
+        
+        %deinterlace
+        switch bobMode
+            case 'Raw'
+                % shift the even lines to avoid "jumping" from frame to frame. (i.e
+                % align the two fields)
+                evenFields = cat(1,zeros(1,size(evenFields,2),'like',evenFields), evenFields(1:end-1,:));
+                
+            case 'Zero'
+                % put zero rows in
+                m = 1;
+                k = 1;
+                n = size(oddFields);
+                oddFields = reshape([reshape(oddFields,m,[]);zeros(k,n(1)/m*n(2))],[],n(2));
+                evenFields = reshape([reshape(evenFields,m,[]);zeros(k,n(1)/m*n(2))],[],n(2));
+                evenFields = cat(1,zeros(1,size(evenFields,2),'like',evenFields), evenFields(1:end-1,:));
+                
+            case 'Double'
+                % duplicate each row
+                oddFields = repelem(oddFields, 2, 1);
+                evenFields = repelem(evenFields, 2, 1);
+                evenFields = cat(1,zeros(1,size(evenFields,2),'like',evenFields), evenFields(1:end-1,:));
+                
+            case 'Mean'
+                % put means in between rows (odd fields)
+                tmp = [oddFields(1,:); ((oddFields(1,:)+oddFields(2,:))/2);oddFields(2,:)];
+                for jj = 2 : size(oddFields,1)-1
+                    newLines = [mean([oddFields(jj,:);oddFields(jj+1,:)],1);oddFields(jj+1,:)];
+                    tmp = cat(1,tmp,newLines);
+                end
+                oddFields = cat(1,tmp,oddFields(end,:));
+                clear tmp
+                clear newLines
+                % put means in between rows (even fields)
+                tmp = [evenFields(1,:); ((evenFields(1,:)+evenFields(2,:))./2);evenFields(2,:)];
+                for jj = 2 : size(evenFields,1)-1
+                    newLines = [mean([evenFields(jj,:);evenFields(jj+1,:)],1);evenFields(jj+1,:)];
+                    tmp = cat(1,tmp,newLines);
+                end
+                evenFields = cat(1,evenFields(1,:),tmp);
+                clear tmp
+                clear newLines
+            otherwise
+                error('Unknown bobMode. Type help deinterlaceVideo for available deinterlacing methods.')
+        end
+        
+        % write the fields as frames
+        writeVideo(Bob,oddFields);
+        writeVideo(Bob,evenFields);
     end
-    frameRate = videoInObj.FrameRate * 2;
-    frameDur = (1/frameRate)*1000;
-    timebase.values = ((p.Results.startFrame-1)*frameDur:frameDur:((p.Results.startFrame+nFrames-1)*2-1)*frameDur)';
-    timebase.meta.deinterlaceVideo = p.Results;
-    timebase.meta.deinterlaceVideo.nFrames = nFrames;
-    timebase.meta.deinterlaceVideo.frameRate = frameRate;
-    timebase.meta.deinterlaceVideo.units = 'milliseconds';
-    timebase.meta.deinterlaceVideo.videoCreationDateTime = videoCreationDateTime;
-    save(p.Results.timebaseFileName,'timebase');
 end
+
+% report completion of analysis
+if p.Results.verbose
+    fprintf('\n');
+    toc
+    fprintf('\n');
+end
+
+% close the output video object
+clear Bob
 
 % close the input video object
 clear videoInObj
