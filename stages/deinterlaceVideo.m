@@ -38,7 +38,7 @@ function deinterlaceVideo (videoInFileName, videoOutFileName, varargin)
 %  'startFrame'           - Scalar. The frame on which to start.
 %
 % Optional key/value pairs (analysis):
-%'bobMode'              - String or char. The deinterlace strategy
+%  'bobMode'              - String or char. The deinterlace strategy
 %  'convertToGray'        - Logical. If set to true (default), the video
 %                           will also be converted to grayscale.
 % Outputs:
