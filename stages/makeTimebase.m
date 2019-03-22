@@ -14,6 +14,8 @@ function makeTimebase(rawVideoInFileName, timebaseFileName, varargin)
 %                           timebase is saved
 %
 % Optional key/value pairs (analysis):
+%  'deinterlace'          - Logical. If set to true, the number of frames
+%                           in the video is doubled to create the timebase. 
 %  'checkCountTRs'        - Scalar. Number of TRs 
 %  'ttlAudioThreshScaler' - Scalar. Every value above this threshold is
 %                           considered as TTL. If left to empty, the value
@@ -46,6 +48,7 @@ p.addRequired('rawVideoInFileName',@isstr);
 p.addRequired('timebaseFileName',@isstr);
 
 % Optional parameters
+p.addParameter('deinterlace',true,@islogical);
 p.addParameter('checkCountTRs',[], @(x)(isempty(x) | isscalar(x)));
 p.addParameter('ttlAudioThreshScaler',0.4, @isscalar);
 p.addParameter('proximityThresh',10,@isscalar);
@@ -71,8 +74,8 @@ else
     nFrames = p.Results.nFrames;
 end
 
+% Clean up the horrible DropBox directory name
 if ismac
-    % Clean up the horrible DropBox directory name
     cleanFileName = rawVideoInFileName;
     cleanFileName = strrep(cleanFileName,' ','\ ');
     cleanFileName = strrep(cleanFileName,'(','\(');
@@ -84,8 +87,15 @@ if ismac
 else
     videoCreationDateTime='';
 end
-frameRate = videoInObj.FrameRate * 2;
+
+% Obtain the frame rate and video frame duration
+frameRate = videoInObj.FrameRate;
+if p.Results.deinterlace
+    frameRate = frameRate * 2;
+end
 videoFrameDur = (1/frameRate)*1000;
+
+% Create the timebase values and meta data
 timebase.values = ((p.Results.startFrame-1)*videoFrameDur:videoFrameDur:((p.Results.startFrame+nFrames-1)*2-1)*videoFrameDur)';
 timebase.meta = p.Results;
 timebase.meta.video.videonFrames = nFrames;
@@ -93,6 +103,7 @@ timebase.meta.video.videoframeDuration = videoFrameDur;
 timebase.meta.video.videoFrameRate = frameRate;
 timebase.meta.video.units = 'milliseconds';
 timebase.meta.video.videoCreationDateTime = videoCreationDateTime;
+
 
 %% Load audio channel
 % We store TTL timing information on the 1st channel of the audio file
@@ -141,6 +152,7 @@ save(p.Results.timebaseFileName,'timebase');
 
 % Create diagnostic plot
 if p.Results.makePlots
+    figure
     x = 0:audioFrameDurationMsecs:(length(audioChannelData)-1)*audioFrameDurationMsecs;
     plot(x,audioChannelData,'-k')
     hold on
