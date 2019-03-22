@@ -63,8 +63,6 @@ p.addParameter('startFrame',1,@isscalar);
 % Optional analysis params
 p.addParameter('bobMode', 'Mean', @isstr);
 p.addParameter('convertToGray',true,@islogical)
-p.addParameter('timebaseFileName',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('generateTimebaseOnly',false,@islogical)
 
 % parse
 p.parse(videoInFileName,videoOutFileName,varargin{:})
