@@ -432,10 +432,15 @@ else
 end
 
 
+%% Add a polymodel for the sceneGeometry
+sceneGeometry = addEyePosePolyModel(sceneGeometry);
+
+
 %% Save the sceneGeometry file
 if ~isempty(sceneGeometryFileName)
     save(sceneGeometryFileName,'sceneGeometry');
 end
+
 
 %% Save sceneGeometry diagnostics
 if ~isempty(sceneGeometryFileName) && p.Results.nDiagnosticPlots~=0

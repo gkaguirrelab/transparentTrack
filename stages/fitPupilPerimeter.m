@@ -93,9 +93,8 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %                           acquisition.
 %  'relativeCameraPositionFileName' - Char. This is the full path to a
 %                           relativeCameraPosition.mat file that provides
-%                           the relative position of the camera at each
-%                           video frame relative to the initial position of
-%                           the camera.
+%                           the position of the camera at each video frame
+%                           relative to the initial position of the camera.
 %
 % Outputs:
 %	pupilData             - A structure with multiple fields corresponding
@@ -173,9 +172,12 @@ if ~isempty(p.Results.sceneGeometryFileName)
     % An earlier version of the code defined a non-zero iris thickness. We
     % force this to zero here to speed computation
     sceneGeometry.eye.iris.thickness=0;
-    % If an adjustedCameraPositionTranslation value has been passed, update this field
-    % of the sceneGeometry
+    % Obtain a pupil ellipse with the initial sceneGeometry
+    initialEllipse = pupilProjection_fwd([0 0 0 1],sceneGeometry);
+    % If an adjustedCameraPositionTranslation value has been passed, update
+    % this field of the sceneGeometry
     if ~isempty(p.Results.adjustedCameraPositionTranslation)
+        % Update the cameraPosition
         sceneGeometry.cameraPosition.translation = p.Results.adjustedCameraPositionTranslation;
     end
 else
@@ -279,9 +281,16 @@ parfor (ii = 1:nFrames, nWorkers)
             % If a relativeCameraPosition is defined, update the
             % sceneGeometry
             if ~isempty(relativeCameraPosition)
+                % Update the cameraPosition
                 cameraPosition = sceneGeometry.cameraPosition.translation;
                 cameraPosition = cameraPosition - relativeCameraPosition.values(:,ii);
                 adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
+                % If there is a polymodel, update the adjustment field
+                if isfield(sceneGeometry,'polyModel')
+                    % Obtain a pupil ellipse with the adjusted geometry
+                    newEllipse = pupilProjection_fwd([0 0 0 1],adjustedSceneGeometry);
+                    sceneGeometry.polyModel.adjust = initialEllipse - newEllipse;
+                end
             end
             % Find the eyePose parameters that best fit the pupil perimeter
             [eyePose, objectiveError, ellipseParamsTransparent, fitAtBound] = ...

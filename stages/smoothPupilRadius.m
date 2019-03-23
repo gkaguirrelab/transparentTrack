@@ -423,7 +423,7 @@ parfor (ii = 1:nFrames, nWorkers)
             cameraPosition = sceneGeometry.cameraPosition.translation;
             cameraPosition = cameraPosition - relativeCameraPosition.values(:,ii);
             adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
-        end        
+        end
         
         % Turn off warnings that can arise when fitting bad frames
         warning('off','pupilProjection_fwd:rayTracingError');
