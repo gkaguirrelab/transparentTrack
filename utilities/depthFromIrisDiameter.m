@@ -142,7 +142,7 @@ end
         candidateSceneGeometry = sceneGeometry;
         candidateSceneGeometry.eye.iris.radius = assumedIrisRadius;
         candidateSceneGeometry.cameraPosition.translation(3) = x;
-        [~, imagePoints, ~, ~, pointLabels] = ...
+        [~, imagePoints, ~, ~, ~, pointLabels] = ...
             pupilProjection_fwd([0 0 0 1], candidateSceneGeometry, 'fullEyeModelFlag', true, 'nIrisPerimPoints', 20);
         idx = find(strcmp(pointLabels,'irisPerimeter'));
         predictedIrisDiamPixels = max(imagePoints(idx,1))-min(imagePoints(idx,1));
