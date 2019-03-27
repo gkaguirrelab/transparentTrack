@@ -289,7 +289,7 @@ parfor (ii = 1:nFrames, nWorkers)
                 if isfield(sceneGeometry,'polyModel')
                     % Obtain a pupil ellipse with the adjusted geometry
                     newEllipse = pupilProjection_fwd([0 0 0 1],adjustedSceneGeometry);
-                    sceneGeometry.polyModel.adjust = initialEllipse - newEllipse;
+                    adjustedSceneGeometry.polyModel.adjust = initialEllipse - newEllipse;
                 end
             end
             % Find the eyePose parameters that best fit the pupil perimeter
