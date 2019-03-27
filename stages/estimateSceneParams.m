@@ -640,7 +640,7 @@ end
         end
         fValPath(objEvalCounter)=fval;
         if fval < fValAtBest
-            fValAtBest = fval
+            fValAtBest = fval;
             centerDistanceErrorByEllipseAtBest = centerDistanceErrorByEllipse;
             ellipseFitConstrainedRMSEAtBest = ellipseFitConstrainedRMSE;
             shapeErrorByEllipseAtBest = shapeErrorByEllipse;
