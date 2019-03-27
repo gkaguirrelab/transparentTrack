@@ -182,6 +182,7 @@ if ~isempty(p.Results.sceneGeometryFileName)
     end
 else
     sceneGeometry = [];
+    initialEllipse = [];
 end
 
 % Load the relativeCameraPosition file if passed and it exists
