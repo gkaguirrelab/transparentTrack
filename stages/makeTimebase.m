@@ -15,7 +15,9 @@ function makeTimebase(rawVideoInFileName, timebaseFileName, varargin)
 %
 % Optional key/value pairs (analysis):
 %  'deinterlace'          - Logical. If set to true, the number of frames
-%                           in the video is doubled to create the timebase. 
+%                           in the video is doubled to create the timebase.
+%  'audioTrackSync'       - Logical. If set to true, the timing of audio
+%                           spikes is used to synchronize the timebase.
 %  'checkCountTRs'        - Scalar. Number of TRs 
 %  'ttlAudioThreshScaler' - Scalar. Every value above this threshold is
 %                           considered as TTL. If left to empty, the value
@@ -49,6 +51,7 @@ p.addRequired('timebaseFileName',@isstr);
 
 % Optional parameters
 p.addParameter('deinterlace',true,@islogical);
+p.addParameter('audioTrackSync',false,@islogical);
 p.addParameter('checkCountTRs',[], @(x)(isempty(x) | isscalar(x)));
 p.addParameter('ttlAudioThreshScaler',0.4, @isscalar);
 p.addParameter('proximityThresh',10,@isscalar);
@@ -106,49 +109,47 @@ timebase.meta.video.videoCreationDateTime = videoCreationDateTime;
 
 
 %% Load audio channel
-% We store TTL timing information on the 1st channel of the audio file
-% associated with a video. A device is used to step down the TTL signal to
-% an audio input. This produces an audio "spike" in the channel data.
-[temp, audioFramesPerSec] = audioread(rawVideoInFileName);
-audioChannelData = temp(:,1);
-
-
-%% Calculate a default ttlAudioPulseThresh
-% The threshold is set by the maximum value found in the audio channel,
-% multipled by the ttlAudioThreshScaler
-ttlAudioPulseThresh = max(audioChannelData)*p.Results.ttlAudioThreshScaler;
-
-% Derive the frameDurationMsecs 
-audioFrameDurationMsecs = 1/(audioFramesPerSec/1000);
-
-
-%% Find peaks                  
-[~, peakLocs] = findpeaks(audioChannelData,'MinPeakHeight',ttlAudioPulseThresh);
-
-% Remove any peak locations that are too close together
-peakLocs = peakLocs(~[diff(peakLocs)<p.Results.proximityThresh; false]);
-
-% If checkCountTRs is set, evaluate if the right number of TTL pulses was
-% received
-if ~isempty(p.Results.checkCountTRs)
-    if length(peakLocs) ~= p.Results.checkCountTRs
-    error('makeTimebase:failedCheckCountTRs','Observed number of TTL pulses is different than expected number of TRs. Make sure you entered the correct TR number or try changing the thresholds')
-    end
-end
-
-% Obtain the time (in msecs) of the onset of the first TTL pulse
-firstTTLtimeMsecs = peakLocs(1) *audioFrameDurationMsecs;
-
-% Shift the timebase
-timebase.values = timebase.values - firstTTLtimeMsecs;
+if p.Results.audioTrackSync
+    % We store TTL timing information on the 1st channel of the audio file
+    % associated with a video. A device is used to step down the TTL signal to
+    % an audio input. This produces an audio "spike" in the channel data.
+    [temp, audioFramesPerSec] = audioread(rawVideoInFileName);
+    audioChannelData = temp(:,1);
     
-% Update the timebase meta information
-timebase.meta.audio.audioFrameRate = audioFramesPerSec/1000;
-timebase.meta.audio.audioframeDuration = audioFrameDurationMsecs;
-timebase.meta.audio.units = 'milliseconds';
-
-% Save the timebase file
-save(p.Results.timebaseFileName,'timebase');
+    
+    %% Calculate a default ttlAudioPulseThresh
+    % The threshold is set by the maximum value found in the audio channel,
+    % multipled by the ttlAudioThreshScaler
+    ttlAudioPulseThresh = max(audioChannelData)*p.Results.ttlAudioThreshScaler;
+    
+    % Derive the frameDurationMsecs
+    audioFrameDurationMsecs = 1/(audioFramesPerSec/1000);
+    
+    
+    %% Find peaks
+    [~, peakLocs] = findpeaks(audioChannelData,'MinPeakHeight',ttlAudioPulseThresh);
+    
+    % Remove any peak locations that are too close together
+    peakLocs = peakLocs(~[diff(peakLocs)<p.Results.proximityThresh; false]);
+    
+    % If checkCountTRs is set, evaluate if the right number of TTL pulses was
+    % received
+    if ~isempty(p.Results.checkCountTRs)
+        if length(peakLocs) ~= p.Results.checkCountTRs
+            error('makeTimebase:failedCheckCountTRs','Observed number of TTL pulses is different than expected number of TRs. Make sure you entered the correct TR number or try changing the thresholds')
+        end
+    end
+    
+    % Obtain the time (in msecs) of the onset of the first TTL pulse
+    firstTTLtimeMsecs = peakLocs(1) *audioFrameDurationMsecs;
+    
+    % Shift the timebase
+    timebase.values = timebase.values - firstTTLtimeMsecs;
+    
+    % Update the timebase meta information
+    timebase.meta.audio.audioFrameRate = audioFramesPerSec/1000;
+    timebase.meta.audio.audioframeDuration = audioFrameDurationMsecs;
+    timebase.meta.audio.units = 'milliseconds';
 
 % Create diagnostic plot
 if p.Results.makePlots
@@ -158,6 +159,11 @@ if p.Results.makePlots
     hold on
     plot(x(peakLocs),audioChannelData(peakLocs),'*r')
 end
+
+end
+
+% Save the timebase file
+save(p.Results.timebaseFileName,'timebase');
 
 end
 
