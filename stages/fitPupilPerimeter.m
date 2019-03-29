@@ -166,8 +166,6 @@ if ~isempty(p.Results.sceneGeometryFileName)
     % An earlier version of the code defined a non-zero iris thickness. We
     % force this to zero here to speed computation
     sceneGeometry.eye.iris.thickness=0;
-    % Obtain a pupil ellipse with the initial sceneGeometry
-    initialEllipse = pupilProjection_fwd([0 0 0 1],sceneGeometry);
     % If an adjustedCameraPositionTranslation value has been passed, update
     % this field of the sceneGeometry
     if ~isempty(p.Results.adjustedCameraPositionTranslation)
@@ -176,7 +174,6 @@ if ~isempty(p.Results.sceneGeometryFileName)
     end
 else
     sceneGeometry = [];
-    initialEllipse = [];
 end
 
 % Load the relativeCameraPosition file if passed and it exists
@@ -279,12 +276,6 @@ parfor (ii = 1:nFrames, nWorkers)
                 cameraPosition = sceneGeometry.cameraPosition.translation;
                 cameraPosition = cameraPosition - relativeCameraPosition.values(:,ii);
                 adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
-                % If there is a polymodel, update the adjustment field
-                if isfield(sceneGeometry,'polyModel')
-                    % Obtain a pupil ellipse with the adjusted geometry
-                    newEllipse = pupilProjection_fwd([0 0 0 1],adjustedSceneGeometry);
-                    adjustedSceneGeometry.polyModel.adjust = initialEllipse - newEllipse;
-                end
             end
             % Find the eyePose parameters that best fit the pupil perimeter
             [eyePose, objectiveError, ellipseParamsTransparent, fitAtBound] = ...
