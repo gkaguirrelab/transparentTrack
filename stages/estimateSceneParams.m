@@ -432,10 +432,6 @@ else
 end
 
 
-%% Add a polymodel for the sceneGeometry
-sceneGeometry = addEyePosePolyModel(sceneGeometry);
-
-
 %% Save the sceneGeometry file
 if ~isempty(sceneGeometryFileName)
     save(sceneGeometryFileName,'sceneGeometry');
@@ -610,8 +606,7 @@ end
                 ellipses(ii,:),...
                 candidateSceneGeometry, ...
                 'eyePoseLB',eyePoseLB,...
-                'eyePoseUB',eyePoseUB,...
-                'nMaxSearches',1);
+                'eyePoseUB',eyePoseUB);
             [centerDistanceErrorByEllipse(ii), shapeErrorByEllipse(ii), areaErrorByEllipse(ii)] = ...
                 csaEllipseError(ellipses(ii,:),fittedEllipse);
         end

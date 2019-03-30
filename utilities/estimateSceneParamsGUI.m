@@ -8,9 +8,11 @@ function [ x ] = estimateSceneParamsGUI(sceneGeometryFileName, varargin)
 %
 % Examples:
 %{
-    sceneGeometryFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure/TOME_3008/102116/EyeTracking/GazeCal_sceneGeometry.mat';
-    grayVideoName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure/TOME_3008/102116/EyeTracking/rfMRI_REST_PA_run04_gray.avi';
-    initialParams = estimateSceneParamsGUI(sceneGeometryFileName, 'grayVideoName', grayVideoName)
+    sceneGeometryFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure/TOME_3038/071118/EyeTracking/GazeCal_sceneGeometry.mat';
+    load(sceneGeometryFileName)
+    ellipseArrayList = sceneGeometry.meta.estimateSceneParams.ellipseArrayList;
+    grayVideoName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure/TOME_3038/071118/EyeTracking/GazeCal_gray.avi';
+    initialParams = estimateSceneParamsGUI(sceneGeometryFileName, 'grayVideoName', grayVideoName, 'ellipseArrayList',ellipseArrayList)
 %}
 
 
@@ -149,7 +151,7 @@ while notDoneFlag
     % Obtain the eye pose from the boundary points from the perimeter
     Xp = perimeter.data{frameIdx}.Xp;
     Yp = perimeter.data{frameIdx}.Yp;
-    eyePose = eyePoseEllipseFit(Xp, Yp, adjustedSceneGeometry, 'repeatSearchThresh', 10);
+    eyePose = eyePoseEllipseFit(Xp, Yp, adjustedSceneGeometry);
 
     % Show this video frame
     thisFrame = sourceFrames(:,:,:,arrayIdx);

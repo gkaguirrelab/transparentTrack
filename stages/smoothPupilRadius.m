@@ -63,10 +63,6 @@ function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, scene
 %                           distribution of the points in space, and by
 %                           this value. Typically set to ~4 to result in an
 %                           SD of 1 when the fit of the points is good.
-%  'badFrameErrorThreshold' - Frames with RMSE fitting error above this
-%                           threshold have their posterior values
-%                           determined entirely by the prior. Additionally,
-%                           these frames do not contribue to the prior.
 %  'fitLabel'             - Identifies the field in pupilData that contains
 %                           the ellipse fit params for which the search
 %                           will be conducted.
@@ -125,7 +121,6 @@ p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,5],@isnumeric);
 p.addParameter('exponentialTauParam',3,@isnumeric);
 p.addParameter('likelihoodErrorMultiplier',4.0,@isnumeric);
-p.addParameter('badFrameErrorThreshold',2,@isnumeric);
 p.addParameter('fitLabel','sceneConstrained',@ischar);
 p.addParameter('fixedPriorPupilRadius',[3.5,1.5],@isnumeric);
 p.addParameter('adjustedCameraPositionTranslation',[],@isnumeric);
@@ -286,7 +281,6 @@ clear perimeter
 verbose = p.Results.verbose;
 eyePoseLB = p.Results.eyePoseLB;
 eyePoseUB = p.Results.eyePoseUB;
-badFrameErrorThreshold = p.Results.badFrameErrorThreshold;
 fitLabel = p.Results.fitLabel;
 fixedPriorPupilRadiusMean = p.Results.fixedPriorPupilRadius(1);
 fixedPriorPupilRadiusSD = p.Results.fixedPriorPupilRadius(2);
@@ -431,7 +425,7 @@ parfor (ii = 1:nFrames, nWorkers)
         
         % Perform the fit
         [posteriorEyePose, posteriorEyePoseObjectiveError, posteriorEllipseParams, fitAtBound] = ...
-            eyePoseEllipseFit(Xp, Yp, adjustedSceneGeometry, 'eyePoseLB', lb_pin, 'eyePoseUB', ub_pin, 'x0', x0, 'repeatSearchThresh', badFrameErrorThreshold);
+            eyePoseEllipseFit(Xp, Yp, adjustedSceneGeometry, 'eyePoseLB', lb_pin, 'eyePoseUB', ub_pin, 'x0', x0);
         
         % Calculate the uniformity of the distribution of perimeter points
         % around the center of the fitted ellipse

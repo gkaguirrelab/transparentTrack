@@ -73,11 +73,6 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %                           sceneGeometry is available, fitting is
 %                           performed in terms of eye parameters instead of
 %                           ellipse parameters
-%  'badFrameErrorThreshold' - This values is passed to eyePoseEllipseFit(),
-%                           which is the function used when performing
-%                           scene constrained fitting. The value is used to
-%                           detect a possible local minimum when performing
-%                           the eye pose search.
 %  'fitLabel'             - The field name in the pupilData structure where
 %                           the results of the fitting will be stored.
 %  'adjustedCameraPositionTranslation' - 3x1 vector that provides position
@@ -131,7 +126,6 @@ p.addParameter('ellipseTransparentUB',[640,480,20000,0.6,pi],@(x)(isempty(x) || 
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,5],@isnumeric);
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) || ischar(x)));
-p.addParameter('badFrameErrorThreshold',2, @isnumeric);
 p.addParameter('fitLabel',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('adjustedCameraPositionTranslation',[],@isnumeric);
 p.addParameter('relativeCameraPositionFileName',[],@ischar);
@@ -172,8 +166,6 @@ if ~isempty(p.Results.sceneGeometryFileName)
     % An earlier version of the code defined a non-zero iris thickness. We
     % force this to zero here to speed computation
     sceneGeometry.eye.iris.thickness=0;
-    % Obtain a pupil ellipse with the initial sceneGeometry
-    initialEllipse = pupilProjection_fwd([0 0 0 1],sceneGeometry);
     % If an adjustedCameraPositionTranslation value has been passed, update
     % this field of the sceneGeometry
     if ~isempty(p.Results.adjustedCameraPositionTranslation)
@@ -182,7 +174,6 @@ if ~isempty(p.Results.sceneGeometryFileName)
     end
 else
     sceneGeometry = [];
-    initialEllipse = [];
 end
 
 % Load the relativeCameraPosition file if passed and it exists
@@ -226,7 +217,6 @@ ellipseTransparentLB = p.Results.ellipseTransparentLB;
 ellipseTransparentUB = p.Results.ellipseTransparentUB;
 eyePoseLB = p.Results.eyePoseLB;
 eyePoseUB = p.Results.eyePoseUB;
-badFrameErrorThreshold = p.Results.badFrameErrorThreshold;
 
 % Alert the user
 if p.Results.verbose
@@ -286,18 +276,11 @@ parfor (ii = 1:nFrames, nWorkers)
                 cameraPosition = sceneGeometry.cameraPosition.translation;
                 cameraPosition = cameraPosition - relativeCameraPosition.values(:,ii);
                 adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
-                % If there is a polymodel, update the adjustment field
-                if isfield(sceneGeometry,'polyModel')
-                    % Obtain a pupil ellipse with the adjusted geometry
-                    newEllipse = pupilProjection_fwd([0 0 0 1],adjustedSceneGeometry);
-                    adjustedSceneGeometry.polyModel.adjust = initialEllipse - newEllipse;
-                end
             end
             % Find the eyePose parameters that best fit the pupil perimeter
             [eyePose, objectiveError, ellipseParamsTransparent, fitAtBound] = ...
                 eyePoseEllipseFit(Xp, Yp, adjustedSceneGeometry, ...
-                'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB, ...
-                'repeatSearchThresh', badFrameErrorThreshold);
+                'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB);
         end       
         
         % Restore the warning state
