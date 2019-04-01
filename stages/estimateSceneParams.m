@@ -174,7 +174,7 @@ p.addParameter('ellipseArrayList',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('fixationTargetArray',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nBinsPerDimension',4,@isnumeric);
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
-p.addParameter('nBADSsearches',20,@isnumeric);
+p.addParameter('nBADSsearches',25,@isnumeric);
 p.addParameter('nDiagnosticPlots',5,@isnumeric);
 p.addParameter('rankScaling',[4 2 1],@isnumeric);
 
