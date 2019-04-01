@@ -174,7 +174,7 @@ p.addParameter('ellipseArrayList',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('fixationTargetArray',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nBinsPerDimension',4,@isnumeric);
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
-p.addParameter('nBADSsearches',10,@isnumeric);
+p.addParameter('nBADSsearches',20,@isnumeric);
 p.addParameter('nDiagnosticPlots',5,@isnumeric);
 p.addParameter('rankScaling',[4 2 1],@isnumeric);
 
@@ -846,10 +846,9 @@ end
 % Calculate a color for each plot point corresponding to the degree of
 % shape error
 shapeErrorVec = sceneGeometry.meta.estimateSceneParams.search.shapeErrorByEllipse;
-shapeErrorVec = shapeErrorVec./sceneGeometry.constraintTolerance;
 colorMatrix = zeros(3,size(ellipses,1));
 colorMatrix(1,:)=1;
-colorMatrix(2,:)= shapeErrorVec;
+colorMatrix(2,:)= shapeErrorVec./0.05;
 scatter(ellipses(:,1),ellipses(:,2),[],colorMatrix','o','filled');
 
 % plot the estimated center of rotation of the eye
@@ -873,7 +872,7 @@ scatter(nan, nan,2,'filled', ...
 scatter(nan, nan,2,'filled', ...
     'MarkerFaceAlpha',6/8,'MarkerFaceColor',[1 1 0]);
 set(hSub, 'Visible', 'off');
-legend({'0',num2str(sceneGeometry.constraintTolerance/2), ['=> ' num2str(sceneGeometry.constraintTolerance)]},'Location','north', 'Orientation','vertical');
+legend({'0','0.025', '=> 0.05'},'Location','north', 'Orientation','vertical');
 
 % Add text to report the camera position parameters
 xFinal = sceneGeometry.meta.estimateSceneParams.search.x;
@@ -907,7 +906,7 @@ end
 % Calculate a color for each plot point corresponding to the degree of
 % shape error
 areaErrorVec = sceneGeometry.meta.estimateSceneParams.search.areaErrorByEllipse;
-areaErrorVec = abs(areaErrorVec)./sceneGeometry.constraintTolerance;
+areaErrorVec = abs(areaErrorVec)./0.05;
 areaErrorVec = min([areaErrorVec ones(size(ellipses,1),1)],[],2);
 colorMatrix = zeros(3,size(ellipses,1));
 colorMatrix(1,:)=1;
@@ -935,7 +934,7 @@ scatter(nan, nan,2,'filled', ...
 scatter(nan, nan,2,'filled', ...
     'MarkerFaceAlpha',6/8,'MarkerFaceColor',[1 1 0]);
 set(hSub, 'Visible', 'off');
-legend({'0',num2str(sceneGeometry.constraintTolerance/2), ['=> ' num2str(sceneGeometry.constraintTolerance)]},'Location','north', 'Orientation','vertical');
+legend({'0','0.025', '=> 0.05'},'Location','north', 'Orientation','vertical');
 
 
 %% Save the plot
