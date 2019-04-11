@@ -220,7 +220,7 @@ elseif strcmp(p.Results.approach, 'SquintToPulse')
     frameMaskValue = 220;
     numberOfGlints = 2;
     maskBox = [1 1];
-    smallObjThresh = 5000;
+    smallObjThresh = 2500;
 end
 
 % allow ability to override defaultParams if necessary by passing key-value
