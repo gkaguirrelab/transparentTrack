@@ -86,6 +86,13 @@ function perimeter = findPupilPerimeter(grayVideoName, perimeterFileName, vararg
 %                           rangeAdjust parameter defines the proportion
 %                           above and below this target size that is used
 %                           to search on the next frame
+%  'pickLargestCircle'    - This routine uses imfindcircles to identify the
+%                           likely pupil. However, it can return more than
+%                           1 circle that it finds within the
+%                           pupilMaskFrame. By default it sorts according
+%                           to most circular, but sometimes the pupil is
+%                           more likely to be the biggest circle it finds.
+%                           The default is set to false.
 %
 % Outputs:
 %   perimeter             - Structure with a 'data' field that contains the
@@ -124,6 +131,7 @@ p.addParameter('maskBox', [2 2], @isnumeric);
 p.addParameter('frameMaskValue', 220, @isnumeric);
 p.addParameter('smallObjThresh', 400, @isnumeric);
 p.addParameter('expandPupilRange', true, @islogical);
+p.addParameter('pickLargestCircle', false, @islogical);
 
 % Optional findPupilCircle routine params. Defined here for transparency
 p.addParameter('pupilCircleThresh', 0.06, @isnumeric);
@@ -283,6 +291,12 @@ for ii = 1:(endFrame-startFrame+1)
     % If a pupil circle patch was ultimately found, get the perimeter, else
     % write out a zero-filled frame
     if ~isempty(pCenters)
+        
+        if p.Results.pickLargestCircle
+            [ pRadii, sortIndices ] = sort(pRadii, 'descend');
+            pCenters = pCenters(sortIndices,:);
+            
+        end
         
         % structuring element for pupil mask size. This is a rectangular
         % dilation box that is adapted to the size of the radius of the
