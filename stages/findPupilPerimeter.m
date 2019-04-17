@@ -254,7 +254,7 @@ for ii = 1:(endFrame-startFrame+1)
         findPupilCircle(thisFrame,...
         p.Results.pupilCircleThresh,...
         pupilRange,...
-        p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust);
+        p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust, 'displayMode', p.Results.displayMode);
     
     if (p.Results.expandPupilRange)
         % If a pupile circle patch was not found, try again after expanding the
@@ -270,7 +270,7 @@ for ii = 1:(endFrame-startFrame+1)
                 findPupilCircle(thisFrame,...
                 p.Results.pupilCircleThresh,...
                 candidateRange,...
-                p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust);
+                p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust, 'displayMode', p.Results.displayMode);
             if isempty(pCenters) % still no circle? Try 100% increase
                 candidateRange = [ceil(initialPupilRange(1)/2) round(initialPupilRange(2)*2)];
                 if candidateRange(1) < p.Results.pupilRange(1) || candidateRange(2) > p.Results.pupilRange(2)
@@ -280,7 +280,7 @@ for ii = 1:(endFrame-startFrame+1)
                     findPupilCircle(thisFrame,...
                     p.Results.pupilCircleThresh,...
                     candidateRange,...
-                    p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust);
+                    p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust, 'displayMode', p.Results.displayMode);
                 if isempty(pCenters) % STILL no circle? Give up and restore initialPupilRange
                     pupilRange = initialPupilRange;
                 end
@@ -356,7 +356,16 @@ for ii = 1:(endFrame-startFrame+1)
         if ~isempty(perimeter.data{ii}.Xp)
             displayFrame(sub2ind(size(thisFrame),perimeter.data{ii}.Yp,perimeter.data{ii}.Xp))=255;
         end
+        axes('units','norm','outerposition',[0.5 0 0.5 1],'position',[0.5 0 0.5 1]) %right axes
         imshow(displayFrame, 'Border', 'tight');
+        if isempty(perimeter.data{1}.Xp)
+            string = 'No pupil found';
+        else
+            string = (['Frame ', num2str(p.Results.startFrame)]);
+        end
+        text(350, 200, string);
+        
+        set(gcf, 'Position', [274 462 1448 430]);
     end
     
 end % loop through gray frames
@@ -368,7 +377,7 @@ perimeter.meta = p.Results;
 if ~p.Results.displayMode
     save(perimeterFileName,'perimeter','-v7.3');
 else
-    close(figureHandle);
+    %close(figureHandle);
 end
 
 % report completion of analysis
@@ -385,7 +394,7 @@ end %  main function
 
 %% LOCAL FUNCTIONS
 
-function [pCenters, pRadii,pMetric, pupilRange] = findPupilCircle(I,pupilCircleThresh,pupilRange,imfindcirclesSensitivity,rangeAdjust)
+function [pCenters, pRadii,pMetric, pupilRange] = findPupilCircle(I,pupilCircleThresh,pupilRange,imfindcirclesSensitivity,rangeAdjust, varargin)
 % This function is used for pupil circle fitting.
 
 %% parse input and define variables
@@ -397,8 +406,12 @@ p.addRequired('pupilRange',@isnumeric);
 p.addRequired('imfindcirclesSensitivity', @isnumeric);
 p.addRequired('rangeAdjust', @isnumeric);
 
+% optional input
+p.addParameter('displayMode',false,@islogical);
+
+
 % parse
-p.parse(I,pupilCircleThresh,pupilRange,imfindcirclesSensitivity,rangeAdjust);
+p.parse(I,pupilCircleThresh,pupilRange,imfindcirclesSensitivity,rangeAdjust, varargin{:});
 
 %% circle fit
 
@@ -426,6 +439,12 @@ warning('off','images:imfindcircles:warnForSmallRadius');
 % Find the pupil
 [pCenters, pRadii,pMetric] = imfindcircles(binP,pupilRange,'ObjectPolarity','dark',...
     'Sensitivity',imfindcirclesSensitivity);
+
+if p.Results.displayMode
+   axes('units','norm','outerposition',[0 0 0.5 1],'position',[0 0 0.5 1]) %left axes
+   imshow(binP); hold on; viscircles(pCenters, pRadii);
+   viscircles(pCenters(1,:), pRadii(1), 'Color', 'b');
+end
 
 % Restore the warning state
 warning(origWarnState);
