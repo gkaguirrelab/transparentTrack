@@ -1197,8 +1197,8 @@ end
 
 % label and clean up the plot
 axis equal
-ylim([-10 10]);
-xlim([-10 10]);
+xlim([min(targets(:,1))-0.5*abs(min(targets(:,1))) max(targets(:,1))+0.5*abs(min(targets(:,1)))]);
+ylim([min(targets(:,2))-0.5*abs(min(targets(:,2))) max(targets(:,2))+0.5*abs(min(targets(:,2)))]);
 
 % Create a legend
 subplot(5,1,5);
