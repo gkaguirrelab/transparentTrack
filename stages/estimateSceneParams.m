@@ -321,8 +321,8 @@ if p.Results.nBADSsearches==0
 else
     % Loop over the requested number of BADS searches
     searchResults = {};
-    parfor (ss = 1:p.Results.nBADSsearches,nWorkers)
-        %    for ss = 1:p.Results.nBADSsearches
+    %parfor (ss = 1:p.Results.nBADSsearches,nWorkers)
+    for ss = 1:p.Results.nBADSsearches
         
         searchResults{ss} = ...
             performSceneSearch(initialSceneGeometry, ...
@@ -567,8 +567,8 @@ ellipseFitConstrainedRMSEAtBest = zeros(size(ellipses,1));
 objEvalCounter = 0;
 regParamsAtBest = [];
 fValPath = [];
-fValAtBest = 1e6;
-xAtBest = nan(6,1);
+fValAtBest = inf;
+xAtBest = x0';
 
 
 % Tic
