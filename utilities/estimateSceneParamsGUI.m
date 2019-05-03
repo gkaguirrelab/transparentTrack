@@ -23,6 +23,7 @@ p = inputParser; p.KeepUnmatched = true;
 p.addOptional('sceneGeometryFileName', [], @(x)(isempty(x) || ischar(x)));
 
 % Optional
+p.addParameter('perimeterFileName',[], @(x)(isempty(x) || ischar(x)));
 p.addParameter('grayVideoName',[], @(x)(isempty(x) || ischar(x)));
 p.addParameter('ellipseArrayList',[], @(x)(isempty(x) || isnumeric(x)));
 
@@ -88,7 +89,11 @@ clear videoInObj
 
 % Load the pupil perimeter data. It will be a structure variable
 % "perimeter", with the fields .data and .meta
-perimeterFileName = strrep(grayVideoName,'_gray.avi','_correctedPerimeter.mat');
+if isempty(p.Results.perimeterFileName)
+    perimeterFileName = strrep(grayVideoName,'_gray.avi','_correctedPerimeter.mat');
+else
+    perimeterFileName = p.Results.perimeterFileName;
+end
 dataLoad=load(perimeterFileName);
 perimeter=dataLoad.perimeter;
 clear dataLoad

@@ -149,6 +149,7 @@ p.addRequired('sceneGeometryFileName',@ischar);
 
 % Optional display and I/O params
 p.addParameter('verbose',false,@islogical);
+p.addParameter('grayVideoName','',@(x)(isempty(x) | ischar(x)));
 p.addParameter('pupilFileToVideoSuffixSwitch',{'_pupil.mat','_gray.avi'},@iscell);
 
 % Optional flow control params
@@ -452,9 +453,15 @@ if ~isempty(sceneGeometryFileName) && p.Results.nDiagnosticPlots~=0
         mkdir(diagnosticDirName);
     end
     
+    % Find the video for this pupil file
+    if ~isempty(p.Results.grayVideoName)
+        grayVideoName = p.Results.grayVideoName;
+    else
+        grayVideoName = strrep(pupilFileName,p.Results.pupilFileToVideoSuffixSwitch{1},p.Results.pupilFileToVideoSuffixSwitch{2});
+    end
+    
     % Save the ellipse fit montage
     montageFileName = fullfile(diagnosticDirName,[sceneGeomName '_sceneDiagnosticMontage_ellipses.png']);
-    grayVideoName = strrep(pupilFileName,p.Results.pupilFileToVideoSuffixSwitch{1},p.Results.pupilFileToVideoSuffixSwitch{2});
     saveEllipseArrayMontage(sceneGeometry, ...
         ellipseArrayList, ...
         ellipses, ...
@@ -947,7 +954,7 @@ warning(warningState);
 end % saveSceneDiagnosticPlot
 
 
-function [] = saveEllipseArrayMontage(sceneGeometry, ellipseArrayList, allEllipses, grayVideoName, montageFileName)
+function [] = saveEllipseArrayMontage(~, ellipseArrayList, allEllipses, grayVideoName, montageFileName)
 % Saves a montage of the video frames illustrating the ellipses used for
 % the sceneGeometry estimation.
 
@@ -1050,7 +1057,7 @@ end % saveEllipseArrayMontage
 
 
 
-function [] = saveEyeModelMontage(sceneGeometry, ellipseArrayList, allEllipses, grayVideoName, montageFileName)
+function [] = saveEyeModelMontage(sceneGeometry, ellipseArrayList, ~, grayVideoName, montageFileName)
 % Saves a montage with the model eye superimposed.
 
 % Silence some errors that can arise during the forward projection
@@ -1102,8 +1109,11 @@ if exist(grayVideoName,'file') && ~isempty(ellipseArrayList)
         % Add a text label for the frame number
         frameLabel = sprintf('frame: %d',idx);
         thisFrame.cdata = insertText(thisFrame.cdata,[20 20],frameLabel,'FontSize',30);
-        % Store the frame
-        framesToMontage(:,:,:,ii) = thisFrame.cdata;
+        % Store the frame. Detect if we have a bad or empty frame and then
+        % skip if that is the case
+        if all(size(squeeze(framesToMontage(:,:,:,ii)))==size(thisFrame.cdata))
+            framesToMontage(:,:,:,ii) = thisFrame.cdata;
+        end
         % hold off
         hold off
     end
