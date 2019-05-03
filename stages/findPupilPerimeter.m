@@ -442,8 +442,12 @@ warning('off','images:imfindcircles:warnForSmallRadius');
 
 if p.Results.displayMode
    axes('units','norm','outerposition',[0 0 0.5 1],'position',[0 0 0.5 1]) %left axes
-   imshow(binP); hold on; viscircles(pCenters, pRadii);
-   viscircles(pCenters(1,:), pRadii(1), 'Color', 'b');
+   imshow(binP)
+   if ~isempty(pCenters)
+       hold on; viscircles(pCenters, pRadii);
+       viscircles(pCenters(1,:), pRadii(1), 'Color', 'b');
+       text(350, 200, [' Radius = ', num2str(pRadii(1))]);
+   end
 end
 
 % Restore the warning state
