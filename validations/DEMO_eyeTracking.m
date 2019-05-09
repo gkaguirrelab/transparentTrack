@@ -75,59 +75,111 @@ end
 
 
 %% Prepare analysis parameters
+% We can conceptually break the analysis into two components:
+% - Initital processing to the stage of fitting an ellipse to the pupil
+%   perimeter
+% - Definition of the scene geometry and re-fitting of the pupil
+%   perimeter using scene constraints and empirical Bayesian temporal 
+%   smoothing.
 
-% Define camera parameters
-% These were obtained by an empirical measurement (camera resectioning) of
-% the IR camera used to record the demo data
+
+%% Initial processing -- deinterlace to minimally constrained ellipse fitting
+% These parameters are used in the function findPupilPerimeter; definition
+% of the parameters may be found in the header comments for that routine.
+% To select good parameters for your video, use the interactive routine 
+% estimateSceneParamsGUI.m, which is found in the Utilities directory
+pupilFrameMask = [64 109 75 183];
+glintFrameMask = [157 148 173 192];
+pupilRange = [34 51];
+pupilCircleThresh = 0.0179;
+pupilGammaCorrection = 0.75;
+
+%% Run the analysis pipeline
+% This routine will produce the initial ellipse fit and a fit video.
+runVideoPipeline( pathParams, ...
+    'nFrames',nFrames,'verbose', verbose, 'tbSnapshot',tbSnapshot, 'useParallel',true, ...
+    'pupilFrameMask', [64 109 75 183], 'glintFrameMask', [157 148 173 192], ...
+    'pupilRange', [34 51], 'pupilCircleThresh', 0.0179, 'pupilGammaCorrection', 0.75, ...
+    'overwriteControlFile', true, 'catchErrors', false,...
+    'skipStageByNumber',[],'makeFitVideoByNumber',[6]);
+
+
+%% Secondary processing -- definition and fitting with scene geometry
+% Improved fitting can be obtained by defining properties of the eye, the
+% camera, and their relationship. Parameters that define the camera and the
+% eye described in greater detail in the routine createSceneGeometry which
+% is found in the gkaModelEye (https://github.com/gkaguirrelab/gkaModelEye)
+% code repository.
+
+% Define camera parameters. These were obtained by an empirical measurement
+% (camera resectioning) of the IR camera used to record the demo data. Use
+% the matlab routine cameraCalibrator: 
+%	https://www.mathworks.com/help/vision/ug/single-camera-calibrator-app.html
 intrinsicCameraMatrix = [2627.0 0 338.1; 0 2628.1 246.2; 0 0 1];
 radialDistortionVector = [-0.3517 3.5353];
+sensorResolution = [640 480];
 spectralDomain = 'nir';
 
-% Define subject parameters
+% Define properties of the eye of the subject. The "maxIrisDiamPixels" is
+% the largest horizontal diameter of the iris (colored portion) of the eye
+% that is seen in the video. This valye is used to estimate the distance of
+% the camera from the eye. The spherical ametropia is the refractive error
+% correction (in diopters) of the eye of the subject. A negative value is
+% the correction for a myopic (near-sighted) person. The axial length would
+% be obtained from an ophthalmologic device such as the IOL Master. If
+% either of these last two values are not available, leave these parameters
+% undefined.
 eyeLaterality = 'right';
-axialLength = 25.35;
-sphericalAmetropia = -1.5;
 maxIrisDiamPixels = 270;
+sphericalAmetropia = -1.5;
+axialLength = 25.35;
 
-% Estimate camera distance from iris diameter in pixels
-% Because biological variation in the size of the visible iris is known,
-% we can use the observed maximum diameter of the iris in pixels to obtain
-% a guess as to the distance of the eye from the camera.
+% Estimate camera distance from iris diameter in pixels. Because biological
+% variation in the size of the visible iris is known, we can use the
+% observed maximum diameter of the iris in pixels to obtain a guess as to
+% the distance of the eye from the camera.
 sceneGeometry = createSceneGeometry(...
     'radialDistortionVector',radialDistortionVector, ...
     'intrinsicCameraMatrix',intrinsicCameraMatrix);
 [cameraDepthMean, cameraDepthSD] = depthFromIrisDiameter( sceneGeometry, maxIrisDiamPixels );
 
 % Assemble the scene parameter bounds. These are in the order of:
-%   torsion, x, y, z, eyeRotationScalarJoint, eyeRotationScalerDifferential
+%   [torsion; x; y; z; eyeRotationScalarJoint; eyeRotationScalerDifferential]
 % where torsion specifies the torsion of the camera with respect to the eye
 % in degrees, [x y z] is the translation of the camera w.r.t. the eye in
 % mm, and the eyeRotationScalar variables are multipliers that act upon the
 % centers of rotation estimated for the eye.
+% If the eye is markedly off-center in the image, then the translation
+% bounds should be increased.
 sceneParamsLB = [-5; -5; -5; cameraDepthMean-cameraDepthSD*2; 0.75; 0.9];
 sceneParamsLBp = [-3; -2; -2; cameraDepthMean-cameraDepthSD*1; 0.85; 0.95];
 sceneParamsUBp = [3; 2; 2; cameraDepthMean+cameraDepthSD*1; 1.15; 1.05];
 sceneParamsUB = [5; 5; 5; cameraDepthMean+cameraDepthSD*2; 1.25; 1.1];
 
-% The list of frames that will be used to guide the sceneGeometry. This is
-% the list that is automatically generated by estimateSceneParams, but with
-% a couple of bad choices removed.
-ellipseArrayList = [713 787 1484 601 172 2028 1335 1121 928 1350 1030 1730];
+% The estimation of scene geometry is greatly aided by having the subject
+% fixate targets at known visual angle positions. The routine
+% estimateSceneParams acceps a list of frames of the video during which the
+% pupil is well visualized and a list of target positions (X,Y) in units of
+% degrees corresponding to each of those video frames.
+fixationTargetArray = [ -7, 7, 7, 7, 0, -7, 0, -7, 0 ; -7, 0, -7, 7, -7, 0, 7, 7, 0];
+ellipseArrayList = [ 723, 841, 1008, 1074, 1415, 1514, 2067, 2828, 3098 ];
 
-%% Run the analysis pipeline
+% Run the video pipeline from the stage of estimation of scene geometry
+% through to the end.
 runVideoPipeline( pathParams, ...
     'nFrames',nFrames,'verbose', verbose, 'tbSnapshot',tbSnapshot, 'useParallel',true, ...
-    'pupilFrameMask', [64 109 75 183], 'glintFrameMask', [157 148 173 192], ...
-    'pupilRange', [34 51], 'pupilCircleThresh', 0.0179, 'pupilGammaCorrection', 0.75, ...
     'intrinsicCameraMatrix',intrinsicCameraMatrix, ...
     'radialDistortionVector',radialDistortionVector, ...
+    'sensorResolution',sensorResolution,...
     'spectralDomain',spectralDomain, ...
     'eyeLaterality',eyeLaterality,'axialLength',axialLength,'sphericalAmetropia',sphericalAmetropia,...
     'sceneParamsLB',sceneParamsLB,'sceneParamsUB',sceneParamsUB,...
     'sceneParamsLBp',sceneParamsLBp,'sceneParamsUBp',sceneParamsUBp,...
-    'overwriteControlFile', true, 'catchErrors', false,...
-    'ellipseArrayList', ellipseArrayList, ...
-    'skipStageByNumber',[],'makeFitVideoByNumber',[6]);
+    'catchErrors', false,...
+    'fixationTargetArray',fixationTargetArray,'ellipseArrayList', ellipseArrayList, ...
+    'skipStageByNumber',[1:6]);
+
+
 
 
 %% Plot some fits
