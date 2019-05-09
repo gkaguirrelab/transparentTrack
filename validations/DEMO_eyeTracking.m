@@ -95,7 +95,16 @@ pupilCircleThresh = 0.0179;
 pupilGammaCorrection = 0.75;
 
 %% Run the analysis pipeline
-% This routine will produce the initial ellipse fit and a fit video.
+% This routine will produce the initial ellipse fit and a fit video. It
+% includes the stages:
+%   deinterlaceVideo
+%   findGlint
+%   findPupilPerimeter
+%   makeControlFile
+%   applyControlFile
+%   fitPupilPerimeter
+%   makeFitVideo
+%
 runVideoPipeline( pathParams, ...
     'nFrames',nFrames,'verbose', verbose, 'tbSnapshot',tbSnapshot, 'useParallel',true, ...
     'pupilFrameMask', [64 109 75 183], 'glintFrameMask', [157 148 173 192], ...
@@ -165,7 +174,12 @@ fixationTargetArray = [ -7, 7, 7, 7, 0, -7, 0, -7, 0 ; -7, 0, -7, 7, -7, 0, 7, 7
 ellipseArrayList = [ 723, 841, 1008, 1074, 1415, 1514, 2067, 2828, 3098 ];
 
 % Run the video pipeline from the stage of estimation of scene geometry
-% through to the end.
+% through to the end. It includes the stages:
+%   estimateSceneParams
+%   fitPupilPerimeter (now with scene geometry constraints)
+%   smoothPupilRadius
+%   makeFitVideo
+%
 runVideoPipeline( pathParams, ...
     'nFrames',nFrames,'verbose', verbose, 'tbSnapshot',tbSnapshot, 'useParallel',true, ...
     'intrinsicCameraMatrix',intrinsicCameraMatrix, ...
