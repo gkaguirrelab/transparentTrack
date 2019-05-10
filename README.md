@@ -21,3 +21,5 @@ The MATLAB parpool may be used to speed the analysis on multi-core systems.
 To install and configure transparentTrack, first install [toolboxToolbox (tBtB)](https://github.com/ToolboxHub/ToolboxToolbox), which provides for declarative dependency management for MATLAB. Once tBtB is installed, transparentTrack (and all its dependencies) will be installed and readied for use with the command `tbUse('transparentTrack')`. These dependencies are:
 - [gkaModelEye](https://github.com/gkaguirrelab/gkaModelEye)
 - [Bayesian Adaptive Direct Search (bads)](https://github.com/lacerbi/bads)
+
+A good place to start is to run the routine `DEMO_eyeTracking` which is located in the validations directory. This routine will download and process an example eye tracking video. The script includes descriptions of the processing stages and the definition of analysis parameters.
