@@ -181,10 +181,10 @@ sceneGeometry = createSceneGeometry(...
 % mm, and the eyeRotationScalar variables are multipliers that act upon the
 % centers of rotation estimated for the eye. If the eye is markedly
 % off-center in the image, then the translation bounds should be increased.
-sceneParamsLB = [-5; -1; -1; cameraDepthMean-cameraDepthSD*2; 0.75; 0.9];
-sceneParamsLBp = [-3; -0.5; -0.5; cameraDepthMean-cameraDepthSD*1; 0.85; 0.95];
-sceneParamsUBp = [3; 0.5; 0.5; cameraDepthMean+cameraDepthSD*1; 1.15; 1.05];
-sceneParamsUB = [5; 1; 1; cameraDepthMean+cameraDepthSD*2; 1.25; 1.1];
+sceneParamsLB = [-5; -1.5; -1; cameraDepthMean-cameraDepthSD*2; 0.75; 0.9];
+sceneParamsLBp = [-3; -1; -0.5; cameraDepthMean-cameraDepthSD*1; 0.85; 0.95];
+sceneParamsUBp = [3; 1; 0.5; cameraDepthMean+cameraDepthSD*1; 1.15; 1.05];
+sceneParamsUB = [5; 1.5; 1; cameraDepthMean+cameraDepthSD*2; 1.25; 1.1];
 
 % The estimation of scene geometry is greatly aided by having the subject
 % fixate targets at known visual angle positions. The routine
