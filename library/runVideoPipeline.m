@@ -151,28 +151,27 @@ end
 
 %% Define input filenames
 
-% Test if there are instructions to skip the deinterlaceVideo stage. If
-% not, try to identify the raw video, which may be in one of several video
+% Try to identify the raw video, which may be in one of several video
 % formats or with different suffix forms.
-if ~any(strcmp(p.Results.skipStageByName,'deinterlaceVideo')) && ~any(p.Results.skipStageByNumber == 1) 
-    % Create a cell array of candidate raw video names with the runName and
-    % each of the rawVideoSuffix choices
-    candidateRawVideoNames = ...
-        cellfun(@(x) fullfile(pathParams.dataSourceDirFull,[pathParams.runName x]),p.Results.rawVideoSuffix,'uniformoutput',false);
-    
-    % Test if each of these candidate video files exist
-    existTest = cellfun(@(x) exist(x,'file')==2, candidateRawVideoNames);
-    
-    switch (sum(existTest))
-        case 0
-            error('Cannot find a raw video with this run name and the specified suffix');
-        case 1
-            rawVideoName = candidateRawVideoNames{ existTest==1 };
-        otherwise
-            error('There is more than one raw video with this run name and the specified suffix');
-    end
+
+% Create a cell array of candidate raw video names with the runName and
+% each of the rawVideoSuffix choices
+candidateRawVideoNames = ...
+    cellfun(@(x) fullfile(pathParams.dataSourceDirFull,[pathParams.runName x]),p.Results.rawVideoSuffix,'uniformoutput',false);
+
+% Test if each of these candidate video files exist
+existTest = cellfun(@(x) exist(x,'file')==2, candidateRawVideoNames);
+
+switch (sum(existTest))
+    case 0
+        warning('Cannot find a raw video with this run name and the specified suffix');
+    case 1
+        rawVideoName = candidateRawVideoNames{ existTest==1 };
+    otherwise
+        warning('There is more than one raw video with this run name and the specified suffix');
 end
 
+    
 % LiveTrack gaze calibration data files and diagnostic plots
 LTdatFileName = fullfile(pathParams.dataSourceDirFull, [pathParams.runName '_LTdat.mat']);
 LTReportFileName = fullfile(pathParams.dataSourceDirFull, [pathParams.runName '_report.mat']);
