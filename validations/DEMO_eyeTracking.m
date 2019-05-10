@@ -106,12 +106,12 @@ pupilGammaCorrection = 0.75;
 %   fitPupilPerimeter
 %   makeFitVideo
 %
-runVideoPipeline( pathParams, ...
-    'nFrames',nFrames,'verbose', verbose, 'tbSnapshot',tbSnapshot, 'useParallel',true, ...
-    'pupilFrameMask', [64 109 75 183], 'glintFrameMask', [157 148 173 192], ...
-    'pupilRange', [34 51], 'pupilCircleThresh', 0.0179, 'pupilGammaCorrection', 0.75, ...
-    'overwriteControlFile', true, 'catchErrors', false,...
-    'skipStageByNumber',[],'makeFitVideoByNumber',[6]);
+% runVideoPipeline( pathParams, ...
+%     'nFrames',nFrames,'verbose', verbose, 'tbSnapshot',tbSnapshot, 'useParallel',true, ...
+%     'pupilFrameMask', [64 109 75 183], 'glintFrameMask', [157 148 173 192], ...
+%     'pupilRange', [34 51], 'pupilCircleThresh', 0.0179, 'pupilGammaCorrection', 0.75, ...
+%     'overwriteControlFile', true, 'catchErrors', false,...
+%     'skipStageByNumber',[],'makeFitVideoByNumber',[6]);
 
 % Note that each stage could be called separately, instead of using the
 % pipeline command:
@@ -181,10 +181,15 @@ sceneGeometry = createSceneGeometry(...
 % mm, and the eyeRotationScalar variables are multipliers that act upon the
 % centers of rotation estimated for the eye. If the eye is markedly
 % off-center in the image, then the translation bounds should be increased.
-sceneParamsLB = [-5; -1; -1; cameraDepthMean-cameraDepthSD*2; 0.75; 0.9];
-sceneParamsLBp = [-3; -0.5; -0.5; cameraDepthMean-cameraDepthSD*1; 0.85; 0.95];
-sceneParamsUBp = [3; 0.5; 0.5; cameraDepthMean+cameraDepthSD*1; 1.15; 1.05];
-sceneParamsUB = [5; 1; 1; cameraDepthMean+cameraDepthSD*2; 1.25; 1.1];
+% To select good scene parameters for your video, use the interactive
+% routine estimateSceneParamsGUI.m, which is found in the Utilities
+% directory.
+% The upper and lower bounds are fixed here so that the demo completes
+% rapidly.
+sceneParamsLB = [3.6; 0.9; 0.3; 113.4; 0.84; 0.96];
+sceneParamsLBp = [3.6; 0.9; 0.3; 113.4; 0.84; 0.96];
+sceneParamsUBp = [3.6; 0.9; 0.3; 113.4; 0.84; 0.96];
+sceneParamsUB = [3.6; 0.9; 0.3; 113.4; 0.84; 0.96];
 
 % The estimation of scene geometry is greatly aided by having the subject
 % fixate targets at known visual angle positions. The routine
