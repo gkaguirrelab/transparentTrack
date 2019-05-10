@@ -135,13 +135,14 @@ spectralDomain = 'nir';
 % the camera from the eye. The spherical ametropia is the refractive error
 % correction (in diopters) of the eye of the subject. A negative value is
 % the correction for a myopic (near-sighted) person. The axial length would
-% be obtained from an ophthalmologic device such as the IOL Master. If
-% either of these last two values are not available, leave these parameters
-% undefined.
+% be obtained from an ophthalmologic device such as the IOL Master, as
+% would the measuredCornealCurvature. If any of these last three values are
+% not available, leave these parameters undefined.
 eyeLaterality = 'right';
 maxIrisDiamPixels = 270;
 sphericalAmetropia = -1.5;
 axialLength = 25.35;
+measuredCornealCurvature = [41.36,41.67,25];
 
 % Estimate camera distance from iris diameter in pixels. Because biological
 % variation in the size of the visible iris is known, we can use the
@@ -170,8 +171,8 @@ sceneParamsUB = [5; 5; 5; cameraDepthMean+cameraDepthSD*2; 1.25; 1.1];
 % estimateSceneParams acceps a list of frames of the video during which the
 % pupil is well visualized and a list of target positions (X,Y) in units of
 % degrees corresponding to each of those video frames.
-fixationTargetArray = [ -7, 7, 7, 7, 0, -7, 0, -7, 0 ; -7, 0, -7, 7, -7, 0, 7, 7, 0];
-ellipseArrayList = [ 723, 841, 1008, 1074, 1415, 1514, 2067, 2828, 3098 ];
+fixationTargetArray = [ -7, 0, 7, 0, 0, 7, -7, 7, -7 ; 7, -7, 0, 0, 7, 7, 0, -7, -7];
+ellipseArrayList = [ 732, 896, 1023, 1167, 1261, 1383, 1542, 1646, 1808 ];
 
 % Run the video pipeline from the stage of estimation of scene geometry
 % through to the end. It includes the stages:
@@ -186,7 +187,8 @@ runVideoPipeline( pathParams, ...
     'radialDistortionVector',radialDistortionVector, ...
     'sensorResolution',sensorResolution,...
     'spectralDomain',spectralDomain, ...
-    'eyeLaterality',eyeLaterality,'axialLength',axialLength,'sphericalAmetropia',sphericalAmetropia,...
+    'eyeLaterality',eyeLaterality,'sphericalAmetropia',sphericalAmetropia,...
+    'axialLength',axialLength,'measuredCornealCurvature',measuredCornealCurvature,...
     'sceneParamsLB',sceneParamsLB,'sceneParamsUB',sceneParamsUB,...
     'sceneParamsLBp',sceneParamsLBp,'sceneParamsUBp',sceneParamsUBp,...
     'catchErrors', false,...
