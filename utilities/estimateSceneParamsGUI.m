@@ -2,7 +2,7 @@ function [ x ] = estimateSceneParamsGUI(sceneGeometryFileName, varargin)
 % Adjust scene parameter values
 %
 % Syntax:
-%  [ initialParams ] = estimateSceneParamsGUI(grayVideoName, protocol)
+%  [ initialParams ] = estimateSceneParamsGUI(grayVideoName)
 %
 % Description:
 %
