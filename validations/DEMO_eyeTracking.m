@@ -196,10 +196,10 @@ fixationTargetArray = [ -7, 0, 7, 0, 0, 7, -7, 7, -7 ; 7, -7, 0, 0, 7, 7, 0, -7,
 ellipseArrayList = [ 732, 896, 1023, 1167, 1261, 1383, 1542, 1646, 1808 ];
 
 % The routine estimateSceneGeometry performs multiple non-linear searches
-% from different x0 start points. Each search is time consuming (e.g., 10
+% from different x0 start points. Each search is time consuming (e.g., 30
 % minutes). They will run in parallel if multiple cores are available. We
 % will limit then number of searches to only 2 in this demo, but closer to
-% 10 searches yield improved results.
+% 10 searches yields improved results.
 nBADSsearches = 2;
 
 
