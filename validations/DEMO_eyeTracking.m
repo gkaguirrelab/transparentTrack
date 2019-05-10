@@ -111,7 +111,7 @@ runVideoPipeline( pathParams, ...
     'pupilFrameMask', [64 109 75 183], 'glintFrameMask', [157 148 173 192], ...
     'pupilRange', [34 51], 'pupilCircleThresh', 0.0179, 'pupilGammaCorrection', 0.75, ...
     'overwriteControlFile', true, 'catchErrors', false,...
-    'skipStageByNumber',[],'makeFitVideoByNumber',[6]);
+    'lastStageByNumber',6,'makeFitVideoByNumber',6);
 
 % Note that each stage could be called separately, instead of using the
 % pipeline command:
@@ -183,10 +183,10 @@ sceneGeometry = createSceneGeometry(...
 % off-center in the image, then the translation bounds should be increased.
 % The upper and lower bounds are fixed here so that the demo completes
 % rapidly.
-sceneParamsLB = [3.60; -0.10; -0.70; 109.40; 0.84; 0.96];
+sceneParamsLB =  [3.60; -0.10; -0.70; 109.40; 0.84; 0.96];
 sceneParamsLBp = [3.60; -0.10; -0.70; 109.40; 0.84; 0.96];
 sceneParamsUBp = [3.60; -0.10; -0.70; 109.40; 0.84; 0.96];
-sceneParamsUB = [3.60; -0.10; -0.70; 109.40; 0.84; 0.96];
+sceneParamsUB =  [3.60; -0.10; -0.70; 109.40; 0.84; 0.96];
 
 % To select good scene parameters for your video, use the interactive
 % routine estimateSceneParamsGUI.m, which is found in the Utilities
@@ -235,7 +235,7 @@ runVideoPipeline( pathParams, ...
     'nBADSsearches',nBADSsearches,...
     'catchErrors', false,...
     'fixationTargetArray',fixationTargetArray,'ellipseArrayList', ellipseArrayList, ...
-    'skipStageByNumber',[1:6]);
+    'skipStageByNumber',1:6);
 
 
 
