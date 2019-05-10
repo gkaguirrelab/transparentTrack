@@ -94,6 +94,7 @@ pupilRange = [34 51];
 pupilCircleThresh = 0.0179;
 pupilGammaCorrection = 0.75;
 
+
 %% Run the analysis pipeline
 % This routine will produce the initial ellipse fit and a fit video. It
 % includes the stages:
@@ -113,7 +114,7 @@ runVideoPipeline( pathParams, ...
     'skipStageByNumber',[],'makeFitVideoByNumber',[6]);
 
 
-%% Secondary processing -- definition and fitting with scene geometry
+%% Secondary processing -- scene definition and constrained fitting
 % Improved fitting can be obtained by defining properties of the eye, the
 % camera, and their relationship. Parameters that define the camera and the
 % eye described in greater detail in the routine createSceneGeometry which
@@ -130,24 +131,24 @@ sensorResolution = [640 480];
 spectralDomain = 'nir';
 
 % Define properties of the eye of the subject. The "maxIrisDiamPixels" is
-% the largest horizontal diameter of the iris (colored portion) of the eye
-% that is seen in the video. This valye is used to estimate the distance of
-% the camera from the eye. The spherical ametropia is the refractive error
-% correction (in diopters) of the eye of the subject. A negative value is
-% the correction for a myopic (near-sighted) person. The axial length would
-% be obtained from an ophthalmologic device such as the IOL Master, as
-% would the measuredCornealCurvature. If any of these last three values are
-% not available, leave these parameters undefined.
+% the largest horizontal diameter of the iris that is seen in the video.
+% This valye is used to estimate the distance of the camera from the eye.
+% The spherical ametropia is the refractive error correction (in diopters)
+% of the eye of the subject. A negative value is the correction for a
+% myopic (near-sighted) person. The axial length would be obtained from an
+% ophthalmologic device such as the IOL Master, as would the
+% measuredCornealCurvature. If any of these last three values are
+% unavailable, leave these parameters undefined.
 eyeLaterality = 'right';
 maxIrisDiamPixels = 270;
 sphericalAmetropia = -1.5;
 axialLength = 25.35;
 measuredCornealCurvature = [41.36,41.67,25];
 
-% Estimate camera distance from iris diameter in pixels. Because biological
-% variation in the size of the visible iris is known, we can use the
-% observed maximum diameter of the iris in pixels to obtain a guess as to
-% the distance of the eye from the camera.
+% Estimate camera distance from the visible iris diameter in pixels.
+% Because biological variation in the size of the visible iris is known, we
+% can use the observed iris size in pixels to obtain a guess as to the
+% distance of the eye from the camera in mm.
 sceneGeometry = createSceneGeometry(...
     'radialDistortionVector',radialDistortionVector, ...
     'intrinsicCameraMatrix',intrinsicCameraMatrix);
@@ -168,12 +169,21 @@ sceneParamsUB = [5; 5; 5; cameraDepthMean+cameraDepthSD*2; 1.25; 1.1];
 
 % The estimation of scene geometry is greatly aided by having the subject
 % fixate targets at known visual angle positions. The routine
-% estimateSceneParams acceps a list of frames of the video during which the
-% pupil is well visualized and a list of target positions (X,Y) in units of
-% degrees corresponding to each of those video frames.
+% estimateSceneParams accepts a list of frames of the video during which
+% the pupil is well visualized and a list of target positions (X,Y) in
+% units of degrees corresponding to each of those video frames.
 fixationTargetArray = [ -7, 0, 7, 0, 0, 7, -7, 7, -7 ; 7, -7, 0, 0, 7, 7, 0, -7, -7];
 ellipseArrayList = [ 732, 896, 1023, 1167, 1261, 1383, 1542, 1646, 1808 ];
 
+% The routine estimateSceneGeometry performs multiple non-linear searches
+% from different x0 start points. Each search is time consuming (e.g., 10
+% minutes). They will run in parallel if multiple cores are available. We
+% will limit then number of searches to only 2 in this demo, but closer to
+% 10 searches yield improved results.
+nBADSsearches = 2;
+
+
+%% Run the analysis pipeline
 % Run the video pipeline from the stage of estimation of scene geometry
 % through to the end. It includes the stages:
 %   estimateSceneParams
@@ -191,6 +201,7 @@ runVideoPipeline( pathParams, ...
     'axialLength',axialLength,'measuredCornealCurvature',measuredCornealCurvature,...
     'sceneParamsLB',sceneParamsLB,'sceneParamsUB',sceneParamsUB,...
     'sceneParamsLBp',sceneParamsLBp,'sceneParamsUBp',sceneParamsUBp,...
+    'nBADSsearches',nBADSsearches,...
     'catchErrors', false,...
     'fixationTargetArray',fixationTargetArray,'ellipseArrayList', ellipseArrayList, ...
     'skipStageByNumber',[1:6]);
