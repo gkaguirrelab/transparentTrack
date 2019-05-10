@@ -79,14 +79,14 @@ end
 % - Initital processing to the stage of fitting an ellipse to the pupil
 %   perimeter
 % - Definition of the scene geometry and re-fitting of the pupil
-%   perimeter using scene constraints and empirical Bayesian temporal 
+%   perimeter using scene constraints and empirical Bayesian temporal
 %   smoothing.
 
 
 %% Initial processing -- deinterlace to minimally constrained ellipse fitting
 % These parameters are used in the function findPupilPerimeter; definition
 % of the parameters may be found in the header comments for that routine.
-% To select good parameters for your video, use the interactive routine 
+% To select good parameters for your video, use the interactive routine
 % estimateSceneParamsGUI.m, which is found in the Utilities directory
 pupilFrameMask = [64 109 75 183];
 glintFrameMask = [157 148 173 192];
@@ -130,7 +130,7 @@ runVideoPipeline( pathParams, ...
         'glintFileName',glintFileName,...
         'controlFileName',controlFileName,...
         'perimeterFileName',correctedPerimeterFileName,...
-        'pupilFileName',pupilFileName)        
+        'pupilFileName',pupilFileName)
 %}
 
 
@@ -143,7 +143,7 @@ runVideoPipeline( pathParams, ...
 
 % Define camera parameters. These were obtained by an empirical measurement
 % (camera resectioning) of the IR camera used to record the demo data. Use
-% the matlab routine cameraCalibrator: 
+% the matlab routine cameraCalibrator:
 %	https://www.mathworks.com/help/vision/ug/single-camera-calibrator-app.html
 intrinsicCameraMatrix = [2627.0 0 338.1; 0 2628.1 246.2; 0 0 1];
 radialDistortionVector = [-0.3517 3.5353];
@@ -179,9 +179,8 @@ sceneGeometry = createSceneGeometry(...
 % where torsion specifies the torsion of the camera with respect to the eye
 % in degrees, [x y z] is the translation of the camera w.r.t. the eye in
 % mm, and the eyeRotationScalar variables are multipliers that act upon the
-% centers of rotation estimated for the eye.
-% If the eye is markedly off-center in the image, then the translation
-% bounds should be increased.
+% centers of rotation estimated for the eye. If the eye is markedly
+% off-center in the image, then the translation bounds should be increased.
 sceneParamsLB = [-5; -1; -1; cameraDepthMean-cameraDepthSD*2; 0.75; 0.9];
 sceneParamsLBp = [-3; -0.5; -0.5; cameraDepthMean-cameraDepthSD*1; 0.85; 0.95];
 sceneParamsUBp = [3; 0.5; 0.5; cameraDepthMean+cameraDepthSD*1; 1.15; 1.05];
@@ -231,69 +230,85 @@ runVideoPipeline( pathParams, ...
 
 %% Plot some fits
 pupilFileName = fullfile(pathParams.dataOutputDirFull,[pathParams.runName '_pupil.mat']);
-dataLoad = load(pupilFileName);
-pupilData = dataLoad.pupilData;
-clear dataLoad
+load(pupilFileName,'pupilData');
 
-temporalSupport = 0:1/60.:(size(pupilData.sceneConstrained.ellipses.values,1)-1)/60; % seconds
-temporalSupport = temporalSupport / 60; % minutes
+timebase.values = 0:1/360.:(size(pupilData.sceneConstrained.ellipses.values,1)-1)/360; % mins
 
-% Points with a narrow posterior distribution of the fit to pupil radius
-goodIdx = pupilData.radiusSmoothed.eyePoses.radiusSD < 0.01;
+% Identify the time points with good fitting results
+rmseThreshold = 3;
+highRMSE = pupilData.radiusSmoothed.ellipses.RMSE > rmseThreshold;
+fitAtBound = pupilData.radiusSmoothed.eyePoses.fitAtBound;
+good = logical(~highRMSE .* ~fitAtBound);
 
-% Make a plot of pupil area, both on the image plane and on the eye
+yRangeIncrement = [5 5 0.25];
+xLim = [0 ceil(max(timebase.values))];
+
+% Set up a figure
 figure
-subplot(2,1,1)
-plot(temporalSupport,pupilData.initial.ellipses.values(:,3),'-k','LineWidth',2);
-hold on
-plot(temporalSupport,pupilData.sceneConstrained.ellipses.values(:,3),'-b');
-plot(temporalSupport,pupilData.sceneConstrained.ellipses.values(:,3)-pupilData.sceneConstrained.ellipses.splitsSD(:,3),'-','Color',[0 0 0.7])
-plot(temporalSupport,pupilData.sceneConstrained.ellipses.values(:,3)+pupilData.sceneConstrained.ellipses.splitsSD(:,3),'-','Color',[0 0 0.7])
-plot(temporalSupport(goodIdx),pupilData.radiusSmoothed.ellipses.values(goodIdx,3),'.r','LineWidth',2)
-xlim([0 max(temporalSupport)]);
-xlabel('time [mins]');
-ylabel('pupil area [pixels in plane]');
-ylim([5000 25000]);
-hold off
+eyePoseParamsToPlot = [1 2 4];
+yAxisLabels={'azimuth [deg]','elevation [deg]','stop radius [mm]'};
 
-subplot(2,1,2)
-plot(temporalSupport,pupilData.sceneConstrained.eyePoses.values(:,4),'-k','LineWidth',2);
-hold on
-plot(temporalSupport,pupilData.sceneConstrained.eyePoses.values(:,4),'-b');
-plot(temporalSupport,pupilData.sceneConstrained.eyePoses.values(:,4)-pupilData.sceneConstrained.eyePoses.splitsSD(:,4),'-','Color',[0 0 0.7])
-plot(temporalSupport,pupilData.sceneConstrained.eyePoses.values(:,4)+pupilData.sceneConstrained.eyePoses.splitsSD(:,4),'-','Color',[0 0 0.7])
-plot(temporalSupport(goodIdx),pupilData.radiusSmoothed.eyePoses.values(goodIdx,4),'.r','LineWidth',2)
-xlim([0 max(temporalSupport)]);
-xlabel('time [mins]');
-ylabel('pupil radius [mm on eye]');
-ylim([0 4]);
-hold off
-
-% Make a plot of X and Y eye pupil position on the image plane
-figure
-subplot(2,1,1)
-plot(temporalSupport,pupilData.initial.ellipses.values(:,1),'-k','LineWidth',2);
-hold on
-plot(temporalSupport,pupilData.sceneConstrained.ellipses.values(:,1),'-b');
-plot(temporalSupport,pupilData.sceneConstrained.ellipses.values(:,1)-pupilData.sceneConstrained.ellipses.splitsSD(:,1),'-','Color',[0 0 0.7])
-plot(temporalSupport,pupilData.sceneConstrained.ellipses.values(:,1)+pupilData.sceneConstrained.ellipses.splitsSD(:,1),'-','Color',[0 0 0.7])
-plot(temporalSupport(goodIdx),pupilData.radiusSmoothed.ellipses.values(goodIdx,1),'.r','LineWidth',2)
-xlim([0 max(temporalSupport)]);
-xlabel('time [mins]');
-ylabel('X position [pixels]');
-ylim([0 500]);
-hold off
-
-subplot(2,1,2)
-plot(temporalSupport,pupilData.initial.ellipses.values(:,2),'-k','LineWidth',2);
-hold on
-plot(temporalSupport,pupilData.sceneConstrained.ellipses.values(:,2),'-b');
-plot(temporalSupport,pupilData.sceneConstrained.ellipses.values(:,2)-pupilData.sceneConstrained.ellipses.splitsSD(:,2),'-','Color',[0 0 0.7])
-plot(temporalSupport,pupilData.sceneConstrained.ellipses.values(:,2)+pupilData.sceneConstrained.ellipses.splitsSD(:,2),'-','Color',[0 0 0.7])
-plot(temporalSupport(goodIdx),pupilData.radiusSmoothed.ellipses.values(goodIdx,2),'.r','LineWidth',2)
-
-xlim([0 max(temporalSupport)]);
-xlabel('time [mins]');
-ylabel('Y position [pixels]');
-ylim([0 500]);
-hold off
+% Loop over the three eyePose parameters to be plotted
+for kk=1:length(eyePoseParamsToPlot)
+    
+    % Get the y limits for this parameter
+    lb = floor(min(pupilData.radiusSmoothed.eyePoses.values(good,eyePoseParamsToPlot(kk))) ./ yRangeIncrement(kk)).*yRangeIncrement(kk);
+    ub = ceil(max(pupilData.radiusSmoothed.eyePoses.values(good,eyePoseParamsToPlot(kk))) ./ yRangeIncrement(kk)).*yRangeIncrement(kk);
+    
+    % Define the subplot for this acqusition
+    subplot(3,1,kk,'align');
+    
+    % Plot the time-series. Make the red fit dots transparent
+    plot(timebase.values,pupilData.sceneConstrained.eyePoses.values(:,eyePoseParamsToPlot(kk)),'-','Color',[0.85 0.85 0.85],'LineWidth',1);
+    hold on
+    hLineRed = plot(timebase.values(good),pupilData.radiusSmoothed.eyePoses.values(good,eyePoseParamsToPlot(kk)),'o','MarkerSize',3);
+    drawnow
+    hMarkerRed = hLineRed.MarkerHandle;
+    hMarkerRed.FaceColorData = uint8(255*[1; 0; 0; 0.25]);
+    hMarkerRed.FaceColorType = 'truecoloralpha';
+    hMarkerRed.EdgeColorData = uint8([0; 0; 0; 0]);
+    
+    % Add the markers for high RMSE plot points
+    lowY = lb + (ub-lb)/20;
+    hLineGray = plot(timebase.values(highRMSE),repmat(lowY,size(timebase.values(highRMSE))),'o','MarkerSize',3);
+    drawnow
+    if ~isempty(hLineGray)
+        hMarkerGray = hLineGray.MarkerHandle;
+        hMarkerGray.FaceColorData = uint8(255*[0; 0.75; 0; .5]);
+        hMarkerGray.FaceColorType = 'truecoloralpha';
+        hMarkerGray.EdgeColorData = uint8([0; 0; 0; 0]);
+    end
+    
+    % Add the markers for at bound plot points
+    if isfield(pupilData.radiusSmoothed.eyePoses,'fitAtBound')
+        hLineBlue = plot(timebase.values(fitAtBound),repmat(lowY,size(timebase.values(fitAtBound))),'o','MarkerSize',3);
+        drawnow
+        if ~isempty(hLineBlue)
+            hMarkerBlue = hLineBlue.MarkerHandle;
+            hMarkerBlue.FaceColorData = uint8(255*[0; 0; 0.75; 1]);
+            hMarkerBlue.FaceColorType = 'truecoloralpha';
+            hMarkerBlue.EdgeColorData = uint8([0; 0; 0; 0]);
+        end
+    end
+    
+    % Set the plot limits
+    xlim(xLim);
+    xticks(fix(xLim(1)):1:fix(xLim(2)))
+    ylim([lb ub]);
+       
+    % Add a y-axis label
+    ylabel(yAxisLabels{kk});
+    
+    %   set(gca,'TickDir','out')
+    if kk == 1
+        title('Demo data transparentTrack');
+    end
+    if kk ~= length(eyePoseParamsToPlot)
+        set(gca,'XColor','none')
+    else
+        xlabel('time from scan start [mins]');
+    end
+    
+    box off
+    
+end % loop over eyePose params
