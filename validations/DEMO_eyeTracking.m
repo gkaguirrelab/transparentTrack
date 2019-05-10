@@ -96,8 +96,8 @@ pupilGammaCorrection = 0.75;
 
 
 %% Run the analysis pipeline
-% This routine will produce the initial ellipse fit and a fit video. It
-% includes the stages:
+% This call to the pipeline will produce the initial ellipse fit and a fit
+% video. It includes the stages:
 %   deinterlaceVideo
 %   findGlint
 %   findPupilPerimeter
@@ -112,6 +112,26 @@ runVideoPipeline( pathParams, ...
     'pupilRange', [34 51], 'pupilCircleThresh', 0.0179, 'pupilGammaCorrection', 0.75, ...
     'overwriteControlFile', true, 'catchErrors', false,...
     'skipStageByNumber',[],'makeFitVideoByNumber',[6]);
+
+% Note that each stage could be called separately, instead of using the
+% pipeline command:
+%{
+    deinterlaceVideo(rawVideoFileName, deinterlacedVideoFileName);
+    findGlint(deinterlacedVideoFileName, glintFileName,'glintFrameMask', [157 148 173 192]);
+    findPupilPerimeter(deinterlacedVideoFileName, perimeterFileName, ...
+        'pupilFrameMask', [64 109 75 183], 'glintFrameMask', [157 148 173 192], ...
+        'pupilRange', [34 51], 'pupilCircleThresh', 0.0179, 'pupilGammaCorrection', 0.75);
+    makeControlFile(controlFileName,perimeterFileName,glintFileName,...
+        'useParallel',true);
+    applyControlFile(perimeterFileName,controlFileName,correctedPerimeterFileName);
+    fitPupilPerimeter(correctedPerimeterFileName,pupilFileName,...
+        'useParallel',true);
+    makeFitVideo(deinterlacedVideoFileName,fitVideoFileName,...
+        'glintFileName',glintFileName,...
+        'controlFileName',controlFileName,...
+        'perimeterFileName',correctedPerimeterFileName,...
+        'pupilFileName',pupilFileName)        
+%}
 
 
 %% Secondary processing -- scene definition and constrained fitting
