@@ -106,12 +106,12 @@ pupilGammaCorrection = 0.75;
 %   fitPupilPerimeter
 %   makeFitVideo
 %
-% runVideoPipeline( pathParams, ...
-%     'nFrames',nFrames,'verbose', verbose, 'tbSnapshot',tbSnapshot, 'useParallel',true, ...
-%     'pupilFrameMask', [64 109 75 183], 'glintFrameMask', [157 148 173 192], ...
-%     'pupilRange', [34 51], 'pupilCircleThresh', 0.0179, 'pupilGammaCorrection', 0.75, ...
-%     'overwriteControlFile', true, 'catchErrors', false,...
-%     'skipStageByNumber',[],'makeFitVideoByNumber',[6]);
+runVideoPipeline( pathParams, ...
+    'nFrames',nFrames,'verbose', verbose, 'tbSnapshot',tbSnapshot, 'useParallel',true, ...
+    'pupilFrameMask', [64 109 75 183], 'glintFrameMask', [157 148 173 192], ...
+    'pupilRange', [34 51], 'pupilCircleThresh', 0.0179, 'pupilGammaCorrection', 0.75, ...
+    'overwriteControlFile', true, 'catchErrors', false,...
+    'skipStageByNumber',[],'makeFitVideoByNumber',[6]);
 
 % Note that each stage could be called separately, instead of using the
 % pipeline command:
@@ -181,15 +181,22 @@ sceneGeometry = createSceneGeometry(...
 % mm, and the eyeRotationScalar variables are multipliers that act upon the
 % centers of rotation estimated for the eye. If the eye is markedly
 % off-center in the image, then the translation bounds should be increased.
-% To select good scene parameters for your video, use the interactive
-% routine estimateSceneParamsGUI.m, which is found in the Utilities
-% directory.
 % The upper and lower bounds are fixed here so that the demo completes
 % rapidly.
-sceneParamsLB = [3.6; 0.9; 0.3; 113.4; 0.84; 0.96];
-sceneParamsLBp = [3.6; 0.9; 0.3; 113.4; 0.84; 0.96];
-sceneParamsUBp = [3.6; 0.9; 0.3; 113.4; 0.84; 0.96];
-sceneParamsUB = [3.6; 0.9; 0.3; 113.4; 0.84; 0.96];
+sceneParamsLB = [3.60; -0.10; -0.70; 109.40; 0.84; 0.96];
+sceneParamsLBp = [3.60; -0.10; -0.70; 109.40; 0.84; 0.96];
+sceneParamsUBp = [3.60; -0.10; -0.70; 109.40; 0.84; 0.96];
+sceneParamsUB = [3.60; -0.10; -0.70; 109.40; 0.84; 0.96];
+
+% To select good scene parameters for your video, use the interactive
+% routine estimateSceneParamsGUI.m, which is found in the Utilities
+% directory. You will first have to create a sceneGeometry file.
+%{
+    sceneGeometryFileName = fullfile(pathParams.dataOutputDirFull,[pathParams.runName '_sceneGeometry.mat']);
+    ellipseArrayList = [ 732, 896, 1023, 1167, 1261, 1383, 1542, 1646, 1808 ];
+    estimateSceneParamsGUI(sceneGeometryFileName,'ellipseArrayList',ellipseArrayList)
+%}
+
 
 % The estimation of scene geometry is greatly aided by having the subject
 % fixate targets at known visual angle positions. The routine
@@ -237,7 +244,12 @@ runVideoPipeline( pathParams, ...
 pupilFileName = fullfile(pathParams.dataOutputDirFull,[pathParams.runName '_pupil.mat']);
 load(pupilFileName,'pupilData');
 
-timebase.values = 0:1/360.:(size(pupilData.sceneConstrained.ellipses.values,1)-1)/360; % mins
+pupilFileName = fullfile(pathParams.dataOutputDirFull,[pathParams.runName '_timebase.mat']);
+load(pupilFileName,'timebase');
+
+% Convert timebase from msecs to minutes
+timebase.values = timebase.values./1000./60;
+
 
 % Identify the time points with good fitting results
 rmseThreshold = 3;
@@ -246,7 +258,7 @@ fitAtBound = pupilData.radiusSmoothed.eyePoses.fitAtBound;
 good = logical(~highRMSE .* ~fitAtBound);
 
 yRangeIncrement = [5 5 0.25];
-xLim = [0 ceil(max(timebase.values))];
+xLim = [0 ceil(max(timebase.values)*10)/10];
 
 % Set up a figure
 figure
@@ -298,7 +310,7 @@ for kk=1:length(eyePoseParamsToPlot)
     
     % Set the plot limits
     xlim(xLim);
-    xticks(fix(xLim(1)):1:fix(xLim(2)))
+    xticks(fix(xLim(1)):0.25:ceil(xLim(2)*4)/4)
     ylim([lb ub]);
        
     % Add a y-axis label
@@ -311,9 +323,10 @@ for kk=1:length(eyePoseParamsToPlot)
     if kk ~= length(eyePoseParamsToPlot)
         set(gca,'XColor','none')
     else
-        xlabel('time from scan start [mins]');
+        xlabel('time from scan start [minutes]');
     end
     
     box off
     
 end % loop over eyePose params
+
