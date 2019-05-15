@@ -25,6 +25,7 @@ p.addOptional('sceneGeometryFileName', [], @(x)(isempty(x) || ischar(x)));
 % Optional
 p.addParameter('perimeterFileName',[], @(x)(isempty(x) || ischar(x)));
 p.addParameter('grayVideoName',[], @(x)(isempty(x) || ischar(x)));
+p.addParameter('videoSuffix', '_gray.avi', @(x)(isempty(x) || ischar(x)));
 p.addParameter('ellipseArrayList',[], @(x)(isempty(x) || isnumeric(x)));
 
 % parse
@@ -48,7 +49,7 @@ clear dataLoad
 if ~isempty(p.Results.grayVideoName)
     grayVideoName = p.Results.grayVideoName;
 else
-    grayVideoName = strrep(sceneGeometryFileName,'_sceneGeometry.mat','_gray.avi');
+    grayVideoName = strrep(sceneGeometryFileName,'_sceneGeometry.mat',p.Results.videoSuffix);
 end
 
 % Identify the frames of the ellipse array
@@ -56,7 +57,7 @@ if ~isempty(p.Results.ellipseArrayList)
     ellipseArrayList = p.Results.ellipseArrayList;
 else
     % No frames specified. Try to find the time zero frame
-    timebaseFileName = strrep(grayVideoName,'_gray.avi','_timebase.mat');
+    timebaseFileName = strrep(grayVideoName,p.Results.videoSuffix,'_timebase.mat');
     if exist(timebaseFileName, 'file')==2
         dataLoad=load(timebaseFileName);
         timebase=dataLoad.timebase;
@@ -90,7 +91,7 @@ clear videoInObj
 % Load the pupil perimeter data. It will be a structure variable
 % "perimeter", with the fields .data and .meta
 if isempty(p.Results.perimeterFileName)
-    perimeterFileName = strrep(grayVideoName,'_gray.avi','_correctedPerimeter.mat');
+    perimeterFileName = strrep(grayVideoName,p.Results.videoSuffix,'_correctedPerimeter.mat');
 else
     perimeterFileName = p.Results.perimeterFileName;
 end
@@ -99,7 +100,7 @@ perimeter=dataLoad.perimeter;
 clear dataLoad
 
 % Load the relativeCameraPosition file if it exists.
-relativeCameraPositionFileName = strrep(grayVideoName,'_gray.avi','_relativeCameraPosition.mat');
+relativeCameraPositionFileName = strrep(grayVideoName,p.Results.videoSuffix,'_relativeCameraPosition.mat');
 if exist(relativeCameraPositionFileName, 'file')==2
     dataLoad=load(relativeCameraPositionFileName);
     relativeCameraPosition=dataLoad.relativeCameraPosition;
