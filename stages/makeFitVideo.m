@@ -344,8 +344,10 @@ for ii = 1:nFrames
     % If an instruction field is available, and we should suppress blinks,
     % check if this frame is a blink
     notBlinkFrame = true;
-    if isfield(pupilData,'instructions') && p.Results.suppressBlinks
-        notBlinkFrame = ~pupilData.instructions.blink(ii); 
+    if ~isempty(p.Results.pupilFileName)
+        if isfield(pupilData,'instructions') && p.Results.suppressBlinks
+            notBlinkFrame = ~pupilData.instructions.blink(ii);
+        end
     end
     % If a linear uniformity score is available for the frame, check to see
     % that the threshold is met to display the eye model
