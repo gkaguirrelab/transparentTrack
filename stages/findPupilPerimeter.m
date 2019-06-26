@@ -132,6 +132,8 @@ p.addParameter('frameMaskValue', 220, @isnumeric);
 p.addParameter('smallObjThresh', 400, @isnumeric);
 p.addParameter('expandPupilRange', true, @islogical);
 p.addParameter('pickLargestCircle', false, @islogical);
+p.addParameter('glintFileName', [], @ischar);
+
 
 % Optional findPupilCircle routine params. Defined here for transparency
 p.addParameter('pupilCircleThresh', 0.06, @isnumeric);
@@ -168,7 +170,7 @@ grayVideo = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
     end
 % end
 % close the video object
-% figure out which flames we're looping through
+% figure out which frames we're looping through
 startFrame = p.Results.startFrame;
 if p.Results.nFrames == Inf
     endFrame = floor(videoInObj.Duration*videoInObj.FrameRate);
@@ -248,6 +250,31 @@ for ii = 1:(endFrame-startFrame+1)
     % store the current pupilRange
     initialPupilRange = pupilRange;    
     
+    % if provided with glintFileName, only look for perimeter if glints are in
+    % the present frame. If no glints are present, this frame is a blink and
+    % any frame would be a bad frame
+    if ~isempty(p.Results.glintFileName)
+        load(p.Results.glintFileName);
+        frameNumber = startFrame + ii - 1;
+        % if this frame is a blink, don't bother looking for a circle
+        if sum(isnan(glintData.X(frameNumber,:))) == 2
+            performFindPupilCircle = false;
+            pCenters = [];
+        else
+            performFindPupilCircle = true;
+        end
+        % if the previous frame was a blink, start search from initial
+        % pupil range (rather than potentially spurious range that would be
+        % problematic
+        if frameNumber > 1 && sum(isnan(glintData.X(frameNumber-1,:))) == 2
+            pupilRange = p.Results.pupilRange;
+        end
+    else
+        performFindPupilCircle = true;
+    end
+    
+    if performFindPupilCircle
+    
     % perform an initial search for the pupil with findGlintAndPupilCircles. Also extract
     % glint location and size information for later use.
     [pCenters, pRadii,~,pupilRange] = ...
@@ -287,6 +314,7 @@ for ii = 1:(endFrame-startFrame+1)
             end
         end
     end
+end
     
     % If a pupil circle patch was ultimately found, get the perimeter, else
     % write out a zero-filled frame
