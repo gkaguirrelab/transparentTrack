@@ -133,6 +133,7 @@ p.addParameter('smallObjThresh', 400, @isnumeric);
 p.addParameter('expandPupilRange', true, @islogical);
 p.addParameter('pickLargestCircle', false, @islogical);
 p.addParameter('glintFileName', [], @ischar);
+p.addParameter('recentGlintRange', 5, @isnumeric);
 
 
 % Optional findPupilCircle routine params. Defined here for transparency
@@ -161,13 +162,13 @@ videoSizeY = videoInObj.Height;
 
 % initialize variable to hold the perimeter data
 grayVideo = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
-    cc = 0;
-    for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
-        cc = cc+1;
-        thisFrame = read(videoInObj,ii);
-        thisFrame = imadjust(thisFrame,[],[],p.Results.pupilGammaCorrection);
-        grayVideo(:,:,cc) = rgb2gray (thisFrame);
-    end
+cc = 0;
+for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
+    cc = cc+1;
+    thisFrame = read(videoInObj,ii);
+    thisFrame = imadjust(thisFrame,[],[],p.Results.pupilGammaCorrection);
+    grayVideo(:,:,cc) = rgb2gray (thisFrame);
+end
 % end
 % close the video object
 % figure out which frames we're looping through
@@ -230,7 +231,7 @@ for ii = 1:(endFrame-startFrame+1)
     % get the frame
     thisFrame = squeeze(grayVideo(:,:,ii));
     
-   % apply a frame mask if required
+    % apply a frame mask if required
     if ~isempty (p.Results.pupilFrameMask)
         if length(p.Results.pupilFrameMask) == 2
             thisFrame((1:p.Results.pupilFrameMask(1)),:) = p.Results.frameMaskValue;
@@ -248,7 +249,7 @@ for ii = 1:(endFrame-startFrame+1)
     end
     
     % store the current pupilRange
-    initialPupilRange = pupilRange;    
+    initialPupilRange = pupilRange;
     
     % if provided with glintFileName, only look for perimeter if glints are in
     % the present frame. If no glints are present, this frame is a blink and
@@ -266,40 +267,40 @@ for ii = 1:(endFrame-startFrame+1)
         % if the previous frame was a blink, start search from initial
         % pupil range (rather than potentially spurious range that would be
         % problematic
-        if frameNumber > 1 && sum(isnan(glintData.X(frameNumber-1,:))) == 2
+        if frameNumber - p.Results.recentGlintRange < 1
+            recentGlints = glintData.X(1:frameNumber,:);
+        else
+            recentGlints = glintData.X(frameNumber - p.Results.recentGlintRange:frameNumber, :);
+        end
+        
+        % if any of the recent frames were blinks, restore pupilRange to the
+        % initial pupil range
+        if sum(sum(isnan(recentGlints)))>0
             pupilRange = p.Results.pupilRange;
         end
+        
+        
     else
         performFindPupilCircle = true;
     end
     
     if performFindPupilCircle
-    
-    % perform an initial search for the pupil with findGlintAndPupilCircles. Also extract
-    % glint location and size information for later use.
-    [pCenters, pRadii,~,pupilRange] = ...
-        findPupilCircle(thisFrame,...
-        p.Results.pupilCircleThresh,...
-        pupilRange,...
-        p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust, 'displayMode', p.Results.displayMode);
-    
-    if (p.Results.expandPupilRange)
-        % If a pupile circle patch was not found, try again after expanding the
-        % pupil search range by 50%, then 100%. We limit the possible range for
-        % the pupil search to the passed default bounds
-        if isempty(pCenters)
-            % Check if a 50% expansion is within bounds
-            candidateRange = [ceil(initialPupilRange(1)/1.5) round(initialPupilRange(2)*1.5)];
-            if candidateRange(1) < p.Results.pupilRange(1) || candidateRange(2) > p.Results.pupilRange(2)
-                candidateRange = p.Results.pupilRange;
-            end
-            [pCenters, pRadii,~,pupilRange] = ...
-                findPupilCircle(thisFrame,...
-                p.Results.pupilCircleThresh,...
-                candidateRange,...
-                p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust, 'displayMode', p.Results.displayMode);
-            if isempty(pCenters) % still no circle? Try 100% increase
-                candidateRange = [ceil(initialPupilRange(1)/2) round(initialPupilRange(2)*2)];
+        
+        % perform an initial search for the pupil with findGlintAndPupilCircles. Also extract
+        % glint location and size information for later use.
+        [pCenters, pRadii,~,pupilRange] = ...
+            findPupilCircle(thisFrame,...
+            p.Results.pupilCircleThresh,...
+            pupilRange,...
+            p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust, 'displayMode', p.Results.displayMode);
+        
+        if (p.Results.expandPupilRange)
+            % If a pupile circle patch was not found, try again after expanding the
+            % pupil search range by 50%, then 100%. We limit the possible range for
+            % the pupil search to the passed default bounds
+            if isempty(pCenters)
+                % Check if a 50% expansion is within bounds
+                candidateRange = [ceil(initialPupilRange(1)/1.5) round(initialPupilRange(2)*1.5)];
                 if candidateRange(1) < p.Results.pupilRange(1) || candidateRange(2) > p.Results.pupilRange(2)
                     candidateRange = p.Results.pupilRange;
                 end
@@ -308,13 +309,23 @@ for ii = 1:(endFrame-startFrame+1)
                     p.Results.pupilCircleThresh,...
                     candidateRange,...
                     p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust, 'displayMode', p.Results.displayMode);
-                if isempty(pCenters) % STILL no circle? Give up and restore initialPupilRange
-                    pupilRange = initialPupilRange;
+                if isempty(pCenters) % still no circle? Try 100% increase
+                    candidateRange = [ceil(initialPupilRange(1)/2) round(initialPupilRange(2)*2)];
+                    if candidateRange(1) < p.Results.pupilRange(1) || candidateRange(2) > p.Results.pupilRange(2)
+                        candidateRange = p.Results.pupilRange;
+                    end
+                    [pCenters, pRadii,~,pupilRange] = ...
+                        findPupilCircle(thisFrame,...
+                        p.Results.pupilCircleThresh,...
+                        candidateRange,...
+                        p.Results.imfindcirclesSensitivity,p.Results.rangeAdjust, 'displayMode', p.Results.displayMode);
+                    if isempty(pCenters) % STILL no circle? Give up and restore initialPupilRange
+                        pupilRange = initialPupilRange;
+                    end
                 end
             end
         end
     end
-end
     
     % If a pupil circle patch was ultimately found, get the perimeter, else
     % write out a zero-filled frame
@@ -359,7 +370,7 @@ end
         
         % restore warning state
         warning(warningState);
-                
+        
         % Set the glint and iris to zero, and the pupil to unity
         binP = imquantize(maskedPupil, otsuThresh, [0 0 1]);
         
@@ -469,13 +480,13 @@ warning('off','images:imfindcircles:warnForSmallRadius');
     'Sensitivity',imfindcirclesSensitivity);
 
 if p.Results.displayMode
-   axes('units','norm','outerposition',[0 0 0.5 1],'position',[0 0 0.5 1]) %left axes
-   imshow(binP)
-   if ~isempty(pCenters)
-       hold on; viscircles(pCenters, pRadii);
-       viscircles(pCenters(1,:), pRadii(1), 'Color', 'b');
-       text(350, 200, [' Radius = ', num2str(pRadii(1))]);
-   end
+    axes('units','norm','outerposition',[0 0 0.5 1],'position',[0 0 0.5 1]) %left axes
+    imshow(binP)
+    if ~isempty(pCenters)
+        hold on; viscircles(pCenters, pRadii);
+        viscircles(pCenters(1,:), pRadii(1), 'Color', 'b');
+        text(350, 200, [' Radius = ', num2str(pRadii(1))]);
+    end
 end
 
 % Restore the warning state
@@ -484,7 +495,7 @@ warning(origWarnState);
 
 % adjust the pupil range (for quicker processing)
 if ~isempty(pCenters)
-    pupilRange(1)   = min(floor(pRadii(1)*(1-rangeAdjust)),pupilRange(2));  
+    pupilRange(1)   = min(floor(pRadii(1)*(1-rangeAdjust)),pupilRange(2));
     pupilRange(2)   = max(ceil(pRadii(1)*(1 + rangeAdjust)),pupilRange(1));
 else
     pupilRange(1)   = max(ceil(pupilRange(1)*(1 - rangeAdjust)),pupilRange(1));
