@@ -1,4 +1,4 @@
-function [ x ] = estimateSceneParamsGUI(sceneGeometryFileName, varargin)
+function [ x, candidateSceneGeometry ] = estimateSceneParamsGUI(sceneGeometryFileName, varargin)
 % Adjust scene parameter values
 %
 % Syntax:
@@ -121,7 +121,14 @@ fprintf('Press esc to exit.\n');
 
 % Set the current index and scene params
 arrayIdx = 1;
-x = sceneGeometry.meta.estimateSceneParams.search.x;
+if isfield(sceneGeometry.meta,'estimateSceneParams')
+    x = sceneGeometry.meta.estimateSceneParams.search.x;
+else
+    x = [sceneGeometry.cameraPosition.torsion; ...
+        sceneGeometry.cameraPosition.translation; ...
+        1; ...
+        1 ];
+end
 
 % Calculate eye rotatiom centers that correspond to x(5:6) = [1 1]
 defaultAziRotCenter = sceneGeometry.eye.rotationCenters.azi ./ x(5) ./ x(6);
