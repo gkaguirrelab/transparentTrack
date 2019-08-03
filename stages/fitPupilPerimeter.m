@@ -41,9 +41,12 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %
 % Optional key/value pairs (display and I/O):
 %  'verbose'              - Logical. Default false.
+%  'displayMode'          - When set to true, displays the results of the
+%                           boundary extraction and does not save a video
 %
 % Optional key/value pairs (flow control)
 %  'nFrames'              - Analyze fewer than the total number of frames.
+%  'startFrame'           - Which frame to start on
 %  'useParallel'          - If set to true, use the Matlab parallel pool
 %  'nWorkers'             - Specify the number of workers in the parallel
 %                           pool. If undefined the default number will be
@@ -108,9 +111,12 @@ p.addRequired('pupilFileName',@ischar);
 
 % Optional display and I/O params
 p.addParameter('verbose',false,@islogical);
+p.addParameter('displayMode',false,@islogical);
+
 
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
+p.addParameter('startFrame',1,@isnumeric);
 p.addParameter('useParallel',false,@islogical);
 p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
 
@@ -118,7 +124,7 @@ p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
 p.addParameter('timestamp',char(datetime('now')),@ischar);
 p.addParameter('hostname',char(java.lang.System.getProperty('user.name')),@ischar);
-p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
+%p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional analysis params
 p.addParameter('ellipseTransparentLB',[0,0,800,0,0],@(x)(isempty(x) || isnumeric(x)));
@@ -135,7 +141,7 @@ p.addParameter('relativeCameraPositionFileName',[],@ischar);
 p.parse(perimeterFileName, pupilFileName, varargin{:});
 
 nEllipseParams=5; % 5 params in the transparent ellipse form
-nEyePoseParams=4; % 4 eyePose values (azimuth, elevation, torsion, radius) 
+nEyePoseParams=4; % 4 eyePose values (azimuth, elevation, torsion, radius)
 
 
 %% Load data
@@ -229,10 +235,12 @@ end
 % Store the warning state
 warnState = warning();
 
-% Loop through the frames
-parfor (ii = 1:nFrames, nWorkers)
-    %for ii = 1:nFrames
 
+
+% Loop through the frames
+%parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
+for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
+    
     % Update progress
     if verbose
         if mod(ii,round(nFrames/50))==0
@@ -252,12 +260,12 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % fit an ellipse to the boundary (if any points exist)
     if ~isempty(Xp) && ~isempty(Yp)
-
+        
         % Turn off expected warnings
         warning('off','pupilProjection_fwd:ellipseFitFailed');
         warning('off','MATLAB:nearlySingularMatrix');
         warning('off','MATLAB:singularMatrix');
-
+        
         % Fit approach depends upon whether or not we have sceneGeometry
         if isempty(sceneGeometry)
             % No sceneGeometry. Fit an ellipse to the perimeter.
@@ -267,7 +275,7 @@ parfor (ii = 1:nFrames, nWorkers)
                 ellipseTransparentUB, ...
                 []);
         else
-            % We do have sceneGeometry. 
+            % We do have sceneGeometry.
             adjustedSceneGeometry = sceneGeometry;
             % If a relativeCameraPosition is defined, update the
             % sceneGeometry
@@ -281,11 +289,11 @@ parfor (ii = 1:nFrames, nWorkers)
             [eyePose, objectiveError, ellipseParamsTransparent, fitAtBound] = ...
                 eyePoseEllipseFit(Xp, Yp, adjustedSceneGeometry, ...
                 'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB);
-        end       
+        end
         
         % Restore the warning state
         warning(warnState);
-
+        
     end % check if there are pupil boundary data to be fit
     
     % store results
@@ -296,6 +304,37 @@ parfor (ii = 1:nFrames, nWorkers)
         loopVar_eyePoses(ii,:) = eyePose';
     end
     
+    if p.Results.displayMode
+        plotFig = figure; hold on;
+        hPlot = gobjects(0);
+        
+         hPlot(end+1) = plot(perimeter.data{ii}.Xp ,perimeter.data{ii}.Yp, ['.' 'k'], 'MarkerSize', 1);
+        
+        
+        % build ellipse impicit equation
+        pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(ellipseParamsTransparent));
+        fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
+        % superimpose the ellipse using fimplicit or ezplot (ezplot
+        % is the fallback option for older Matlab versions)
+        if exist('fimplicit','file')==2
+            hPlot(end+1) = fimplicit(fh,[ xlim, ylim],'Color', 'g','LineWidth',1);
+            set(gca,'position',[0 0 1 1],'units','normalized')
+            axis off;
+        else
+            hPlot(end+1) = ezplot(fh,[1, xylim, 1, ylim]);
+            set(hPlot(end), 'Color', 'g')
+            set(hPlot(end), 'LineWidth',1);
+        end
+        % To support alpha transparency, we need to re-plot the
+        % ellipse as a conventional MATLAB line object, and not as
+        % an implicit function or a contour.
+        xData = hPlot(end).XData;
+        yData = hPlot(end).YData;
+        
+        hPlot(end)=plot(xData,yData,'Color', 'g','LineWidth',1);
+        
+        delete(hPlot); close(gcf)
+    end
 end % loop over frames
 
 % alert the user that we are done with the fit loop
@@ -306,50 +345,53 @@ end
 
 %% Clean up and save
 
-% Establish a label to save the fields of the ellipse fit data
-if isempty(p.Results.fitLabel)
-    if isempty(sceneGeometry)
-        fitLabel = 'initial';
+% Don't save anything out if we're just using display mode
+if ~p.Results.displayMode
+    % Establish a label to save the fields of the ellipse fit data
+    if isempty(p.Results.fitLabel)
+        if isempty(sceneGeometry)
+            fitLabel = 'initial';
+        else
+            fitLabel = 'sceneConstrained';
+        end
     else
-        fitLabel = 'sceneConstrained';
+        fitLabel = p.Results.fitLabel;
     end
-else
-    fitLabel = p.Results.fitLabel;
+    
+    % Clear out any old results in this fit label field
+    pupilData.(fitLabel) = [];
+    
+    % Store the ellipse fit data in informative fields
+    pupilData.(fitLabel).ellipses.values = loopVar_ellipseParamsTransparent;
+    pupilData.(fitLabel).ellipses.RMSE = loopVar_objectiveError';
+    if isempty(sceneGeometry)
+        pupilData.(fitLabel).ellipses.fitAtBound = loopVar_fitAtBound';
+    else
+        pupilData.(fitLabel).eyePoses.fitAtBound = loopVar_fitAtBound';
+    end
+    pupilData.(fitLabel).ellipses.meta.ellipseForm = 'transparent';
+    pupilData.(fitLabel).ellipses.meta.labels = {'x','y','area','eccentricity','theta'};
+    pupilData.(fitLabel).ellipses.meta.units = {'pixels','pixels','squared pixels','non-linear eccentricity','rads'};
+    pupilData.(fitLabel).ellipses.meta.coordinateSystem = 'intrinsic image';
+    if ~isempty(sceneGeometry)
+        pupilData.(fitLabel).eyePoses.values = loopVar_eyePoses;
+        pupilData.(fitLabel).eyePoses.meta.labels = {'azimuth','elevation','torsion','pupil radius'};
+        pupilData.(fitLabel).eyePoses.meta.units = {'deg','deg','deg','mm'};
+        pupilData.(fitLabel).eyePoses.meta.coordinateSystem = 'head fixed (extrinsic)';
+    end
+    
+    % If the perimeter variable has an "instructions" field, copy it over to
+    % pupilData
+    if isfield(perimeter,'instructions')
+        pupilData.instructions = perimeter.instructions;
+    end
+    
+    % add meta data
+    pupilData.(fitLabel).meta = p.Results;
+    
+    % save the ellipse fit results
+    save(p.Results.pupilFileName,'pupilData')
 end
-
-% Clear out any old results in this fit label field
-pupilData.(fitLabel) = [];
-
-% Store the ellipse fit data in informative fields
-pupilData.(fitLabel).ellipses.values = loopVar_ellipseParamsTransparent;
-pupilData.(fitLabel).ellipses.RMSE = loopVar_objectiveError';
-if isempty(sceneGeometry)
-    pupilData.(fitLabel).ellipses.fitAtBound = loopVar_fitAtBound';
-else
-    pupilData.(fitLabel).eyePoses.fitAtBound = loopVar_fitAtBound';
-end
-pupilData.(fitLabel).ellipses.meta.ellipseForm = 'transparent';
-pupilData.(fitLabel).ellipses.meta.labels = {'x','y','area','eccentricity','theta'};
-pupilData.(fitLabel).ellipses.meta.units = {'pixels','pixels','squared pixels','non-linear eccentricity','rads'};
-pupilData.(fitLabel).ellipses.meta.coordinateSystem = 'intrinsic image';
-if ~isempty(sceneGeometry)
-    pupilData.(fitLabel).eyePoses.values = loopVar_eyePoses;
-    pupilData.(fitLabel).eyePoses.meta.labels = {'azimuth','elevation','torsion','pupil radius'};
-    pupilData.(fitLabel).eyePoses.meta.units = {'deg','deg','deg','mm'};
-    pupilData.(fitLabel).eyePoses.meta.coordinateSystem = 'head fixed (extrinsic)';
-end
-
-% If the perimeter variable has an "instructions" field, copy it over to
-% pupilData
-if isfield(perimeter,'instructions')
-    pupilData.instructions = perimeter.instructions;
-end
-
-% add meta data
-pupilData.(fitLabel).meta = p.Results;
-
-% save the ellipse fit results
-save(p.Results.pupilFileName,'pupilData')
 
 end % function
 
