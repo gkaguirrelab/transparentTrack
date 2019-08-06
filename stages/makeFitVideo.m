@@ -325,17 +325,20 @@ for ii = 1:nFrames
                 % To support alpha transparency, we need to re-plot the
                 % ellipse as a conventional MATLAB line object, and not as
                 % an implicit function or a contour.
+                
                 xData = hPlot(end).XData;
                 yData = hPlot(end).YData;
                 delete(hPlot(end));
-                hPlot(end)=plot(xData,yData,'Color', pupilColor,'LineWidth',1);                
-                % Scale the ellipse line alpha by the RMSE ellipse fit
-                % value for this frame
-                RMSEVal = max([ellipseFitRMSE(ii) p.Results.modelEyeRMSERangeAlphaScaler(1)]);
-                RMSEVal = min([RMSEVal p.Results.modelEyeRMSERangeAlphaScaler(2)]);
-                alphaVal = 1 - ( (RMSEVal-p.Results.pupilRMSERangeAlphaScaler(1))/(p.Results.pupilRMSERangeAlphaScaler(2)-p.Results.pupilRMSERangeAlphaScaler(1)));
-                alphaVal = max([alphaVal 0.25]);
-                hPlot(end).Color(4) = alphaVal;
+                if ~isempty(xData)
+                    hPlot(end)=plot(xData,yData,'Color', pupilColor,'LineWidth',1);
+                    % Scale the ellipse line alpha by the RMSE ellipse fit
+                    % value for this frame
+                    RMSEVal = max([ellipseFitRMSE(ii) p.Results.modelEyeRMSERangeAlphaScaler(1)]);
+                    RMSEVal = min([RMSEVal p.Results.modelEyeRMSERangeAlphaScaler(2)]);
+                    alphaVal = 1 - ( (RMSEVal-p.Results.pupilRMSERangeAlphaScaler(1))/(p.Results.pupilRMSERangeAlphaScaler(2)-p.Results.pupilRMSERangeAlphaScaler(1)));
+                    alphaVal = max([alphaVal 0.25]);
+                    hPlot(end).Color(4) = alphaVal;
+                end
             end
         end
     end
