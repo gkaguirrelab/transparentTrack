@@ -238,8 +238,8 @@ warnState = warning();
 
 
 % Loop through the frames
-%parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
-for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
+parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
+%for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
     
     % Update progress
     if verbose
@@ -321,7 +321,7 @@ for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
             set(gca,'position',[0 0 1 1],'units','normalized')
             axis off;
         else
-            hPlot(end+1) = ezplot(fh,[1, xylim, 1, ylim]);
+            hPlot(end+1) = ezplot(fh,[1, xlim, 1, ylim]);
             set(hPlot(end), 'Color', 'g')
             set(hPlot(end), 'LineWidth',1);
         end
