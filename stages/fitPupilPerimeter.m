@@ -259,7 +259,7 @@ parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
     Yp = frameCellArray{ii}.Yp;
     
     % fit an ellipse to the boundary (if any points exist)
-    if ~isempty(Xp) && ~isempty(Yp)
+    if length(Xp) > 1 && length(Yp) > 1
         
         % Turn off expected warnings
         warning('off','pupilProjection_fwd:ellipseFitFailed');
