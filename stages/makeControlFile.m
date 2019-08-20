@@ -158,9 +158,12 @@ p.addRequired('glintFileName',@isstr);
 
 % Optional display and I/O params
 p.addParameter('verbose',false,@islogical);
+p.addParameter('displayMode',false,@islogical);
+
 
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
+p.addParameter('startFrame',1,@isnumeric);
 p.addParameter('useParallel',false,@islogical);
 p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('tbtbRepoName','transparentTrack',@ischar);
@@ -193,19 +196,21 @@ p.parse(controlFileName, perimeterFileName, glintFileName, varargin{:})
 
 
 %% Check that this control file does not exist
-% We decline to over-write an existing control file, as it may contain
-% instructions lovingly crafted by a human
-if exist(controlFileName, 'file') == 2 && ~(p.Results.overwriteControlFile)
-    warning('makeControlFile:overwrittingControlFile',['The control file ' controlFileName ' exists already and cannot be over-written. Exiting.']);
-    return
-end
-
-% If we decided to overwrite an existing control file, we remove the
-% previous one to start fresh and avoid that new instructions are appended
-% after old ones.
-if exist(controlFileName, 'file') == 2 && (p.Results.overwriteControlFile)
-    warning(['Deleting old version of ' controlFileName ]);
-    delete (controlFileName)
+if ~p.Results.displayMode
+    % We decline to over-write an existing control file, as it may contain
+    % instructions lovingly crafted by a human
+    if exist(controlFileName, 'file') == 2 && ~(p.Results.overwriteControlFile)
+        warning('makeControlFile:overwrittingControlFile',['The control file ' controlFileName ' exists already and cannot be over-written. Exiting.']);
+        return
+    end
+    
+    % If we decided to overwrite an existing control file, we remove the
+    % previous one to start fresh and avoid that new instructions are appended
+    % after old ones.
+    if exist(controlFileName, 'file') == 2 && (p.Results.overwriteControlFile)
+        warning(['Deleting old version of ' controlFileName ]);
+        delete (controlFileName)
+    end
 end
 
 
@@ -343,8 +348,9 @@ frameSize = perimeter.size;
 clear perimeter
 
 % Loop through the video frames
-parfor (ii = 1:nFrames, nWorkers)
-    
+parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
+%for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
+
     % Update progress
     if p.Results.verbose && mod(ii,round(nFrames/50))==0
         fprintf('\b.\n');
@@ -377,7 +383,7 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % index perimeter points
     [Yp, Xp] = ind2sub(size(thisFrame),find(thisFrame));
-        
+    
     % define these so that the parfor loop is not concerned that the values
     % will not carry from one loop to the next
     smallestFittingError = NaN;
@@ -386,7 +392,7 @@ parfor (ii = 1:nFrames, nWorkers)
     
     % proceed if the frame is not empty
     if ~isempty(Xp)
-                
+        
         % The try - catch allows processing to proceed if an attempt to
         % fit the ellipse fails
         try
@@ -408,7 +414,7 @@ parfor (ii = 1:nFrames, nWorkers)
             maxRadius=round(max([max(Xp)-min(Xp),max(Yp)-min(Yp)])/2);
             stepReducer = max([1,floor(maxRadius/p.Results.radiusDivisions)]);
             minRadius = maxRadius * p.Results.minRadiusProportion;
-
+            
             % Keep count of the number of cuts we have tried
             cutIdx = 1;
             
@@ -437,7 +443,7 @@ parfor (ii = 1:nFrames, nWorkers)
                     [gridSearchRadii,gridSearchThetas] = ndgrid(candidateRadius,thisCutThetas);
                     myCutOptim = @(params) calcErrorForACut(cutFrame, params(1), params(2), p.Results.ellipseTransparentLB, p.Results.ellipseTransparentUB);
                     gridSearchResults=arrayfun(@(k1,k2) myCutOptim([k1,k2]),gridSearchRadii,gridSearchThetas);
-
+                    
                     % Store the best cut from this search
                     bestFitOnThisSearch=min(min(min(gridSearchResults)));
                     
@@ -446,7 +452,7 @@ parfor (ii = 1:nFrames, nWorkers)
                         smallestFittingError=bestFitOnThisSearch;
                         [~,col] = find(gridSearchResults==bestFitOnThisSearch);
                         theseRadii(cutIdx)=candidateRadius;
-                        theseThetas(cutIdx)=thisCutThetas(col);
+                        theseThetas(cutIdx)=thisCutThetas(col(1));
                     end
                     
                     % Are we done searching over radii? If not, shrink the
@@ -466,21 +472,23 @@ parfor (ii = 1:nFrames, nWorkers)
                 
                 % Iterate the cut index
                 cutIdx = cutIdx+1;
-
+                
             end % search over cuts
-
+            
             frameRadii(ii,:)=theseRadii;
             frameThetas(ii,:)=theseThetas;
-
+            
         catch
             % If there is a fitting error, tag this frame error and
             % continue with the parfor loop
             frameErrors(ii)=1;
+
+            
             continue
         end % try-catch
         
     end % not an empty frame
-        
+    
 end % parloop over frames
 
 
@@ -492,96 +500,99 @@ end
 
 
 %% Write out control file instructions
-fid = fopen(controlFileName,'a');
-
-% Blinks
-if ~isempty(blinkFrames)
-    for bb = 1 : length(blinkFrames)
-        instruction = [num2str(blinkFrames(bb)) ',' 'blink'];
-        fprintf(fid,'%s\n',instruction);
-        clear instruction
-    end
-end
-
-% Glint patches
-glintPatchFrames=find(~isnan(glintPatchX));
-if ~isempty(glintPatchFrames)
-    for kk = 1 : length(glintPatchFrames)
-        frameIdx=glintPatchFrames(kk);
-        instruction = [num2str(frameIdx) ',' 'glintPatch' ',' num2str(glintPatchX(frameIdx)) ',' num2str(glintPatchY(frameIdx)) ',' num2str(glintPatchRadius(frameIdx))];
-        fprintf(fid,'%s\n',instruction);
-        clear instruction
-    end
-end
-
-% Cuts
-cutFrames=find(any(~isnan(frameThetas),2));
-if ~isempty(cutFrames)
-    for kk = 1 : length(cutFrames)
-        frameIdx=cutFrames(kk);
-        for jj = 1 : nCuts
-            if ~isnan(frameRadii(frameIdx,jj))
-                instruction = [num2str(frameIdx) ',' 'cut' ',' num2str(frameRadii(frameIdx,jj)) ',' num2str(frameThetas(frameIdx,jj))];
-                fprintf(fid,'%s\n',instruction);
-            end
+if ~p.Results.displayMode
+    
+    fid = fopen(controlFileName,'a');
+    
+    % Blinks
+    if ~isempty(blinkFrames)
+        for bb = 1 : length(blinkFrames)
+            instruction = [num2str(blinkFrames(bb)) ',' 'blink'];
+            fprintf(fid,'%s\n',instruction);
+            clear instruction
         end
-        clear instruction
     end
-end
-
-% Fit errors
-errorFrameIdx=find(~isnan(frameErrors));
-if ~isempty(errorFrameIdx)
-    for kk = 1 : length(errorFrameIdx)
-        frameIdx=errorFrameIdx(kk);
-        instruction = [num2str(frameIdx) ',' 'error' ];
-        fprintf(fid,'%s\n',instruction);
-        clear instruction
+    
+    % Glint patches
+    glintPatchFrames=find(~isnan(glintPatchX));
+    if ~isempty(glintPatchFrames)
+        for kk = 1 : length(glintPatchFrames)
+            frameIdx=glintPatchFrames(kk);
+            instruction = [num2str(frameIdx) ',' 'glintPatch' ',' num2str(glintPatchX(frameIdx)) ',' num2str(glintPatchY(frameIdx)) ',' num2str(glintPatchRadius(frameIdx))];
+            fprintf(fid,'%s\n',instruction);
+            clear instruction
+        end
     end
-end
-
-% Extract field data
-fields = repmat(fieldnames(p.Results), numel(p.Results), 1);
-values = struct2cell(p.Results);
-
-% Convert all numerical values to strings
-numericIdx = cellfun(@isnumeric, values);
-values(numericIdx) = cellfun(@mat2str, values(numericIdx), 'UniformOutput', 0);
-
-% Convert all logical values to strings
-logicalText = {'false','true'};
-logicalIdx = cellfun(@islogical, values);
-values(logicalIdx) = cellfun(@(x) logicalText{double(x)+1}, values(logicalIdx), 'UniformOutput', 0);
-
-% Replace any remaining cells or structures with an explanation
-cellIdx = cellfun(@iscell, values);
-values(cellIdx) = cellfun(@(x) '== cell value not reported here ==', values(cellIdx), 'UniformOutput', 0);
-
-structIdx = cellfun(@isstruct, values);
-values(structIdx) = cellfun(@(x) '== struct value not reported here ==', values(structIdx), 'UniformOutput', 0);
-
-% Combine field names and values in the same array
-paramsCellArray = {fields{:}; values{:}};
-
-% Mark off this section
-instruction = ['%' ',' '%' ',' '**** start analysis parameters ****'];
-fprintf(fid,'%s\n',instruction);
-clear instruction
-
-% Loop through the columns and save each as a row in the filed
-for kk = 1:size(paramsCellArray,2)
-    instruction = ['%' ',' '%' ',' paramsCellArray{1,kk} ',' paramsCellArray{2,kk}];
+    
+    % Cuts
+    cutFrames=find(any(~isnan(frameThetas),2));
+    if ~isempty(cutFrames)
+        for kk = 1 : length(cutFrames)
+            frameIdx=cutFrames(kk);
+            for jj = 1 : nCuts
+                if ~isnan(frameRadii(frameIdx,jj))
+                    instruction = [num2str(frameIdx) ',' 'cut' ',' num2str(frameRadii(frameIdx,jj)) ',' num2str(frameThetas(frameIdx,jj))];
+                    fprintf(fid,'%s\n',instruction);
+                end
+            end
+            clear instruction
+        end
+    end
+    
+    % Fit errors
+    errorFrameIdx=find(~isnan(frameErrors));
+    if ~isempty(errorFrameIdx)
+        for kk = 1 : length(errorFrameIdx)
+            frameIdx=errorFrameIdx(kk);
+            instruction = [num2str(frameIdx) ',' 'error' ];
+            fprintf(fid,'%s\n',instruction);
+            clear instruction
+        end
+    end
+    
+    % Extract field data
+    fields = repmat(fieldnames(p.Results), numel(p.Results), 1);
+    values = struct2cell(p.Results);
+    
+    % Convert all numerical values to strings
+    numericIdx = cellfun(@isnumeric, values);
+    values(numericIdx) = cellfun(@mat2str, values(numericIdx), 'UniformOutput', 0);
+    
+    % Convert all logical values to strings
+    logicalText = {'false','true'};
+    logicalIdx = cellfun(@islogical, values);
+    values(logicalIdx) = cellfun(@(x) logicalText{double(x)+1}, values(logicalIdx), 'UniformOutput', 0);
+    
+    % Replace any remaining cells or structures with an explanation
+    cellIdx = cellfun(@iscell, values);
+    values(cellIdx) = cellfun(@(x) '== cell value not reported here ==', values(cellIdx), 'UniformOutput', 0);
+    
+    structIdx = cellfun(@isstruct, values);
+    values(structIdx) = cellfun(@(x) '== struct value not reported here ==', values(structIdx), 'UniformOutput', 0);
+    
+    % Combine field names and values in the same array
+    paramsCellArray = {fields{:}; values{:}};
+    
+    % Mark off this section
+    instruction = ['%' ',' '%' ',' '**** start analysis parameters ****'];
     fprintf(fid,'%s\n',instruction);
     clear instruction
+    
+    % Loop through the columns and save each as a row in the filed
+    for kk = 1:size(paramsCellArray,2)
+        instruction = ['%' ',' '%' ',' paramsCellArray{1,kk} ',' paramsCellArray{2,kk}];
+        fprintf(fid,'%s\n',instruction);
+        clear instruction
+    end
+    instruction = ['%' ',' '%' ',' '**** end analysis parameters ****'];
+    fprintf(fid,'%s\n',instruction);
+    clear instruction
+    
+    % finish and close the file
+    instruction = ['%' ',' '%' ',' 'end of automatic instructions'];
+    fprintf(fid,'%s\n',instruction);
+    fclose(fid);
 end
-instruction = ['%' ',' '%' ',' '**** end analysis parameters ****'];
-fprintf(fid,'%s\n',instruction);
-clear instruction
-
-% finish and close the file
-instruction = ['%' ',' '%' ',' 'end of automatic instructions'];
-fprintf(fid,'%s\n',instruction);
-fclose(fid);
 
 end % function
 
