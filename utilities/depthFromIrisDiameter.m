@@ -36,7 +36,7 @@ function [cameraDepthMean, cameraDepthSD] = depthFromIrisDiameter( sceneGeometry
     %% Recover a veridical camera distance
     % Calculate what the observed iris diameter should be at 100 mm
     sceneGeometry_100depth = createSceneGeometry('cameraTranslation',[0; 0; 100]);
-    [~, imagePoints, ~, ~, pointLabels] = ...
+    [~, imagePoints, ~, ~, ~, pointLabels] = ...
     	pupilProjection_fwd([0 0 0 1], sceneGeometry_100depth, 'fullEyeModelFlag', true, 'nIrisPerimPoints', 20);
     idx = find(strcmp(pointLabels,'irisPerimeter'));
     observedIrisDiamPixels = max(imagePoints(idx,1))-min(imagePoints(idx,1));
@@ -55,7 +55,7 @@ p = inputParser; p.KeepUnmatched = true;
 
 % Required
 p.addRequired('sceneGeometry', @isstruct);
-p.addRequired('maxIrisDiameterPixels',@isnumeric);
+p.addRequired('observedIrisDiamPixels',@isnumeric);
 
 % parse
 p.parse(sceneGeometry, observedIrisDiamPixels)
