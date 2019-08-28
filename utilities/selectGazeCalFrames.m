@@ -45,6 +45,7 @@ function [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, 
 %
 % Examples:
 %{
+    % ETTBSkip -- This is an idiostncratic example.
     pupilFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3030/011018/EyeTracking/GazeCal01_pupil.mat';
     timebaseFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3030/011018/EyeTracking/GazeCal01_timebase.mat';
     gazeCalFramesDiagnosticPlot = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3030/011018/EyeTracking/GazeCal01_fixFramesSelectPlot.pdf';
