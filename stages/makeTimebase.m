@@ -37,6 +37,7 @@ function makeTimebase(rawVideoInFileName, timebaseFileName, varargin)
 %
 % Examples:
 %{
+    % ETTBSkip -- This is an idiosyncratic example.
     videoIn = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/MELA_data/Experiments/OLApproach_TrialSequenceMR/MRMMTMel/DataFiles/HERO_jxv1/2019-03-16/session_1/tfMRI_OLBLOCK_AP_Run1.mov'
     timbaseOut = '~/Desktop/tfMRI_OLBLOCK_AP_Run1_timebase.mat'
     makeTimebase( videoIn, timbaseOut)

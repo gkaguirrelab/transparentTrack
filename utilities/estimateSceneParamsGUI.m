@@ -8,6 +8,7 @@ function [ x, candidateSceneGeometry ] = estimateSceneParamsGUI(sceneGeometryFil
 %
 % Examples:
 %{
+    % ETTBSkip -- This is an idiosyncratic example.
     sceneGeometryFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure/TOME_3038/071118/EyeTracking/GazeCal_sceneGeometry.mat';
     load(sceneGeometryFileName)
     ellipseArrayList = sceneGeometry.meta.estimateSceneParams.ellipseArrayList;

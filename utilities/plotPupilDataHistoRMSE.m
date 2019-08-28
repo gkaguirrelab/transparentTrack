@@ -43,6 +43,7 @@ function plotPupilDataHistoRMSE( dataRootDir, plotSaveDir, varargin )
 %
 % Examples:
 %{
+    % ETTBSkip -- This is an interactive example.
     plotPupilDataHistoRMSE('','pupilDataQAPlots_initial')
 %}
 

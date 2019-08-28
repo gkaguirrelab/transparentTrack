@@ -155,9 +155,11 @@ function [ initialParams ] = estimatePipelineParamsGUI(grayVideoName, approach, 
 
 % Examples:
 %{
+    % ETTBSkip -- This is an interactive example.
     initialParams = estimatePipelineParamsGUI('pathToVideoFile/videoFile.extension')
 %}
 %{
+    % ETTBSkip -- This is an interactive example.
     % Estimate parameters for the TOME dataset.
     initialParams = estimatePipelineParamsGUI('','TOME') 
 %}

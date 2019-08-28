@@ -35,6 +35,7 @@
 %
 % Examples:
 %{
+    % ETTBSkip -- This is an interactive example.
     startPath = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure/TOME_3003/090216/EyeTracking/dMRI_dir98_PA_sceneGeometry.mat';
     frameAdjustGUI
 %}

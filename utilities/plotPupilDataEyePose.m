@@ -42,6 +42,7 @@ function plotPupilDataEyePose( dataRootDir, plotSaveDir, varargin )
 %
 % Examples:
 %{
+    % ETTBSkip -- This is an idiosyncratic example.
     dataRootDir = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure';
     plotSaveDir = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure/pupilDataQAPlots_eyePose'
     plotPupilDataEyePose(dataRootDir,plotSaveDir);

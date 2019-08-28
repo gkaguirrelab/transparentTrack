@@ -23,6 +23,7 @@ function selectDotTimesGUI(pupilFileName)
 %
 % Examples:
 %{
+    % ETTBSkip -- This is an interactive example.
     pupilFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure/TOME_3008/102116/EyeTracking/GazeCal_pupil.mat';
     selectDotTimesGUI(pupilFileName)
 %}
