@@ -80,15 +80,18 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
 %                           estimation of scene geometry. If left empty,
 %                           a list of ellipses will be generated.
 %  'fixationTargetArray'  - A 2xm matrix that provides the positions, in
-%                           degrees of visual angle, of fixation targets
-%                           that correspond to each of the frames
+%                           nominal degrees of visual angle, of fixation
+%                           targets that correspond to each of the frames
 %                           identified in the ellipseArrayList. If defined,
 %                           the routine will find the scene geometry that
 %                           best aligns the recovered eye poses with the
 %                           fixation targets, subject to a translation and
 %                           rotation matrix. If left empty, the search will
 %                           minimize error in the joint specification of
-%                           ellipse centers and shape.
+%                           ellipse centers and shape. If needed, the
+%                           visual angle of the stimuli will be adjusted
+%                           for min/magnification produced by corrective
+%                           lenses worn by the subject.
 %  'nBinsPerDimension'    - Scalar. Defines the number of divisions with
 %                           which the ellipse centers are binned.
 %  'badFrameErrorThreshold' - Frames with RMSE fitting error above this
@@ -193,9 +196,16 @@ end
 %% Create initial sceneGeometry structure
 initialSceneGeometry = createSceneGeometry(varargin{:});
 
-
 %% Define the fixationTargetArray
 fixationTargetArray = p.Results.fixationTargetArray;
+
+% Transform the fixationTargets from nominal degrees of visual angle to the
+% angles as perceived by the subject as a consequence of any artificial
+% lenses (contacts, spectacles).
+if ~isempty(fixationTargetArray)
+    magnification = initialSceneGeometry.refraction.retinaToCamera.magnification;
+    fixationTargetArray = fixationTargetArray .* magnification;
+end
 
 
 %% Set up the parallel pool
