@@ -80,15 +80,26 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
 %                           estimation of scene geometry. If left empty,
 %                           a list of ellipses will be generated.
 %  'fixationTargetArray'  - A 2xm matrix that provides the positions, in
-%                           degrees of visual angle, of fixation targets
-%                           that correspond to each of the frames
+%                           nominal degrees of visual angle, of fixation
+%                           targets that correspond to each of the frames
 %                           identified in the ellipseArrayList. If defined,
 %                           the routine will find the scene geometry that
 %                           best aligns the recovered eye poses with the
 %                           fixation targets, subject to a translation and
 %                           rotation matrix. If left empty, the search will
 %                           minimize error in the joint specification of
-%                           ellipse centers and shape.
+%                           ellipse centers and shape. If needed, the
+%                           visual angle of the stimuli will be adjusted
+%                           for min/magnification produced by spectacle
+%                           lenses worn by the subject.
+%  'fixSpectacleLens'     - Scalar. This parameter is used to handle an
+%                           unusual circumstance in which the eye viewing a
+%                           fixation array is behind a spectacle lens, but
+%                           the eye being modeled for pupil appearance is
+%                           not. Setting this parameter causes the routine
+%                           to calculate a magnification factor for the
+%                           fixation target array, but does not apply this
+%                           spectacle to the eye being modeled.
 %  'nBinsPerDimension'    - Scalar. Defines the number of divisions with
 %                           which the ellipse centers are binned.
 %  'badFrameErrorThreshold' - Frames with RMSE fitting error above this
@@ -173,6 +184,7 @@ p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 p.addParameter('fitLabel','initial',@ischar);
 p.addParameter('ellipseArrayList',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('fixationTargetArray',[],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('fixSpectacleLens',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nBinsPerDimension',4,@isnumeric);
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
 p.addParameter('nBADSsearches',20,@isnumeric);
@@ -196,6 +208,38 @@ initialSceneGeometry = createSceneGeometry(varargin{:});
 
 %% Define the fixationTargetArray
 fixationTargetArray = p.Results.fixationTargetArray;
+
+
+%% Handle spectacle magnification
+% A spectacle lens has the property of magnifying / minifying the visual
+% world from the perspective of the eye. This alteration scales the
+% apparent visual field positions of the targets and results in a
+% concomittant change in eye movement amplitue. Note that while a contact
+% lens also has a magnification effect (albeit smaller), the lens rotates
+% with the eye. Thus, eye movement amplitude is not altered.
+if ~isempty(fixationTargetArray)
+    % Default to no change
+    magnification = 1;
+    % If fixSpectacleLens is set, use this value to calculate a
+    % magnification and apply it
+    if ~isempty(p.Results.fixSpectacleLens)
+        modVarargin = varargin;
+        idx = find(strcmp(modVarargin,'spectacleLens'));
+        if ~isempty(idx)
+            modVarargin{idx+1} = {p.Results.fixSpectacleLens};
+        else
+            modVarargin = [modVarargin 'spectacleLens' p.Results.fixSpectacleLens];
+        end        
+        tmpSceneGeometry = createSceneGeometry(modVarargin{:});
+        magnification = tmpSceneGeometry.refraction.retinaToCamera.magnification.spectacle;
+    else
+        % check if there is a spectacle magnification field
+        if isfield(initialSceneGeometry.refraction.retinaToCamera.magnification,'spectacle')
+            magnification = initialSceneGeometry.refraction.retinaToCamera.magnification.spectacle;
+        end
+    end
+    fixationTargetArray = fixationTargetArray .* magnification;
+end
 
 
 %% Set up the parallel pool
