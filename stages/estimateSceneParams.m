@@ -925,10 +925,36 @@ scatter(nan, nan,2,'filled', ...
 set(hSub, 'Visible', 'off');
 legend({'0','0.025', '=> 0.05'},'Location','north', 'Orientation','vertical');
 
-% Add text to report the camera position parameters
+% Add text to report the camera position parameters, highlighting in color
+% parameters that are outside of the plausible bounds, or at the hard
+% bounds. First gather the vectors;
 xFinal = sceneGeometry.meta.estimateSceneParams.search.x;
-myString = sprintf('torsion [deg] = %4.1f; translation vector [mm] = %4.1f, %4.1f, %4.1f; rotation center scaling [joint, differential] = %4.2f, %4.2f',xFinal(1),xFinal(2),xFinal(3),xFinal(4),xFinal(5),xFinal(6));
-text(0.5,1.0,myString,'Units','normalized','HorizontalAlignment','center')
+LB = sceneGeometry.meta.estimateSceneParams.search.LB;
+LBp = sceneGeometry.meta.estimateSceneParams.search.LBp;
+UBp = sceneGeometry.meta.estimateSceneParams.search.UBp;
+UB = sceneGeometry.meta.estimateSceneParams.search.UB;
+notPlausibleIdx = or(logical(xFinal < LBp),logical(xFinal> UBp));
+atBoundIdx = or( logical(abs(xFinal-LB)<0.01), logical(abs(xFinal-UB)<0.01) );
+
+% Construct the report string, placing the values in curly braces 
+myString = sprintf('torsion [deg] = {%4.1f}; translation vector [mm] = {%4.1f}, {%4.1f}, {%4.1f}; rotation center scaling [joint, differential] = {%4.2f}, {%4.2f}',xFinal(1),xFinal(2),xFinal(3),xFinal(4),xFinal(5),xFinal(6));
+
+% Find the positions of the value braces
+leftIdx=regexp(myString,'{.*?}');
+
+% Loop through the params and color-tag extreme values
+for vv = 1:length(xFinal)
+    if atBoundIdx(vv)
+        myString = [myString(1:leftIdx(vv)) '\color{red}' myString(leftIdx(vv)+1:end)];
+        leftIdx=regexp(myString,'{.*?}');
+    elseif notPlausibleIdx(vv)
+        myString = [myString(1:leftIdx(vv)) '\color{yellow}' myString(leftIdx(vv)+1:end)];
+        leftIdx=regexp(myString,'{.*?}');
+    end
+end
+
+% Post the title
+text(0.5,1.25,myString,'Units','normalized','HorizontalAlignment','center')
 
 % Add text to report the ellipse frames used
 ellipseFrameList = num2str(sort(sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList)');
