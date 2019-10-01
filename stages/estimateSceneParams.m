@@ -948,13 +948,13 @@ for vv = 1:length(xFinal)
         myString = [myString(1:leftIdx(vv)) '\color{red}' myString(leftIdx(vv)+1:end)];
         leftIdx=regexp(myString,'{.*?}');
     elseif notPlausibleIdx(vv)
-        myString = [myString(1:leftIdx(vv)) '\color{yellow}' myString(leftIdx(vv)+1:end)];
+        myString = [myString(1:leftIdx(vv)) '\color{orange}' myString(leftIdx(vv)+1:end)];
         leftIdx=regexp(myString,'{.*?}');
     end
 end
 
 % Post the title
-text(0.5,1.25,myString,'Units','normalized','HorizontalAlignment','center')
+text(0.5,1.1,myString,'Units','normalized','HorizontalAlignment','center')
 
 % Add text to report the ellipse frames used
 ellipseFrameList = num2str(sort(sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList)');
