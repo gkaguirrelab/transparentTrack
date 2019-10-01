@@ -188,7 +188,7 @@ p.addParameter('fixSpectacleLens',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('nBinsPerDimension',4,@isnumeric);
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
 p.addParameter('nBADSsearches',20,@isnumeric);
-p.addParameter('nDiagnosticPlots',5,@isnumeric);
+p.addParameter('nDiagnosticPlots',1,@isnumeric);
 p.addParameter('rankScaling',[4 2 1],@isnumeric);
 
 % parse
