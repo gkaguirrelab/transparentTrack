@@ -66,10 +66,15 @@ while notDoneFlag
     end
 end
 
-% Extract and report the mask bounds
-maskBounds = roi.Position;
+% The roi position is given as Xpos, Ypos, width, height. [Xpos, Ypos] of
+% [0, 0] is the upper left of the displayed image.
+x = round(roi.Position);
+
+% Convert x to the system for mask bounds, which is:
+%   [nRowsTop nColumnsRight nRowsBottom nColumnsLeft]
+maskBounds = [x(2) width-(x(1)+x(3)) height-(x(2)+x(4)) x(1)];
 fprintf('\n');
-fprintf([grayVideoName ': mask box = [%0.2f; %0.2f; %0.2f; %0.2f]\n'],maskBounds(1),maskBounds(2),maskBounds(3),maskBounds(4));
+fprintf([grayVideoName ': mask box = [%0.0f %0.0f %0.0f %0.0f]\n'],maskBounds(1),maskBounds(2),maskBounds(3),maskBounds(4));
 
 % Clean up
 close(figureHandle)
