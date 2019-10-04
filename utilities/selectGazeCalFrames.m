@@ -13,7 +13,7 @@ function [frameArray, fixationTargetArray] = selectGazeCalFrames(pupilFileName, 
 %
 % Inputs:
 %	pupilFileName         - Full path to a pupilData file.
-%	pupilFileName         - Full path to a timebase file.
+%	timebaseFileName      - Full path to a timebase file.
 %   LTdatFileName         -
 %   rawVidStartFileName   - Full path to a rawVidStart file.
 %   pupilCalInfoFileName  - Full path to a pupilCalInfo file. This file
