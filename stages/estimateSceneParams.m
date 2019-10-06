@@ -226,7 +226,7 @@ if ~isempty(fixationTargetArray)
         modVarargin = varargin;
         idx = find(strcmp(modVarargin,'spectacleLens'));
         if ~isempty(idx)
-            modVarargin{idx+1} = {p.Results.fixSpectacleLens};
+            modVarargin{idx+1} = p.Results.fixSpectacleLens;
         else
             modVarargin = [modVarargin 'spectacleLens' p.Results.fixSpectacleLens];
         end        
