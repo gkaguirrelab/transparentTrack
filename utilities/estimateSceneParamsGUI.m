@@ -59,7 +59,7 @@ if ~isempty(p.Results.ellipseArrayList)
 else
     % No frames specified. See if there is a list of frames from estimation
     % of sceneGeometry
-    if issubfield(sceneGeometry, 'sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList')
+    if issubfield(sceneGeometry, 'meta.estimateSceneParams.search.ellipseArrayList')
         ellipseArrayList = sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList;
     else
         % No frames specified. Try to find the time zero frame
