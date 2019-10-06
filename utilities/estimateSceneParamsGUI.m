@@ -80,7 +80,6 @@ end
 videoInObj = videoIOWrapper(grayVideoName,'ioAction','read');
 videoSizeX = videoInObj.Width;
 videoSizeY = videoInObj.Height;
-nFrames = floor(videoInObj.Duration*videoInObj.FrameRate);
 
 % Pre-load the video frames we will use
 % Define a variable to hold the selected frames
@@ -155,11 +154,11 @@ while notDoneFlag
     candidateSceneGeometry.cameraPosition.torsion = x(1);
     candidateSceneGeometry.cameraPosition.translation = x(2:4);
     candidateSceneGeometry.eye.rotationCenters.azi = defaultAziRotCenter .* x(5) .* x(6);
-    candidateSceneGeometry.eye.rotationCenters.ele = defaultEleRotCenter .* x(5) ./ x(6);    
+    candidateSceneGeometry.eye.rotationCenters.ele = defaultEleRotCenter .* x(5) ./ x(6);
     
     % Identify the frame to display
     frameIdx = ellipseArrayList(arrayIdx);
-
+    
     % Adjust for relative camera position
     adjustedSceneGeometry = candidateSceneGeometry;
     if ~isempty(relativeCameraPosition)
@@ -172,13 +171,13 @@ while notDoneFlag
     Xp = perimeter.data{frameIdx}.Xp;
     Yp = perimeter.data{frameIdx}.Yp;
     eyePose = eyePoseEllipseFit(Xp, Yp, adjustedSceneGeometry);
-
+    
     % Show this video frame
     thisFrame = sourceFrames(:,:,:,arrayIdx);
     frameLabel = sprintf('frame: %d',frameIdx);
-    thisFrame = insertText(thisFrame,[20 20],frameLabel,'FontSize',30);    
+    thisFrame = insertText(thisFrame,[20 20],frameLabel,'FontSize',30);
     imshow(squeeze(thisFrame));
-
+    
     % Add the rendered eye model
     if ~any(isnan(eyePose))
         renderEyePose(eyePose, adjustedSceneGeometry, ...
@@ -189,7 +188,7 @@ while notDoneFlag
             'modelEyeSymbolSizeScaler',1.5,...
             'modelEyeAlpha', 0.25);
     end
-
+    
     if ~isempty(annotHandle)
         delete(annotHandle)
     end
@@ -270,24 +269,26 @@ close(figHandle)
 fprintf('\n');
 fprintf('scene parameters = [%0.2f; %0.2f; %0.2f; %0.2f; %0.2f; %0.2f]\n',x(1),x(2),x(3),x(4),x(5),x(6));
 
-end % GetWithDefault
+end % Main function
+
 
 
 %% LOCAL FUNCTION
 
 function r = issubfield(s, f)
 if isempty(f) || isempty(s)
-  r = false;
+    r = false;
 else
-  t = textscan(f,'%s','delimiter','.');
-  t = t{1};
-  r = true;
-  for k = 1:numel(t)
-    if isfield(s, t{k})
-      s = s.(t{k});
-    else
-      r = false;
-      return;
+    t = textscan(f,'%s','delimiter','.');
+    t = t{1};
+    r = true;
+    for k = 1:numel(t)
+        if isfield(s, t{k})
+            s = s.(t{k});
+        else
+            r = false;
+            return;
+        end
     end
-  end
 end
+end % issubfield
