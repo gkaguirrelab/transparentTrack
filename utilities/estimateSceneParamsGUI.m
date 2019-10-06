@@ -57,16 +57,22 @@ end
 if ~isempty(p.Results.ellipseArrayList)
     ellipseArrayList = p.Results.ellipseArrayList;
 else
-    % No frames specified. Try to find the time zero frame
-    timebaseFileName = strrep(grayVideoName,p.Results.videoSuffix,'_timebase.mat');
-    if exist(timebaseFileName, 'file')==2
-        dataLoad=load(timebaseFileName);
-        timebase=dataLoad.timebase;
-        clear dataLoad
-        [~,ellipseArrayList] = min(abs(timebase.values));
-    else
-        % No ellipse array list, no timebase. Use the list from sceneGeometry
+    % No frames specified. See if there is a list of frames from estimation
+    % of sceneGeometry
+    if issubfield(sceneGeometry, 'sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList')
         ellipseArrayList = sceneGeometry.meta.estimateSceneParams.search.ellipseArrayList;
+    else
+        % No frames specified. Try to find the time zero frame
+        timebaseFileName = strrep(grayVideoName,p.Results.videoSuffix,'_timebase.mat');
+        if exist(timebaseFileName, 'file')==2
+            dataLoad=load(timebaseFileName);
+            timebase=dataLoad.timebase;
+            clear dataLoad
+            [~,ellipseArrayList] = min(abs(timebase.values));
+        else
+            % Just show the first frame;
+            ellipseArrayList = 1;
+        end
     end
 end
 
@@ -265,3 +271,23 @@ fprintf('\n');
 fprintf('scene parameters = [%0.2f; %0.2f; %0.2f; %0.2f; %0.2f; %0.2f]\n',x(1),x(2),x(3),x(4),x(5),x(6));
 
 end % GetWithDefault
+
+
+%% LOCAL FUNCTION
+
+function r = issubfield(s, f)
+if isempty(f) || isempty(s)
+  r = false;
+else
+  t = textscan(f,'%s','delimiter','.');
+  t = t{1};
+  r = true;
+  for k = 1:numel(t)
+    if isfield(s, t{k})
+      s = s.(t{k});
+    else
+      r = false;
+      return;
+    end
+  end
+end
