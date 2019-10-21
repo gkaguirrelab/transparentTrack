@@ -476,12 +476,12 @@ else
     % Test to see if the search result is at the search bounds or outside
     % the plausible bounds
     xBest = sceneGeometry.meta.estimateSceneParams.search.x;
-    if min(abs(xBest-p.Results.sceneParamsLB))<1e-6 || ...
-            min(abs(xBest-p.Results.sceneParamsLB))<1e-6
+    if min(abs(xBest-sceneParamsLB))<1e-6 || ...
+            min(abs(xBest-sceneParamsLB))<1e-6
         warning('estimateSceneParams:searchResultAtBounds','One or more search result parameters hit a boundary');
     else
-        if any(xBest>p.Results.sceneParamsUBp) || ...
-                any(xBest<p.Results.sceneParamsLBp)
+        if any(xBest>sceneParamsUBp) || ...
+                any(xBest<sceneParamsLBp)
             warning('estimateSceneParams:searchResultNotPlausible','One or more search result parameters outside plausible bounds');
         end
     end
