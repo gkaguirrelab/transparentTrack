@@ -175,10 +175,11 @@ p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@i
 
 % Optional analysis params
 p.addParameter('glintFileName','',@(x)(isempty(x) | ischar(x)));
-p.addParameter('sceneParamsLB',[-30; -20; -20; 90; 0.75; .9],@isnumeric);
-p.addParameter('sceneParamsUB',[30; 20; 20; 200; 1.25; 1.1],@isnumeric);
-p.addParameter('sceneParamsLBp',[-15; -5; -5; 100; 0.85; 0.95],@isnumeric);
-p.addParameter('sceneParamsUBp',[15; 5; 5; 160; 1.15; 1.05],@isnumeric);
+p.addParameter('sceneParamsX0',[],@isnumeric);
+p.addParameter('sceneParamsLB',[],@isnumeric);
+p.addParameter('sceneParamsUB',[],@isnumeric);
+p.addParameter('sceneParamsLBp',[],@isnumeric);
+p.addParameter('sceneParamsUBp',[],@isnumeric);
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 p.addParameter('fitLabel','initial',@ischar);
@@ -193,6 +194,49 @@ p.addParameter('rankScaling',[4 2 1],@isnumeric);
 
 % parse
 p.parse(pupilFileName, sceneGeometryFileName, varargin{:})
+
+
+%% Handle the scene parameter x0 and bounds
+% If sceneParamsX0 has been defined, and there are no bounds, set some
+% tight bounds
+if ~isempty(p.Results.sceneParamsX0) && isempty(p.Results.sceneParamsLB)
+    x0 = p.Results.sceneParamsX0;
+    transDelta = 0.25;
+    depthDelta = 2;
+    switch length(x0)
+        case 4
+            sceneParamsLB = [-22.5; x0(2:3)-transDelta; x0(4)-depthDelta; 0.5; 0.8];
+            sceneParamsUB = [22.5; x0(2:3)+transDelta; x0(4)+depthDelta; 1.125; 1.2];
+            sceneParamsLBp = [-11.25; x0(2:3)-transDelta/2; x0(4)-depthDelta/2; 0.75; 0.9];
+            sceneParamsUBp = [11.25; x0(2:3)+transDelta/2; x0(4)+depthDelta/2; 1; 1.1];
+        case 5
+            sceneParamsLB = [x0(1)-10; x0(2:3)-transDelta; x0(4)-depthDelta; x0(5)*0.9; 0.8];
+            sceneParamsUB = [x0(1)+10; x0(2:3)+transDelta; x0(4)+depthDelta; x0(5)*1.1; 1.2];
+            sceneParamsLBp = [x0(1)-5; x0(2:3)-transDelta/2; x0(4)-depthDelta/2; x0(5)*0.95; 0.9];
+            sceneParamsUBp = [x0(1)+5; x0(2:3)+transDelta/2; x0(4)+depthDelta/2; x0(5)*1.05; 1.1];
+        case 6
+            sceneParamsLB = x0;
+            sceneParamsUB = x0;
+            sceneParamsLBp = x0;
+            sceneParamsUBp = x0;
+        otherwise
+            error('Not sure to handle that sceneParamsX0 length');
+    end
+else
+    % If bounds were passed, used them.
+    if ~isempty(p.Results.sceneParamsLB)
+        sceneParamsLB = p.Results.sceneParamsLB;
+        sceneParamsUB = p.Results.sceneParamsUB;
+        sceneParamsLBp = p.Results.sceneParamsLBp;
+        sceneParamsUBp = p.Results.sceneParamsUBp;
+    else
+        % No xo, no bounds defined. Create some default large bounds
+        sceneParamsLB = [-30; -20; -20; 90; 0.75; .9];
+        sceneParamsUB = [30; 20; 20; 200; 1.25; 1.1];
+        sceneParamsLBp = [-15; -5; -5; 100; 0.85; 0.95];
+        sceneParamsUBp = [15; 5; 5; 160; 1.15; 1.05];
+    end
+end
 
 
 %% Announce we are starting
@@ -340,7 +384,7 @@ end
 % with the solution parameters set to be the midpoint of the plausible
 % bounds.
 if p.Results.nBADSsearches==0
-    sceneParams = (p.Results.sceneParamsLBp+p.Results.sceneParamsUBp)./2;
+    sceneParams = (sceneParamsLBp+sceneParamsUBp)./2;
     sceneGeometry = ...
         performSceneSearch(initialSceneGeometry, ...
         ellipses(ellipseArrayList,:), ...
@@ -374,10 +418,10 @@ else
             ellipses(ellipseArrayList,:), ...
             ellipseFitRMSE(ellipseArrayList), ...
             fixationTargetArray, ...
-            p.Results.sceneParamsLB, ...
-            p.Results.sceneParamsUB, ...
-            p.Results.sceneParamsLBp, ...
-            p.Results.sceneParamsUBp, ...
+            sceneParamsLB, ...
+            sceneParamsUB, ...
+            sceneParamsLBp, ...
+            sceneParamsUBp, ...
             p.Results.eyePoseLB, ...
             p.Results.eyePoseUB);
         
