@@ -201,7 +201,7 @@ p.parse(pupilFileName, sceneGeometryFileName, varargin{:})
 % tight bounds
 if ~isempty(p.Results.sceneParamsX0) && isempty(p.Results.sceneParamsLB)
     x0 = p.Results.sceneParamsX0;
-    transDelta = 0.25;
+    transDelta = 0.125;
     depthDelta = 2;
     switch length(x0)
         case 4
