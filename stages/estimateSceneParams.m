@@ -8,9 +8,13 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
 %   This function searches over a set of ellipses from the passed pupil
 %   file(s) to estimate the extrinsic camera rotation and translation
 %   vector and scaling values for the azimuthal and elevational eye
-%   rotation centers. The search attempts to minimize the error associated
-%   with the prediction of the shape of ellipses in the image plane while
-%   minimizing the error in prediction of the center of those ellipses.
+%   rotation centers. The search attempts to minimize the error between a
+%   modeled rotation of the eye in degrees and the position of fixation
+%   targets expressed in degrees of visual angle. If the fixation target
+%   array is not availble, then the routine attempts to minimize the error
+%   associated with the prediction of the shape of ellipses in the image
+%   plane while minimizing the error in prediction of the center of those
+%   ellipses.
 %
 %   The search is conducted over 6 parameters, corresponding to torsional
 %   camera rotation about the Z (depth) axis, three parameters of camera
@@ -757,6 +761,7 @@ if ~isempty(regParamsAtBest)
     sceneGeometry.screenPosition.fixationAngles(1:2) = regParamsAtBest.t;
     sceneGeometry.screenPosition.R = regParamsAtBest.R;
     sceneGeometry.screenPosition.torsion = regParamsAtBest.theta;
+    sceneGeometry.screenPosition.meta = 'Gaze position in visual degrees = R * [azi;ele] + t(1:2)';
 end
 sceneGeometry.eye.rotationCenters.azi = sceneGeometry.eye.rotationCenters.azi .* x(5) .* x(6);
 sceneGeometry.eye.rotationCenters.ele = sceneGeometry.eye.rotationCenters.ele .* x(5) ./ x(6);
