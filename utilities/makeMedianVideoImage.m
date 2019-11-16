@@ -47,14 +47,21 @@ else
 end
 
 % get start and end times
-startTime = (ceil(p.Results.startFrame / videoInObj.FrameRate)/chunkSizeSecs)*chunkSizeSecs;
-endTime = floor(((p.Results.startFrame+nFrames) / videoInObj.FrameRate) /chunkSizeSecs)*chunkSizeSecs;
+startTime = floor(((p.Results.startFrame+nFrames) / videoInObj.FrameRate) /chunkSizeSecs)*chunkSizeSecs;
+endTime = (ceil(p.Results.startFrame / videoInObj.FrameRate)/chunkSizeSecs)*chunkSizeSecs;
 
 % get video dimensions
 videoSizeX = videoInObj.Width;
 videoSizeY = videoInObj.Height;
 
 sourceFrames = zeros(1,videoSizeY,videoSizeX);
+
+% Make sure that the start and end times are in the right order
+if startTime > endTime
+    tmp = endTime;
+    endTime = startTime;
+    startTime = tmp;    
+end
 
 %% Loop through the frames
 % Obtain the median for each second of video
