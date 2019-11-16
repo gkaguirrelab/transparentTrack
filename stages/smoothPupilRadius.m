@@ -151,11 +151,6 @@ dataLoad=load(sceneGeometryFileName);
 sceneGeometry=dataLoad.sceneGeometry;
 clear dataLoad
 
-%% HACK
-% An earlier version of the code defined a non-zero iris thickness. We
-% force this to zero here to speed computation. This line should ultimately
-% be removed when Geoff is done processing the session 1 Connectome data.
-sceneGeometry.eye.iris.thickness=0;
 
 % If an adjustedCameraPositionTranslation value has been passed, update
 % this field of the sceneGeometry
