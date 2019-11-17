@@ -26,14 +26,8 @@ p.addRequired('videoInFileName', @ischar);
 p.addParameter('startFrame', 1, @isnumeric);
 p.addParameter('nFrames', Inf, @isnumeric);
 
-% Optional video items
-p.addParameter('chunkSizeSecs', 20, @isscalar);
-p.addParameter('outputFileName', [], @(x)(isempty(x) | ischar(x)));
-
 % parse
 p.parse(videoInFileName, varargin{:})
-
-chunkSizeSecs = p.Results.chunkSizeSecs;
 
 
 % Prepare the video object
@@ -47,8 +41,8 @@ else
 end
 
 % get start and end times
-startTime = floor(((p.Results.startFrame+nFrames) / videoInObj.FrameRate) /chunkSizeSecs)*chunkSizeSecs;
-endTime = (ceil(p.Results.startFrame / videoInObj.FrameRate)/chunkSizeSecs)*chunkSizeSecs;
+endTime = (p.Results.startFrame+nFrames) / videoInObj.FrameRate;
+startTime = p.Results.startFrame / videoInObj.FrameRate;
 
 % get video dimensions
 videoSizeX = videoInObj.Width;
@@ -65,7 +59,7 @@ end
 
 %% Loop through the frames
 % Obtain the median for each second of video
-for ii = startTime:chunkSizeSecs:endTime
+for ii = startTime:(1/videoInObj.FrameRate):endTime
     % read the source video frame into memory
     videoInObj.CurrentTime=ii;
     frame = rgb2gray(readFrame(videoInObj));
@@ -80,11 +74,6 @@ imageSD = squeeze(std(sourceFrames,1));
 
 % close the video object
 clear videoInObj
-
-% Save the images if requested
-if ~isempty(p.Results.outputFileName)
-    save(p.Results.outputFileName,'imageMedian','imageSD');
-end
 
 
 end % function
