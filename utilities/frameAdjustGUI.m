@@ -83,6 +83,11 @@ startIndex = runIndices(runLengths == runLength);
 videoInFileName = fullfile(path,[fileStem '_gray.avi']);
 fixedFrame = makeMedianVideoImage(videoInFileName,'startFrame',startIndex,'nFrames',runLength,'chunkSizeSecs',1/60);
 
+% Find the median pupil center for these frames
+fixFramePupilCenterFixation = [ ...
+    nanmedian(pupilData.radiusSmoothed.ellipses.values(startIndex:startIndex+runLength,1)), ...
+    nanmedian(pupilData.radiusSmoothed.ellipses.values(startIndex:startIndex+runLength,2)) ];
+
 % Get the camera offset point
 cameraOffsetPoint = [sceneGeometrySource.cameraIntrinsic.matrix(1,3), ...
     sceneGeometrySource.cameraIntrinsic.matrix(2,3)];
@@ -90,7 +95,7 @@ cameraOffsetPoint = [sceneGeometrySource.cameraIntrinsic.matrix(1,3), ...
 % Find the pupil center for the eye model in the fixed image
 eyePose = [0 0 0 3];
 pupilEllipse = pupilProjection_fwd(eyePose,sceneGeometrySource);
-fixFramePupilCenter = pupilEllipse(1:2);
+fixFramePupilCenterZeroPos = pupilEllipse(1:2);
     
 % Get a list of all gray.avi videos in this directory
 fileList = dir(fullfile(path,'*_gray.avi'));
@@ -175,6 +180,22 @@ for ff=1:length(fileList)
     Xp = perimeter.data{bestFrame}.Xp;
     Yp = perimeter.data{bestFrame}.Yp;
     
+    % If the fixationAngles in sceneGeometry is non-zero, then it may be
+    % the case that this video to-be-adjusted has the property that the
+    % subject was fixating the same screen location (0 0) at the start of
+    % the scan. Make a guess at the x translation based upon this.
+    if sceneGeometrySource.screenPosition.fixationAngles(1) ~= 0
+        % Get the pupil center for the fames from the moving video
+        movingFramePupilCenterFixation = [ ...
+            nanmedian(pupilData.initial.ellipses.values(startIndex:startIndex+runLength,1)), ...
+            nanmedian(pupilData.initial.ellipses.values(startIndex:startIndex+runLength,2)) ];        
+        % The adjustment is the difference in pupil centers from the fixed
+        % and moving videos
+        x = fixFramePupilCenterFixation - movingFramePupilCenterFixation;
+    else
+        x = [0 0];
+    end
+    
     % Define the video file name
     videoInFileName = fullfile(path,fileList(ff).name);
     
@@ -189,7 +210,6 @@ for ff=1:length(fileList)
     showPerimeter=false;
     showModel=false;
     annotHandle = [];
-    x = [0 0];
     torsion = 0;
     stillWorking = true;
 
@@ -299,16 +319,7 @@ for ff=1:length(fileList)
 
     % Find the change in the extrinsic camera translation needed to shift
     % the eye model the observed number of pixels
-    targetPupilCenter = fixFramePupilCenter - x;
-    p0 = sceneGeometrySource.cameraPosition.translation;
-    ub = sceneGeometrySource.cameraPosition.translation + [10; 10; 0];
-    lb = sceneGeometrySource.cameraPosition.translation - [10; 10; 0];
-    place = {'cameraPosition' 'translation'};
-    mySG = @(p) setfield(sceneGeometrySource,place{:},p);
-    pupilCenter = @(k) k(1:2);
-    myError = @(p) norm(targetPupilCenter-pupilCenter(pupilProjection_fwd(eyePose,mySG(p))));
-    options = optimoptions(@fmincon,'Diagnostics','off','Display','off');
-    p = fmincon(myError,p0,[],[],[],[],lb,ub,[],options);    
+    p = calcCameraTranslation(sceneGeometrySource,fixFramePupilCenterZeroPos,x);
     
     % Calculate the updated camera rotation
     newCameraTorsion = sceneGeometrySource.cameraPosition.torsion + torsion;
@@ -335,8 +346,6 @@ for ff=1:length(fileList)
 end
 
 close(figHandle);
-clear startPath
-
 
 
 %% LOCAL FUNCTIONS
@@ -366,6 +375,23 @@ Yp = v(2,:)';
 
 end
 
+
+function p = calcCameraTranslation(sceneGeometrySource,fixFramePupilCenter,x)
+
+% Find the change in the extrinsic camera translation needed to shift
+% the eye model the observed number of pixels for an eye with zero rotation
+eyePose = [0, 0, 0, 3];
+targetPupilCenter = fixFramePupilCenter - x;
+p0 = sceneGeometrySource.cameraPosition.translation;
+ub = sceneGeometrySource.cameraPosition.translation + [10; 10; 0];
+lb = sceneGeometrySource.cameraPosition.translation - [10; 10; 0];
+place = {'cameraPosition' 'translation'};
+mySG = @(p) setfield(sceneGeometrySource,place{:},p);
+pupilCenter = @(k) k(1:2);
+myError = @(p) norm(targetPupilCenter-pupilCenter(pupilProjection_fwd(eyePose,mySG(p))));
+options = optimoptions(@fmincon,'Diagnostics','off','Display','off');
+p = fmincon(myError,p0,[],[],[],[],lb,ub,[],options);
+end
 
 function annotHandle = addAnnotation(text_str)
 
