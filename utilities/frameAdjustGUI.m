@@ -15,29 +15,33 @@
 %   routine assists in calculating an updated camera position for a given
 %   acquisition.
 %
-%   To start, the full path to a sceneGeometry file is needed. This may be
-%   defined in the variable startParth. If undefined, a GUI file selection
-%   is used. The user is then prompted to select which acquisitions in the
-%   directory that contains the sceneGeometry file should be adjusted.
-%   Next, the median image from the video corresponding to the
-%   sceneGeometry file is obtained. This is the "fixed" image. The user is
-%   prompted to select three points that are used to define a triangle over
-%   the nasal canthus. Then, the video for an acquition to be adjusted is
-%   loaded and a median image is created. This is the "moving" image. The
-%   user landmarks the nasal canthus on the moving image. The fixed and
-%   moving images are then displayed in the same window, and the arrow keys
-%   may be used to adjust the location of the moving image until it is in
-%   register with the fixed image. The "a" key is used to switch the view
-%   between the fixed and moving. When the registration is satisfactory,
-%   the user presses the esc key. The change in camera position is
-%   calculated, and then reported to the console and placed in an updated
-%   sceneGeometry file that is saved for the adjusted acquisition.
+%   Select a sceneGeometry with the UI file picker, then select the
+%   acquisitions to which you would like to align the sceneGeometry.
+%   An image derived from the sceneGeometry and the acquisition is shown,
+%   and controls are used to adjust the acquisition to match the
+%   sceneGeometry.
 %
 % Examples:
 %{
     % ETTBSkip -- This is an interactive example.
     frameAdjustGUI
 %}
+
+% Define an alignment method the choices are:
+%    'gaze': If the sceneGeometry video was acquired while the subject was
+%       performing a fixation task, and the acquisition includes an initial
+%       period during which the subject fixated a centrally located target
+%       on the screen, then align the pupil centers for images
+%       corresponding to the eye oriented at a [0, 0] gaze position. This
+%       is valid only for Session 2 TOME data collected after 01/30/2018.
+%    'shape': Find in the acquisition video an image in which the pupil
+%       aspect ratio and tilt is most similar to that seen while the
+%       subject was at gaze position [0, 0].
+
+% Use shape for all datasets except Session 2 data collected on or after
+% 01/30/2018.
+alignMethod = 'shape'; % Choices are {'gaze','shape'}.
+
 
 % Open a file picker UI to select a sceneGeometry
 [file,path] = uigetfile(fullfile('.','*_sceneGeometry.mat'),'Choose a sceneGeometry file');
@@ -87,6 +91,14 @@ fixedFrame = makeMedianVideoImage(videoInFileName,'startFrame',startIndex,'nFram
 fixFramePupilCenterFixation = [ ...
     nanmedian(pupilData.radiusSmoothed.ellipses.values(startIndex:startIndex+runLength,1)), ...
     nanmedian(pupilData.radiusSmoothed.ellipses.values(startIndex:startIndex+runLength,2)) ];
+
+% Find the median theta and rho value for these frames (SEE:
+% csaEllipseError)
+fixFramePupilRhoShape = nanmedian(pupilData.radiusSmoothed.ellipses.values(startIndex:startIndex+runLength,4));
+fixFramePupilRhoShape = 1-sqrt(1-fixFramePupilRhoShape^2);
+
+fixFramePupilThetaShape = nanmedian(pupilData.radiusSmoothed.ellipses.values(startIndex:startIndex+runLength,5));
+fixFramePupilThetaShape = fixFramePupilThetaShape*2;
 
 % Get the camera offset point
 cameraOffsetPoint = [sceneGeometrySource.cameraIntrinsic.matrix(1,3), ...
@@ -152,21 +164,45 @@ for ff=1:length(fileList)
     % acquisition began
     [~, startFrame] = min(abs(timebase.values));
     
-    % Find the period of 30 frames prior to the start of the scan when the
-    % eye was in the most consistent position, and closest to the median
-    % position
-    gazeX = pupilData.initial.ellipses.values(1:startFrame,1);
-    gazeY = pupilData.initial.ellipses.values(1:startFrame,2);
-    medianX = nanmedian(gazeX);
-    medianY = nanmedian(gazeY);
-    gazePosition = [gazeX-medianX; gazeY-medianY];
-    
-    targetLength = 30;
-    runStarts = @(thresh) find(diff([0,(sqrt(sum(gazePosition.^2,2)) < thresh)',0]==1));
-    pullStartIndices = @(vec) vec(1:2:end-1);
-    pullRunLengths = @(vec) vec(2:2:end)-pullStartIndices(vec);
-    myObj = @(thresh) targetLength - max( pullRunLengths(runStarts(thresh)) );
-    threshVal = fzero(myObj,0.5);
+    switch alignMethod
+        case 'gaze'
+            % Find the period of 30 frames prior to the start of the scan
+            % when the eye was in the most consistent position, and closest
+            % to the median position
+            gazeX = pupilData.initial.ellipses.values(1:startFrame,1);
+            gazeY = pupilData.initial.ellipses.values(1:startFrame,2);
+            medianX = nanmedian(gazeX);
+            medianY = nanmedian(gazeY);
+            gazePosition = [gazeX-medianX; gazeY-medianY];
+            
+            targetLength = 30;
+            runStarts = @(thresh) find(diff([0,(sqrt(sum(gazePosition.^2,2)) < thresh)',0]==1));
+            pullStartIndices = @(vec) vec(1:2:end-1);
+            pullRunLengths = @(vec) vec(2:2:end)-pullStartIndices(vec);
+            myObj = @(thresh) targetLength - max( pullRunLengths(runStarts(thresh)) );
+            threshVal = fzero(myObj,0.5);
+        case 'shape'
+            % Find the period of 30 frames after the start of the scan when
+            % the pupil has a shape most similar to the shape from the
+            % sceneGeometry file for gaze [0 0]
+            rho = pupilData.initial.ellipses.values(startFrame:end,4);
+            rho = 1-sqrt(1-rho.^2);
+            theta = pupilData.initial.ellipses.values(startFrame:end,5);
+            theta = theta.*2;
+            
+            shapeError = ...
+                sqrt(fixFramePupilRhoShape^2 + rho.^2 - 2*fixFramePupilRhoShape.*rho.*cos(fixFramePupilThetaShape-theta))./2;
+            
+            targetLength = 30;
+            runStarts = @(thresh) find(diff([0,(sqrt(sum(shapeError.^2,2)) < thresh)',0]==1));
+            pullStartIndices = @(vec) vec(1:2:end-1);
+            pullRunLengths = @(vec) vec(2:2:end)-pullStartIndices(vec);
+            % This min([1e6 obj]) trick is to handle the objective otherwise
+            % returning an empty value for a threshold of zero.
+            myObj = @(thresh) min([1e6, targetLength - max( pullRunLengths(runStarts(thresh)) )]);
+            threshVal = fzero(myObj,0.05);
+            
+    end
     
     % Find the start point of this run of frames
     runLengths = pullRunLengths(runStarts(threshVal));
