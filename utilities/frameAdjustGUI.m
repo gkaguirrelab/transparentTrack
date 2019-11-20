@@ -27,7 +27,32 @@
     frameAdjustGUI
 %}
 
-% Define an alignment method the choices are:
+% Define and open a log file
+logPath = '~/Desktop';
+fid = fopen(fullfile(logPath, 'frameAdjustLog.txt'), 'a');
+if fid == -1
+  error('Cannot open log file.');
+end
+
+
+% Open a file picker UI to select a sceneGeometry
+[file,path] = uigetfile(fullfile('.','*_sceneGeometry.mat'),'Choose a sceneGeometry file');
+
+% Load the selected sceneGeometry file
+sceneGeometryIn = fullfile(path,file);
+dataLoad=load(sceneGeometryIn);
+sceneGeometrySource=dataLoad.sceneGeometry;
+clear dataLoad
+
+% Add to the log file
+fprintf(fid, '%s: %s\n', datestr(now, 0), sceneGeometryIn);
+
+% Derive file stem path for the files associated with the sceneGeometry
+pathParts = strsplit(path,filesep);
+fileParts = strsplit(file,'_sceneGeometry.mat');
+fileStem = fileParts{1};
+
+% Define an alignment method. The choices are:
 %    'gaze': If the sceneGeometry video was acquired while the subject was
 %       performing a fixation task, and the acquisition includes an initial
 %       period during which the subject fixated a centrally located target
@@ -40,21 +65,19 @@
 
 % Use shape for all datasets except Session 2 data collected on or after
 % 01/30/2018.
-alignMethod = 'shape'; % Choices are {'gaze','shape'}.
 
-
-% Open a file picker UI to select a sceneGeometry
-[file,path] = uigetfile(fullfile('.','*_sceneGeometry.mat'),'Choose a sceneGeometry file');
-    
-% Load the selected sceneGeometry file
-sceneGeometryIn = fullfile(path,file);
-dataLoad=load(sceneGeometryIn);
-sceneGeometrySource=dataLoad.sceneGeometry;
-clear dataLoad
-
-% Derive file stem path for the files associated with the sceneGeometry
-fileStem = strsplit(file,'_sceneGeometry.mat');
-fileStem = fileStem{1};
+noFixSubjects = {'3001', '3002', '3003', '3004', '3005', '3007', '3008', '3009', '3011', '3013','3044'};
+if any(strcmp(pathParts,'session2_spatialStimuli')) && ~any(contains(pathParts,noFixSubjects))
+    alignMethod = 'gaze';
+    msg='Using the gaze alignment method';
+    fprintf([msg '\n']);
+    fprintf(fid, '%s: %s\n', datestr(now, 0), msg);
+else
+    alignMethod = 'shape';
+    msg='Using the pupil shape alignment method';
+    fprintf([msg '\n']);
+    fprintf(fid, '%s: %s\n', datestr(now, 0), msg);
+end
 
 % Find the scene geometry video frames that correspond to fixation at the
 % [0 0] screen position, and the eye at a neutral (zero azimuth and
@@ -100,6 +123,16 @@ fixFramePupilRhoShape = 1-sqrt(1-fixFramePupilRhoShape^2);
 fixFramePupilThetaShape = nanmedian(pupilData.radiusSmoothed.ellipses.values(startIndex:startIndex+runLength,5));
 fixFramePupilThetaShape = fixFramePupilThetaShape*2;
 
+% Load the perimter
+perimeterFileName = fullfile(path,[fileStem '_correctedPerimeter.mat']);
+load(perimeterFileName,'perimeter');
+
+% Find the frame with the lowest ellipse RMSE during this period
+rmseVals = pupilData.radiusSmoothed.ellipses.RMSE(startIndex:startIndex+runLength);
+bestFrame = startIndex + find(rmseVals == min(rmseVals)) - 1;
+Xpf = perimeter.data{bestFrame}.Xp;
+Ypf = perimeter.data{bestFrame}.Yp;
+
 % Get the camera offset point
 cameraOffsetPoint = [sceneGeometrySource.cameraIntrinsic.matrix(1,3), ...
     sceneGeometrySource.cameraIntrinsic.matrix(2,3)];
@@ -108,7 +141,7 @@ cameraOffsetPoint = [sceneGeometrySource.cameraIntrinsic.matrix(1,3), ...
 eyePose = [0 0 0 3];
 pupilEllipse = pupilProjection_fwd(eyePose,sceneGeometrySource);
 fixFramePupilCenterZeroPos = pupilEllipse(1:2);
-    
+
 % Get a list of all gray.avi videos in this directory
 fileList = dir(fullfile(path,'*_gray.avi'));
 
@@ -130,7 +163,7 @@ fileList = fileList(eval(choice));
 figHandle = figure();
 imshow(fixedFrame,[],'Border','tight');
 ax = gca;
-ax.Toolbar = []; 
+ax.Toolbar = [];
 hold on
 text(20,30,'FIXED', 'Color', 'g','Fontsize',16);
 
@@ -213,8 +246,8 @@ for ff=1:length(fileList)
     % Find the frame with the lowest ellipse RMSE during this period
     rmseVals = pupilData.initial.ellipses.RMSE(startIndex:startIndex+runLength);
     bestFrame = startIndex + find(rmseVals == min(rmseVals)) - 1;
-    Xp = perimeter.data{bestFrame}.Xp;
-    Yp = perimeter.data{bestFrame}.Yp;
+    Xpm = perimeter.data{bestFrame}.Xp;
+    Ypm = perimeter.data{bestFrame}.Yp;
     
     % If the fixationAngles in sceneGeometry is non-zero, then it may be
     % the case that this video to-be-adjusted has the property that the
@@ -224,11 +257,12 @@ for ff=1:length(fileList)
         % Get the pupil center for the fames from the moving video
         movingFramePupilCenterFixation = [ ...
             nanmedian(pupilData.initial.ellipses.values(startIndex:startIndex+runLength,1)), ...
-            nanmedian(pupilData.initial.ellipses.values(startIndex:startIndex+runLength,2)) ];        
+            nanmedian(pupilData.initial.ellipses.values(startIndex:startIndex+runLength,2)) ];
         % The adjustment is the difference in pupil centers from the fixed
         % and moving videos
         x = fixFramePupilCenterFixation - movingFramePupilCenterFixation;
     else
+        movingFramePupilCenterFixation = [0 0];
         x = [0 0];
     end
     
@@ -239,8 +273,9 @@ for ff=1:length(fileList)
     movingFrame = makeMedianVideoImage(videoInFileName,'startFrame',startIndex,'nFrames',runLength,'chunkSizeSecs',1/60);
     
     % Report which video we are working on
-    fprintf(['\n' fileList(ff).name ':\n']);
-        
+    msg=fileList(ff).name;
+    fprintf(['\n' msg ':\n']);
+    
     % Prepare for the loop
     showMoving = true;
     showPerimeter=false;
@@ -248,17 +283,17 @@ for ff=1:length(fileList)
     annotHandle = [];
     torsion = 0;
     stillWorking = true;
-
+    
     % Enter the while stillWorking loop
     while stillWorking
         
         % Prepare to update the image
         hold off
-
+        
         if showMoving
             % Work with the moving frame
             displayImage = movingFrame;
-            % Embded the movingFrame within a larger image that is padded
+            % Embed the movingFrame within a larger image that is padded
             % with mid-point background values
             padVals = round(size(movingFrame)./2);
             displayImagePad = zeros(size(movingFrame)+padVals.*2)+125;
@@ -271,11 +306,11 @@ for ff=1:length(fileList)
             displayImage = displayImage(padVals(1)+1:padVals(1)+size(movingFrame,1), ...
                 padVals(2)+1:padVals(2)+size(movingFrame,2));
             % Rotate the image
-            displayImage = imrotateAround(displayImage, cameraOffsetPoint(2), cameraOffsetPoint(1), torsion, 'bicubic');
+            displayImage = imrotateAround(displayImage, cameraOffsetPoint(2), cameraOffsetPoint(1), -torsion, 'bicubic');
             
             % Update the perimeter points
-            [Xpa, Ypa] = updatePerimeter(Xp,Yp,x,torsion,cameraOffsetPoint);
-
+            [Xpa, Ypa] = updatePerimeter(Xpm,Ypm,x,-torsion,cameraOffsetPoint);
+            
             % Display the perimeter points
             if showPerimeter
                 idx = sub2ind(size(displayImage),round(Ypa),round(Xpa));
@@ -288,38 +323,49 @@ for ff=1:length(fileList)
             ax.Toolbar = [];
             hold on
             text(20,30,'MOVING', 'Color', 'r','Fontsize',16);
-                        
-            % Show the eye model
-            if showModel
-                % Let the user know this will take a few seconds
-                text_str = 'Updating model...';
-                annotHandle = addAnnotation(text_str);
-                % Obtain the eye pose from the adjusted perimeter
-                eyePose = eyePoseEllipseFit(Xpa, Ypa, sceneGeometrySource);
-                % Render the eye model
-                renderEyePose(eyePose, sceneGeometrySource, ...
-                    'newFigure', false, 'visible', true, ...
-                    'showAzimuthPlane', true, ...
-                    'modelEyeLabelNames', {'retina' 'pupilEllipse' 'cornea'}, ...
-                    'modelEyePlotColors', {'.w' '-g' '.y'}, ...
-                    'modelEyeSymbolSizeScaler',1.5,...
-                    'modelEyeAlpha', 0.25);
-                hold on
-                % Remove the updating annotation
-                delete(annotHandle);
-            end
             
         else
-            fixedImHandle = imshow(fixedFrame,[],'Border','tight');
+            displayImage = fixedFrame;
+            
+            % Update the perimeter
+            Xpa = Xpf; Ypa = Ypf;
+            
+            % Display the perimeter points
+            if showPerimeter
+                idx = sub2ind(size(displayImage),round(Ypa),round(Xpa));
+                displayImage(idx)=255;
+            end
+            
+            fixedImHandle = imshow(displayImage,[],'Border','tight');
             ax = gca;
             ax.Toolbar = [];
             hold on
             text(20,30,'FIXED', 'Color', 'g','Fontsize',16);
         end
         
+        % Show the eye model
+        if showModel
+            % Let the user know this will take a few seconds
+            text_str = 'Updating model...';
+            annotHandle = addAnnotation(text_str);
+            % Obtain the eye pose from the adjusted perimeter
+            eyePose = eyePoseEllipseFit(Xpa, Ypa, sceneGeometrySource);
+            % Render the eye model
+            renderEyePose(eyePose, sceneGeometrySource, ...
+                'newFigure', false, 'visible', true, ...
+                'showAzimuthPlane', true, ...
+                'modelEyeLabelNames', {'retina' 'pupilEllipse' 'cornea'}, ...
+                'modelEyePlotColors', {'.w' '-g' '.y'}, ...
+                'modelEyeSymbolSizeScaler',1.5,...
+                'modelEyeAlpha', 0.25);
+            hold on
+            % Remove the updating annotation
+            delete(annotHandle);
+        end
+        
         % Add a marker for the camera CoP
         plot(cameraOffsetPoint(1),cameraOffsetPoint(2),'+c');
-        
+                
         keyAction = waitforbuttonpress;
         if keyAction
             keyChoiceValue = double(get(gcf,'CurrentCharacter'));
@@ -335,9 +381,9 @@ for ff=1:length(fileList)
                 case 97
                     showMoving = ~showMoving;
                 case 106
-                    torsion = torsion + 1;
-                case 107
                     torsion = torsion - 1;
+                case 107
+                    torsion = torsion + 1;
                 case 112
                     showPerimeter = ~showPerimeter;
                 case 109
@@ -349,25 +395,68 @@ for ff=1:length(fileList)
                 otherwise
                     text_str = 'unrecognized command';
             end
-             
+            
         end
     end
+    
+    % Obtain the eye pose from the adjusted perimeter
+    [Xpa, Ypa] = updatePerimeter(Xpm,Ypm,x,-torsion,cameraOffsetPoint);
+    eyePose = eyePoseEllipseFit(Xpa, Ypa, sceneGeometrySource);
+
+    % Calculate the updated camera rotation
+    newCameraTorsion = sceneGeometrySource.cameraPosition.torsion - torsion;
+
+    % Update the sceneGeometry torsion
+    sceneGeometryAdjusted = sceneGeometrySource;
+    sceneGeometryAdjusted.cameraPosition.torsion = newCameraTorsion;    
 
     % Find the change in the extrinsic camera translation needed to shift
     % the eye model the observed number of pixels
-    p = calcCameraTranslation(sceneGeometrySource,fixFramePupilCenterZeroPos,x);
-    
-    % Calculate the updated camera rotation
-    newCameraTorsion = sceneGeometrySource.cameraPosition.torsion + torsion;
-
-    % Obtain the eye pose from the adjusted perimeter
-    eyePose = eyePoseEllipseFit(Xpa, Ypa, sceneGeometrySource);
-
-    % Report the values
-    fprintf('     adjustedCameraPositionTranslation [x; y; z] = [%2.3f; %2.3f; %2.3f] \n',p);
-    fprintf('     adjustedCameraPositionTorsion [deg] = %2.3f \n',newCameraTorsion);
-    fprintf('     adjustedFixationAngles [azi, ele, tor] = [%2.3f; %2.3f; %2.3f] \n',-eyePose(1:3));
+    p = calcCameraTranslationPixels(sceneGeometryAdjusted,eyePose,x);
         
+    % Update the sceneGeometry translation
+    sceneGeometryAdjusted.cameraPosition.translation = p;
+    
+    % Obtain the eye pose for the adjusted sceneGeometry
+    eyePose = eyePoseEllipseFit(Xpm, Ypm, sceneGeometryAdjusted);
+    
+    % Report the values
+    msg = sprintf('     adjustedCameraPositionTranslation [x; y; z] = [%2.3f; %2.3f; %2.3f]',p);
+    fprintf(fid, '%s: %s\n', datestr(now, 0), msg);
+    fprintf([msg '\n']);
+    msg = sprintf('     adjustedCameraPositionTorsion [deg] = %2.3f',newCameraTorsion);
+    fprintf(fid, '%s: %s\n', datestr(now, 0), msg);
+    fprintf([msg '\n']);
+    msg = sprintf('     adjustedFixationAngles [azi, ele, tor] = [%2.3f; %2.3f; %2.3f]',-eyePose(1:3));
+    fprintf(fid, '%s: %s\n', datestr(now, 0), msg);
+    fprintf([msg '\n']);
+    
+    % Show the original moving image and the adjusted sceneGeometry
+    verifySolution = true;
+    if verifySolution
+        displayImage = movingFrame;
+        idx = sub2ind(size(displayImage),round(Ypm),round(Xpm));
+        displayImage(idx)=255;
+        imshow(displayImage,[],'Border','tight');
+        ax = gca;
+        ax.Toolbar = [];
+        hold on
+        text(20,30,'MOVING - orig', 'Color', 'r','Fontsize',16);
+        text_str = 'Updating model...';
+        annotHandle = addAnnotation(text_str);
+        renderEyePose(eyePose, sceneGeometryAdjusted, ...
+            'newFigure', false, 'visible', true, ...
+            'showAzimuthPlane', true, ...
+            'modelEyeLabelNames', {'retina' 'pupilEllipse' 'cornea'}, ...
+            'modelEyePlotColors', {'.w' '-g' '.y'}, ...
+            'modelEyeSymbolSizeScaler',1.5,...
+            'modelEyeAlpha', 0.25);
+        delete(annotHandle);
+        text_str = 'Adjusted geometry';
+        annotHandle = addAnnotation(text_str);
+        pause
+    end
+    
     % Revert to the fixed image
     delete(annotHandle)
     hold off
@@ -382,6 +471,7 @@ for ff=1:length(fileList)
 end
 
 close(figHandle);
+fclose(fid);
 
 
 %% LOCAL FUNCTIONS
@@ -412,22 +502,23 @@ Yp = v(2,:)';
 end
 
 
-function p = calcCameraTranslation(sceneGeometrySource,fixFramePupilCenter,x)
+function p = calcCameraTranslationPixels(sceneGeometrySource,eyePose,x)
 
 % Find the change in the extrinsic camera translation needed to shift
 % the eye model the observed number of pixels for an eye with zero rotation
-eyePose = [0, 0, 0, 3];
-targetPupilCenter = fixFramePupilCenter - x;
+
 p0 = sceneGeometrySource.cameraPosition.translation;
 ub = sceneGeometrySource.cameraPosition.translation + [10; 10; 0];
 lb = sceneGeometrySource.cameraPosition.translation - [10; 10; 0];
 place = {'cameraPosition' 'translation'};
 mySG = @(p) setfield(sceneGeometrySource,place{:},p);
 pupilCenter = @(k) k(1:2);
+targetPupilCenter = pupilCenter(pupilProjection_fwd(eyePose,sceneGeometrySource)) - x;
 myError = @(p) norm(targetPupilCenter-pupilCenter(pupilProjection_fwd(eyePose,mySG(p))));
 options = optimoptions(@fmincon,'Diagnostics','off','Display','off');
 p = fmincon(myError,p0,[],[],[],[],lb,ub,[],options);
 end
+
 
 function annotHandle = addAnnotation(text_str)
 
@@ -484,8 +575,8 @@ centerX = floor(imageWidth/2+1);
 centerY = floor(imageHeight/2+1);
 dy = centerY-pointY;
 dx = centerX-pointX;
-% How much would the "rotate around" point shift if the 
-% image was rotated about the image center. 
+% How much would the "rotate around" point shift if the
+% image was rotated about the image center.
 [theta, rho] = cart2pol(-dx,dy);
 [newX, newY] = pol2cart(theta+angle*(pi/180), rho);
 shiftX = round(pointX-(centerX+newX));
