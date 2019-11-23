@@ -76,6 +76,10 @@ function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, scene
 %                           young adult in complete darkness. Set the SD
 %                           value to something large to remove the
 %                           influence of this prior upon the fitting.
+%  'forceFreshFit'        - Logical. If set to true, any previous radius-
+%                           smoothed results will be ignored in
+%                           constructing the prior for the current
+%                           analysis.
 %  'adjustedCameraPositionTranslation' - 3x1 vector that provides position
 %                           of the camera relative to the origin of the
 %                           world coordinate system (which is the anterior
@@ -128,6 +132,7 @@ p.addParameter('exponentialTauParam',3,@isnumeric);
 p.addParameter('likelihoodErrorMultiplier',4.0,@isnumeric);
 p.addParameter('fitLabel','sceneConstrained',@ischar);
 p.addParameter('fixedPriorPupilRadius',[3.5,1.5],@isnumeric);
+p.addParameter('forceFreshFit',false,@islogical);
 p.addParameter('adjustedCameraPositionTranslation',[],@isnumeric);
 p.addParameter('adjustedCameraPositionTorsion',[],@isnumeric);
 p.addParameter('relativeCameraPositionFileName',[],@ischar);
