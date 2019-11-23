@@ -68,9 +68,14 @@ function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, scene
 %                           will be conducted.
 %  'fixedPriorPupilRadius' - A 2x1 vector that provides the mean and SD (in 
 %                           mm) of the expected radius of the pupil
-%                           aperture during this acquisition. The default
+%                           aperture during this acquisition. If a
+%                           radiusSmoothed field already exists in pupil
+%                           data, then these values will be estimated from
+%                           the previous analysis of the data. The default
 %                           values correspond to the pupil radius in a
-%                           young adult in complete darkness.
+%                           young adult in complete darkness. Set the SD
+%                           value to something large to remove the
+%                           influence of this prior upon the fitting.
 %  'adjustedCameraPositionTranslation' - 3x1 vector that provides position
 %                           of the camera relative to the origin of the
 %                           world coordinate system (which is the anterior
@@ -124,6 +129,7 @@ p.addParameter('likelihoodErrorMultiplier',4.0,@isnumeric);
 p.addParameter('fitLabel','sceneConstrained',@ischar);
 p.addParameter('fixedPriorPupilRadius',[3.5,1.5],@isnumeric);
 p.addParameter('adjustedCameraPositionTranslation',[],@isnumeric);
+p.addParameter('adjustedCameraPositionTorsion',[],@isnumeric);
 p.addParameter('relativeCameraPositionFileName',[],@ischar);
 
 
@@ -151,11 +157,13 @@ dataLoad=load(sceneGeometryFileName);
 sceneGeometry=dataLoad.sceneGeometry;
 clear dataLoad
 
-
-% If an adjustedCameraPositionTranslation value has been passed, update
-% this field of the sceneGeometry
+% If an adjustedCameraPositionTranslation and/or torsion values have been
+% passed, update these fields of the sceneGeometry
 if ~isempty(p.Results.adjustedCameraPositionTranslation)
     sceneGeometry.cameraPosition.translation = p.Results.adjustedCameraPositionTranslation;
+end
+if ~isempty(p.Results.adjustedCameraPositionTorsion)
+    sceneGeometry.cameraPosition.torsion = p.Results.adjustedCameraPositionTorsion;
 end
 
 % Load the relativeCameraPosition file if passed and it exists
@@ -187,6 +195,25 @@ if ~isfield(pupilData.(p.Results.fitLabel).ellipses,'RMSE')
 end
 
 
+%% Derive a fixed prior from a previous analysis of the data
+% If the pupilData have already undergone a pass through fitting, derive
+% a prior across the entire acquisition for the mean and SD of the pupil
+% size. Instead of the mean, we obtain the weighted median to avoid the
+% influence of outlier values, and derive the SD from the inter-quartile
+% range for the same reason.
+if isfield(pupilData,'radiusSmoothed')
+    fixedPriorPupilRadiusMean = medianw( ...
+        pupilData.radiusSmoothed.eyePoses.values(:,4), ...
+        pupilData.radiusSmoothed.ellipses.RMSE, 1 );    
+    sdOfIQRinStandardNormal = 1.34896;    
+    fixedPriorPupilRadiusSD = ...
+        iqr(pupilData.radiusSmoothed.eyePoses.values(:,4))/sdOfIQRinStandardNormal;
+else
+    fixedPriorPupilRadiusMean = p.Results.fixedPriorPupilRadius(1);
+    fixedPriorPupilRadiusSD = p.Results.fixedPriorPupilRadius(2);
+end
+
+
 %% Set up the decaying exponential weighting function
 % The relatively large window (10 times the time constant) is used to
 % handle the case in which there is a stretch of missing data, in which
@@ -211,12 +238,6 @@ exponentialWeights=[fliplr(baseExpFunc) NaN baseExpFunc];
 % The likelihood SD is based upon the RMSE of the fit of the elipse to the
 % perimeter points for each frame
 RMSE = pupilData.(p.Results.fitLabel).ellipses.RMSE';
-
-%% HACK
-% An older version of the code set a value of 1e12 for frames where the
-% fitting failed. Just make these nans here.
-% Delete this line once Geoff has processed the session 1 TOME data.
-RMSE(RMSE==1e12)=nan;
 
 % Define the bins over which the distribution of perimeter angles will be
 % evaluated. 20 bins works pretty well.
@@ -277,8 +298,6 @@ verbose = p.Results.verbose;
 eyePoseLB = p.Results.eyePoseLB;
 eyePoseUB = p.Results.eyePoseUB;
 fitLabel = p.Results.fitLabel;
-fixedPriorPupilRadiusMean = p.Results.fixedPriorPupilRadius(1);
-fixedPriorPupilRadiusSD = p.Results.fixedPriorPupilRadius(2);
 
 
 %% Perform the calculation across frames
