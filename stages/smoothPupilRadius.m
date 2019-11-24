@@ -204,15 +204,15 @@ end
 % If the pupilData have already undergone a pass through fitting, derive
 % a prior across the entire acquisition for the mean and SD of the pupil
 % size. Instead of the mean, we obtain the weighted median to avoid the
-% influence of outlier values, and derive the SD from the inter-quartile
-% range for the same reason.
+% influence of outlier values. The SD is set to the IQR times the 
+% likelihoodErrorMultiplier value, so that the median pupil size value does
+% not overpower the observed perimeter.
 if isfield(pupilData,'radiusSmoothed')
     fixedPriorPupilRadiusMean = medianw( ...
         pupilData.radiusSmoothed.eyePoses.values(:,4), ...
         pupilData.radiusSmoothed.ellipses.RMSE, 1 );    
-    sdOfIQRinStandardNormal = 1.34896;    
     fixedPriorPupilRadiusSD = ...
-        iqr(pupilData.radiusSmoothed.eyePoses.values(:,4))/sdOfIQRinStandardNormal;
+        iqr(pupilData.radiusSmoothed.eyePoses.values(:,4))*p.Results.likelihoodErrorMultiplier;
 else
     fixedPriorPupilRadiusMean = p.Results.fixedPriorPupilRadius(1);
     fixedPriorPupilRadiusSD = p.Results.fixedPriorPupilRadius(2);
