@@ -131,7 +131,7 @@ p.addParameter('eyePoseUB',[89,89,0,5],@isnumeric);
 p.addParameter('exponentialTauParam',3,@isnumeric);
 p.addParameter('likelihoodErrorMultiplier',4.0,@isnumeric);
 p.addParameter('fitLabel','sceneConstrained',@ischar);
-p.addParameter('fixedPriorPupilRadius',[3.5,1.5],@isnumeric);
+p.addParameter('fixedPriorPupilRadius',[3.5,3],@isnumeric);
 p.addParameter('forceFreshFit',false,@islogical);
 p.addParameter('adjustedCameraPositionTranslation',[],@isnumeric);
 p.addParameter('adjustedCameraPositionTorsion',[],@isnumeric);
@@ -204,15 +204,14 @@ end
 % If the pupilData have already undergone a pass through fitting, derive
 % a prior across the entire acquisition for the mean and SD of the pupil
 % size. Instead of the mean, we obtain the weighted median to avoid the
-% influence of outlier values. The SD is set to the IQR times the 
-% likelihoodErrorMultiplier value, so that the median pupil size value does
-% not overpower the observed perimeter.
+% influence of outlier values. The SD is set to something large (3 mm) so
+% that the effect of this prior only appears in te near absence of other
+% measures.
 if isfield(pupilData,'radiusSmoothed')
     fixedPriorPupilRadiusMean = medianw( ...
         pupilData.radiusSmoothed.eyePoses.values(:,4), ...
         pupilData.radiusSmoothed.ellipses.RMSE, 1 );    
-    fixedPriorPupilRadiusSD = ...
-        iqr(pupilData.radiusSmoothed.eyePoses.values(:,4))*p.Results.likelihoodErrorMultiplier;
+    fixedPriorPupilRadiusSD = 4;
 else
     fixedPriorPupilRadiusMean = p.Results.fixedPriorPupilRadius(1);
     fixedPriorPupilRadiusSD = p.Results.fixedPriorPupilRadius(2);
