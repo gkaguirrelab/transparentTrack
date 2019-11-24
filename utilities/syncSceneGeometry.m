@@ -1,5 +1,8 @@
-% frameAdjustGUI
-% Script to determine the change in camera position between acqusitions
+function syncSceneGeometry(sceneGeometryFileName, pupilFileName, varargin)
+% The change in camera position between a sceneGeometry and an acquisition
+%
+% Syntax:
+%  
 %
 % Description:
 %   A sceneGeometry file is created for a given acquisition. Included in
@@ -21,31 +24,62 @@
 %   and controls are used to adjust the acquisition to match the
 %   sceneGeometry.
 %
+% Inputs:
+%   sceneGeometryFileName - Full path to the .mat file that contains the
+%                           sceneGeometry to be used.
+%   pupilFileName         - Full path to the .mat file that contains the
+%                           pupil data to which the sceneGeometry should be
+%                           synced.
+%
 % Examples:
 %{
-    % ETTBSkip -- This is an interactive example.
-    frameAdjustGUI
+    % Invoke the file picker GUI
+    syncSceneGeometry('','');
 %}
 
-% Define and open a log file
-logPath = '~/Desktop';
-fid = fopen(fullfile(logPath, 'frameAdjustLog.txt'), 'a');
-if fid == -1
-  error('Cannot open log file.');
+
+%% Parse vargin for options passed here
+p = inputParser; p.KeepUnmatched = true;
+
+% Required
+p.addRequired('sceneGeometryFileName',@ischar);
+p.addRequired('pupilFileName',@ischar);
+
+% Optional display and I/O params
+p.addParameter('verbose',false,@islogical);
+p.addParameter('displayMode',false,@islogical);
+p.addParameter('saveAdjustedSceneGeome',true,@islogical);
+
+% Optional fitting params
+p.addParameter('alignMethod','gaze',@ischar);
+p.addParameter('adjustedCameraPositionTranslation',[],@isnumeric);
+p.addParameter('adjustedCameraPositionTorsion',[],@isnumeric);
+p.addParameter('adjustedCameraPositionFixationAngles',[],@isnumeric);
+
+
+
+
+%% Parse and check the parameters
+p.parse(sceneGeometryFileName, pupilFileName, varargin{:});
+
+
+
+%% Load the sceneGeometry file
+if isempty(sceneGeometryFileName)
+    % Open a file picker UI to select a sceneGeometry
+    [file,path] = uigetfile(fullfile('.','*_sceneGeometry.mat'),'Choose a sceneGeometry file');
+    sceneGeometryIn = fullfile(path,file);
+else
+    sceneGeometryIn = sceneGeometryFileName;
+    tmp = strsplit(sceneGeometryIn,filesep);
+    file = tmp{end};
+    path = strcat(tmp(1:end-1));
 end
 
-
-% Open a file picker UI to select a sceneGeometry
-[file,path] = uigetfile(fullfile('.','*_sceneGeometry.mat'),'Choose a sceneGeometry file');
-
 % Load the selected sceneGeometry file
-sceneGeometryIn = fullfile(path,file);
 dataLoad=load(sceneGeometryIn);
 sceneGeometrySource=dataLoad.sceneGeometry;
 clear dataLoad
-
-% Add to the log file
-fprintf(fid, '%s: %s\n', datestr(now, 0), sceneGeometryIn);
 
 % Derive file stem path for the files associated with the sceneGeometry
 pathParts = strsplit(path,filesep);
@@ -66,7 +100,7 @@ fileStem = fileParts{1};
 % Use shape for all datasets except Session 2 data collected on or after
 % 01/30/2018.
 
-noFixSubjects = {'3001', '3002', '3003', '3004', '3005', '3007', '3008', '3009', '3011', '3013','3044'};
+noFixSubjects = {'3001', '3002', '3003', '3004', '3005', '3007', '3008', '3009', '3011', '3013'};
 if any(strcmp(pathParts,'session2_spatialStimuli')) && ~any(contains(pathParts,noFixSubjects))
     alignMethod = 'gaze';
     msg='Using the gaze alignment method';
@@ -472,6 +506,8 @@ end
 
 close(figHandle);
 fclose(fid);
+
+end
 
 
 %% LOCAL FUNCTIONS
