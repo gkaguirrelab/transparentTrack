@@ -168,33 +168,26 @@ videoSizeY = videoInObj.Height;
 grayVideo = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
 
 % read the video into memory, adjust gamma
-if ~p.Results.displayMode
-    for ii = 1:nFrames
-        thisFrame = readFrame(videoInObj);
-        thisFrame = imadjust(thisFrame,[],[],p.Results.glintGammaCorrection);
-        grayVideo(:,:,ii) = rgb2gray (thisFrame);
-    end
-else
-    cc = 0;
-    for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
-        cc = cc+1;
-        thisFrame = read(videoInObj,ii);
-        thisFrame = imadjust(thisFrame,[],[],p.Results.glintGammaCorrection);
-        grayVideo(:,:,cc) = rgb2gray (thisFrame);
-    end
+cc = 0;
+for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
+    cc = cc+1;
+    thisFrame = read(videoInObj,ii);
+    thisFrame = imadjust(thisFrame,[],[],p.Results.glintGammaCorrection);
+    grayVideo(:,:,cc) = rgb2gray (thisFrame);
 end
+
 % close the video object
 clear videoInObj
 
 
 %% Initialize variables
 % Initialize glint variables
-glintData_X = nan(nFrames,p.Results.numberOfGlints);
-glintData_Y = nan(nFrames,p.Results.numberOfGlints);
+glintData_X = nan(p.Results.startFrame+nFrames-1,p.Results.numberOfGlints);
+glintData_Y = nan(p.Results.startFrame+nFrames-1,p.Results.numberOfGlints);
 
 % initialize centroid variable according to the centroidsAllocation value
-centroidsByFrame_X = nan(nFrames,p.Results.centroidsAllocation);
-centroidsByFrame_Y = nan(nFrames,p.Results.centroidsAllocation);
+centroidsByFrame_X = nan(p.Results.startFrame+nFrames-1,p.Results.centroidsAllocation);
+centroidsByFrame_Y = nan(p.Results.startFrame+nFrames-1,p.Results.centroidsAllocation);
 
 
 %% Find all centroids
@@ -221,7 +214,7 @@ end
 
 
 % loop through frames
-for   ii = 1:nFrames
+for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
     if p.Results.displayMode && strcmp(get(figureHandle,'currentchar'),' ')
         close(figureHandle)
         return
@@ -283,6 +276,7 @@ for   ii = 1:nFrames
         imshow(thisFrame,'Border', 'tight', 'InitialMagnification', 200)
     end
 end
+
 
 %% Get glint data
 
