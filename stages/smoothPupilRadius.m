@@ -498,7 +498,8 @@ pupilData.radiusSmoothed.eyePoses.meta.coordinateSystem = 'head fixed (extrinsic
 pupilData.radiusSmoothed.eyePoses.meta.empiricalPriorPupilRadiusMean = loopVar_empiricalPriorPupilRadiusMean;
 pupilData.radiusSmoothed.eyePoses.meta.empiricalPriorPupilRadiusSD = loopVar_empiricalPriorPupilRadiusSD;
 pupilData.radiusSmoothed.eyePoses.meta.likelihoodPupilRadiusSD = likelihoodPupilRadiusSDVector;
-
+pupilData.radiusSmoothed.eyePoses.meta.fixedPriorPupilRadiusMean = fixedPriorPupilRadiusMean;
+pupilData.radiusSmoothed.eyePoses.meta.fixedPriorPupilRadiusSD = fixedPriorPupilRadiusSD;
 
 % add a meta field with analysis details
 pupilData.radiusSmoothed.meta = p.Results;
