@@ -134,9 +134,9 @@ load(perimeterFileName,'perimeter');
 
 % Find the frame with the lowest ellipse RMSE during this period
 rmseVals = pupilData.radiusSmoothed.ellipses.RMSE(startIndex:startIndex+runLength);
-bestFrame = startIndex + find(rmseVals == min(rmseVals)) - 1;
-Xpf = perimeter.data{bestFrame}.Xp;
-Ypf = perimeter.data{bestFrame}.Yp;
+bestFrameFixed = startIndex + find(rmseVals == min(rmseVals)) - 1;
+Xpf = perimeter.data{bestFrameFixed}.Xp;
+Ypf = perimeter.data{bestFrameFixed}.Yp;
 
 % Get the camera offset point
 cameraOffsetPoint = [sceneGeometrySource.cameraIntrinsic.matrix(1,3), ...
@@ -180,7 +180,7 @@ load(perimeterFileName,'perimeter');
 
 % Identify the startFrame, which is the time point at which the fMRI
 % acquisition began
-[~, startFrame] = min(abs(timebase.values));
+[~, frameTimeZero] = min(abs(timebase.values));
 
 % Set the target length
 targetLength = p.Results.eyePositionTargetLength;
@@ -192,8 +192,10 @@ switch p.Results.alignMethod
         % Find the period prior to the start of the scan
         % when the eye was in the most consistent position, and closest
         % to the median position
-        gazeX = pupilData.initial.ellipses.values(1:startFrame,1);
-        gazeY = pupilData.initial.ellipses.values(1:startFrame,2);
+        windowStart = 1;
+        windowEnd = frameTimeZero;
+        gazeX = pupilData.initial.ellipses.values(windowStart:windowEnd,1);
+        gazeY = pupilData.initial.ellipses.values(windowStart:windowEnd,2);
         medianX = nanmedian(gazeX);
         medianY = nanmedian(gazeY);
         gazePosition = [gazeX-medianX; gazeY-medianY];
@@ -203,13 +205,33 @@ switch p.Results.alignMethod
         pullRunLengths = @(vec) vec(2:2:end)-pullStartIndices(vec);
         myObj = @(thresh) targetLength - max( pullRunLengths(runStarts(thresh)) );
         threshVal = fzero(myObj,0.5);
+    case 'gazePost'
+        % Find the period after to the start of the scan when the eye was
+        % in the most consistent position, and closest to the median
+        % position. This is used for retinotopic mapping runs which did not
+        % include a fixation target prior to the start of the scan.
+        windowStart = frameTimeZero;
+        windowEnd = frameTimeZero+600;
+        gazeX = pupilData.initial.ellipses.values(windowStart:windowEnd,1);
+        gazeY = pupilData.initial.ellipses.values(windowStart:windowEnd,2);
+        medianX = nanmedian(gazeX);
+        medianY = nanmedian(gazeY);
+        gazePosition = [gazeX-medianX; gazeY-medianY];
+        
+        runStarts = @(thresh) find(diff([0,(sqrt(sum(gazePosition.^2,2)) < thresh)',0]==1));
+        pullStartIndices = @(vec) vec(1:2:end-1);
+        pullRunLengths = @(vec) vec(2:2:end)-pullStartIndices(vec);
+        myObj = @(thresh) targetLength - max( pullRunLengths(runStarts(thresh)) );
+        threshVal = fzero(myObj,0.5);        
     case 'shape'
         % Find the period after the start of the scan when
         % the pupil has a shape most similar to the shape from the
         % sceneGeometry file for gaze [0 0]
-        rho = pupilData.initial.ellipses.values(startFrame:end,4);
+        windowStart = frameTimeZero;
+        windowEnd = size(pupilData.initial.ellipses.values,1);
+        rho = pupilData.initial.ellipses.values(windowStart:windowEnd,4);
         rho = 1-sqrt(1-rho.^2);
-        theta = pupilData.initial.ellipses.values(startFrame:end,5);
+        theta = pupilData.initial.ellipses.values(windowStart:windowEnd,5);
         theta = theta.*2;
         
         shapeError = ...
@@ -227,21 +249,21 @@ end
 
 % Find the start point of this run of frames
 runLengths = pullRunLengths(runStarts(threshVal));
-runIndices = pullStartIndices(runStarts(threshVal));
+runIndices = pullStartIndices(runStarts(threshVal))+windowStart-1;
 runLength = targetLength-myObj(threshVal);
 startIndex = runIndices(runLengths == runLength);
 
 % Find the frame with the lowest ellipse RMSE during this period, and then
 % load the perimeter for that frame.
 rmseVals = pupilData.initial.ellipses.RMSE(startIndex:startIndex+runLength);
-bestFrame = startIndex + find(rmseVals == min(rmseVals)) - 1;
-Xpm = perimeter.data{bestFrame}.Xp;
-Ypm = perimeter.data{bestFrame}.Yp;
+bestFrameMoving = startIndex + find(rmseVals == min(rmseVals)) - 1;
+Xpm = perimeter.data{bestFrameMoving}.Xp;
+Ypm = perimeter.data{bestFrameMoving}.Yp;
 
-% Obtain the median [x y] position of the pupil center during the
-% target period of the moving image, and use this to determine the displacement (in pixels)
-% from the [x y] position of the pupil center during the correspoinding
-% target period from the fixed (sceneGeometry) image.
+% Obtain the median [x y] position of the pupil center during the target
+% period of the moving image, and use this to determine the displacement
+% (in pixels) from the [x y] position of the pupil center during the
+% corresponding target period from the fixed (sceneGeometry) image.
 
 % Get the pupil center for the fames from the moving video
 movingFramePupilCenterFixation = [ ...
@@ -296,21 +318,7 @@ if p.Results.displayMode
         
         if showMoving
             % Work with the moving frame
-            displayImage = movingFrame;
-            % Embed the movingFrame within a larger image that is padded
-            % with mid-point background values
-            padVals = round(size(movingFrame)./2);
-            displayImagePad = zeros(size(movingFrame)+padVals.*2)+125;
-            displayImagePad(padVals(1)+1:padVals(1)+size(movingFrame,1), ...
-                padVals(2)+1:padVals(2)+size(movingFrame,2) ) = displayImage;
-            displayImage = displayImagePad;
-            % Apply the x and y translation
-            displayImage = imtranslate(displayImage,x,'method','cubic');
-            % Crop out the padding
-            displayImage = displayImage(padVals(1)+1:padVals(1)+size(movingFrame,1), ...
-                padVals(2)+1:padVals(2)+size(movingFrame,2));
-            % Rotate the image
-            displayImage = imrotateAround(displayImage, cameraOffsetPoint(2), cameraOffsetPoint(1), -torsion, 'bicubic');
+            displayImage = updateMovingFrame(movingFrame,x,torsion,cameraOffsetPoint);
             
             % Update the perimeter points
             [Xpa, Ypa] = updatePerimeter(Xpm,Ypm,x,-torsion,cameraOffsetPoint);
@@ -406,6 +414,7 @@ if p.Results.displayMode
     %    close(figHandle);
 end
 
+
 %% Create the adjusted sceneGeometry
 % Obtain the eye pose from the adjusted perimeter
 [Xpa, Ypa] = updatePerimeter(Xpm,Ypm,x,-torsion,cameraOffsetPoint);
@@ -420,46 +429,116 @@ sceneGeometryAdjusted.cameraPosition.torsion = newCameraTorsion;
 
 % Find the change in the extrinsic camera translation needed to shift
 % the eye model the observed number of pixels
-p = calcCameraTranslationPixels(sceneGeometryAdjusted,eyePose,x);
+adjTranslation = calcCameraTranslationPixels(sceneGeometryAdjusted,eyePose,x);
 
 % Update the sceneGeometry translation
-sceneGeometryAdjusted.cameraPosition.translation = p;
+sceneGeometryAdjusted.cameraPosition.translation = adjTranslation;
 
 % Obtain the eye pose for the adjusted sceneGeometry
-eyePose = eyePoseEllipseFit(Xpm, Ypm, sceneGeometryAdjusted);
+eyePoseAcq = eyePoseEllipseFit(Xpm, Ypm, sceneGeometryAdjusted);
+sceneGeometryAdjusted.screenPosition.fixationAngles = -eyePoseAcq(1:3);
 
-% Report the values
-msg = sprintf('     adjustedCameraPositionTranslation [x; y; z] = [%2.3f; %2.3f; %2.3f]',p);
-fprintf([msg '\n']);
-msg = sprintf('     adjustedCameraPositionTorsion [deg] = %2.3f',newCameraTorsion);
-fprintf([msg '\n']);
-msg = sprintf('     adjustedFixationAngles [azi, ele, tor] = [%2.3f; %2.3f; %2.3f]',-eyePose(1:3));
-fprintf([msg '\n']);
+% Save the adjusted sceneGeometry
 
-% Show the original moving image and the adjusted sceneGeometry
-verifySolution = false;
-if verifySolution
-    displayImage = movingFrame;
-    idx = sub2ind(size(displayImage),round(Ypm),round(Xpm));
+
+%% Create and save a diagnostic figure
+saveDiagnosticPlot=true;
+if saveDiagnosticPlot
+
+    % Fixed frame
+    displayImage = fixedFrame;
+    idx = sub2ind(size(displayImage),round(Ypf),round(Xpf));
     displayImage(idx)=255;
-    imshow(displayImage,[],'Border','tight');
-    ax = gca;
-    ax.Toolbar = [];
-    hold on
-    text(20,30,'MOVING - orig', 'Color', 'r','Fontsize',16);
-    text_str = 'Updating model...';
-    annotHandle = addAnnotation(text_str);
-    renderEyePose(eyePose, sceneGeometryAdjusted, ...
-        'newFigure', false, 'visible', true, ...
+    eyePoseSource = eyePoseEllipseFit(Xpf, Ypf, sceneGeometrySource);
+    tmpFig = figure('visible','off');
+    renderEyePose(eyePoseSource, sceneGeometrySource, ...
+        'newFigure', false, 'visible', false, ...
+        'backgroundImage',displayImage, ...
         'showAzimuthPlane', true, ...
         'modelEyeLabelNames', {'retina' 'pupilEllipse' 'cornea'}, ...
         'modelEyePlotColors', {'.w' '-g' '.y'}, ...
         'modelEyeSymbolSizeScaler',1.5,...
         'modelEyeAlpha', 0.25);
-    delete(annotHandle);
-    text_str = 'Adjusted geometry';
-    annotHandle = addAnnotation(text_str);
-    pause
+    text(20,30,fileStem, 'Color', 'r','Fontsize',16,'Interpreter','none');
+    msg = ['frame ' num2str(bestFrameFixed)];
+    addAnnotation(msg);
+    % Add cross hairs
+    hold on
+    plot([size(displayImage,2)/2, size(displayImage,2)/2],[0 size(displayImage,2)],'-b');
+    plot([0 size(displayImage,1)],[size(displayImage,1)/2, size(displayImage,1)/2],'-b');
+    tmpFrame = getframe(gcf);
+    imageSet(1) = {tmpFrame.cdata};
+    close(tmpFig);
+    
+    % Moving frame
+    displayImage = movingFrame;
+    idx = sub2ind(size(displayImage),round(Ypm),round(Xpm));
+    displayImage(idx)=255;
+    eyePoseAcq = eyePoseEllipseFit(Xpm, Ypm, sceneGeometryAdjusted);
+    tmpFig = figure('visible','off');
+    renderEyePose(eyePoseAcq, sceneGeometryAdjusted, ...
+        'newFigure', false, 'visible', false, ...
+        'backgroundImage',displayImage, ...
+        'showAzimuthPlane', true, ...
+        'modelEyeLabelNames', {'retina' 'pupilEllipse' 'cornea'}, ...
+        'modelEyePlotColors', {'.w' '-g' '.y'}, ...
+        'modelEyeSymbolSizeScaler',1.5,...
+        'modelEyeAlpha', 0.25);
+    text(20,30,acqFileStem, 'Color', 'g','Fontsize',16,'Interpreter','none');
+    msg = ['frame ' num2str(bestFrameMoving)];
+    addAnnotation(msg);
+    hold on
+    plot([size(displayImage,2)/2, size(displayImage,2)/2],[0 size(displayImage,2)],'-b');
+    plot([0 size(displayImage,1)],[size(displayImage,1)/2, size(displayImage,1)/2],'-b');
+    tmpFrame = getframe(gcf);
+    imageSet(2) = {tmpFrame.cdata};
+    close(tmpFig);
+    
+    % Difference image
+    adjMovingFrame = updateMovingFrame(movingFrame,x,torsion,cameraOffsetPoint);
+    displayImage = fixedFrame - adjMovingFrame;
+    tmpFig = figure('visible','off');
+    imshow(displayImage,[], 'Border', 'tight');
+    text(20,30,'Difference', 'Color', 'w','Fontsize',16,'Interpreter','none');
+    tmpFrame = getframe(gcf);
+    imageSet(3) = {tmpFrame.cdata};
+    close(tmpFig);
+    
+    % Prepare the figure
+    figHandle=figure('visible','on');
+    set(gcf,'PaperOrientation','landscape');
+    
+    set(figHandle, 'Units','inches')
+    height = 12;
+    width = 30;
+    
+    % The last two parameters of 'Position' define the figure size
+    set(figHandle, 'Position',[25 5 width height],...
+        'PaperSize',[width height],...
+        'PaperPositionMode','auto',...
+        'Color','w',...
+        'Renderer','painters'...
+        );
+    montage(imageSet,'Size', [1 3]);
+    
+    % Post the title
+    pathParts = strsplit(path,filesep);
+    titleString = [fullfile(pathParts{end-4:end-2}) '; alignMethod: ' p.Results.alignMethod];
+    title(titleString,'Interpreter','none')
+    
+    % Add a text summary below
+    % Report the values
+    msg = sprintf('delta translation [x; y; z] = [%2.3f; %2.3f; %2.3f]',adjTranslation - sceneGeometrySource.cameraPosition.translation);
+    annotation('textbox', [0.5, .2, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
+    msg = sprintf('delta torsion [deg] = %2.3f',torsion);
+    annotation('textbox', [0.5, .15, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
+    msg = sprintf('delta fixation agles [azi, ele, tor] = [%2.3f; %2.3f; %2.3f]',eyePoseSource(1:3)-eyePoseAcq(1:3));
+    annotation('textbox', [0.5, .1, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
+
+    % Save the figure
+    figFileOut = fullfile(path);
+    
+    foo = 1;
 end
 
 
@@ -532,6 +611,26 @@ annotHandle = annotation('textbox',...
 
 drawnow
 
+end
+
+
+function displayImage = updateMovingFrame(movingFrame,x,torsion,cameraOffsetPoint)
+
+            % Embed the movingFrame within a larger image that is padded
+            % with mid-point background values
+            padVals = round(size(movingFrame)./2);
+            displayImagePad = zeros(size(movingFrame)+padVals.*2)+125;
+            displayImagePad(padVals(1)+1:padVals(1)+size(movingFrame,1), ...
+                padVals(2)+1:padVals(2)+size(movingFrame,2) ) = movingFrame;
+            displayImage = displayImagePad;
+            % Apply the x and y translation
+            displayImage = imtranslate(displayImage,x,'method','cubic');
+            % Crop out the padding
+            displayImage = displayImage(padVals(1)+1:padVals(1)+size(movingFrame,1), ...
+                padVals(2)+1:padVals(2)+size(movingFrame,2));
+            % Rotate the image
+            displayImage = imrotateAround(displayImage, cameraOffsetPoint(2), cameraOffsetPoint(1), -torsion, 'bicubic');
+            
 end
 
 
