@@ -46,14 +46,14 @@ p = inputParser; p.KeepUnmatched = true;
 p.addRequired('pupilFileName',@ischar);
 
 % Optional display and I/O params
-p.addParameter('sceneGeometryFileNameToSync','',@ischar);
+p.addParameter('sceneGeometryFileNameToSync','',@(x)(ischar(x) | iscell(x)));
 p.addParameter('verbose',false,@islogical);
 p.addParameter('displayMode',false,@islogical);
 p.addParameter('saveAdjustedSceneGeometry',true,@islogical);
 p.addParameter('saveDiagnosticPlot',true,@islogical);
 
 % Optional fitting params
-p.addParameter('alignMethod','shape',@ischar);
+p.addParameter('alignMethod','shape',@(x)(ischar(x) | iscell(x)));
 p.addParameter('deltaPix',[],@isnumeric);
 p.addParameter('deltaDeg',[],@isnumeric);
 p.addParameter('eyePositionTargetLengthFrames',30,@isscalar);
@@ -68,7 +68,11 @@ p.parse(pupilFileName, varargin{:});
 % data--constitute the "fixed" measurements.
 
 % Get the name and path
-sceneGeometryFileNameToSync = p.Results.sceneGeometryFileNameToSync;
+if iscell(p.Results.sceneGeometryFileNameToSync)
+    sceneGeometryFileNameToSync = p.Results.sceneGeometryFileNameToSync{1};
+else
+    sceneGeometryFileNameToSync = p.Results.sceneGeometryFileNameToSync;
+end
 if isempty(sceneGeometryFileNameToSync)
     % Open a file picker UI to select a sceneGeometry
     [sceneGeometryInName,sceneGeometryInPath] = uigetfile(fullfile('.','*_sceneGeometry.mat'),'Choose a sceneGeometry file');
@@ -81,9 +85,10 @@ else
     % is the same as that given for the pupilFileName
     if length(tmp)==1
         tmp = strsplit(pupilFileName,filesep);
-        sceneGeometryInPath = strcat(tmp(1:end-1));
+        sceneGeometryInPath = fullfile(filesep,tmp{1:end-1});
+        sceneGeometryFileNameToSync = fullfile(sceneGeometryInPath,sceneGeometryInName);
     else
-        sceneGeometryInPath = strcat(tmp(1:end-1));
+        sceneGeometryInPath = fullfile(filesep,tmp{1:end-1});
     end
 end
 
@@ -98,12 +103,12 @@ tmp = strsplit(sceneGeometryInName,'_sceneGeometry.mat');
 sceneGeometryInStem = tmp{1};
 
 % Load the pupil data file associated with the sceneGeometry
-fileIn = fullfile(sceneGeometryInPath,[sceneGeometryInStem,'_pupil.mat']);
-load(fileIn,'pupilData');
+tmp = fullfile(sceneGeometryInPath,[sceneGeometryInStem,'_pupil.mat']);
+load(tmp,'pupilData');
 
 % Load the perimeter file associated with the sceneGeometry
-fileIn = fullfile(sceneGeometryInPath,[sceneGeometryInStem '_correctedPerimeter.mat']);
-load(fileIn,'perimeter');
+tmp = fullfile(sceneGeometryInPath,[sceneGeometryInStem '_correctedPerimeter.mat']);
+load(tmp,'perimeter');
 
 
 %% Derive properties from sceneGeometryIn
@@ -136,6 +141,7 @@ runLengths = pullRunLengths(runStarts(threshVal));
 runIndices = pullStartIndices(runStarts(threshVal));
 runLength = targetLength-myObj(threshVal);
 startIndex = runIndices(runLengths == runLength);
+startIndex = startIndex(1);
 
 % Find the frame with the lowest ellipse RMSE during this period. We will
 % desginate this frame the referenceFrame for the fixed (sceneGeometryIn)
@@ -195,7 +201,7 @@ if isempty(pupilFileName)
 else
     % Derive the path and file name stem for this acquisition
     tmp = strsplit(pupilFileName,filesep);
-    sceneGeometryOutPath = strcat(tmp(1:end-1));
+    sceneGeometryOutPath = fullfile(filesep,tmp{1:end-1});
     tmp = strsplit(tmp{end},'_pupil.mat');
     sceneGeometryOutStem = tmp{1};
 end
@@ -219,7 +225,11 @@ load(perimeterFileName,'perimeter');
 % difference of fixation position between the sceneGeometryIn and each
 % frame of the acquisition. The approach varies based upon the alignMethod
 % flag.
-switch p.Results.alignMethod
+alignMethod = p.Results.alignMethod;
+if iscell(alignMethod)
+    alignMethod = alignMethod{1};
+end
+switch alignMethod
     case 'gazePre'
         % For some acquisitions, the subject was asked to stare at a
         % fixation point in the center of the screen prior to the start of
@@ -306,6 +316,7 @@ runLengths = pullRunLengths(runStarts(threshVal));
 runIndices = pullStartIndices(runStarts(threshVal))+windowStart-1;
 runLength = targetLength-myObj(threshVal);
 startIndex = runIndices(runLengths == runLength);
+startIndex = startIndex(1);
 
 % Find the frame with the lowest ellipse RMSE during the target window
 rmseVals = pupilData.initial.ellipses.RMSE(startIndex:startIndex+runLength);
@@ -601,7 +612,7 @@ if p.Results.saveDiagnosticPlot
     
     % Post the title
     pathParts = strsplit(sceneGeometryInPath,filesep);
-    titleString = [fullfile(pathParts{end-4:end-2}) '; alignMethod: ' p.Results.alignMethod];
+    titleString = [fullfile(pathParts{end-4:end-2}) '; alignMethod: ' alignMethod];
     title(titleString,'Interpreter','none')
     
     % Add a text summary below
