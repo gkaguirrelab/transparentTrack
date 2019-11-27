@@ -133,7 +133,7 @@ targetLength = p.Results.eyePositionTargetLengthFrames;
 runStarts = @(thresh) find(diff([0,(sqrt(sum(gazePosition.^2,2)) < thresh)',0]==1));
 pullStartIndices = @(vec) vec(1:2:end-1);
 pullRunLengths = @(vec) vec(2:2:end)-pullStartIndices(vec);
-myObj = @(thresh) targetLength - max( pullRunLengths(runStarts(thresh)) );
+myObj = @(thresh) min([1e6, (targetLength - max(pullRunLengths(runStarts(thresh))))]);
 threshVal = fzero(myObj,0.5);
 
 % Find the start point of this run of frames
@@ -304,8 +304,10 @@ pullStartIndices = @(vec) vec(1:2:end-1);
 pullRunLengths = @(vec) vec(2:2:end)-pullStartIndices(vec);
 
 % An objective function that expresses the difference of the longest run
-% length from the target run length (e.g., 30 frames long).
-myObj = @(thresh) targetLength - max( pullRunLengths(runStarts(thresh)) );
+% length from the target run length (e.g., 30 frames long). The business
+% with the min([1e6 ...]) is to handle the case when the run set is empty,
+% and thus would otherwise return an empty variable for the objective.
+myObj = @(thresh) min([1e6, (targetLength - max(pullRunLengths(runStarts(thresh))))]);
 
 % The minimum threshold eyeMatchError that results in a run length that
 % matches the target run length.
