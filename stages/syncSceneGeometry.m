@@ -76,7 +76,15 @@ if isempty(sceneGeometryFileNameToSync)
 else
     tmp = strsplit(sceneGeometryFileNameToSync,filesep);
     sceneGeometryInName = tmp{end};
-    sceneGeometryInPath = strcat(tmp(1:end-1));
+    % Handle the case in which only the name, and not the path, to the
+    % sceneGeometryIn file is specified. In this case, assume that the path
+    % is the same as that given for the pupilFileName
+    if length(tmp)==1
+        tmp = strsplit(pupilFileName,filesep);
+        sceneGeometryInPath = strcat(tmp(1:end-1));
+    else
+        sceneGeometryInPath = strcat(tmp(1:end-1));
+    end
 end
 
 % Load the sceneGeometry variable into memory
@@ -185,7 +193,7 @@ if isempty(pupilFileName)
     sceneGeometryOutStem = tmp{1};
     sceneGeometryOutPath = fileList(1).folder;
 else
-    % Derive the oath and file name stem for this acquisition
+    % Derive the path and file name stem for this acquisition
     tmp = strsplit(pupilFileName,filesep);
     sceneGeometryOutPath = strcat(tmp(1:end-1));
     tmp = strsplit(tmp{end},'_pupil.mat');
