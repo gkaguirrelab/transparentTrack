@@ -154,6 +154,9 @@ referenceFrameFixed = startIndex + find(rmseVals == min(rmseVals)) - 1;
 XpFixed = perimeter.data{referenceFrameFixed}.Xp;
 YpFixed = perimeter.data{referenceFrameFixed}.Yp;
 
+% Store the eyePose for this reference frame
+eyePoseFixed = pupilData.radiusSmoothed.eyePoses.values(referenceFrameFixed,:);
+
 % Load in the median image from the period of fixation for sceneGeometryIn.
 % This is the "fixed" frame.
 tmp = fullfile(sceneGeometryInPath,[sceneGeometryInStem '_gray.avi']);
@@ -514,17 +517,14 @@ end
 
 
 %% Create the adjusted sceneGeometry
-% Obtain the eye pose from the adjusted perimeter
-[XpDisplay, YpDisplay] = updatePerimeter(XpMoving,YpMoving,deltaPix,deltaDeg,cameraOffsetPoint);
-eyePose = eyePoseEllipseFit(XpDisplay, YpDisplay, sceneGeometryIn);
+sceneGeometryAdjusted = sceneGeometryIn;
 
 % Update the sceneGeometry torsion
-sceneGeometryAdjusted = sceneGeometryIn;
 sceneGeometryAdjusted.cameraPosition.torsion = sceneGeometryIn.cameraPosition.torsion - deltaDeg;
 
 % Find the change in mm of extrinsic camera translation needed to shift the
 % eye model the observed number of pixels
-deltaMM = calcCameraTranslationPixels(sceneGeometryAdjusted,eyePose,deltaPix);
+deltaMM = calcCameraTranslationPixels(sceneGeometryAdjusted,eyePoseFixed,deltaPix);
 
 % Update the sceneGeometry translation
 sceneGeometryAdjusted.cameraPosition.translation = deltaMM;
@@ -628,7 +628,7 @@ if p.Results.saveDiagnosticPlot
     
     % Add a text summary below
     % Report the values
-    msg = sprintf('delta translation [x; y; z] = [%2.3f; %2.3f; %2.3f]',deltaMM - sceneGeometryIn.cameraPosition.translation);
+    msg = sprintf('delta translation [mm] [x; y; z] = [%2.3f; %2.3f; %2.3f]',deltaMM - sceneGeometryIn.cameraPosition.translation);
     annotation('textbox', [0.5, .2, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
     msg = sprintf('delta torsion [deg] = %2.3f',deltaDeg);
     annotation('textbox', [0.5, .15, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
