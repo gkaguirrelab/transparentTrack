@@ -17,7 +17,7 @@ function [imageMedian, imageSD] = makeMedianVideoImage(videoInFileName, varargin
 %
 
 %% Parse vargin for options passed here
-p = inputParser; p.KeepUnmatched = true;
+p = inputParser; p.KeepUnmatched = false;
 
 % Required
 p.addRequired('videoInFileName', @ischar);
