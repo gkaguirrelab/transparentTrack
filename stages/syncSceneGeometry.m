@@ -47,10 +47,11 @@ p.addRequired('pupilFileName',@ischar);
 
 % Optional display and I/O params
 p.addParameter('sceneGeometryFileNameToSync','',@(x)(ischar(x) | iscell(x)));
-p.addParameter('verbose',false,@islogical);
+p.addParameter('verbose',true,@islogical);
 p.addParameter('displayMode',false,@islogical);
 p.addParameter('saveAdjustedSceneGeometry',true,@islogical);
 p.addParameter('saveDiagnosticPlot',true,@islogical);
+p.addParameter('doNotSyncSceneToItself',true,@islogical);
 
 % Optional fitting params
 p.addParameter('alignMethod','shape',@(x)(ischar(x) | iscell(x)));
@@ -218,6 +219,14 @@ load(perimeterFileName,'perimeter');
 % fMRI acquisition began
 [~, acqStartFrameMoving] = min(abs(timebase.values));
 
+
+%% Check if we are syncing a sceneGeometry to itself
+if p.Results.doNotSyncSceneToItself && strcmp(sceneGeometryInStem,sceneGeometryOutStem)
+    if p.Results.verbose
+        fprintf('Detected that the sceneGeometry source is the same as the acquisition; returning.\n');
+    end
+    return
+end
 
 %% Find the target window for the acqusition
 % Identify a window of frames from the acquisition during which the eye is
