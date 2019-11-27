@@ -524,10 +524,11 @@ sceneGeometryAdjusted.cameraPosition.torsion = sceneGeometryIn.cameraPosition.to
 
 % Find the change in mm of extrinsic camera translation needed to shift the
 % eye model the observed number of pixels
-deltaMM = calcCameraTranslationPixels(sceneGeometryAdjusted,eyePoseFixed,deltaPix);
+adjustedTranslation = calcCameraTranslationPixels(sceneGeometryAdjusted,eyePoseFixed,deltaPix);
+deltaMM = sceneGeometryIn.cameraPosition.translation - adjustedTranslation;
 
 % Update the sceneGeometry translation
-sceneGeometryAdjusted.cameraPosition.translation = deltaMM;
+sceneGeometryAdjusted.cameraPosition.translation = adjustedTranslation;
 
 % Obtain the eye pose for the adjusted sceneGeometry
 eyePoseAdjusted = eyePoseEllipseFit(XpMoving, YpMoving, sceneGeometryAdjusted);
@@ -549,9 +550,8 @@ if p.Results.saveDiagnosticPlot
     displayImage = videoFrameFixed;
     idx = sub2ind(size(displayImage),round(YpFixed),round(XpFixed));
     displayImage(idx)=255;
-    eyePoseSource = eyePoseEllipseFit(XpFixed, YpFixed, sceneGeometryIn);
     tmpFig = figure('visible','off');
-    renderEyePose(eyePoseSource, sceneGeometryIn, ...
+    renderEyePose(eyePoseFixed, sceneGeometryIn, ...
         'newFigure', false, 'visible', false, ...
         'backgroundImage',displayImage, ...
         'showAzimuthPlane', true, ...
@@ -609,7 +609,7 @@ if p.Results.saveDiagnosticPlot
     set(gcf,'PaperOrientation','portrait');
     
     set(figHandle, 'Units','inches')
-    height = 12;
+    height = 14;
     width = 30;
     
     % The last two parameters of 'Position' define the figure size
@@ -628,11 +628,11 @@ if p.Results.saveDiagnosticPlot
     
     % Add a text summary below
     % Report the values
-    msg = sprintf('delta translation [mm] [x; y; z] = [%2.3f; %2.3f; %2.3f]',deltaMM - sceneGeometryIn.cameraPosition.translation);
+    msg = sprintf('delta translation [mm] [x; y; z] = [%2.3f; %2.3f; %2.3f]',deltaMM);
     annotation('textbox', [0.5, .2, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
     msg = sprintf('delta torsion [deg] = %2.3f',deltaDeg);
     annotation('textbox', [0.5, .15, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
-    msg = sprintf('delta fixation agles [azi, ele, tor] = [%2.3f; %2.3f; %2.3f]',eyePoseSource(1:3)-eyePoseAdjusted(1:3));
+    msg = sprintf('delta fixation agles [azi, ele, tor] = [%2.3f; %2.3f; %2.3f]',eyePoseFixed(1:3)-eyePoseAdjusted(1:3));
     annotation('textbox', [0.5, .1, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
     
     % Save and close the figure
