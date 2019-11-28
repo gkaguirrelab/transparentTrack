@@ -622,8 +622,8 @@ if p.Results.saveDiagnosticPlot
     set(gcf,'PaperOrientation','portrait');
     
     set(figHandle, 'Units','inches')
-    height = 14;
-    width = 30;
+    height = 4;
+    width = 12;
     
     % The last two parameters of 'Position' define the figure size
     set(figHandle, 'Position',[25 5 width height],...
@@ -632,25 +632,30 @@ if p.Results.saveDiagnosticPlot
         'Color','w',...
         'Renderer','painters'...
         );
+    
+    % Post the montage of the imageSet
     montage(imageSet,'Size', [1 3]);
     
     % Post the title
     pathParts = strsplit(sceneGeometryInPath,filesep);
-    titleString = [fullfile(pathParts{end-4:end-2}) '; alignMethod: ' alignMethod];
+    titleString = [fullfile(pathParts{end-4:end-2})];
     title(titleString,'Interpreter','none')
+    
+    % Report the alignment method
+    annotation('textbox', [0.15, .125, 0, 0], 'string', alignMethod,'FontWeight','bold','FitBoxToText','on','LineStyle','none','HorizontalAlignment','left','Interpreter','none')     
     
     % Add a text summary below
     % Report the values
     msg = sprintf('delta translation [mm] [x; y; z] = [%2.3f; %2.3f; %2.3f]',deltaMM);
-    annotation('textbox', [0.5, .2, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
+    annotation('textbox', [0.5, .175, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
     msg = sprintf('delta torsion [deg] = %2.3f',deltaDeg);
-    annotation('textbox', [0.5, .15, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
+    annotation('textbox', [0.5, .125, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
     msg = sprintf('delta fixation agles [azi, ele, tor] = [%2.3f; %2.3f; %2.3f]',eyePoseFixed(1:3)-eyePoseAdjusted(1:3));
-    annotation('textbox', [0.5, .1, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
+    annotation('textbox', [0.5, .075, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
     
     % Save and close the figure
-    tmp = fullfile(sceneGeometryOutPath,[sceneGeometryOutStem '_sceneSync_QA.png']);
-    print(figHandle,tmp,'-dpng');
+    tmp = fullfile(sceneGeometryOutPath,[sceneGeometryOutStem '_sceneSync_QA.pdf']);
+    print(figHandle,tmp,'-dpdf','-bestfit');
     close(figHandle);
     
 end
