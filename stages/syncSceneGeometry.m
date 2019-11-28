@@ -107,6 +107,12 @@ sceneGeometryInStem = tmp{1};
 tmp = fullfile(sceneGeometryInPath,[sceneGeometryInStem,'_pupil.mat']);
 load(tmp,'pupilData');
 
+% Check that we have a radiusSmoothed field
+if ~isfield(pupilData,'radiusSmoothed')
+    warning('This sceneGeometry pupilData file does not contain a radiusSmoothed field; returning')
+    return
+end
+
 % Load the perimeter file associated with the sceneGeometry
 tmp = fullfile(sceneGeometryInPath,[sceneGeometryInStem '_correctedPerimeter.mat']);
 load(tmp,'perimeter');
@@ -195,7 +201,7 @@ if isempty(pupilFileName)
         optionName=['\t' num2str(pp) '. ' fileList(pp).name '\n'];
         fprintf(optionName);
     end
-    fprintf('\nYou can enter a single acquisition number (e.g. 4),\n  a range defined with a colon (e.g. 4:7),\n  or a list within square brackets (e.g., [4 5 7]):\n')
+    fprintf('\nEnter a single acquisition number:\n')
     choice = input('\nYour choice: ','s');
     fileList = fileList(eval(choice));
     
@@ -210,13 +216,16 @@ else
     sceneGeometryOutStem = tmp{1};
 end
 
-% Load the timebase, pupilData, and perimeter for this acquisition
+% Load the timebase, pupilData, perimeter, and relative camera position for
+% this acquisition
 tmp = fullfile(sceneGeometryOutPath,[sceneGeometryOutStem '_timebase.mat']);
 load(tmp,'timebase');
-pupilFileName =  fullfile(sceneGeometryOutPath,[sceneGeometryOutStem '_pupil.mat']);
-load(pupilFileName,'pupilData');
-perimeterFileName =  fullfile(sceneGeometryOutPath,[sceneGeometryOutStem '_correctedPerimeter.mat']);
-load(perimeterFileName,'perimeter');
+tmp =  fullfile(sceneGeometryOutPath,[sceneGeometryOutStem '_pupil.mat']);
+load(tmp,'pupilData');
+tmp =  fullfile(sceneGeometryOutPath,[sceneGeometryOutStem '_correctedPerimeter.mat']);
+load(tmp,'perimeter');
+tmp =  fullfile(sceneGeometryOutPath,[sceneGeometryOutStem '_relativeCameraPosition.mat']);
+load(tmp,'relativeCameraPosition');
 
 % Identify the acqStartTimeMoving, which is the time point at which the
 % fMRI acquisition began
@@ -535,14 +544,6 @@ eyePoseAdjusted = eyePoseEllipseFit(XpMoving, YpMoving, sceneGeometryAdjusted);
 sceneGeometryAdjusted.screenPosition.fixationAngles = -eyePoseAdjusted(1:3);
 
 
-%% Save the adjusted sceneGeometry
-if p.Results.saveAdjustedSceneGeometry
-    sceneGeometryAdjusted.meta.syncSceneGeometry = p;
-    tmp = fullfile(sceneGeometryOutPath,[sceneGeometryOutStem '_sceneGeometry.mat']);
-    save(tmp,'sceneGeometryAdjusted');
-end
-
-
 %% Create and save a diagnostic figure
 if p.Results.saveDiagnosticPlot
     
@@ -640,6 +641,22 @@ if p.Results.saveDiagnosticPlot
     print(figHandle,tmp,'-dpng');
     close(figHandle);
     
+end
+
+
+%% Save the adjusted sceneGeometry
+if p.Results.saveAdjustedSceneGeometry
+    % If the movingFrame is from a point after the start of the
+    % acquisition, adjust the camera translation position once more to
+    % account for any head motion that took place between the start of the
+    % acquisition and the reference frame
+    sceneGeometryAdjusted.cameraPosition.translation = ...
+        sceneGeometryAdjusted.cameraPosition.translation + ...
+        relativeCameraPosition.values(:,referenceFrameMoving);
+    
+    sceneGeometryAdjusted.meta.syncSceneGeometry = p;
+    tmp = fullfile(sceneGeometryOutPath,[sceneGeometryOutStem '_sceneGeometry.mat']);
+    save(tmp,'sceneGeometryAdjusted');
 end
 
 
