@@ -671,9 +671,15 @@ if p.Results.saveAdjustedSceneGeometry
         sceneGeometryAdjusted.cameraPosition.translation + ...
         relativeCameraPosition.values(:,referenceFrameMoving);
     
+    % Add the meta data
     sceneGeometryAdjusted.meta.syncSceneGeometry = p;
+    
+    % Set the variable name
+    sceneGeometry = sceneGeometryAdjusted;
+    
+    % Save it
     tmp = fullfile(sceneGeometryOutPath,[sceneGeometryOutStem '_sceneGeometry.mat']);
-    save(tmp,'sceneGeometryAdjusted');
+    save(tmp,'sceneGeometry');
 end
 
 
