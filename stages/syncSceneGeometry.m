@@ -143,6 +143,12 @@ pullRunLengths = @(vec) vec(2:2:end)-pullStartIndices(vec);
 myObj = @(thresh) min([1e6, (targetLength - max(pullRunLengths(runStarts(thresh))))]);
 threshVal = fzero(myObj,0.5);
 
+% Check if we found a solution
+if ~isfinite(threshVal)
+    warning('Unable to find a suitable set of frames from sceneGeometryIn')
+    return
+end
+
 % Find the start point of this run of frames
 runLengths = pullRunLengths(runStarts(threshVal));
 runIndices = pullStartIndices(runStarts(threshVal));
@@ -333,6 +339,12 @@ myObj = @(thresh) min([1e6, (targetLength - max(pullRunLengths(runStarts(thresh)
 % The minimum threshold eyeMatchError that results in a run length that
 % matches the target run length.
 threshVal = fzero(myObj,x0);
+
+% Check if we found a solution
+if ~isfinite(threshVal)
+    warning('Unable to find a suitable set of frames from the acquisition')
+    return
+end
 
 % Find the start point of this run of frames
 runLengths = pullRunLengths(runStarts(threshVal));
