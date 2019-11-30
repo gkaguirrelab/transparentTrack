@@ -394,6 +394,11 @@ else
     deltaPix = p.Results.deltaPix;
 end
 
+if isempty(p.Results.deltaScale)
+    deltaScale = 1;
+end
+
+
 if isempty(p.Results.deltaDeg)
     % No change is made to the torsion unless we are in display mode
     deltaDeg = 0;
@@ -410,6 +415,7 @@ if p.Results.displayMode
     
     % Provide some instructions for the operator
     fprintf('Adjust horizontal and vertical camera translation with the arrow keys.\n');
+    fprintf('Adjust depth camera translation with + and -.\n');
     fprintf('Adjust camera torsion with j and k.\n');
     fprintf('Switch between moving and fixed image by pressing a.\n');
     fprintf('Turn on and off perimeter display with p.\n');
@@ -439,10 +445,10 @@ if p.Results.displayMode
         
         if showMoving
             % Work with the moving frame
-            displayImage = updateMovingFrame(movingFrame,deltaPix,deltaDeg,cameraOffsetPoint);
+            displayImage = updateMovingFrame(movingFrame,deltaPix,deltaDeg,deltaScale,cameraOffsetPoint);
             
             % Update the perimeter points
-            [XpDisplay, YpDisplay] = updatePerimeter(XpMoving,YpMoving,deltaPix,deltaDeg,cameraOffsetPoint);
+            [XpDisplay, YpDisplay] = updatePerimeter(XpMoving,YpMoving,deltaPix,deltaDeg,deltaScale,cameraOffsetPoint);
             
             % Display the perimeter points
             if showPerimeter
@@ -483,7 +489,8 @@ if p.Results.displayMode
             text_str = 'Updating model...';
             annotHandle = addAnnotation(text_str);
             % Obtain the eye pose from the adjusted perimeter
-            eyePoseDisplay = eyePoseEllipseFit(XpDisplay, YpDisplay, sceneGeometryIn);
+            eyePoseDisplay = eyePoseEllipseFit(XpDisplay, YpDisplay, ...
+                sceneGeometryIn,x0,eyePoseFixed);
             % Render the eye model
             renderEyePose(eyePoseDisplay, sceneGeometryIn, ...
                 'newFigure', false, 'visible', true, ...
@@ -512,6 +519,10 @@ if p.Results.displayMode
                     deltaPix(2)=deltaPix(2)-1;
                 case 31
                     deltaPix(2)=deltaPix(2)+1;
+                case {45 95}
+                    deltaScale = deltaScale+0.01;
+                case {61 43}
+                    deltaScale = deltaScale-0.01;
                 case 97
                     showMoving = ~showMoving;
                 case 106
@@ -608,7 +619,7 @@ if p.Results.saveDiagnosticPlot
     close(tmpFig);
     
     % Difference image
-    adjMovingFrame = updateMovingFrame(movingFrame,deltaPix,deltaDeg,cameraOffsetPoint);
+    adjMovingFrame = updateMovingFrame(movingFrame,deltaPix,deltaDeg,deltaScale,cameraOffsetPoint);
     displayImage = videoFrameFixed - adjMovingFrame;
     tmpFig = figure('visible','off');
     imshow(displayImage,[], 'Border', 'tight');
@@ -691,7 +702,7 @@ end % Main function
 
 %% LOCAL FUNCTIONS
 
-function [Xp, Yp] = updatePerimeter(Xp,Yp,deltaPix,deltaDeg,cameraOffsetPoint)
+function [Xp, Yp] = updatePerimeter(Xp,Yp,deltaPix,deltaDeg,deltaScale,cameraOffsetPoint)
 
 % Create a matrix of the perimeter points
 v = [Xp';Yp'];
@@ -750,7 +761,7 @@ drawnow
 end
 
 
-function displayImage = updateMovingFrame(movingFrame,x,torsion,cameraOffsetPoint)
+function displayImage = updateMovingFrame(movingFrame,deltaPix,deltaDeg,deltaScale,cameraOffsetPoint)
 
 % Embed the movingFrame within a larger image that is padded
 % with mid-point background values
@@ -759,13 +770,15 @@ displayImagePad = zeros(size(movingFrame)+padVals.*2)+125;
 displayImagePad(padVals(1)+1:padVals(1)+size(movingFrame,1), ...
     padVals(2)+1:padVals(2)+size(movingFrame,2) ) = movingFrame;
 displayImage = displayImagePad;
+% Apply the scaling
+scaledImage = imresize(displayImage,deltaScale);
 % Apply the x and y translation
-displayImage = imtranslate(displayImage,x,'method','cubic');
+displayImage = imtranslate(displayImage,deltaPix,'method','cubic');
 % Crop out the padding
 displayImage = displayImage(padVals(1)+1:padVals(1)+size(movingFrame,1), ...
     padVals(2)+1:padVals(2)+size(movingFrame,2));
 % Rotate the image
-displayImage = imrotateAround(displayImage, cameraOffsetPoint(2), cameraOffsetPoint(1), -torsion, 'bicubic');
+displayImage = imrotateAround(displayImage, cameraOffsetPoint(2), cameraOffsetPoint(1), -deltaDeg, 'bicubic');
 
 end
 
