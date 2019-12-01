@@ -743,8 +743,8 @@ function p = calcCameraTranslationPixels(sceneGeometry,eyePose,deltaPix)
 % Find the change in the extrinsic camera translation needed to shift
 % the eye model the observed number of pixels for an eye with zero rotation
 p0 = sceneGeometry.cameraPosition.translation;
-ub = sceneGeometry.cameraPosition.translation + [10; 10; 0];
-lb = sceneGeometry.cameraPosition.translation - [10; 10; 0];
+ub = sceneGeometry.cameraPosition.translation + [50; 50; 0];
+lb = sceneGeometry.cameraPosition.translation - [50; 50; 0];
 place = {'cameraPosition' 'translation'};
 mySG = @(p) setfield(sceneGeometry,place{:},p);
 pupilCenter = @(k) k(1:2);
