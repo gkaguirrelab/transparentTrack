@@ -564,8 +564,19 @@ deltaMM = sceneGeometryIn.cameraPosition.translation - adjustedTranslation;
 sceneGeometryAdjusted.cameraPosition.translation = adjustedTranslation;
 
 % Obtain the eye pose for the adjusted sceneGeometry
-eyePoseAdjusted = eyePoseEllipseFit(XpMoving, YpMoving, ...
-    sceneGeometryAdjusted,'x0',eyePoseFixed);
+for ii = 1:runLength
+    % The pupil perimeter for the reference frame
+    eyePoseByFrame(ii,:) = eyePoseEllipseFit(...
+        perimeter.data{startIndex+ii-1}.Xp, ...
+        perimeter.data{startIndex+ii-1}.Yp, ...
+        sceneGeometryAdjusted,'x0',eyePoseFixed);
+end
+% Take the weighted median across eyePoses
+rmseVals = pupilData.initial.ellipses.RMSE(startIndex:startIndex+runLength);
+for ii=1:4
+    eyePoseAdjusted(ii) = medianw(eyePoseByFrame(:,ii),rmseVals);
+end
+
 sceneGeometryAdjusted.screenPosition.fixationAngles = -eyePoseAdjusted(1:3);
 
 
