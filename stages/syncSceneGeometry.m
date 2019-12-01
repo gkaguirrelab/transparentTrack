@@ -35,7 +35,7 @@ function syncSceneGeometry(pupilFileName, varargin)
 % Examples:
 %{
     % Invoke the file picker GUI
-    syncSceneGeometry('','');
+    syncSceneGeometry('','displayMode',true,'alignMethod','shape');
 %}
 
 
@@ -491,7 +491,7 @@ if p.Results.displayMode
             annotHandle = addAnnotation(text_str);
             % Obtain the eye pose from the adjusted perimeter
             eyePoseDisplay = eyePoseEllipseFit(XpDisplay, YpDisplay, ...
-                sceneGeometryIn,x0,eyePoseFixed);
+                sceneGeometryIn,'x0',eyePoseFixed);
             % Render the eye model
             renderEyePose(eyePoseDisplay, sceneGeometryIn, ...
                 'newFigure', false, 'visible', true, ...
@@ -564,7 +564,8 @@ deltaMM = sceneGeometryIn.cameraPosition.translation - adjustedTranslation;
 sceneGeometryAdjusted.cameraPosition.translation = adjustedTranslation;
 
 % Obtain the eye pose for the adjusted sceneGeometry
-eyePoseAdjusted = eyePoseEllipseFit(XpMoving, YpMoving, sceneGeometryAdjusted);
+eyePoseAdjusted = eyePoseEllipseFit(XpMoving, YpMoving, ...
+    sceneGeometryAdjusted,'x0',eyePoseFixed);
 sceneGeometryAdjusted.screenPosition.fixationAngles = -eyePoseAdjusted(1:3);
 
 
@@ -599,7 +600,8 @@ if p.Results.saveDiagnosticPlot
     displayImage = movingFrame;
     idx = sub2ind(size(displayImage),round(YpMoving),round(XpMoving));
     displayImage(idx)=255;
-    eyePoseAdjusted = eyePoseEllipseFit(XpMoving, YpMoving, sceneGeometryAdjusted);
+    eyePoseAdjusted = eyePoseEllipseFit(XpMoving, YpMoving, ...
+        sceneGeometryAdjusted,'x0',eyePoseFixed);
     tmpFig = figure('visible','off');
     renderEyePose(eyePoseAdjusted, sceneGeometryAdjusted, ...
         'newFigure', false, 'visible', false, ...
