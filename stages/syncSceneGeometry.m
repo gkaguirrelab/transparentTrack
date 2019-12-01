@@ -665,10 +665,10 @@ if p.Results.saveDiagnosticPlot
     annotation('textbox', [0.5, .125, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
     msg = sprintf('delta fixation angles [azi, ele, tor] = [%2.3f; %2.3f; %2.3f]',eyePoseFixed(1:3)-eyePoseAdjusted(1:3));
     msgColor = 'black';
-    if any(abs(eyePoseFixed(1:3)-eyePoseAdjusted(1:3))) > 0.5
+    if any(abs(eyePoseFixed(1:3)-eyePoseAdjusted(1:3)) > 0.5) 
         msgColor = '#ffa500'; % orange
     end
-    if any(abs(eyePoseFixed(1:3)-eyePoseAdjusted(1:3))) > 1
+    if any(abs(eyePoseFixed(1:3)-eyePoseAdjusted(1:3)) > 1)
         msgColor = 'red';
     end
     annotation('textbox', [0.5, .075, 0, 0], 'string', msg,'Color',msgColor,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
