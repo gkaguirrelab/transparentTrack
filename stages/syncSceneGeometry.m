@@ -604,8 +604,6 @@ if p.Results.saveDiagnosticPlot
     
     % Fixed frame
     displayImage = videoFrameFixed;
-    idx = sub2ind(size(displayImage),round(YpFixed),round(XpFixed));
-    displayImage(idx)=255;
     tmpFig = figure('visible','off');
     renderEyePose(eyePoseFixed, sceneGeometryIn, ...
         'newFigure', false, 'visible', false, ...
@@ -628,10 +626,6 @@ if p.Results.saveDiagnosticPlot
     
     % Moving frame
     displayImage = movingFrame;
-    idx = sub2ind(size(displayImage),round(YpMoving),round(XpMoving));
-    displayImage(idx)=255;
-    eyePoseAdjusted = eyePoseEllipseFit(XpMoving, YpMoving, ...
-        sceneGeometryAdjusted,'x0',eyePoseFixed);
     tmpFig = figure('visible','off');
     renderEyePose(eyePoseAdjusted, sceneGeometryAdjusted, ...
         'newFigure', false, 'visible', false, ...
