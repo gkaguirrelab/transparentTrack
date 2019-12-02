@@ -58,6 +58,7 @@ p.addParameter('alignMethod','shape',@(x)(ischar(x) | iscell(x)));
 p.addParameter('deltaPix',[],@isnumeric);
 p.addParameter('deltaDeg',[],@isnumeric);
 p.addParameter('deltaScale',[],@isnumeric);
+p.addParameter('deltaFix',[],@isnumeric);
 p.addParameter('eyePositionTargetLengthFrames',30,@isscalar);
 
 
@@ -493,8 +494,12 @@ if p.Results.displayMode
             text_str = 'Updating model...';
             annotHandle = addAnnotation(text_str);
             % Obtain the eye pose from the adjusted perimeter
-            eyePoseDisplay = eyePoseEllipseFit(XpDisplay, YpDisplay, ...
-                sceneGeometryIn,'x0',eyePoseFixed);
+            if isempty(p.Results.deltaPose)
+                eyePoseDisplay = eyePoseEllipseFit(XpDisplay, YpDisplay, ...
+                    sceneGeometryIn,'x0',eyePoseFixed);
+            else
+                eyePoseDisplay = eyePoseFixed+p.Results.deltaPose;
+            end
             % Render the eye model
             renderEyePose(eyePoseDisplay, sceneGeometryIn, ...
                 'newFigure', false, 'visible', true, ...
@@ -566,26 +571,31 @@ deltaMM = sceneGeometryIn.cameraPosition.translation - adjustedTranslation;
 % Update the sceneGeometry translation
 sceneGeometryAdjusted.cameraPosition.translation = adjustedTranslation;
 
-% Obtain the eye pose for the adjusted sceneGeometry
-for ii = 1:runLength
-    % The pupil perimeter for the reference frame
-    Xpt = perimeter.data{startIndex+ii-1}.Xp;
-    Ypt = perimeter.data{startIndex+ii-1}.Yp;
-    if ~isempty(Xpt)
-        eyePoseByFrame(ii,:) = eyePoseEllipseFit(Xpt, Ypt, ...
-            sceneGeometryAdjusted,'x0',eyePoseFixed);
-    else
-        eyePoseByFrame(ii,:)=[nan nan nan nan];
+% Update the eye pose for the adjusted sceneGeometry if
+if ~isempty(p.Results.deltaPose)
+    sceneGeometryAdjusted.screenPosition.fixationAngles = ...
+        sceneGeometryAdjusted.screenPosition.fixationAngles+p.Results.deltaPose(1:3);
+else
+    for ii = 1:runLength
+        % The pupil perimeter for the reference frame
+        Xpt = perimeter.data{startIndex+ii-1}.Xp;
+        Ypt = perimeter.data{startIndex+ii-1}.Yp;
+        if ~isempty(Xpt)
+            eyePoseByFrame(ii,:) = eyePoseEllipseFit(Xpt, Ypt, ...
+                sceneGeometryAdjusted,'x0',eyePoseFixed);
+        else
+            eyePoseByFrame(ii,:)=[nan nan nan nan];
+        end
     end
+    % Take the weighted median across eyePoses
+    weights = weightFunc(pupilData,perimeter,startIndex,runLength);
+    nonNanFrames = ~isnan(eyePoseByFrame(:,1));
+    for ii=1:4
+        eyePoseAdjusted(ii) = medianw(eyePoseByFrame(nonNanFrames,ii),weights(nonNanFrames));
+    end
+    sceneGeometryAdjusted.screenPosition.fixationAngles = -eyePoseAdjusted(1:3);
 end
-% Take the weighted median across eyePoses
-weights = weightFunc(pupilData,perimeter,startIndex,runLength);
-nonNanFrames = ~isnan(eyePoseByFrame(:,1));
-for ii=1:4
-    eyePoseAdjusted(ii) = medianw(eyePoseByFrame(nonNanFrames,ii),weights(nonNanFrames));
-end
-sceneGeometryAdjusted.screenPosition.fixationAngles = -eyePoseAdjusted(1:3);
-
+            
 
 %% Create and save a diagnostic figure
 if p.Results.saveDiagnosticPlot
