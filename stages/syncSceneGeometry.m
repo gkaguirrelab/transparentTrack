@@ -576,7 +576,7 @@ sceneGeometryAdjusted.cameraPosition.translation = adjustedTranslation;
 
 % Update the eye pose for the adjusted sceneGeometry
 if ~isempty(p.Results.deltaPose)
-	eyePoseDisplay = eyePoseFixed+p.Results.deltaPose;
+	eyePoseAdjusted = eyePoseFixed+p.Results.deltaPose;
 else
     for ii = 1:runLength
         % The pupil perimeter for the reference frame
