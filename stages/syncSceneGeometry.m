@@ -58,7 +58,7 @@ p.addParameter('alignMethod','shape',@(x)(ischar(x) | iscell(x)));
 p.addParameter('deltaPix',[],@isnumeric);
 p.addParameter('deltaDeg',[],@isnumeric);
 p.addParameter('deltaScale',[],@isnumeric);
-p.addParameter('deltaFix',[],@isnumeric);
+p.addParameter('deltaPose',[],@isnumeric);
 p.addParameter('eyePositionTargetLengthFrames',30,@isscalar);
 
 
