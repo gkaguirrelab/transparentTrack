@@ -884,8 +884,8 @@ nonUniformity = @(x) (sum(abs(x/sum(x)-mean(x/sum(x))))/2)/(1-1/length(x));
 for ii = 1:runLength
     
     % Obtain the center of this fitted ellipse
-    centerX = pupilData.(p.Results.fitLabel).ellipses.values(startIndex+ii-1,1);
-    centerY = pupilData.(p.Results.fitLabel).ellipses.values(startIndex+ii-1,2);
+    centerX = pupilData.initial.ellipses.values(startIndex+ii-1,1);
+    centerY = pupilData.initial.ellipses.values(startIndex+ii-1,2);
     
     % Obtain the set of perimeter points
     Xp = perimeter.data{startIndex+ii-1}.Xp;
