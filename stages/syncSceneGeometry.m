@@ -583,8 +583,12 @@ else
         Xpt = perimeter.data{startIndex+ii-1}.Xp;
         Ypt = perimeter.data{startIndex+ii-1}.Yp;
         if ~isempty(Xpt)
-            eyePoseByFrame(ii,:) = eyePoseEllipseFit(Xpt, Ypt, ...
-                sceneGeometryAdjusted,'x0',eyePoseFixed);
+            if length(Xpt)>5
+                eyePoseByFrame(ii,:) = eyePoseEllipseFit(Xpt, Ypt, ...
+                    sceneGeometryAdjusted,'x0',eyePoseFixed);
+            else
+                eyePoseByFrame(ii,:)=[nan nan nan nan];
+            end
         else
             eyePoseByFrame(ii,:)=[nan nan nan nan];
         end
