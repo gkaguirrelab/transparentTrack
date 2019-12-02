@@ -168,8 +168,11 @@ referenceFrameFixed = startIndex + find(rmseVals == min(rmseVals)) - 1;
 XpFixed = perimeter.data{referenceFrameFixed}.Xp;
 YpFixed = perimeter.data{referenceFrameFixed}.Yp;
 
-% Store the eyePose for this reference frame
-eyePoseFixed = pupilData.radiusSmoothed.eyePoses.values(referenceFrameFixed,:);
+% The eyePose for this reference frame is set to the fixation value for the
+% sceneGeometry, with the pupil size set to the median value for this run
+% of frames.
+eyePoseFixed = nanmedian(pupilData.radiusSmoothed.eyePose.values(startIndex:startIndex+runLength,:));
+eyePoseFixed(1:3) = -sceneGeometryIn.screenPosition.fixationAngles;
 
 % Load in the median image from the period of fixation for sceneGeometryIn.
 % This is the "fixed" frame.
@@ -498,7 +501,7 @@ if p.Results.displayMode
                 eyePoseDisplay = eyePoseEllipseFit(XpDisplay, YpDisplay, ...
                     sceneGeometryIn,'x0',eyePoseFixed);
             else
-                eyePoseDisplay = eyePoseFixed+p.Results.deltaPose;
+                eyePoseDisplay = eyePoseFixed-p.Results.deltaPose;
             end
             % Render the eye model
             renderEyePose(eyePoseDisplay, sceneGeometryIn, ...
@@ -571,10 +574,9 @@ deltaMM = sceneGeometryIn.cameraPosition.translation - adjustedTranslation;
 % Update the sceneGeometry translation
 sceneGeometryAdjusted.cameraPosition.translation = adjustedTranslation;
 
-% Update the eye pose for the adjusted sceneGeometry if
+% Update the eye pose for the adjusted sceneGeometry
 if ~isempty(p.Results.deltaPose)
-    sceneGeometryAdjusted.screenPosition.fixationAngles = ...
-        sceneGeometryAdjusted.screenPosition.fixationAngles+p.Results.deltaPose(1:3);
+	eyePoseDisplay = eyePoseFixed-p.Results.deltaPose;
 else
     for ii = 1:runLength
         % The pupil perimeter for the reference frame
@@ -593,8 +595,8 @@ else
     for ii=1:4
         eyePoseAdjusted(ii) = medianw(eyePoseByFrame(nonNanFrames,ii),weights(nonNanFrames));
     end
-    sceneGeometryAdjusted.screenPosition.fixationAngles = -eyePoseAdjusted(1:3);
 end
+sceneGeometryAdjusted.screenPosition.fixationAngles = -eyePoseDisplay(1:3);
             
 
 %% Create and save a diagnostic figure
