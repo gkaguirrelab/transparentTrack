@@ -685,11 +685,11 @@ if p.Results.saveDiagnosticPlot
     % Add a text summary below. If any delta fixation angle is geater than
     % 1 deg, print the message text in red to alert that this was a large
     % eye rotation change.
-    msg = sprintf('delta pixels = [x; y; z] = [%2.3f; %2.3f; %2.3f]',deltaPix);
+    msg = sprintf('delta pixels = [x, y] = [%2.3f; %2.3f]',deltaPix);
     annotation('textbox', [0.5, .175, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
     msg = sprintf('delta translation [mm] [x; y; z] = [%2.3f; %2.3f; %2.3f]',deltaMM);
     annotation('textbox', [0.5, .125, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
-    msg = sprintf('delta eye pose [azi, ele, tor, radius] = [%2.3f; %2.3f; %2.3f; %2.3f]',eyePoseAdjusted-eyePoseFixed);
+    msg = sprintf('delta eye pose [azi, ele, tor, radius] = [%2.3f, %2.3f, %2.3f, %2.3f]',eyePoseAdjusted-eyePoseFixed);
     msgColor = 'black';
     if any(abs(eyePoseFixed(1:3)-eyePoseAdjusted(1:3)) > 0.5) 
         msgColor = '#ffa500'; % orange
