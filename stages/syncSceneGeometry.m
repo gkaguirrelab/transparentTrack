@@ -569,17 +569,21 @@ sceneGeometryAdjusted.cameraPosition.translation = adjustedTranslation;
 % Obtain the eye pose for the adjusted sceneGeometry
 for ii = 1:runLength
     % The pupil perimeter for the reference frame
-    eyePoseByFrame(ii,:) = eyePoseEllipseFit(...
-        perimeter.data{startIndex+ii-1}.Xp, ...
-        perimeter.data{startIndex+ii-1}.Yp, ...
-        sceneGeometryAdjusted,'x0',eyePoseFixed);
+    Xpt = perimeter.data{startIndex+ii-1}.Xp;
+    Xpt = perimeter.data{startIndex+ii-1}.Yp;
+    if ~isempty(Xpt)
+        eyePoseByFrame(ii,:) = eyePoseEllipseFit(Xpt, Ypt, ...
+            sceneGeometryAdjusted,'x0',eyePoseFixed);
+    else
+        eyePoseByFrame(ii,:)=[nan nan nan nan];
+    end
 end
 % Take the weighted median across eyePoses
 weights = weightFunc(pupilData,perimeter,startIndex,runLength);
+nonNanFrames = ~isnan(eyePoseByFrame(:,1));
 for ii=1:4
-    eyePoseAdjusted(ii) = medianw(eyePoseByFrame(:,ii),weights);
+    eyePoseAdjusted(ii) = medianw(eyePoseByFrame(nonNanFrames,ii),weights(nonNanFrames));
 end
-
 sceneGeometryAdjusted.screenPosition.fixationAngles = -eyePoseAdjusted(1:3);
 
 
