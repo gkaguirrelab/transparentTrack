@@ -596,7 +596,7 @@ else
         eyePoseAdjusted(ii) = medianw(eyePoseByFrame(nonNanFrames,ii),weights(nonNanFrames));
     end
 end
-sceneGeometryAdjusted.screenPosition.fixationAngles = -eyePoseDisplay(1:3);
+sceneGeometryAdjusted.screenPosition.fixationAngles = -eyePoseAdjusted(1:3);
             
 
 %% Create and save a diagnostic figure
