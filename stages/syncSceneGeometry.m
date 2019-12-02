@@ -171,7 +171,7 @@ YpFixed = perimeter.data{referenceFrameFixed}.Yp;
 % The eyePose for this reference frame is set to the fixation value for the
 % sceneGeometry, with the pupil size set to the median value for this run
 % of frames.
-eyePoseFixed = nanmedian(pupilData.radiusSmoothed.eyePose.values(startIndex:startIndex+runLength,:));
+eyePoseFixed = nanmedian(pupilData.radiusSmoothed.eyePoses.values(startIndex:startIndex+runLength,:));
 eyePoseFixed(1:3) = -sceneGeometryIn.screenPosition.fixationAngles;
 
 % Load in the median image from the period of fixation for sceneGeometryIn.
@@ -501,7 +501,7 @@ if p.Results.displayMode
                 eyePoseDisplay = eyePoseEllipseFit(XpDisplay, YpDisplay, ...
                     sceneGeometryIn,'x0',eyePoseFixed);
             else
-                eyePoseDisplay = eyePoseFixed-p.Results.deltaPose;
+                eyePoseDisplay = eyePoseFixed+p.Results.deltaPose;
             end
             % Render the eye model
             renderEyePose(eyePoseDisplay, sceneGeometryIn, ...
@@ -576,7 +576,7 @@ sceneGeometryAdjusted.cameraPosition.translation = adjustedTranslation;
 
 % Update the eye pose for the adjusted sceneGeometry
 if ~isempty(p.Results.deltaPose)
-	eyePoseDisplay = eyePoseFixed-p.Results.deltaPose;
+	eyePoseDisplay = eyePoseFixed+p.Results.deltaPose;
 else
     for ii = 1:runLength
         % The pupil perimeter for the reference frame
@@ -691,11 +691,11 @@ if p.Results.saveDiagnosticPlot
     % Add a text summary below. If any delta fixation angle is geater than
     % 1 deg, print the message text in red to alert that this was a large
     % eye rotation change.
-    msg = sprintf('delta translation [mm] [x; y; z] = [%2.3f; %2.3f; %2.3f]',deltaMM);
+    msg = sprintf('delta pixels = [x; y; z] = [%2.3f; %2.3f; %2.3f]',deltaPix);
     annotation('textbox', [0.5, .175, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
-    msg = sprintf('delta torsion [deg] = %2.3f',deltaDeg);
+    msg = sprintf('delta translation [mm] [x; y; z] = [%2.3f; %2.3f; %2.3f]',deltaMM);
     annotation('textbox', [0.5, .125, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
-    msg = sprintf('delta fixation angles [azi, ele, tor] = [%2.3f; %2.3f; %2.3f]',eyePoseFixed(1:3)-eyePoseAdjusted(1:3));
+    msg = sprintf('delta eye pose [azi, ele, tor, radius] = [%2.3f; %2.3f; %2.3f; %2.3f]',eyePoseAdjusted-eyePoseFixed);
     msgColor = 'black';
     if any(abs(eyePoseFixed(1:3)-eyePoseAdjusted(1:3)) > 0.5) 
         msgColor = '#ffa500'; % orange
@@ -704,6 +704,8 @@ if p.Results.saveDiagnosticPlot
         msgColor = 'red';
     end
     annotation('textbox', [0.5, .075, 0, 0], 'string', msg,'Color',msgColor,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
+    msg = sprintf('delta torsion [deg] = %2.3f',deltaDeg);
+    annotation('textbox', [0.5, .025, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
     
     % Save and close the figure
     tmp = fullfile(sceneGeometryOutPath,[sceneGeometryOutStem '_sceneSync_QA.pdf']);
