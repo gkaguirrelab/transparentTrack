@@ -570,7 +570,7 @@ sceneGeometryAdjusted.cameraPosition.translation = adjustedTranslation;
 for ii = 1:runLength
     % The pupil perimeter for the reference frame
     Xpt = perimeter.data{startIndex+ii-1}.Xp;
-    Xpt = perimeter.data{startIndex+ii-1}.Yp;
+    Ypt = perimeter.data{startIndex+ii-1}.Yp;
     if ~isempty(Xpt)
         eyePoseByFrame(ii,:) = eyePoseEllipseFit(Xpt, Ypt, ...
             sceneGeometryAdjusted,'x0',eyePoseFixed);
