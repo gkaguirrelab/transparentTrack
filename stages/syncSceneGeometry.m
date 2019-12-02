@@ -280,9 +280,12 @@ switch alignMethod
     case 'gazePost'
         % For some acqusitions (i.e., retinotopy), the subject was asked to
         % stare at a fixation point in the center of the screen after the
-        % start of the acquisition. Find the period after to the start of
-        % the scan when the eye was in the most consistent position, and
-        % closest to the median position.
+        % start of the acquisition. This could also work for movie viewing,
+        % if we are willing to assume that the median gaze position during
+        % a movie is the center of the screen.
+        % Find the period after to the start of the scan when the eye was
+        % in the most consistent position, and closest to the median
+        % position.
         windowStart = acqStartFrameMoving;
         windowEnd = acqStartFrameMoving+600;
         gazeX = pupilData.initial.ellipses.values(windowStart:windowEnd,1);
