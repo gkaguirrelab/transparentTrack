@@ -60,6 +60,7 @@ p.addParameter('deltaDeg',[],@isnumeric);
 p.addParameter('deltaScale',[],@isnumeric);
 p.addParameter('deltaPose',[],@isnumeric);
 p.addParameter('eyePositionTargetLengthFrames',30,@isscalar);
+p.addParameter('gazeErrorThreshTol',0.25,@isscalar);
 
 
 %% Parse and check the parameters
@@ -136,25 +137,64 @@ cameraOffsetPoint = [sceneGeometryIn.cameraIntrinsic.matrix(1,3), ...
 tmp = pupilData.radiusSmoothed.eyePoses.values(:,1:2)';
 gazePosition = (sceneGeometryIn.screenPosition.R * tmp + sceneGeometryIn.screenPosition.fixationAngles(1:2)')';
 
+% As we will be trying to find the frames during which the gaze was
+% directed towards the center of the screen, non-zero gaze position counts
+% as error in the search below.
+eyeMatchError = sqrt(sum(gazePosition.^2,2));
+
+%% Find the set of frames for the fixed image
+
+% Anonymous function to grab the indicies of when runs of frames begin
+pullStartIndices = @(vec) vec(1:2:end-1);
+
+% Anonymous function to grab the length of each run
+pullRunLengths = @(vec) vec(2:2:end)-pullStartIndices(vec);
+
 % Find the minimum fixation error threshold that results in a run of
 % consecutive frames at fixation of the target length.
 targetLength = p.Results.eyePositionTargetLengthFrames;
-runStarts = @(thresh) find(diff([0,(sqrt(sum(gazePosition.^2,2)) < thresh)',0]==1));
-pullStartIndices = @(vec) vec(1:2:end-1);
-pullRunLengths = @(vec) vec(2:2:end)-pullStartIndices(vec);
-myObj = @(thresh) min([1e6, (targetLength - max(pullRunLengths(runStarts(thresh))))]);
-threshVal = fzero(myObj,0.5);
+
+% Anonynous function that provides the lengths of runs of frames for which
+% the eyeMatch error is below a threshold.
+runStarts = @(thresh) find(diff([0,(eyeMatchError < thresh)',0]==1));
+
+% Set the fzero search options
+options = optimset('fzero');
+options.Display = 'off';
+
+% Adjust the targetLength as needed to achieve a threshVal below threshTol.
+stillWorking = true;
+while stillWorking
+    % An objective function that expresses the difference of the longest
+    % run length from the target run length (e.g., 30 frames long). The
+    % business with the min([1e6 ...]) is to handle the case when the run
+    % set is empty, and thus would otherwise return an empty variable for
+    % the objective.
+    myObj = @(thresh) min([1e6, (targetLength - max(pullRunLengths(runStarts(thresh))))]);
+    
+    % The minimum threshold eyeMatchError that results in a run length that
+    % matches the target run length.
+    threshValFixed = fzero(myObj,0.5,options);
+    
+    % Check to see if the search has met our threshold criteria, or if we
+    % have run the targetLength down as short as it can go.
+    if threshValFixed < p.Results.gazeErrorThreshTol || targetLength == 1
+        stillWorking = false;
+    else
+        targetLength = targetLength-1;
+    end
+end
 
 % Check if we found a solution
-if ~isfinite(threshVal)
+if ~isfinite(threshValFixed)
     warning('Unable to find a suitable set of frames from sceneGeometryIn')
     return
 end
 
 % Find the start point of this run of frames
-runLengths = pullRunLengths(runStarts(threshVal));
-runIndices = pullStartIndices(runStarts(threshVal));
-runLength = targetLength-myObj(threshVal);
+runLengths = pullRunLengths(runStarts(threshValFixed));
+runIndices = pullStartIndices(runStarts(threshValFixed));
+runLength = targetLength-myObj(threshValFixed);
 startIndex = runIndices(runLengths == runLength);
 startIndex = startIndex(1);
 
@@ -251,6 +291,7 @@ if p.Results.doNotSyncSceneToItself && strcmp(sceneGeometryInStem,sceneGeometryO
     return
 end
 
+
 %% Find the target window for the acqusition
 % Identify a window of frames from the acquisition during which the eye is
 % fixating upon "screen position" [0, 0], and an error metric for the
@@ -328,36 +369,46 @@ switch alignMethod
         
 end
 
+% Find the minimum fixation error threshold that results in a run of
+% consecutive frames at fixation of the target length.
+targetLength = p.Results.eyePositionTargetLengthFrames;
+
 % Anonynous function that provides the lengths of runs of frames for which
 % the eyeMatch error is below a threshold.
 runStarts = @(thresh) find(diff([0,(eyeMatchError < thresh)',0]==1));
 
-% Anonymous function to grab the indicies of when runs of frames begin
-pullStartIndices = @(vec) vec(1:2:end-1);
-
-% Anonymous function to grab the length of each run
-pullRunLengths = @(vec) vec(2:2:end)-pullStartIndices(vec);
-
-% An objective function that expresses the difference of the longest run
-% length from the target run length (e.g., 30 frames long). The business
-% with the min([1e6 ...]) is to handle the case when the run set is empty,
-% and thus would otherwise return an empty variable for the objective.
-myObj = @(thresh) min([1e6, (targetLength - max(pullRunLengths(runStarts(thresh))))]);
-
-% The minimum threshold eyeMatchError that results in a run length that
-% matches the target run length.
-threshVal = fzero(myObj,x0);
+% Adjust the targetLength as needed to achieve a threshVal below threshTol.
+stillWorking = true;
+while stillWorking
+    % An objective function that expresses the difference of the longest
+    % run length from the target run length (e.g., 30 frames long). The
+    % business with the min([1e6 ...]) is to handle the case when the run
+    % set is empty, and thus would otherwise return an empty variable for
+    % the objective.
+    myObj = @(thresh) min([1e6, (targetLength - max(pullRunLengths(runStarts(thresh))))]);
+    
+    % Perform the search
+    threshValMoving = fzero(myObj,x0,options);
+    
+    % Check to see if the search has met our threshold criteria, or if we
+    % have run the targetLength down as short as it can go.
+    if threshValMoving < p.Results.gazeErrorThreshTol || targetLength == 1
+        stillWorking = false;
+    else
+        targetLength = targetLength-1;
+    end
+end
 
 % Check if we found a solution
-if ~isfinite(threshVal)
+if ~isfinite(threshValMoving)
     warning('Unable to find a suitable set of frames from the acquisition')
     return
 end
 
 % Find the start point of this run of frames
-runLengths = pullRunLengths(runStarts(threshVal));
-runIndices = pullStartIndices(runStarts(threshVal))+windowStart-1;
-runLength = targetLength-myObj(threshVal);
+runLengths = pullRunLengths(runStarts(threshValMoving));
+runIndices = pullStartIndices(runStarts(threshValMoving))+windowStart-1;
+runLength = targetLength-myObj(threshValMoving);
 startIndex = runIndices(runLengths == runLength);
 startIndex = startIndex(1);
 
@@ -685,6 +736,10 @@ if p.Results.saveDiagnosticPlot
     
     % Report the alignment method
     annotation('textbox', [0.15, .125, 0, 0], 'string', alignMethod,'FontWeight','bold','FitBoxToText','on','LineStyle','none','HorizontalAlignment','left','Interpreter','none')     
+    
+    % Report the threshVals
+    msg = sprintf('threshVals [fixed, moving] = %2.2f, %2.2f',threshValFixed,threshValMoving);
+    annotation('textbox', [0.75, .125, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','left','Interpreter','none')     
     
     % Add a text summary below. If any delta fixation angle is geater than
     % 1 deg, print the message text in red to alert that this was a large
