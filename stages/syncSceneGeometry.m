@@ -246,7 +246,7 @@ YpFixed = perimeter.data{referenceFrameFixed}.Yp;
 % The eyePose for this reference frame is set to the fixation value for the
 % sceneGeometry, with the pupil size set to the median value for this run
 % of frames.
-eyePoseFixed = nanmedian(pupilData.radiusSmoothed.eyePoses.values(startIndexFixed:startIndexFixed+runLengthFixed-1,:));
+eyePoseFixed = nanmedian(pupilData.radiusSmoothed.eyePoses.values(startIndexFixed:startIndexFixed+runLengthFixed-1,:),1);
 eyePoseFixed(1:3) = -sceneGeometryIn.screenPosition.fixationAngles;
 
 % Load in the median image from the period of fixation for sceneGeometryIn.
@@ -256,14 +256,14 @@ videoFrameFixed = makeMedianVideoImage(tmp,'startFrame',startIndexFixed,'nFrames
 
 % Find the median pupil center across the frames for the run of frames
 pupilCenterPixelsFixed = [ ...
-    nanmedian(pupilData.radiusSmoothed.ellipses.values(startIndexFixed:startIndexFixed+runLengthFixed-1,1)), ...
-    nanmedian(pupilData.radiusSmoothed.ellipses.values(startIndexFixed:startIndexFixed+runLengthFixed-1,2)) ];
+    nanmedian(pupilData.radiusSmoothed.ellipses.values(startIndexFixed:startIndexFixed+runLengthFixed-1,1),1), ...
+    nanmedian(pupilData.radiusSmoothed.ellipses.values(startIndexFixed:startIndexFixed+runLengthFixed-1,2),1) ];
 
 % Find the median shape of the pupil during the run of frames, expressed as
 % theta and rho values (SEE: csaEllipseError)
-pupilRhoShapeFixed = nanmedian(pupilData.radiusSmoothed.ellipses.values(startIndexFixed:startIndexFixed+runLengthFixed-1,4));
+pupilRhoShapeFixed = nanmedian(pupilData.radiusSmoothed.ellipses.values(startIndexFixed:startIndexFixed+runLengthFixed-1,4),1);
 pupilRhoShapeFixed = 1-sqrt(1-pupilRhoShapeFixed^2);
-pupilThetaShapeFixed = nanmedian(pupilData.radiusSmoothed.ellipses.values(startIndexFixed:startIndexFixed+runLengthFixed-1,5));
+pupilThetaShapeFixed = nanmedian(pupilData.radiusSmoothed.ellipses.values(startIndexFixed:startIndexFixed+runLengthFixed-1,5),1);
 pupilThetaShapeFixed = pupilThetaShapeFixed*2;
 
 
@@ -467,8 +467,8 @@ YpMoving = perimeter.data{referenceFrameMoving}.Yp;
 
 % Get the pupil center for the fames from the moving video
 pupilCenterPixelsMoving = [ ...
-    nanmedian(pupilData.initial.ellipses.values(startIndexMoving:startIndexMoving+runLengthMoving-1,1)), ...
-    nanmedian(pupilData.initial.ellipses.values(startIndexMoving:startIndexMoving+runLengthMoving-1,2)) ];
+    nanmedian(pupilData.initial.ellipses.values(startIndexMoving:startIndexMoving+runLengthMoving-1,1),1), ...
+    nanmedian(pupilData.initial.ellipses.values(startIndexMoving:startIndexMoving+runLengthMoving-1,2),1) ];
 
 % Load in the median image from the target period for acquisition.
 % This is the "moving" frame.
