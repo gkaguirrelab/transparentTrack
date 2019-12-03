@@ -215,13 +215,20 @@ if signedError > p.Results.gazeErrorThreshTol
     stillWorking = true;
     while stillWorking
         validIdx = find ( double( signedErrorByRunLength(targetLength) < p.Results.gazeErrorThreshTol ) .* ...
-            double( unsignedErrorByRunLength(targetLength) < p.Results.gazeErrorThreshTol ) );
-        if length(validIdx) > 1 || targetLength == 1
+            double( unsignedErrorByRunLength(targetLength) < p.Results.gazeErrorThreshTol ) );        
+        if length(validIdx) > 1
             stillWorking = false;
             startIndexFixed = validIdx(1) - floor(targetLength/2);
             runLengthFixed = targetLength;
         else
             targetLength = targetLength - 1;
+        end
+        % if targetLength has hit 1, we have run out of chances. Just take
+        % the frame with the least signed error
+        if targetLength == 1
+            [~,startIndexFixed] = min(signedErrorByRunLength(targetLength));
+            runLengthFixed = 1;
+            stillWorking = false;
         end
     end
 end
