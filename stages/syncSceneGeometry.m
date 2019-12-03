@@ -766,7 +766,7 @@ if p.Results.saveDiagnosticPlot
     annotation('textbox', [0.15, .125, 0, 0], 'string', alignMethod,'FontWeight','bold','FitBoxToText','on','LineStyle','none','HorizontalAlignment','left','Interpreter','none')     
     
     % Report the run lengths
-    msg = sprintf('runLength [fixed, moving] = %2.2f, %2.2f',runLengthFixed,runLengthMoving);
+    msg = sprintf('runLength [fixed, moving] = %2.0f, %2.0f',runLengthFixed,runLengthMoving);
     annotation('textbox', [0.75, .125, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','left','Interpreter','none')     
     
     % Add a text summary below. If any delta fixation angle is geater than
