@@ -142,6 +142,7 @@ gazePosition = (sceneGeometryIn.screenPosition.R * tmp + sceneGeometryIn.screenP
 % as error in the search below.
 eyeMatchError = sqrt(sum(gazePosition.^2,2));
 
+
 %% Find the set of frames for the fixed image
 
 % Anonymous function to grab the indicies of when runs of frames begin
@@ -194,15 +195,42 @@ end
 % Find the start point of this run of frames
 runLengths = pullRunLengths(runStarts(threshValFixed));
 runIndices = pullStartIndices(runStarts(threshValFixed));
-runLength = targetLength-myObj(threshValFixed);
-startIndex = runIndices(runLengths == runLength);
-startIndex = startIndex(1);
+runLengthFixed = targetLength-myObj(threshValFixed);
+startIndexFixed = runIndices(runLengths == runLengthFixed);
+startIndexFixed = startIndexFixed(1);
+
+% Check that the signed gaze error is acceptable. If not, adopt an
+% alternate strategy for picking the frames
+signedError = sqrt(sum(gazePosition(startIndexFixed:startIndexFixed+runLengthFixed-1,1))^2 + ...
+    sum(gazePosition(startIndexFixed:startIndexFixed+runLengthFixed-1,2))^2);
+if signedError > p.Results.gazeErrorThreshTol
+    % Functions to return signed and unsigned error as a function of
+    % runLength
+    signedErrorByRunLength = @(k) sqrt(movsum(gazePosition(:,1),k,'Endpoints','fill').^2 + movsum(gazePosition(:,2),k,'Endpoints','fill').^2);
+    unsignedErrorByRunLength = @(k) movsum( sqrt(gazePosition(:,1).^2 + gazePosition(:,2).^2),k,'Endpoints','fill' )./k;
+    % Reset the targetLength
+    targetLength = p.Results.eyePositionTargetLengthFrames;
+    % Loop through and find the maximum target length that produces an
+    % acceptable signed and unsigned error
+    stillWorking = true;
+    while stillWorking
+        validIdx = find ( double( signedErrorByRunLength(targetLength) < p.Results.gazeErrorThreshTol ) .* ...
+            double( unsignedErrorByRunLength(targetLength) < p.Results.gazeErrorThreshTol ) );
+        if length(validIdx) > 1 || targetLength == 1
+            stillWorking = false;
+            startIndexFixed = validIdx(1) - floor(targetLength/2);
+            runLengthFixed = targetLength;
+        else
+            targetLength = targetLength - 1;
+        end
+    end
+end
 
 % Find the frame with the lowest ellipse RMSE during this period. We will
 % desginate this frame the referenceFrame for the fixed (sceneGeometryIn)
 % measurements
-rmseVals = pupilData.radiusSmoothed.ellipses.RMSE(startIndex:startIndex+runLength);
-referenceFrameFixed = startIndex + find(rmseVals == min(rmseVals)) - 1;
+rmseVals = pupilData.radiusSmoothed.ellipses.RMSE(startIndexFixed:startIndexFixed+runLengthFixed-1);
+referenceFrameFixed = startIndexFixed + find(rmseVals == min(rmseVals)) - 1;
 
 % Obtain and store the pupil perimeter points for this frame
 XpFixed = perimeter.data{referenceFrameFixed}.Xp;
@@ -211,24 +239,24 @@ YpFixed = perimeter.data{referenceFrameFixed}.Yp;
 % The eyePose for this reference frame is set to the fixation value for the
 % sceneGeometry, with the pupil size set to the median value for this run
 % of frames.
-eyePoseFixed = nanmedian(pupilData.radiusSmoothed.eyePoses.values(startIndex:startIndex+runLength,:));
+eyePoseFixed = nanmedian(pupilData.radiusSmoothed.eyePoses.values(startIndexFixed:startIndexFixed+runLengthFixed-1,:));
 eyePoseFixed(1:3) = -sceneGeometryIn.screenPosition.fixationAngles;
 
 % Load in the median image from the period of fixation for sceneGeometryIn.
 % This is the "fixed" frame.
 tmp = fullfile(sceneGeometryInPath,[sceneGeometryInStem '_gray.avi']);
-videoFrameFixed = makeMedianVideoImage(tmp,'startFrame',startIndex,'nFrames',runLength);
+videoFrameFixed = makeMedianVideoImage(tmp,'startFrame',startIndexFixed,'nFrames',runLengthFixed);
 
 % Find the median pupil center across the frames for the run of frames
 pupilCenterPixelsFixed = [ ...
-    nanmedian(pupilData.radiusSmoothed.ellipses.values(startIndex:startIndex+runLength,1)), ...
-    nanmedian(pupilData.radiusSmoothed.ellipses.values(startIndex:startIndex+runLength,2)) ];
+    nanmedian(pupilData.radiusSmoothed.ellipses.values(startIndexFixed:startIndexFixed+runLengthFixed-1,1)), ...
+    nanmedian(pupilData.radiusSmoothed.ellipses.values(startIndexFixed:startIndexFixed+runLengthFixed-1,2)) ];
 
 % Find the median shape of the pupil during the run of frames, expressed as
 % theta and rho values (SEE: csaEllipseError)
-pupilRhoShapeFixed = nanmedian(pupilData.radiusSmoothed.ellipses.values(startIndex:startIndex+runLength,4));
+pupilRhoShapeFixed = nanmedian(pupilData.radiusSmoothed.ellipses.values(startIndexFixed:startIndexFixed+runLengthFixed-1,4));
 pupilRhoShapeFixed = 1-sqrt(1-pupilRhoShapeFixed^2);
-pupilThetaShapeFixed = nanmedian(pupilData.radiusSmoothed.ellipses.values(startIndex:startIndex+runLength,5));
+pupilThetaShapeFixed = nanmedian(pupilData.radiusSmoothed.ellipses.values(startIndexFixed:startIndexFixed+runLengthFixed-1,5));
 pupilThetaShapeFixed = pupilThetaShapeFixed*2;
 
 
@@ -408,13 +436,13 @@ end
 % Find the start point of this run of frames
 runLengths = pullRunLengths(runStarts(threshValMoving));
 runIndices = pullStartIndices(runStarts(threshValMoving))+windowStart-1;
-runLength = targetLength-myObj(threshValMoving);
-startIndex = runIndices(runLengths == runLength);
-startIndex = startIndex(1);
+runLengthMoving = targetLength-myObj(threshValMoving);
+startIndexMoving = runIndices(runLengths == runLengthMoving);
+startIndexMoving = startIndexMoving(1);
 
 % Find the frame with the lowest ellipse RMSE during the target window
-rmseVals = pupilData.initial.ellipses.RMSE(startIndex:startIndex+runLength);
-referenceFrameMoving = startIndex + find(rmseVals == min(rmseVals)) - 1;
+rmseVals = pupilData.initial.ellipses.RMSE(startIndexMoving:startIndexMoving+runLengthMoving-1);
+referenceFrameMoving = startIndexMoving + find(rmseVals == min(rmseVals)) - 1;
 
 
 %% Derive properties from the acquisition
@@ -432,13 +460,13 @@ YpMoving = perimeter.data{referenceFrameMoving}.Yp;
 
 % Get the pupil center for the fames from the moving video
 pupilCenterPixelsMoving = [ ...
-    nanmedian(pupilData.initial.ellipses.values(startIndex:startIndex+runLength,1)), ...
-    nanmedian(pupilData.initial.ellipses.values(startIndex:startIndex+runLength,2)) ];
+    nanmedian(pupilData.initial.ellipses.values(startIndexMoving:startIndexMoving+runLengthMoving-1,1)), ...
+    nanmedian(pupilData.initial.ellipses.values(startIndexMoving:startIndexMoving+runLengthMoving-1,2)) ];
 
 % Load in the median image from the target period for acquisition.
 % This is the "moving" frame.
 tmp = fullfile(sceneGeometryOutPath,[sceneGeometryOutStem '_gray.avi']);
-movingFrame = makeMedianVideoImage(tmp,'startFrame',startIndex,'nFrames',runLength);
+movingFrame = makeMedianVideoImage(tmp,'startFrame',startIndexMoving,'nFrames',runLengthMoving);
 
 
 %% Set the displacement of the moving image in pixels and degrees
@@ -629,10 +657,10 @@ sceneGeometryAdjusted.cameraPosition.translation = adjustedTranslation;
 if ~isempty(p.Results.deltaPose)
 	eyePoseAdjusted = eyePoseFixed+p.Results.deltaPose;
 else
-    for ii = 1:runLength
+    for ii = 1:runLengthMoving
         % The pupil perimeter for the reference frame
-        Xpt = perimeter.data{startIndex+ii-1}.Xp;
-        Ypt = perimeter.data{startIndex+ii-1}.Yp;
+        Xpt = perimeter.data{startIndexMoving+ii-1}.Xp;
+        Ypt = perimeter.data{startIndexMoving+ii-1}.Yp;
         if ~isempty(Xpt)
             if length(Xpt)>5
                 eyePoseByFrame(ii,:) = eyePoseEllipseFit(Xpt, Ypt, ...
@@ -645,7 +673,7 @@ else
         end
     end
     % Take the weighted median across eyePoses
-    weights = weightFunc(pupilData,perimeter,startIndex,runLength);
+    weights = weightFunc(pupilData,perimeter,startIndexMoving,runLengthMoving);
     nonNanFrames = ~isnan(eyePoseByFrame(:,1));
     for ii=1:4
         eyePoseAdjusted(ii) = medianw(eyePoseByFrame(nonNanFrames,ii),weights(nonNanFrames));
@@ -737,8 +765,8 @@ if p.Results.saveDiagnosticPlot
     % Report the alignment method
     annotation('textbox', [0.15, .125, 0, 0], 'string', alignMethod,'FontWeight','bold','FitBoxToText','on','LineStyle','none','HorizontalAlignment','left','Interpreter','none')     
     
-    % Report the threshVals
-    msg = sprintf('threshVals [fixed, moving] = %2.2f, %2.2f',threshValFixed,threshValMoving);
+    % Report the run lengths
+    msg = sprintf('runLength [fixed, moving] = %2.2f, %2.2f',runLengthFixed,runLengthMoving);
     annotation('textbox', [0.75, .125, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','left','Interpreter','none')     
     
     % Add a text summary below. If any delta fixation angle is geater than
