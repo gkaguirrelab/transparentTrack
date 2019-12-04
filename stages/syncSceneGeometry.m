@@ -492,12 +492,22 @@ if isempty(p.Results.deltaScale)
     deltaScale = 1;
 end
 
-
 if isempty(p.Results.deltaDeg)
     % No change is made to the torsion unless we are in display mode
     deltaDeg = 0;
 else
     deltaDeg = p.Results.deltaDeg;
+end
+
+if isempty(p.Results.deltaPose)
+    deltaPose = [0, 0, 0, 0];
+    % Get the pupil size for the moving frame and incorporate this into the
+    % deltaPose
+    [XpTmp, YpTmp] = updatePerimeter(XpMoving,YpMoving,deltaPix,deltaDeg,deltaScale,cameraOffsetPoint);
+    tmpPose = eyePoseEllipseFit(XpTmp, YpTmp, sceneGeometryIn,'x0',eyePoseFixed);
+    deltaPose(4) = tmpPose(4) - eyePoseFixed(4);
+else
+    deltaPose = p.Results.deltaPose;
 end
 
 
@@ -511,7 +521,10 @@ if p.Results.displayMode
     fprintf('Adjust horizontal and vertical camera translation with the arrow keys.\n');
     fprintf('Adjust depth camera translation with + and -.\n');
     fprintf('Adjust camera torsion with j and k.\n');
-    fprintf('Switch between moving and fixed image by pressing a.\n');
+    fprintf('Re-calculate moving image eyePose with u.\n');
+    fprintf('Adjust moving image eyePose (azi and ele) with w-a-s-d.\n');
+    fprintf('Adjust moving image pupil size (azi and ele) with q-e.\n');
+    fprintf('Switch between moving and fixed image by pressing f.\n');
     fprintf('Turn on and off perimeter display with p.\n');
     fprintf('Turn on and off model display with m.\n');
     fprintf('Press esc to exit.\n\n');
@@ -582,12 +595,12 @@ if p.Results.displayMode
             % Let the user know this will take a few seconds
             text_str = 'Updating model...';
             annotHandle = addAnnotation(text_str);
-            % Obtain the eye pose from the adjusted perimeter
-            if isempty(p.Results.deltaPose)
-                eyePoseDisplay = eyePoseEllipseFit(XpDisplay, YpDisplay, ...
-                    sceneGeometryIn,'x0',eyePoseFixed);
+            % Set the eye pose, depending upon if we are looking at the
+            % fixed or moving image
+            if showMoving
+                eyePoseDisplay = eyePoseFixed+deltaPose;
             else
-                eyePoseDisplay = eyePoseFixed+p.Results.deltaPose;
+                eyePoseDisplay = eyePoseFixed;
             end
             % Render the eye model
             renderEyePose(eyePoseDisplay, sceneGeometryIn, ...
@@ -621,7 +634,26 @@ if p.Results.displayMode
                     deltaScale = deltaScale+0.01;
                 case {61 43}
                     deltaScale = deltaScale-0.01;
+                case 117
+                    text_str = 'updating...';
+                    annotHandle = addAnnotation(text_str);
+                    [XpTmp, YpTmp] = updatePerimeter(XpMoving,YpMoving,deltaPix,deltaDeg,deltaScale,cameraOffsetPoint);
+                    tmpPose = eyePoseEllipseFit(XpTmp, YpTmp, sceneGeometryIn,'x0',eyePoseFixed);
+                    deltaPose = tmpPose - eyePoseFixed;
+                    delete(annotHandle);
+                case 119
+                    deltaPose(2) = deltaPose(2)+0.5;
+                case 115
+                    deltaPose(2) = deltaPose(2)-0.5;
                 case 97
+                    deltaPose(1) = deltaPose(1)-0.5;
+                case 100
+                    deltaPose(1) = deltaPose(1)+0.5;
+                case 113
+                    deltaPose(4) = deltaPose(4)-0.25;
+                case 101
+                    deltaPose(4) = deltaPose(4)+0.25;
+                case 102
                     showMoving = ~showMoving;
                 case 106
                     deltaDeg = deltaDeg - 1;
@@ -660,34 +692,6 @@ deltaMM = sceneGeometryIn.cameraPosition.translation - adjustedTranslation;
 % Update the sceneGeometry translation
 sceneGeometryAdjusted.cameraPosition.translation = adjustedTranslation;
 
-% Update the eye pose for the adjusted sceneGeometry
-if ~isempty(p.Results.deltaPose)
-	eyePoseAdjusted = eyePoseFixed+p.Results.deltaPose;
-else
-    for ii = 1:runLengthMoving
-        % The pupil perimeter for the reference frame
-        Xpt = perimeter.data{startIndexMoving+ii-1}.Xp;
-        Ypt = perimeter.data{startIndexMoving+ii-1}.Yp;
-        if ~isempty(Xpt)
-            if length(Xpt)>5
-                eyePoseByFrame(ii,:) = eyePoseEllipseFit(Xpt, Ypt, ...
-                    sceneGeometryAdjusted,'x0',eyePoseFixed);
-            else
-                eyePoseByFrame(ii,:)=[nan nan nan nan];
-            end
-        else
-            eyePoseByFrame(ii,:)=[nan nan nan nan];
-        end
-    end
-    % Take the weighted median across eyePoses
-    weights = weightFunc(pupilData,perimeter,startIndexMoving,runLengthMoving);
-    nonNanFrames = ~isnan(eyePoseByFrame(:,1));
-    for ii=1:4
-        eyePoseAdjusted(ii) = medianw(eyePoseByFrame(nonNanFrames,ii),weights(nonNanFrames));
-    end
-end
-sceneGeometryAdjusted.screenPosition.fixationAngles = -eyePoseAdjusted(1:3);
-            
 
 %% Create and save a diagnostic figure
 if p.Results.saveDiagnosticPlot
@@ -717,7 +721,7 @@ if p.Results.saveDiagnosticPlot
     % Moving frame
     displayImage = movingFrame;
     tmpFig = figure('visible','off');
-    renderEyePose(eyePoseAdjusted, sceneGeometryAdjusted, ...
+    renderEyePose(eyePoseFixed+deltaPose, sceneGeometryAdjusted, ...
         'newFigure', false, 'visible', false, ...
         'backgroundImage',displayImage, ...
         'showAzimuthPlane', true, ...
@@ -779,16 +783,16 @@ if p.Results.saveDiagnosticPlot
     % Add a text summary below. If any delta fixation angle is geater than
     % 1 deg, print the message text in red to alert that this was a large
     % eye rotation change.
-    msg = sprintf('delta pixels = [x, y] = [%2.1f; %2.1f]',deltaPix);
+    msg = sprintf('delta pixels = [x, y] = [%2.1f, %2.1f]',deltaPix);
     annotation('textbox', [0.5, .175, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
     msg = sprintf('delta translation [mm] [x; y; z] = [%2.3f; %2.3f; %2.3f]',deltaMM);
     annotation('textbox', [0.5, .125, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
-    msg = sprintf('delta eye pose [azi, ele, tor, radius] = [%2.3f, %2.3f, %2.3f, %2.3f]',eyePoseAdjusted-eyePoseFixed);
+    msg = sprintf('delta eye pose [azi, ele, tor, radius] = [%2.3f, %2.3f, %2.3f, %2.3f]',deltaPose);
     msgColor = 'black';
-    if any(abs(eyePoseFixed(1:3)-eyePoseAdjusted(1:3)) > 0.5) 
+    if any(abs(deltaPose) > 0.5) 
         msgColor = '#ffa500'; % orange
     end
-    if any(abs(eyePoseFixed(1:3)-eyePoseAdjusted(1:3)) > 1)
+    if any(abs(deltaPose) > 1)
         msgColor = 'red';
     end
     annotation('textbox', [0.5, .075, 0, 0], 'string', msg,'Color',msgColor,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
@@ -822,6 +826,18 @@ if p.Results.saveAdjustedSceneGeometry
     % Save it
     tmp = fullfile(sceneGeometryOutPath,[sceneGeometryOutStem '_sceneGeometry.mat']);
     save(tmp,'sceneGeometry');
+end
+
+% If we are in display mode, report the values to the console
+if p.Results.displayMode
+    tmp=strsplit(sceneGeometryInPath,filesep);
+    outline = [tmp{end-3} char(9) tmp{end-2} char(9) 'fixed: ' sceneGeometryInStem ', moving: ' sceneGeometryOutStem '\n'] ;
+    fprintf(outline)
+    outline = ['deltaPix' char(9) 'deltaDeg' char(9) 'deltaScale' char(9) 'deltaPose\n'];
+    fprintf(outline)
+    outline = sprintf(['[ %2.2f, %2.2f ]' char(9) '[ %2.1f ]' char(9) '[ %2.1f ]' char(9) '[ %2.2f, %2.2f, %2.2f, %2.2f ]\n'],deltaPix,deltaDeg,deltaScale,deltaPose);
+    fprintf(outline)
+    fprintf('/n')
 end
 
 
