@@ -837,7 +837,7 @@ if p.Results.displayMode
     fprintf(outline)
     outline = sprintf(['[ %2.2f, %2.2f ]' char(9) '[ %2.1f ]' char(9) '[ %2.1f ]' char(9) '[ %2.2f, %2.2f, %2.2f, %2.2f ]\n'],deltaPix,deltaDeg,deltaScale,deltaPose);
     fprintf(outline)
-    fprintf('/n')
+    fprintf('\n')
 end
 
 
