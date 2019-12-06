@@ -490,6 +490,8 @@ end
 
 if isempty(p.Results.deltaScale)
     deltaScale = 1;
+else
+    deltaScale = p.Results.deltaScale;
 end
 
 if isempty(p.Results.deltaDeg)
