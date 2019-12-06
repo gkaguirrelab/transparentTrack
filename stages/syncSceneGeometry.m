@@ -791,10 +791,7 @@ if p.Results.saveDiagnosticPlot
     annotation('textbox', [0.5, .125, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
     msg = sprintf('delta eye pose [azi, ele, tor, radius] = [%2.3f, %2.3f, %2.3f, %2.3f]',deltaPose);
     msgColor = 'black';
-    if any(abs(deltaPose) > 0.5) 
-        msgColor = '#ffa500'; % orange
-    end
-    if any(abs(deltaPose) > 1)
+    if any(abs(deltaPose(1:3)) > 0) 
         msgColor = 'red';
     end
     annotation('textbox', [0.5, .075, 0, 0], 'string', msg,'Color',msgColor,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
