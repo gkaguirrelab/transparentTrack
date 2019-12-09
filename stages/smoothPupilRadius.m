@@ -204,10 +204,10 @@ end
 % If the pupilData have already undergone a pass through fitting, derive
 % a prior across the entire acquisition for the mean and SD of the pupil
 % size. Instead of the mean, we obtain the weighted median to avoid the
-% influence of outlier values. The SD is set to something large (3 mm) so
-% that the effect of this prior only appears in te near absence of other
+% influence of outlier values. The SD is set to something large (4 mm) so
+% that the effect of this prior only appears in the near absence of other
 % measures.
-if isfield(pupilData,'radiusSmoothed')
+if isfield(pupilData,'radiusSmoothed') && ~p.Results.forceFreshFit
     fixedPriorPupilRadiusMean = medianw( ...
         pupilData.radiusSmoothed.eyePoses.values(:,4), ...
         pupilData.radiusSmoothed.ellipses.RMSE, 1 );    
