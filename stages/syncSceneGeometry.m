@@ -808,6 +808,7 @@ end
 
 %% Save the adjusted sceneGeometry
 if p.Results.saveAdjustedSceneGeometry
+    
     % If the movingFrame is from a point after the start of the
     % acquisition, adjust the camera translation position once more to
     % account for any head motion that took place between the start of the
