@@ -219,10 +219,10 @@ if ~isempty(p.Results.sceneParamsX0) && isempty(p.Results.sceneParamsLB)
             sceneParamsLBp = [x0(1)-5; x0(2:3)-transDelta/2; x0(4)-depthDelta/2; x0(5)*0.95; 0.9];
             sceneParamsUBp = [x0(1)+5; x0(2:3)+transDelta/2; x0(4)+depthDelta/2; x0(5)*1.05; 1.1];
         case 6
-            sceneParamsLB = [x0(1)-10; x0(2:3)-transDelta; x0(4)-depthDelta; x0(5)*0.9; x0(6)*0.9];
-            sceneParamsUB = [x0(1)+10; x0(2:3)+transDelta; x0(4)+depthDelta; x0(5)*1.1; x0(6)*1.1];
-            sceneParamsLBp = [x0(1)-5; x0(2:3)-transDelta/2; x0(4)-depthDelta/2; x0(5)*0.95; x0(6)*0.95];
-            sceneParamsUBp = [x0(1)+5; x0(2:3)+transDelta/2; x0(4)+depthDelta/2; x0(5)*1.05; x0(6)*1.05];
+            sceneParamsLB = x0;
+            sceneParamsUB = x0;
+            sceneParamsLBp = x0;
+            sceneParamsUBp = x0;
         otherwise
             error('Not sure to handle that sceneParamsX0 length');
     end
