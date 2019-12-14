@@ -833,9 +833,9 @@ if p.Results.displayMode
     tmp=strsplit(sceneGeometryInPath,filesep);
     outline = [tmp{end-3} char(9) tmp{end-2} char(9) 'fixed: ' sceneGeometryInStem ', moving: ' sceneGeometryOutStem '\n'] ;
     fprintf(outline)
-    outline = ['deltaPix' char(9) 'deltaDeg' char(9) 'deltaScale' char(9) 'deltaPose\n'];
+    outline = ['alignMethod' char(9) 'deltaPix' char(9) 'deltaDeg' char(9) 'deltaScale' char(9) 'deltaPose\n'];
     fprintf(outline)
-    outline = sprintf(['[ %2.2f, %2.2f ]' char(9) '[ %2.1f ]' char(9) '[ %2.1f ]' char(9) '[ %2.2f, %2.2f, %2.2f, %2.2f ]\n'],deltaPix,deltaDeg,deltaScale,deltaPose);
+    outline = sprintf(['{''' alignMethod '''}' char(9) '[ %2.2f, %2.2f ]' char(9) '[ %2.1f ]' char(9) '[ %2.1f ]' char(9) '[ %2.2f, %2.2f, %2.2f, %2.2f ]\n'],deltaPix,deltaDeg,deltaScale,deltaPose);
     fprintf(outline)
     fprintf('\n')
 end
