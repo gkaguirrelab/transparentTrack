@@ -47,6 +47,9 @@ function plotPupilDataEyePose( dataRootDir, plotSaveDir, varargin )
     plotSaveDir = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure/pupilDataQAPlots_eyePose'
     plotPupilDataEyePose(dataRootDir,plotSaveDir);
 %}
+%{
+    plotPupilDataEyePose( '', 'pupilDataQAPlots_eyePose_RETINO_Dec2019','acquisitionStem','tfMRI_RETINO')
+%}
 
 %% input parser
 p = inputParser;
