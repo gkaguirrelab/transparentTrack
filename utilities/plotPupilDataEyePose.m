@@ -48,7 +48,7 @@ function plotPupilDataEyePose( dataRootDir, plotSaveDir, varargin )
     plotPupilDataEyePose(dataRootDir,plotSaveDir);
 %}
 %{
-    plotPupilDataEyePose( '', 'pupilDataQAPlots_eyePose_RETINO_Dec2019','acquisitionStem','tfMRI_RETINO')
+    plotPupilDataEyePose( '', 'pupilDataQAPlots_eyePose_sceneConstrained_RETINO_Dec2019','fieldToPlot','sceneConstrained','acquisitionStem','tfMRI_FLASH')
 %}
 
 %% input parser
@@ -67,6 +67,8 @@ p.addParameter('xLim',[-0.5 5.6],@isnumeric);
 p.addParameter('yAxisLabels',{'azimuth [deg]','elevation [deg]','radius [mm]'},@iscell);
 p.addParameter('nColumns',4,@isscalar);
 p.addParameter('acquisitionStem','rfMRI_REST',@ischar);
+p.addParameter('fieldToPlot','radiusSmoothed',@ischar);
+
 
 % parse
 p.parse(dataRootDir,plotSaveDir,varargin{:})
@@ -153,19 +155,19 @@ if ~isempty(fileListStruct)
                 pupilData=dataLoad.pupilData;
                 clear dataLoad
                 
-                if ~isfield(pupilData,'radiusSmoothed')
+                if ~isfield(pupilData,p.Results.fieldToPlot)
                     continue
                 else
-                    highRMSE = pupilData.radiusSmoothed.ellipses.RMSE > p.Results.rmseThreshold;
-                    if isfield(pupilData.radiusSmoothed.eyePoses,'fitAtBound')
-                        fitAtBound = pupilData.radiusSmoothed.eyePoses.fitAtBound;
+                    highRMSE = pupilData.(p.Results.fieldToPlot).ellipses.RMSE > p.Results.rmseThreshold;
+                    if isfield(pupilData.(p.Results.fieldToPlot).eyePoses,'fitAtBound')
+                        fitAtBound = pupilData.(p.Results.fieldToPlot).eyePoses.fitAtBound;
                         good = logical(~highRMSE .* ~fitAtBound);
                     else
                         good = logical(~highRMSE);
                     end
                     
-                    lb_byParam(nn) = floor(min(pupilData.radiusSmoothed.eyePoses.values(good,p.Results.eyePoseParamsToPlot(mm))) ./ p.Results.yRangeIncrement(mm)).*p.Results.yRangeIncrement(mm);
-                    ub_byParam(nn) = ceil(max(pupilData.radiusSmoothed.eyePoses.values(good,p.Results.eyePoseParamsToPlot(mm))) ./ p.Results.yRangeIncrement(mm)).*p.Results.yRangeIncrement(mm);
+                    lb_byParam(nn) = floor(min(pupilData.(p.Results.fieldToPlot).eyePoses.values(good,p.Results.eyePoseParamsToPlot(mm))) ./ p.Results.yRangeIncrement(mm)).*p.Results.yRangeIncrement(mm);
+                    ub_byParam(nn) = ceil(max(pupilData.(p.Results.fieldToPlot).eyePoses.values(good,p.Results.eyePoseParamsToPlot(mm))) ./ p.Results.yRangeIncrement(mm)).*p.Results.yRangeIncrement(mm);
                 end
             end
             lb(mm) = nanmin(lb_byParam);
@@ -195,19 +197,19 @@ if ~isempty(fileListStruct)
             
             % Check that there is a smoothed radius field; otherwise
             % continue
-            if ~isfield(pupilData,'radiusSmoothed')
+            if ~isfield(pupilData,p.Results.fieldToPlot)
                 continue
             end
             
             % Obtain the vector of good and bad time points
-            highRMSE = pupilData.radiusSmoothed.ellipses.RMSE > p.Results.rmseThreshold;
+            highRMSE = pupilData.(p.Results.fieldToPlot).ellipses.RMSE > p.Results.rmseThreshold;
             fitAtBound = false(size(highRMSE));
             lowUniformity = false(size(highRMSE));
-            if isfield(pupilData.radiusSmoothed.eyePoses,'fitAtBound')
-                fitAtBound = pupilData.radiusSmoothed.eyePoses.fitAtBound;
+            if isfield(pupilData.(p.Results.fieldToPlot).eyePoses,'fitAtBound')
+                fitAtBound = pupilData.(p.Results.fieldToPlot).eyePoses.fitAtBound;
             end
-            if isfield(pupilData.radiusSmoothed.ellipses,'uniformity')
-                lowUniformity = pupilData.radiusSmoothed.ellipses.uniformity < p.Results.uniformityThreshold;
+            if isfield(pupilData.(p.Results.fieldToPlot).ellipses,'uniformity')
+                lowUniformity = pupilData.(p.Results.fieldToPlot).ellipses.uniformity < p.Results.uniformityThreshold;
             end
 
             good = logical(~highRMSE .* ~fitAtBound .* ~lowUniformity);
@@ -221,7 +223,7 @@ if ~isempty(fileListStruct)
                 % Plot the time-series. Make the red fit dots transparent
                 plot(timebase.values*msecToMin,pupilData.sceneConstrained.eyePoses.values(:,p.Results.eyePoseParamsToPlot(kk)),'-','Color',[0.85 0.85 0.85],'LineWidth',0.5);
                 hold on
-                hLineRed = plot(timebase.values(good)/1000/60,pupilData.radiusSmoothed.eyePoses.values(good,p.Results.eyePoseParamsToPlot(kk)),'o','MarkerSize',1);
+                hLineRed = plot(timebase.values(good)/1000/60,pupilData.(p.Results.fieldToPlot).eyePoses.values(good,p.Results.eyePoseParamsToPlot(kk)),'o','MarkerSize',1);
                 drawnow
                 hMarkerRed = hLineRed.MarkerHandle;
                 hMarkerRed.FaceColorData = uint8(255*[1; 0; 0; 0.25]);
@@ -240,7 +242,7 @@ if ~isempty(fileListStruct)
                 end
                 
                 % Add the markers for at bound plot points                
-                if isfield(pupilData.radiusSmoothed.eyePoses,'fitAtBound')
+                if isfield(pupilData.(p.Results.fieldToPlot).eyePoses,'fitAtBound')
                     hLineBlue = plot(timebase.values(fitAtBound)/1000/60,repmat(lowY,size(timebase.values(fitAtBound))),'o','MarkerSize',0.75);
                     drawnow
                     if ~isempty(hLineBlue)
@@ -265,7 +267,7 @@ if ~isempty(fileListStruct)
                 end
                 set(gca,'TickDir','out')
                 if kk == 1
-                    title({fileNameStem,pupilData.radiusSmoothed.meta.timestamp},'Interpreter', 'none');
+                    title({fileNameStem,pupilData.(p.Results.fieldToPlot).meta.timestamp},'Interpreter', 'none');
                 end
                 if kk ~= length(p.Results.eyePoseParamsToPlot)
                     set(gca,'XColor','none')
