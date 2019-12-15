@@ -217,6 +217,11 @@ end
 % overhead
 frameCellArray = perimeter.data(1:nFrames);
 
+% If we aleady have an intial field, grab the RMSE of those fits
+if isfield(pupilData,'initial')
+    initialRMSE = pupilData.initial.ellipses.RMSE;
+end
+
 % Set-up other variables to be non-broadcast
 verbose = p.Results.verbose;
 ellipseTransparentLB = p.Results.ellipseTransparentLB;
@@ -238,8 +243,8 @@ warnState = warning();
 
 
 % Loop through the frames
-parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
-%for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
+%parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
+for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
     
     % Update progress
     if verbose
@@ -285,9 +290,17 @@ parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
                 cameraPosition = cameraPosition - relativeCameraPosition.values(:,ii);
                 adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
             end
-            % Find the eyePose parameters that best fit the pupil perimeter
+            % Find the eyePose parameters that best fit the pupil
+            % perimeter. This can take between 1 and 10 seconds, with
+            % longer search times for partial pupil ellipses. We don't
+            % expect the sceneConstrained fit to do any better than the
+            % RMSE of the minimally constrained ellipse, so pass this to
+            % serve as the basis of search stop criterion with some
+            % generous boundaries.
             [eyePose, objectiveError, ellipseParamsTransparent, fitAtBound] = ...
                 eyePoseEllipseFit(Xp, Yp, adjustedSceneGeometry, ...
+                'rmseThresh', initialRMSE(ii)*1.2, ...
+                'rmseThreshIter', initialRMSE(ii)*0.2, ...
                 'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB);
         end
         
