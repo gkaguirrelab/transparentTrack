@@ -243,8 +243,8 @@ warnState = warning();
 
 
 % Loop through the frames
-%parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
-for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
+parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
+%for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
     
     % Update progress
     if verbose
