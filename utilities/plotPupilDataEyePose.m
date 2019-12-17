@@ -15,6 +15,21 @@ function plotPupilDataEyePose( dataRootDir, plotSaveDir, varargin )
 %   specified by "plotSaveDir". If the plotSaveDir variable is empty, the
 %   plots will be displayed and not saved.
 %
+%   Interpretation of the plot elements:
+%     - Time is given in minutes relative to the start of the fMRI scan
+%     - The gray line is the eyePose fit value for the specified
+%       pupilData field (either sceneConstrained or radiusSmoothed)
+%     - The red plot points are the eyePose fit values, but only for those
+%       points that meet criteria for having a "good" fit. 
+%     - For a given frame to be considered to have a "good" fit, the
+%       following criteria must be met:
+%         ? the RMSE of the fit to the pupil perimeter points (in units of
+%           pixels) must be belowe the rmseThreshold value (default = 3)
+%         ? the fit for the frame must not have hit the upper or lower
+%           bounds on the eyePose params
+%     - At the bottom of the plot, gray dots mark frames with high RMSE,
+%       and blue dots mark points where the fit hit the eyePose bounds.
+%
 %   Included local functions are subdir, by Kelly Kearney.
 %
 % Inputs:
@@ -50,6 +65,9 @@ function plotPupilDataEyePose( dataRootDir, plotSaveDir, varargin )
 %{
     plotPupilDataEyePose( '', 'pupilDataQAPlots_eyePose_sceneConstrained_FLASH_Dec2019','fieldToPlot','sceneConstrained','acquisitionStem','tfMRI_FLASH','nColumns',2)
 %}
+%{
+    plotPupilDataEyePose( '', 'pupilDataQAPlots_eyePose_sceneConstrained_MOVIE_Dec2019','fieldToPlot','sceneConstrained','acquisitionStem','tfMRI_MOVIE','nColumns',4)
+%}
 
 %% input parser
 p = inputParser;
@@ -60,7 +78,6 @@ p.addOptional('plotSaveDir',[],@(x)(isempty(x) || ischar(x)));
 
 % Optional
 p.addParameter('rmseThreshold',3,@isscalar);
-p.addParameter('uniformityThreshold',0.33,@isscalar);
 p.addParameter('eyePoseParamsToPlot',[1 2 4],@isnumeric);
 p.addParameter('yRangeIncrement',[5 5 0.25],@isnumeric);
 p.addParameter('xLim',[-0.5 5.6],@isnumeric);
@@ -204,15 +221,11 @@ if ~isempty(fileListStruct)
             % Obtain the vector of good and bad time points
             highRMSE = pupilData.(p.Results.fieldToPlot).ellipses.RMSE > p.Results.rmseThreshold;
             fitAtBound = false(size(highRMSE));
-            lowUniformity = false(size(highRMSE));
             if isfield(pupilData.(p.Results.fieldToPlot).eyePoses,'fitAtBound')
                 fitAtBound = pupilData.(p.Results.fieldToPlot).eyePoses.fitAtBound;
             end
-            if isfield(pupilData.(p.Results.fieldToPlot).ellipses,'uniformity')
-                lowUniformity = pupilData.(p.Results.fieldToPlot).ellipses.uniformity < p.Results.uniformityThreshold;
-            end
 
-            good = logical(~highRMSE .* ~fitAtBound .* ~lowUniformity);
+            good = logical(~highRMSE .* ~fitAtBound);
 
             % Loop over the 3 eyePose parameters to be plotted
             for kk=1:length(p.Results.eyePoseParamsToPlot)
@@ -221,7 +234,7 @@ if ~isempty(fileListStruct)
                 subplot(length(p.Results.eyePoseParamsToPlot),p.Results.nColumns,(kk-1)*p.Results.nColumns+jj,'align');
                 
                 % Plot the time-series. Make the red fit dots transparent
-                plot(timebase.values*msecToMin,pupilData.sceneConstrained.eyePoses.values(:,p.Results.eyePoseParamsToPlot(kk)),'-','Color',[0.85 0.85 0.85],'LineWidth',0.5);
+                plot(timebase.values*msecToMin,pupilData.(p.Results.fieldToPlot).eyePoses.values(:,p.Results.eyePoseParamsToPlot(kk)),'-','Color',[0.85 0.85 0.85],'LineWidth',0.5);
                 hold on
                 hLineRed = plot(timebase.values(good)/1000/60,pupilData.(p.Results.fieldToPlot).eyePoses.values(good,p.Results.eyePoseParamsToPlot(kk)),'o','MarkerSize',1);
                 drawnow
