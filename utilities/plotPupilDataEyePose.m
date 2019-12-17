@@ -68,6 +68,9 @@ function plotPupilDataEyePose( dataRootDir, plotSaveDir, varargin )
 %{
     plotPupilDataEyePose( '', 'pupilDataQAPlots_eyePose_sceneConstrained_MOVIE_Dec2019','fieldToPlot','sceneConstrained','acquisitionStem','tfMRI_MOVIE','nColumns',4)
 %}
+%{
+    plotPupilDataEyePose( '', 'pupilDataQAPlots_eyePose_sceneConstrained_RETINO_Dec2019','fieldToPlot','sceneConstrained','acquisitionStem','tfMRI_RETINO','nColumns',4)
+%}
 
 %% input parser
 p = inputParser;
