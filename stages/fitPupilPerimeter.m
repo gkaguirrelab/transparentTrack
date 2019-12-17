@@ -220,6 +220,9 @@ frameCellArray = perimeter.data(1:nFrames);
 % If we aleady have an intial field, grab the RMSE of those fits
 if isfield(pupilData,'initial')
     initialRMSE = pupilData.initial.ellipses.RMSE;
+else
+    % Explicitly define the variable so as to not freak out parpool
+    initialRMSE = [];
 end
 
 % Set-up other variables to be non-broadcast
