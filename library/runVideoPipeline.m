@@ -385,6 +385,7 @@ initialPerimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.ru
 controlFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_controlFile.csv']);
 correctedPerimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_correctedPerimeter.mat']);
 pupilFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_pupil.mat']);
+relativeCameraPositionFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_relativeCameraPosition.mat']);
 
 % Depending upon which stage just completed, set to empty any files
 % that do not yet exist, and select the appropriate perimeter file and
@@ -469,8 +470,12 @@ end
 makeFitVideo(grayVideoName, fitVideoFileName, ...
     'glintFileName', glintFileName, 'perimeterFileName', perimeterFileName,...
     'controlFileName',controlFileName, 'pupilFileName', pupilFileName, ...
-    'sceneGeometryFileName', sceneGeometryFileNameInput, varargin{:});
+    'sceneGeometryFileName', sceneGeometryFileNameInput, ...
+    'relativeCameraPositionFileName',relativeCameraPositionFileName, ...
+    'modelEyeMaxAlpha', 1, ...
+    varargin{:});
 
+        
 end % makeFitVideoForThisStage
 
 
