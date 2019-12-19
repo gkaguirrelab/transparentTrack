@@ -343,7 +343,7 @@ for ii = 1:nFrames
         end
     end
 
-    % Superimpose the model eye
+    %% Superimpose the model eye
     % If an instruction field is available, and we should suppress blinks,
     % check if this frame is a blink
     notBlinkFrame = true;
