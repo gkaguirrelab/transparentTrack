@@ -17,15 +17,17 @@ function plotPupilDataEyePose( dataRootDir, plotSaveDir, varargin )
 %
 %   Interpretation of the plot elements:
 %     - Time is given in minutes relative to the start of the fMRI scan
-%     - The gray line is the eyePose fit value for the specified
-%       pupilData field (either sceneConstrained or radiusSmoothed)
-%     - The red plot points are the eyePose fit values, but only for those
-%       points that meet criteria for having a "good" fit. 
+%     - The gray line is the eyePose fit value for the sceneConstrained
+%       pupilData
+%     - The red plot points are the sceneConstrained eyePose fit values,
+%       but only for those points that meet criteria for having a "good"
+%       fit.
+%     - The black line is the radiusSmoothed eyePose fit valyues.
 %     - For a given frame to be considered to have a "good" fit, the
 %       following criteria must be met:
-%         ? the RMSE of the fit to the pupil perimeter points (in units of
+%         - the RMSE of the fit to the pupil perimeter points (in units of
 %           pixels) must be belowe the rmseThreshold value (default = 3)
-%         ? the fit for the frame must not have hit the upper or lower
+%         - the fit for the frame must not have hit the upper or lower
 %           bounds on the eyePose params
 %     - At the bottom of the plot, gray dots mark frames with high RMSE,
 %       and blue dots mark points where the fit hit the eyePose bounds.
@@ -87,7 +89,6 @@ p.addParameter('xLim',[-0.5 5.6],@isnumeric);
 p.addParameter('yAxisLabels',{'azimuth [deg]','elevation [deg]','radius [mm]'},@iscell);
 p.addParameter('nColumns',4,@isscalar);
 p.addParameter('acquisitionStem','rfMRI_REST',@ischar);
-p.addParameter('fieldToPlot','radiusSmoothed',@ischar);
 
 
 % parse
@@ -175,19 +176,20 @@ if ~isempty(fileListStruct)
                 pupilData=dataLoad.pupilData;
                 clear dataLoad
                 
-                if ~isfield(pupilData,p.Results.fieldToPlot)
+                % Bounds are set for the sceneConstrained
+                if ~isfield(pupilData,'sceneConstrained')
                     continue
                 else
-                    highRMSE = pupilData.(p.Results.fieldToPlot).ellipses.RMSE > p.Results.rmseThreshold;
-                    if isfield(pupilData.(p.Results.fieldToPlot).eyePoses,'fitAtBound')
-                        fitAtBound = pupilData.(p.Results.fieldToPlot).eyePoses.fitAtBound;
-                        good = logical(~highRMSE .* ~fitAtBound);
+                    highRMSE = pupilData.sceneConstrained.ellipses.RMSE > p.Results.rmseThreshold;
+                    if isfield(pupilData.sceneConstrained.eyePoses,'fitAtBound')
+                        fitAtBound = pupilData.sceneConstrained.eyePoses.fitAtBound;
+                        goodSceneConstrained = logical(~highRMSE .* ~fitAtBound);
                     else
-                        good = logical(~highRMSE);
+                        goodSceneConstrained = logical(~highRMSE);
                     end
                     
-                    lb_byParam(nn) = floor(min(pupilData.(p.Results.fieldToPlot).eyePoses.values(good,p.Results.eyePoseParamsToPlot(mm))) ./ p.Results.yRangeIncrement(mm)).*p.Results.yRangeIncrement(mm);
-                    ub_byParam(nn) = ceil(max(pupilData.(p.Results.fieldToPlot).eyePoses.values(good,p.Results.eyePoseParamsToPlot(mm))) ./ p.Results.yRangeIncrement(mm)).*p.Results.yRangeIncrement(mm);
+                    lb_byParam(nn) = floor(min(pupilData.sceneConstrained.eyePoses.values(goodSceneConstrained,p.Results.eyePoseParamsToPlot(mm))) ./ p.Results.yRangeIncrement(mm)).*p.Results.yRangeIncrement(mm);
+                    ub_byParam(nn) = ceil(max(pupilData.sceneConstrained.eyePoses.values(goodSceneConstrained,p.Results.eyePoseParamsToPlot(mm))) ./ p.Results.yRangeIncrement(mm)).*p.Results.yRangeIncrement(mm);
                 end
             end
             lb(mm) = nanmin(lb_byParam);
@@ -215,36 +217,53 @@ if ~isempty(fileListStruct)
             timebase=dataLoad.timebase;
             clear dataLoad
             
-            % Check that there is a smoothed radius field; otherwise
-            % continue
-            if ~isfield(pupilData,p.Results.fieldToPlot)
+            % Check that there is at least a sceneConstrained field;
+            % otherwise continue
+            if ~isfield(pupilData,'sceneConstrained')
                 continue
             end
             
-            % Obtain the vector of good and bad time points
-            highRMSE = pupilData.(p.Results.fieldToPlot).ellipses.RMSE > p.Results.rmseThreshold;
+            % Obtain the vector of good and bad time points for the
+            % sceneConstrained
+            highRMSE = pupilData.sceneConstrained.ellipses.RMSE > p.Results.rmseThreshold;
             fitAtBound = false(size(highRMSE));
-            if isfield(pupilData.(p.Results.fieldToPlot).eyePoses,'fitAtBound')
-                fitAtBound = pupilData.(p.Results.fieldToPlot).eyePoses.fitAtBound;
+            if isfield(pupilData.sceneConstrained.eyePoses,'fitAtBound')
+                fitAtBound = pupilData.sceneConstrained.eyePoses.fitAtBound;
             end
-
-            good = logical(~highRMSE .* ~fitAtBound);
-
+            goodSceneConstrained = logical(~highRMSE .* ~fitAtBound);
+            
+            % Obtain the vector of good and bad time points for the
+            % radius smoothed, if that exists
+            if isfield(pupilData,'radiusSmoothed')
+                highRMSE = pupilData.radiusSmoothed.ellipses.RMSE > p.Results.rmseThreshold;
+                fitAtBound = false(size(highRMSE));
+                if isfield(pupilData.radiusSmoothed.eyePoses,'fitAtBound')
+                    fitAtBound = pupilData.radiusSmoothed.eyePoses.fitAtBound;
+                end
+                goodRadiusSmoothed = logical(~highRMSE .* ~fitAtBound);
+            end
+            
             % Loop over the 3 eyePose parameters to be plotted
             for kk=1:length(p.Results.eyePoseParamsToPlot)
                 
                 % Define the subplot for this acqusition
                 subplot(length(p.Results.eyePoseParamsToPlot),p.Results.nColumns,(kk-1)*p.Results.nColumns+jj,'align');
                 
-                % Plot the time-series. Make the red fit dots transparent
-                plot(timebase.values*msecToMin,pupilData.(p.Results.fieldToPlot).eyePoses.values(:,p.Results.eyePoseParamsToPlot(kk)),'-','Color',[0.85 0.85 0.85],'LineWidth',0.5);
+                % Plot the sceneConstrained time-series. Make the red fit
+                % dots transparent
+                plot(timebase.values*msecToMin,pupilData.sceneConstrained.eyePoses.values(:,p.Results.eyePoseParamsToPlot(kk)),'-','Color',[0.85 0.85 0.85],'LineWidth',0.5);
                 hold on
-                hLineRed = plot(timebase.values(good)/1000/60,pupilData.(p.Results.fieldToPlot).eyePoses.values(good,p.Results.eyePoseParamsToPlot(kk)),'o','MarkerSize',1);
+                hLineRed = plot(timebase.values(goodSceneConstrained)*msecToMin,pupilData.sceneConstrained.eyePoses.values(goodSceneConstrained,p.Results.eyePoseParamsToPlot(kk)),'o','MarkerSize',1);
                 drawnow
                 hMarkerRed = hLineRed.MarkerHandle;
                 hMarkerRed.FaceColorData = uint8(255*[1; 0; 0; 0.25]);
                 hMarkerRed.FaceColorType = 'truecoloralpha';
                 hMarkerRed.EdgeColorData = uint8([0; 0; 0; 0]);
+                
+                % Plot the radiusSmoothed time-series
+                if isfield(pupilData,'radiusSmoothed')
+                    plot(timebase.values(goodRadiusSmoothed)*msecToMin,pupilData.radiusSmoothed.eyePoses.values(goodRadiusSmoothed,p.Results.eyePoseParamsToPlot(kk)),'-k','LineWidth',0.25);
+                end
                 
                 % Add the markers for high RMSE plot points
                 lowY = lb(kk) + (ub(kk)-lb(kk))/20;
@@ -257,8 +276,8 @@ if ~isempty(fileListStruct)
                     hMarkerGray.EdgeColorData = uint8([0; 0; 0; 0]);
                 end
                 
-                % Add the markers for at bound plot points                
-                if isfield(pupilData.(p.Results.fieldToPlot).eyePoses,'fitAtBound')
+                % Add the markers for at bound plot points
+                if isfield(pupilData.sceneConstrained.eyePoses,'fitAtBound')
                     hLineBlue = plot(timebase.values(fitAtBound)/1000/60,repmat(lowY,size(timebase.values(fitAtBound))),'o','MarkerSize',0.75);
                     drawnow
                     if ~isempty(hLineBlue)
@@ -283,7 +302,11 @@ if ~isempty(fileListStruct)
                 end
                 set(gca,'TickDir','out')
                 if kk == 1
-                    title({fileNameStem,pupilData.(p.Results.fieldToPlot).meta.timestamp},'Interpreter', 'none');
+                    if isfield(pupilData,'radiusSmoothed')
+                        title({fileNameStem,pupilData.radiusSmoothed.meta.timestamp},'Interpreter', 'none');
+                    else
+                        title({fileNameStem,pupilData.sceneConstrained.meta.timestamp},'Interpreter', 'none');
+                    end
                 end
                 if kk ~= length(p.Results.eyePoseParamsToPlot)
                     set(gca,'XColor','none')
@@ -309,7 +332,7 @@ if ~isempty(fileListStruct)
             A = imread(plotFileName);
             A = rot90(A,3);
             imwrite(A,plotFileName);
-
+            
         end
         
     end % loop over sessions
