@@ -364,7 +364,7 @@ for ii = 1:nFrames
         adjustedSceneGeometry = sceneGeometry;
         if ~isempty(relativeCameraPosition)
             cameraPosition = sceneGeometry.cameraPosition.translation;
-            cameraPosition = cameraPosition - relativeCameraPosition.values(:,ii);
+            cameraPosition = cameraPosition + relativeCameraPosition.values(:,ii);
             adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
         end
         % Scale the model eye alpha by the RMSE ellipse fit value for this
