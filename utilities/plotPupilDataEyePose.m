@@ -265,7 +265,8 @@ if ~isempty(fileListStruct)
                 
                 % Plot the radiusSmoothed time-series as a thin black line
                 if isfield(pupilData,'radiusSmoothed')
-                    plot(timebase.values(goodRadiusSmoothed)*msecToMin,pupilData.radiusSmoothed.eyePoses.values(goodRadiusSmoothed,p.Results.eyePoseParamsToPlot(kk)),'-k','LineWidth',0.25);
+                    hLineBlack = plot(timebase.values(goodRadiusSmoothed)*msecToMin,pupilData.radiusSmoothed.eyePoses.values(goodRadiusSmoothed,p.Results.eyePoseParamsToPlot(kk)),'-k','LineWidth',0.25);
+                    hLineBlack.Color(4) = 0.5;
                 end
                 
                 % Add markers for high RMSE plot points
