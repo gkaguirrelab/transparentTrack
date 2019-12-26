@@ -249,36 +249,42 @@ if ~isempty(fileListStruct)
                 % Define the subplot for this acqusition
                 subplot(length(p.Results.eyePoseParamsToPlot),p.Results.nColumns,(kk-1)*p.Results.nColumns+jj,'align');
                 
-                % Plot the sceneConstrained time-series. Make the red fit
-                % dots transparent
+                % Plot all values from the sceneConstrained time-series as
+                % a gray line
                 plot(timebase.values*msecToMin,pupilData.sceneConstrained.eyePoses.values(:,p.Results.eyePoseParamsToPlot(kk)),'-','Color',[0.85 0.85 0.85],'LineWidth',0.5);
                 hold on
+                
+                % Now just the "good" sceneConstrained values, plotted as
+                % transparent red points.
                 hLineRed = plot(timebase.values(goodSceneConstrained)*msecToMin,pupilData.sceneConstrained.eyePoses.values(goodSceneConstrained,p.Results.eyePoseParamsToPlot(kk)),'o','MarkerSize',1);
                 drawnow
                 hMarkerRed = hLineRed.MarkerHandle;
-                hMarkerRed.FaceColorData = uint8(255*[1; 0; 0; 0.25]);
+                hMarkerRed.FaceColorData = uint8(255*[1; 0; 0; 0.025]);
                 hMarkerRed.FaceColorType = 'truecoloralpha';
                 hMarkerRed.EdgeColorData = uint8([0; 0; 0; 0]);
                 
-                % Plot the radiusSmoothed time-series
+                % Plot the radiusSmoothed time-series as a thin black line
                 if isfield(pupilData,'radiusSmoothed')
                     plot(timebase.values(goodRadiusSmoothed)*msecToMin,pupilData.radiusSmoothed.eyePoses.values(goodRadiusSmoothed,p.Results.eyePoseParamsToPlot(kk)),'-k','LineWidth',0.25);
                 end
                 
-                % Add the markers for high RMSE plot points
+                % Add markers for high RMSE plot points
                 lowY = lb(kk) + (ub(kk)-lb(kk))/20;
-                hLineGray = plot(timebase.values(highRMSE)/1000/60,repmat(lowY,size(timebase.values(highRMSE))),'o','MarkerSize',0.75);
+                yPosition = repmat(lowY,size(timebase.values(highRMSE)));
+                hLineGray = plot(timebase.values(highRMSE)/1000/60,yPosition,'o','MarkerSize',0.75);
                 drawnow
                 if ~isempty(hLineGray)
                     hMarkerGray = hLineGray.MarkerHandle;
-                    hMarkerGray.FaceColorData = uint8(255*[0.5; 0.5; 0.5; .5]);
+                    hMarkerGray.FaceColorData = uint8(255*[0; 0; 0; 0.75]);
                     hMarkerGray.FaceColorType = 'truecoloralpha';
                     hMarkerGray.EdgeColorData = uint8([0; 0; 0; 0]);
                 end
                 
-                % Add the markers for at bound plot points
+                % Add markers for at bound plot points
+                lowY = lb(kk) + (ub(kk)-lb(kk))/15;
+                yPosition = repmat(lowY,size(timebase.values(fitAtBound)));
                 if isfield(pupilData.sceneConstrained.eyePoses,'fitAtBound')
-                    hLineBlue = plot(timebase.values(fitAtBound)/1000/60,repmat(lowY,size(timebase.values(fitAtBound))),'o','MarkerSize',0.75);
+                    hLineBlue = plot(timebase.values(fitAtBound)/1000/60,yPosition,'o','MarkerSize',0.75);
                     drawnow
                     if ~isempty(hLineBlue)
                         hMarkerBlue = hLineBlue.MarkerHandle;
@@ -337,11 +343,12 @@ if ~isempty(fileListStruct)
         
     end % loop over sessions
 end % we have at least one session
+
 end % plotPupilDataEyePose
 
+
+
 %%% LOCAL FUNCTIONS
-
-
 
 
 function nameOut = escapeFileCharacters(nameIn)
