@@ -66,20 +66,11 @@ function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, scene
 %  'fitLabel'             - Identifies the field in pupilData that contains
 %                           the ellipse fit params for which the search
 %                           will be conducted.
-%  'fixedPriorPupilRadius' - A 2x1 vector that provides the mean and SD (in 
-%                           mm) of the expected radius of the pupil
-%                           aperture during this acquisition. If a
-%                           radiusSmoothed field already exists in pupil
-%                           data, then these values will be estimated from
-%                           the previous analysis of the data. The default
-%                           values correspond to the pupil radius in a
-%                           young adult in complete darkness. Set the SD
-%                           value to something large to remove the
-%                           influence of this prior upon the fitting.
-%  'forceFreshFit'        - Logical. If set to true, any previous radius-
-%                           smoothed results will be ignored in
-%                           constructing the prior for the current
-%                           analysis.
+%  'fixedPriorPupilRadius' - Scalar that provides the mean (in mm) of the
+%                           expected radius of the pupil aperture during
+%                           this acquisition. If set to empty (the default)
+%                           the routine derives this values from the
+%                           sceneConstrained fit results.
 %  'adjustedCameraPositionTranslation' - 3x1 vector that provides position
 %                           of the camera relative to the origin of the
 %                           world coordinate system (which is the anterior
@@ -131,7 +122,7 @@ p.addParameter('eyePoseUB',[89,89,0,5],@isnumeric);
 p.addParameter('exponentialTauParam',3,@isnumeric);
 p.addParameter('likelihoodErrorMultiplier',4.0,@isnumeric);
 p.addParameter('fitLabel','sceneConstrained',@ischar);
-p.addParameter('fixedPriorPupilRadius',[3.5,3],@isnumeric);
+p.addParameter('fixedPriorPupilRadius',[],@isnumeric);
 p.addParameter('forceFreshFit',false,@islogical);
 p.addParameter('adjustedCameraPositionTranslation',[],@isnumeric);
 p.addParameter('adjustedCameraPositionTorsion',[],@isnumeric);
@@ -201,20 +192,19 @@ end
 
 
 %% Derive a fixed prior from a previous analysis of the data
-% If the pupilData have already undergone a pass through fitting, derive
-% a prior across the entire acquisition for the mean and SD of the pupil
-% size. Instead of the mean, we obtain the weighted median to avoid the
-% influence of outlier values. The SD is set to something large (4 mm) so
-% that the effect of this prior only appears in the near absence of other
-% measures.
-if isfield(pupilData,'radiusSmoothed') && ~p.Results.forceFreshFit
+% If not explicitly set, derive a prior across the entire acquisition for
+% the mean and SD of the pupil size fom the sceneConstained results.
+% Instead of the mean, we obtain the weighted median to avoid the influence
+% of outlier values. The SD is set to something large (4 mm) so that the
+% effect of this prior only appears in the near absence of other measures.
+if isempty(p.Results.fixedPriorPupilRadius)
     fixedPriorPupilRadiusMean = medianw( ...
-        pupilData.radiusSmoothed.eyePoses.values(:,4), ...
-        pupilData.radiusSmoothed.ellipses.RMSE, 1 );    
+        pupilData.sceneConstrained.eyePoses.values(:,4), ...
+        pupilData.sceneConstrained.ellipses.RMSE, 1 );    
     fixedPriorPupilRadiusSD = 4;
 else
-    fixedPriorPupilRadiusMean = p.Results.fixedPriorPupilRadius(1);
-    fixedPriorPupilRadiusSD = p.Results.fixedPriorPupilRadius(2);
+    fixedPriorPupilRadiusMean = p.Results.fixedPriorPupilRadius;
+    fixedPriorPupilRadiusSD = 4;
 end
 
 
