@@ -222,7 +222,7 @@ if isfield(pupilData,'initial')
     initialRMSE = pupilData.initial.ellipses.RMSE;
 else
     % Explicitly define the variable so as to not freak out parpool
-    initialRMSE = [];
+    initialRMSE = nan(1,nFrames);
 end
 
 % Set-up other variables to be non-broadcast
