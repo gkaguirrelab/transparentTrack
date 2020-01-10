@@ -252,7 +252,7 @@ for ii = 1:nFrames
 
     % Obtain the set of perimeter points
     Xp = perimeter.data{ii}.Xp;
-    Yp = perimeter.data{ii}.Xp;
+    Yp = perimeter.data{ii}.Yp;
     
     % Calculate the deviation of the distribution of points from uniform
     linearNonUniformity(ii) = nonUniformity(histcounts(atan2(Yp-centerY,Xp-centerX),histBins));
