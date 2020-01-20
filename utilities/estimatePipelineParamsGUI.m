@@ -730,6 +730,13 @@ for ii = framesToCheck
 %     imshow(displayFrame, 'Border', 'tight')
 %     dText = text(1,10,string, 'FontSize', 16, 'BackgroundColor', 'white');
     delete('temp.mat')
+    
+    
+line([0, size(thisFrameDiagnostics, 2)], [initialParams.glintFrameMask(1), initialParams.glintFrameMask(1)], 'Color', 'r')
+line([0, size(thisFrameDiagnostics, 2)], [(size(thisFrameDiagnostics, 1) - initialParams.glintFrameMask(3)), (size(thisFrameDiagnostics, 1) - initialParams.glintFrameMask(3))], 'Color', 'r')
+line([initialParams.glintFrameMask(4), initialParams.glintFrameMask(4)], [0, size(thisFrameDiagnostics, 1)], 'Color', 'r');
+line([(size(thisFrameDiagnostics, 2) - initialParams.glintFrameMask(2)), (size(thisFrameDiagnostics, 2) - initialParams.glintFrameMask(2))], [0, size(thisFrameDiagnostics, 1)], 'Color', 'r');
+
 end
 
 %% allow the user to adjust certain parameters, then test finding the pupil perimeter again
