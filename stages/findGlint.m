@@ -214,6 +214,7 @@ end
 
 
 % loop through frames
+counter = 1;
 for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
     if p.Results.displayMode && strcmp(get(figureHandle,'currentchar'),' ')
         close(figureHandle)
@@ -226,7 +227,7 @@ for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
     end
     
     % get the frame
-    thisFrame = squeeze(grayVideo(:,:,ii));
+    thisFrame = squeeze(grayVideo(:,:,counter));
     
     % apply a frame mask if required
     if ~isempty (p.Results.glintFrameMask)
@@ -252,12 +253,18 @@ for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
     % image. The "weight" is given by the actual gray value in the frame,
     % so that the brightest glint pixels are more relevant to the overall
     % glint position.
-    stats = regionprops(binG, thisFrame, 'WeightedCentroid');
+    stats = regionprops(binG, thisFrame, 'WeightedCentroid', 'MajorAxisLength','MinorAxisLength');
+    
+    % order glints by size
+    centroidSizes = [stats.MajorAxisLength];
+    [~, sizeOrder] = sort(centroidSizes, 'descend');
     
     % if centroids were found in this frame, save them out.
     if ~isempty(stats)
-        for jj = 1 : size(stats,1)
-            centroids(jj,:) = stats(jj).WeightedCentroid;
+        centroidCounter = 1;
+        for jj = sizeOrder
+            centroids(centroidCounter,:) = stats(jj).WeightedCentroid;
+            centroidCounter = centroidCounter + 1;
         end
         clear stats
         for cc = 1: min(size(centroids,1),p.Results.centroidsAllocation)
@@ -275,6 +282,7 @@ for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
     if p.Results.displayMode
         imshow(thisFrame,'Border', 'tight', 'InitialMagnification', 200)
     end
+    counter = counter + 1;
 end
 
 
@@ -296,14 +304,40 @@ switch p.Results.numberOfGlints
     case 2
         % generate an array with a glint-to-glint vector from the frames
         % with expected glints.
-        for ii = 1: length(framesWithExpectedCentroids)
-            unsortedGlintVector(ii,1) = centroidsByFrame_X(framesWithExpectedCentroids(ii),1) - centroidsByFrame_X(framesWithExpectedCentroids(ii),2);
-            unsortedGlintVector(ii,2) = centroidsByFrame_Y(framesWithExpectedCentroids(ii),1) - centroidsByFrame_Y(framesWithExpectedCentroids(ii),2);
+        if ~isempty(framesWithExpectedCentroids)
+            for ii = 1: length(framesWithExpectedCentroids)
+                unsortedGlintVector(ii,1) = centroidsByFrame_X(framesWithExpectedCentroids(ii),1) - centroidsByFrame_X(framesWithExpectedCentroids(ii),2);
+                unsortedGlintVector(ii,2) = centroidsByFrame_Y(framesWithExpectedCentroids(ii),1) - centroidsByFrame_Y(framesWithExpectedCentroids(ii),2);
+            end
+            
+            % get median length components of the glint vector
+            medianGlintVector = [nanmedian(abs(unsortedGlintVector(:,1))) nanmedian(abs(unsortedGlintVector(:,2)))];
+        else % in case all frames do not have the expected number of glints
+            unsortedGlintVector = [];
+            % we're going to figure out all of the possible distances
+            % between glints
+            xLengths= [];
+            yLengths = [];
+            for ii = 1:length(centroidsByFrame_X)
+                newXLengths = pdist(centroidsByFrame_X(ii,:)');
+                xLengths = [xLengths, newXLengths];
+                
+                newYLengths = pdist(centroidsByFrame_Y(ii,:)');
+                yLengths = [yLengths, newYLengths];               
+            end
+            
+            % then figure out which is most common, and use that as our
+            % medianGlintVector
+            [f, x] = ksdensity(xLengths);
+            [~, maxIndex] = max(f);
+            medianGlintVector(1) = x(maxIndex);
+            
+            [f, x] = ksdensity(yLengths);
+            [~, maxIndex] = max(f);
+            medianGlintVector(2) = x(maxIndex);
+            
+            
         end
-        
-        % get median length components of the glint vector
-        medianGlintVector = [nanmedian(abs(unsortedGlintVector(:,1))) nanmedian(abs(unsortedGlintVector(:,2)))];
-        
         % sort tracked glints according to the glint vector main direction:
         % make main direction component positive by swapping the tracked
         % centroid order if necessary
@@ -423,6 +457,7 @@ if ~isempty(framesWithMoreCentroids)
                         %[minimumLength, candidateGlintVectorIdx] = min(abs(abs(mainLengths) - (sqrt(medianGlintVector(2)^2 + medianGlintVector(1)^2))));
                         
                 end
+                
                 
                 if isempty(p.Results.threshold) || (~isempty(p.Results.threshold) && p.Results.threshold > lengthError/desiredLength)
                     % get the indexes of the appropriate centroids
