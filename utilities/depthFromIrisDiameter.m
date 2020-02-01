@@ -37,7 +37,7 @@ function [cameraDepthMean, cameraDepthSD] = depthFromIrisDiameter( sceneGeometry
     % Calculate what the observed iris diameter should be at 100 mm
     sceneGeometry_100depth = createSceneGeometry('cameraTranslation',[0; 0; 100]);
     [~, imagePoints, ~, ~, ~, pointLabels] = ...
-    	pupilProjection_fwd([0 0 0 1], sceneGeometry_100depth, 'fullEyeModelFlag', true, 'nIrisPerimPoints', 20);
+    	projectModelEye([0 0 0 1], sceneGeometry_100depth, 'fullEyeModelFlag', true, 'nIrisPerimPoints', 20);
     idx = find(strcmp(pointLabels,'irisPerimeter'));
     observedIrisDiamPixels = max(imagePoints(idx,1))-min(imagePoints(idx,1));
     % Now call the estimation function, supplied with a sceneGeometry that
@@ -101,12 +101,12 @@ p.parse(sceneGeometry, observedIrisDiamPixels)
     sceneGeometry.refraction = [];
     % Get the area in pixels of a "pupil" that is the same radius
     % as the mean HVID when there is no ray tracing
-    hvidP=pupilProjection_fwd([0 0 0 hvidRadiusMean],sceneGeometry);
+    hvidP=projectModelEye([0 0 0 hvidRadiusMean],sceneGeometry);
     % Restore ray tracing
     sceneGeometry = createSceneGeometry();
     % Set up the objective function
     myArea = @(p) p(3);
-    myObj = @(r) (hvidP(3) - myArea(pupilProjection_fwd([0 0 0 r],sceneGeometry)))^2;
+    myObj = @(r) (hvidP(3) - myArea(projectModelEye([0 0 0 r],sceneGeometry)))^2;
     [r,pixelError] = fminsearch(myObj,5.5);
     fprintf('An unrefracted iris radius of %4.2f yields a refracted HVID of %4.2f \n',r,hvidRadiusMean)
     % Now handle the +1SD case
@@ -114,12 +114,12 @@ p.parse(sceneGeometry, observedIrisDiamPixels)
     sceneGeometry.refraction = [];
     % Get the area in pixels of a "pupil" that is the same radius
     % as the mean HVID when there is no ray tracing
-    hvidP=pupilProjection_fwd([0 0 0 hvidRadiusMean+hvidRadiusSD],sceneGeometry);
+    hvidP=projectModelEye([0 0 0 hvidRadiusMean+hvidRadiusSD],sceneGeometry);
     % Restore ray tracing
     sceneGeometry = createSceneGeometry();
     % Set up the objective function
     myArea = @(p) p(3);
-    myObj = @(r) (hvidP(3) - myArea(pupilProjection_fwd([0 0 0 r],sceneGeometry)))^2;
+    myObj = @(r) (hvidP(3) - myArea(projectModelEye([0 0 0 r],sceneGeometry)))^2;
     [r,pixelError] = fminsearch(myObj,5.5);
     fprintf('An unrefracted iris radius of %4.2f yields a refracted HVID of %4.2f \n',r,hvidRadiusMean+hvidRadiusSD)
     
@@ -143,7 +143,7 @@ end
         candidateSceneGeometry.eye.iris.radius = assumedIrisRadius;
         candidateSceneGeometry.cameraPosition.translation(3) = x;
         [~, imagePoints, ~, ~, ~, pointLabels] = ...
-            pupilProjection_fwd([0 0 0 1], candidateSceneGeometry, 'fullEyeModelFlag', true, 'nIrisPerimPoints', 20);
+            projectModelEye([0 0 0 1], candidateSceneGeometry, 'fullEyeModelFlag', true, 'nIrisPerimPoints', 20);
         idx = find(strcmp(pointLabels,'irisPerimeter'));
         predictedIrisDiamPixels = max(imagePoints(idx,1))-min(imagePoints(idx,1));
         fVal = (predictedIrisDiamPixels - observedIrisDiamPixels)^2;

@@ -142,7 +142,7 @@ function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileNam
     for azi=-15:15:15
     	for ele=-15:15:15
             eyePose=[azi, ele, 0, 2+(randn()./5)];
-            pupilData.initial.ellipses.values(ellipseIdx,:) = pupilProjection_fwd(eyePose, veridicalSceneGeometry);
+            pupilData.initial.ellipses.values(ellipseIdx,:) = projectModelEye(eyePose, veridicalSceneGeometry);
             pupilData.initial.ellipses.RMSE(ellipseIdx,:) = 1;
             ellipseIdx=ellipseIdx+1;
         end
@@ -655,7 +655,7 @@ warningState = warning;
 warning('off','bads:meshOverflow');
 
 % Silence some errors that can arise during the forward projection
-warning('off','pupilProjection_fwd:ellipseFitFailed');
+warning('off','projectModelEye:ellipseFitFailed');
 
 % Define nested variables for within the search
 centerDistanceErrorByEllipseAtBest=zeros(size(ellipses,1),1);
@@ -701,7 +701,7 @@ end
         % function.
         for ii = 1:size(ellipses,1)
             [recoveredEyePoses(ii,:), ellipseFitConstrainedRMSE(ii), fittedEllipse] = ...
-                pupilProjection_inv(...
+                invertPupilProjection(...
                 ellipses(ii,:),...
                 candidateSceneGeometry, ...
                 'eyePoseLB',eyePoseLB,...
@@ -803,7 +803,7 @@ function [] = saveSceneDiagnosticPlot(Xedges, Yedges, eyePoseLB, eyePoseUB, scen
 %   Yedges                - The Y-dimension edges of the bins used to
 %                           divide and select ellipses across the image.
 %   eyePoseLB, eyePoseUB  - Bounds for the eye pose to be passed to
-%                           pupilProjection_inv.
+%                           invertPupilProjection.
 %   sceneGeometry         - The sceneGeometry structure
 %   sceneDiagnosticPlotFileName - The full path (including .pdf suffix)
 %                           to the location to save the diagnostic plot
@@ -814,7 +814,7 @@ function [] = saveSceneDiagnosticPlot(Xedges, Yedges, eyePoseLB, eyePoseUB, scen
 
 % Silence some errors that can arise during the forward projection
 warningState = warning;
-warning('off','pupilProjection_fwd:ellipseFitFailed');
+warning('off','projectModelEye:ellipseFitFailed');
 
 % Obtain the set of ellipse parameters from the sceneGeometry structure
 ellipses = sceneGeometry.meta.estimateSceneParams.search.ellipses;
@@ -861,7 +861,7 @@ hold on
 
 % get the predicted ellipse centers
 [~, ~, projectedEllipses] = ...
-    arrayfun(@(x) pupilProjection_inv(...
+    arrayfun(@(x) invertPupilProjection(...
     ellipses(x,:),...
     sceneGeometry,...
     'eyePoseLB',eyePoseLB,'eyePoseUB',eyePoseUB),...
@@ -886,7 +886,7 @@ for ii=1:size(ellipses,1)
 end
 
 % plot the estimated center of rotation of the eye
-rotationCenterEllipse = pupilProjection_fwd([0 0 0 2], sceneGeometry);
+rotationCenterEllipse = projectModelEye([0 0 0 2], sceneGeometry);
 plot(rotationCenterEllipse(1),rotationCenterEllipse(2), '+g', 'MarkerSize', 5);
 
 % Calculate the plot limits
@@ -952,7 +952,7 @@ colorMatrix(2,:)= shapeErrorVec./0.05;
 scatter(ellipses(:,1),ellipses(:,2),[],colorMatrix','o','filled');
 
 % plot the estimated center of rotation of the eye
-rotationCenterEllipse = pupilProjection_fwd([0 0 0 2], sceneGeometry);
+rotationCenterEllipse = projectModelEye([0 0 0 2], sceneGeometry);
 plot(rotationCenterEllipse(1),rotationCenterEllipse(2), '+g', 'MarkerSize', 5);
 
 % label and clean up the plot
@@ -1040,7 +1040,7 @@ colorMatrix(2,:)= areaErrorVec;
 scatter(ellipses(:,1),ellipses(:,2),[],colorMatrix','o','filled');
 
 % plot the estimated center of rotation of the eye
-rotationCenterEllipse = pupilProjection_fwd([0 0 0 2], sceneGeometry);
+rotationCenterEllipse = projectModelEye([0 0 0 2], sceneGeometry);
 plot(rotationCenterEllipse(1),rotationCenterEllipse(2), '+g', 'MarkerSize', 5);
 
 % label and clean up the plot
@@ -1181,7 +1181,7 @@ function [] = saveEyeModelMontage(sceneGeometry, ellipseArrayList, ~, grayVideoN
 
 % Silence some errors that can arise during the forward projection
 warningState = warning;
-warning('off','pupilProjection_fwd:ellipseFitFailed');
+warning('off','projectModelEye:ellipseFitFailed');
 
 % Sort the ellipse array list so that the frames appear in temporal order
 ellipseArrayList = sort(ellipseArrayList);
