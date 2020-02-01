@@ -14,8 +14,7 @@ function runVideoPipeline( pathParams, varargin )
 %       fitPupilPerimeter -- with minimal constraints
 %       estimateSceneParams
 %       fitPupilPerimeter -- fit again with scene geometry constraints
-%       smoothPupilRadius x1 -- using a passed fixed prior
-%       smoothPupilRadius x2 -- using fixed prior from pass 1.
+%       smoothPupilRadius
 %       makeFitVideo
 %
 %   The user can stop the execution after any of the stages with the
