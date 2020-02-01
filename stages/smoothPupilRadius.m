@@ -431,8 +431,8 @@ parfor (ii = 1:nFrames, nWorkers)
         end
         
         % Turn off warnings that can arise when fitting bad frames
-        warning('off','pupilProjection_fwd:rayTracingError');
-        warning('off','pupilProjection_fwd:ellipseFitFailed');
+        warning('off','projectModelEye:rayTracingError');
+        warning('off','projectModelEye:ellipseFitFailed');
         
         % Perform the fit
         [posteriorEyePose, posteriorEyePoseObjectiveError, posteriorEllipseParams, fitAtBound] = ...

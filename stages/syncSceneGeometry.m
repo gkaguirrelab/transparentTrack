@@ -884,8 +884,8 @@ lb = sceneGeometry.cameraPosition.translation - [20; 20; 0];
 place = {'cameraPosition' 'translation'};
 mySG = @(p) setfield(sceneGeometry,place{:},p);
 pupilCenter = @(k) k(1:2);
-targetPupilCenter = pupilCenter(pupilProjection_fwd(eyePose,sceneGeometry)) - deltaPix;
-myError = @(p) norm(targetPupilCenter-pupilCenter(pupilProjection_fwd(eyePose,mySG(p))));
+targetPupilCenter = pupilCenter(projectModelEye(eyePose,sceneGeometry)) - deltaPix;
+myError = @(p) norm(targetPupilCenter-pupilCenter(projectModelEye(eyePose,mySG(p))));
 options = optimoptions(@fmincon,'Diagnostics','off','Display','off');
 p = fmincon(myError,p0,[],[],[],[],lb,ub,[],options);
 end
