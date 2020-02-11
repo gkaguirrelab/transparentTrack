@@ -132,6 +132,7 @@ p.addParameter('ellipseTransparentUB',[640,480,20000,0.6,pi],@(x)(isempty(x) || 
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,5],@isnumeric);
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) || ischar(x)));
+p.addParameter('glintFileName',[],@(x)(isempty(x) || ischar(x)));
 p.addParameter('fitLabel',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('adjustedCameraPositionTranslation',[],@isnumeric);
 p.addParameter('relativeCameraPositionFileName',[],@ischar);
@@ -180,6 +181,14 @@ if ~isempty(p.Results.sceneGeometryFileName)
     end
 else
     sceneGeometry = [];
+end
+
+% Load the glint file if passed
+if ~isempty(p.Results.glintFileName)
+    % Load the sceneGeometry file
+    load(p.Results.glintFileName,'glintData');
+else
+    glintData = [];
 end
 
 % Load the relativeCameraPosition file if passed and it exists
@@ -246,8 +255,8 @@ warnState = warning();
 
 
 % Loop through the frames
-parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
-%for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
+%parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
+for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
     
     % Update progress
     if verbose
@@ -293,6 +302,12 @@ parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
                 cameraPosition = cameraPosition + relativeCameraPosition.values(:,ii);
                 adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
             end
+            % If we have glintData, extract the glintCoord
+            if ~isempty(glintData)
+                glintCoord = [glintData.X(ii,:); glintData.Y(ii,:)];
+            else
+                glintCoord = [];
+            end
             % Find the eyePose parameters that best fit the pupil
             % perimeter. This can take between 1 and 10 seconds, with
             % longer search times for partial pupil ellipses. We don't
@@ -302,6 +317,7 @@ parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
             % generous boundaries.
             [eyePose, objectiveError, ellipseParamsTransparent, fitAtBound] = ...
                 eyePoseEllipseFit(Xp, Yp, adjustedSceneGeometry, ...
+                'glintCoord',glintCoord, ...
                 'rmseThresh', initialRMSE(ii)*1.2, ...
                 'rmseThreshIter', initialRMSE(ii)*0.2, ...
                 'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB);
