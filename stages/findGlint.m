@@ -103,6 +103,9 @@ function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 %                           that is masked by frameMask. This should be a
 %                           gray that is neither pupil nor glint.
 %  'centroidsAllocation'  - Max number of centroids to be saved in memory
+%  'medianGlintVector'    - Optionally specify the true x and y distances
+%                           between the glints. If unspecified, the routine
+%                           will determine these values on its own.
 %
 % Output
 %	glintData             - Structure with fields that contain the X and Y
@@ -142,6 +145,7 @@ p.addParameter('glintFrameMask',[] , @isnumeric);
 p.addParameter('frameMaskValue', 30, @isnumeric);
 p.addParameter('centroidsAllocation', 5, @isnumeric);
 p.addParameter('threshold',[], @isnumeric);
+p.addParameter('medianGlintVector',[],@isnumeric);
 p.addParameter('removeIsolatedGlints',false,@islogical);
 
 
@@ -304,39 +308,44 @@ switch p.Results.numberOfGlints
     case 2
         % generate an array with a glint-to-glint vector from the frames
         % with expected glints.
-        if ~isempty(framesWithExpectedCentroids)
-            for ii = 1: length(framesWithExpectedCentroids)
-                unsortedGlintVector(ii,1) = centroidsByFrame_X(framesWithExpectedCentroids(ii),1) - centroidsByFrame_X(framesWithExpectedCentroids(ii),2);
-                unsortedGlintVector(ii,2) = centroidsByFrame_Y(framesWithExpectedCentroids(ii),1) - centroidsByFrame_Y(framesWithExpectedCentroids(ii),2);
-            end
-            
-            % get median length components of the glint vector
-            medianGlintVector = [nanmedian(abs(unsortedGlintVector(:,1))) nanmedian(abs(unsortedGlintVector(:,2)))];
-        else % in case all frames do not have the expected number of glints
-            unsortedGlintVector = [];
-            % we're going to figure out all of the possible distances
-            % between glints
-            xLengths= [];
-            yLengths = [];
-            for ii = 1:length(centroidsByFrame_X)
-                newXLengths = pdist(centroidsByFrame_X(ii,:)');
-                xLengths = [xLengths, newXLengths];
+        if isempty(p.Results.medianGlintVector)
+            if ~isempty(framesWithExpectedCentroids)
+                for ii = 1: length(framesWithExpectedCentroids)
+                    unsortedGlintVector(ii,1) = centroidsByFrame_X(framesWithExpectedCentroids(ii),1) - centroidsByFrame_X(framesWithExpectedCentroids(ii),2);
+                    unsortedGlintVector(ii,2) = centroidsByFrame_Y(framesWithExpectedCentroids(ii),1) - centroidsByFrame_Y(framesWithExpectedCentroids(ii),2);
+                end
                 
-                newYLengths = pdist(centroidsByFrame_Y(ii,:)');
-                yLengths = [yLengths, newYLengths];               
+                % get median length components of the glint vector
+                medianGlintVector = [nanmedian(abs(unsortedGlintVector(:,1))) nanmedian(abs(unsortedGlintVector(:,2)))];
+            else % in case all frames do not have the expected number of glints
+                unsortedGlintVector = [];
+                % we're going to figure out all of the possible distances
+                % between glints
+                xLengths= [];
+                yLengths = [];
+                for ii = 1:length(centroidsByFrame_X)
+                    newXLengths = pdist(centroidsByFrame_X(ii,:)');
+                    xLengths = [xLengths, newXLengths];
+                    
+                    newYLengths = pdist(centroidsByFrame_Y(ii,:)');
+                    yLengths = [yLengths, newYLengths];
+                end
+                
+                % then figure out which is most common, and use that as our
+                % medianGlintVector
+                [f, x] = ksdensity(xLengths);
+                [~, maxIndex] = max(f);
+                medianGlintVector(1) = x(maxIndex);
+                
+                [f, x] = ksdensity(yLengths);
+                [~, maxIndex] = max(f);
+                medianGlintVector(2) = x(maxIndex);
+                
+                
             end
-            
-            % then figure out which is most common, and use that as our
-            % medianGlintVector
-            [f, x] = ksdensity(xLengths);
-            [~, maxIndex] = max(f);
-            medianGlintVector(1) = x(maxIndex);
-            
-            [f, x] = ksdensity(yLengths);
-            [~, maxIndex] = max(f);
-            medianGlintVector(2) = x(maxIndex);
-            
-            
+        else
+            unsortedGlintVector = [];
+            medianGlintVector = p.Results.medianGlintVector;
         end
         % sort tracked glints according to the glint vector main direction:
         % make main direction component positive by swapping the tracked
