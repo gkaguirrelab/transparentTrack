@@ -1,4 +1,4 @@
-function sceneGeometry = estimateSceneParams(pupilFileName, sceneGeometryFileName, varargin)
+function sceneGeometry = estimateSceneParamsOld(pupilFileName, sceneGeometryFileName, varargin)
 % Estimate camera position and eye rotation given image plane ellipses
 %
 % Syntax:
