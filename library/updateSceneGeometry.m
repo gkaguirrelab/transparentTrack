@@ -48,10 +48,10 @@ sceneGeometryOut.eye.rotationCenters.ele = rotationCenters.ele .* x(5) ./ x(6);
 % Create the updated cornea 
 radii = quadric.radii(eye.cornea.front.S);
 D = @(radius) (radii(1) * 337.5) ./ radius.^2;
-kVals = D(radii(2:3)) .* x(7);
-kVals(1) = kVals(1) * x(8);
-kVals(2) = kVals(2) / x(8);
-eye.meta.measuredCornealCurvature = kVals;
+kvals = D(radii(2:3)) .* x(7);
+kvals(1) = kvals(1) * x(8);
+kvals(2) = kvals(2) / x(8);
+eye.meta.measuredCornealCurvature = kvals;
 cornea = human.cornea( eye );
 
 % Update the glint optical system with the new tearfilm
