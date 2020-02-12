@@ -277,7 +277,7 @@ ubp = [x(1:4), 1.15, 1.15, x(7:8)];
 myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), perimeter, gazeTargets, ellipseRMSE, glintData, [] );
 
 % Search
-x = bads(myObj,x,lb,ub,lbp,ubp,[],options);
+%x = bads(myObj,x,lb,ub,lbp,ubp,[],options);
 addPlotsWrap(2,x);
 
 
@@ -292,7 +292,7 @@ lbp = x - bound./2;
 ubp = x + bound./2;
 
 % Search
-x = iterativeSearch(x,sceneGeometry,args,lb,ub,lbp,ubp, options);
+%x = iterativeSearch(x,sceneGeometry,args,lb,ub,lbp,ubp, options);
 addPlotsWrap(3,x);
 
 
@@ -308,7 +308,7 @@ ub  = x./(1.10.^-sign(x));
 myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), perimeter, gazeTargets, ellipseRMSE, glintData, [] );
 
 % Search
-[x, fVal] = bads(myObj,x,lb,ub,lbp,ubp,[],options);
+%[x, fVal] = bads(myObj,x,lb,ub,lbp,ubp,[],options);
 addPlotsWrap(4,x);
 
 
@@ -331,7 +331,7 @@ values = {...
     f.cameraPosition.torsion, ...
     f.cameraPosition.translation, ...
     f.eye.rotationCenters, ...
-    f.eye.meta.measuredCornealCurvature};
+    f.eye.cornea.kvals};
 
 % Loop through the keys and either update or add
 for kk = 1:length(keys)
