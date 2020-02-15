@@ -10,7 +10,9 @@ function sceneGeometry = estimateSceneParams(pupilFileName, perimeterFileName, g
 %   of the camera. This function uses a set of observations of the pupil
 %   and the glint to estimate these scene parameters. The accuracy of the
 %   estimate is much improved by supplying the location of visual targets
-%   that the eye was fixated upon during each of the observations.
+%   that the eye was fixated upon during each of the observations. It is
+%   also necessary to provide a reasonably accurate value for the distance
+%   of the camera from the eye.
 %
 % Inputs:
 %	pupilFileName
@@ -44,11 +46,6 @@ function sceneGeometry = estimateSceneParams(pupilFileName, perimeterFileName, g
 %  'hostname'             - AUTOMATIC; The host
 %
 % Optional key/value pairs (analysis)
-%  'sceneParamsLB/UB'     - 6x1 vector. Hard upper and lower bounds. Should
-%                           reflect the physical limits of the measurement.
-%  'sceneParamsLBp/UBp'   - 6x1 vector. Plausible upper and lower bounds.
-%                           Where you think the translation vector solution
-%                           is likely to be.
 %  'eyePoseLB/UB'         - 1x4 vector. Upper / lower bounds on the eyePose
 %                           [azimuth, elevation, torsion, pupil radius].
 %                           The torsion value is unusued and is bounded to
@@ -86,16 +83,6 @@ function sceneGeometry = estimateSceneParams(pupilFileName, perimeterFileName, g
 %                           to calculate a magnification factor for the
 %                           fixation target array, but does not apply this
 %                           spectacle to the eye being modeled.
-%  'nBADSsearches'        - Scalar. We perform the search over scene params
-%                           from a randomly selected starting point within
-%                           the plausible bounds. This parameter sets how
-%                           many random starting points to try; the best
-%                           result is retained. Each search is run on a
-%                           separate worker if the parpool is available. If
-%                           a value of zero is passed, then a sceneGeometry
-%                           file and diagnostic plots are created using the
-%                           midpoint of the passed bounds.
-
 %
 % Outputs
 %	sceneGeometry         - A structure that contains the components of the
@@ -141,7 +128,7 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional analysis params
-p.addParameter('sceneParamsX0',[],@isnumeric);
+p.addParameter('sceneParamsX0',[0 0 0 130 1 1 1 1],@isnumeric);
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 p.addParameter('frameSet',[],@(x)(isempty(x) | isnumeric(x)));
@@ -214,7 +201,7 @@ load(glintFileName,'glintData');
 % Handle the frameset
 frameSet = p.Results.frameSet;
 if isempty(frameSet)
-    % Call here to selectFrameSet    
+    % Call here to selectFrameSet
 end
 
 % Extract the frames we want
@@ -225,19 +212,26 @@ glintData.X = glintData.X(frameSet); glintData.Y = glintData.Y(frameSet);
 % Assemble these components into the args variable
 args = {perimeter, gazeTargets, ellipseRMSE, glintData};
 
+% Assemble the key-values
+keyVals = {...
+    'eyePoseLB', p.Results.eyePoseLB,...
+    'eyePoseUB', p.Results.eyePoseUB,...
+    };
 
 %% Set up the parallel pool
 if p.Results.useParallel
-    nWorkers = startParpool( p.Results.nWorkers, p.Results.verbose );
-else
-    nWorkers=0;
+    startParpool( p.Results.nWorkers, p.Results.verbose );
 end
 
 
 %% Set up a figure
 figure
 nStages = 4;
-addPlotsWrap = @(idx,x) addSubPlots(idx,x,nStages,sceneGeometry,args{:});
+addPlotsWrap = @(idx,x) addSubPlots(idx,x,nStages,sceneGeometry,args{:},keyVals);
+
+
+%% Set x0
+x = p.Results.sceneParamsX0;
 
 
 %% Define BADS search options
@@ -250,65 +244,62 @@ options.UncertaintyHandling = 0;     % The objective is deterministic
 % Perform an initial, iterated search, locking parameters for camera
 % distance, eye rotation, and corneal curvature.
 
-x = [0, 0, 0, 130, 1, 1, 1, 1];
-
-% Set bounds
+% Bounds
 bound = [20, 10, 10, 0, 0, 0, 0, 0];
 lb = x - bound;
 ub = x + bound;
 lbp = x - bound./2;
 ubp = x + bound./2;
-
 % Search
-x = iterativeSearch(x,sceneGeometry,args,lb,ub,lbp,ubp, options);
+x = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
+% Plot
 addPlotsWrap(1,x);
 
 
 %% STAGE 2 -- ROTATION CENTER SEARCH
 % Search over the eye rotation center
 
-% Set bounds
+% Bounds
 lb = [x(1:4), 0.75, 0.75, x(7:8)];
 ub = [x(1:4), 1.25, 1.25, x(7:8)];
 lbp = [x(1:4), 0.85, 0.85, x(7:8)];
 ubp = [x(1:4), 1.15, 1.15, x(7:8)];
-
-% Set the objective
-myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), perimeter, gazeTargets, ellipseRMSE, glintData, [] );
-
+% Objective
+myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
 % Search
-%x = bads(myObj,x,lb,ub,lbp,ubp,[],options);
+x = bads(myObj,x,lb,ub,lbp,ubp,[],options);
+% Plot
 addPlotsWrap(2,x);
 
 
 %% STAGE 3 -- TRANSLATION AND CURVATURE SEARCH
 % Lock the rotation centers, search over translation and corneal curvature
 
-% Set bounds
+% Bounds
 bound = [abs(x(1:3).*0.25), 0, 0, 0, x(7:8).*0.25];
 lb = x - bound;
 ub = x + bound;
 lbp = x - bound./2;
 ubp = x + bound./2;
-
 % Search
-%x = iterativeSearch(x,sceneGeometry,args,lb,ub,lbp,ubp, options);
+x = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
+% Plot
 addPlotsWrap(3,x);
 
 
 %% STAGE 4 -- COMPLETE SEARCH
+% Search over all parameters
 
-% Set bounds
+% Bounds
 lb  = x./(0.90.^-sign(x));
 lbp = x./(0.95.^-sign(x));
 ubp = x./(1.05.^-sign(x));
 ub  = x./(1.10.^-sign(x));
-
-% Set the objective
-myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), perimeter, gazeTargets, ellipseRMSE, glintData, [] );
-
+% Objective
+myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
 % Search
-%[x, fVal] = bads(myObj,x,lb,ub,lbp,ubp,[],options);
+[x, fVal] = bads(myObj,x,lb,ub,lbp,ubp,[],options);
+% Plot
 addPlotsWrap(4,x);
 
 
@@ -347,13 +338,19 @@ end
 metaCreate = sceneGeometry.meta.createSceneGeometry;
 
 % Create a new sceneGeometry with the update key-values
-newSceneGeometry = createSceneGeometry(sceneGeometryVarargin{:});
+sceneGeometry = createSceneGeometry(sceneGeometryVarargin{:});
 
 % Update and move the meta data around
-newSceneGeometry.meta.estimateSceneParams.create = newSceneGeometry.meta.createSceneGeometry;
-newSceneGeometry.meta.createSceneGeometry = metaCreate;
-newSceneGeometry.meta.estimateSceneParams.x = x;
-    
+sceneGeometry.meta.estimateSceneParams.create = sceneGeometry.meta.createSceneGeometry;
+sceneGeometry.meta.createSceneGeometry = metaCreate;
+sceneGeometry.meta.estimateSceneParams.x = x;
+
+%% Save the sceneGeometry file
+if ~isempty(sceneGeometryFileName)
+    save(sceneGeometryFileName,'sceneGeometry');
+end
+
+
 end
 
 
@@ -366,7 +363,7 @@ end
 
 
 
-function [x, fVal] = iterativeSearch(x,sceneGeometry,args,lb,ub,lbp,ubp, options)
+function [x, fVal] = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options)
 % Implements an iterative search for scene parameters
 %
 % Syntax:
@@ -382,13 +379,13 @@ stillSearching  = true;
 while stillSearching
     
     % obtain the modelEyePose
-    [ ~, modelEyePose] = calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, []);
+    [ ~, modelEyePose] = calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:});
     % Update the objective
-    myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, modelEyePose );
+    myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:}, 'modelEyePose', modelEyePose );
     % Perform the search
     x = bads(myObj,x,lb,ub,lbp,ubp,[],options);
     % The objective we care about is for the complete objective
-    fVal = calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, [] );
+    fVal = calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
     % Evalaute the results
     if fVal >= fValLast
         x = xLast;
@@ -406,10 +403,10 @@ end
 
 
 
-function addSubPlots(idx,x,nStages,sceneGeometry,perimeter,gazeTargets, ellipseRMSE, glintData)
+function addSubPlots(idx,x,nStages,sceneGeometry,perimeter,gazeTargets, ellipseRMSE, glintData, keyVals)
 
 [ ~, ~, modelGlint, modelPoseGaze, modelVecGaze] = ...
-    calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), perimeter, gazeTargets, ellipseRMSE, glintData, []);
+    calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), perimeter, gazeTargets, ellipseRMSE, glintData, keyVals{:});
 
 nCols = 3;
 

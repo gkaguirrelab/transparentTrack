@@ -1,4 +1,4 @@
-function [ objError, modelEyePose, modelGlint, modelPoseGaze, modelVecGaze, poseRegParams, vectorRegParams] = calcGlintGazeError( sceneGeometry, perimeter, gazeTargets, ellipseRMSE, glintData, modelEyePose, errorReg )
+function [ objError, modelEyePose, modelGlint, modelPoseGaze, modelVecGaze, poseRegParams, vectorRegParams] = calcGlintGazeError( sceneGeometry, perimeter, gazeTargets, ellipseRMSE, glintData, varargin )
 % The error in prediction of gaze and glint location for a sceneGeometry
 %
 % Syntax:
@@ -66,9 +66,27 @@ function [ objError, modelEyePose, modelGlint, modelPoseGaze, modelVecGaze, pose
 %}
 
 
-if nargin == 6
-    errorReg = [2 1];
-end
+
+%% Parse input
+p = inputParser;
+
+% Required
+p.addRequired('sceneGeometry',@isstruct);
+p.addRequired('perimeter',@isstruct);
+p.addRequired('gazeTargets',@isnumeric);
+p.addRequired('ellipseRMSE',@isnumeric);
+p.addRequired('glintData',@isstruct);
+
+% Optional
+p.addParameter('modelEyePose',[],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
+p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
+p.addParameter('errorReg',[2 1],@isscalar);
+
+% Parse and check the parameters
+p.parse(sceneGeometry, perimeter, gazeTargets, ellipseRMSE, glintData, varargin{:});
+
+
 
 % How many frames do we have
 nFrames = length(glintData.X);
@@ -78,11 +96,12 @@ nFrames = length(glintData.X);
 weights = 1./ellipseRMSE;
 
 % Handle if we are calculating eyePose
-if isempty(modelEyePose)
+if isempty(p.Results.modelEyePose)
     calcEyePose = true;
     modelEyePose = nan(nFrames,4);
 else
     calcEyePose = false;
+    modelEyePose = p.Results.modelEyePose;
 end
 
 % Allocate the glint loop variables
@@ -191,7 +210,7 @@ end
 
 
 %% Return the error
-objError = nanNorm([imageError, gazeError],errorReg);
+objError = nanNorm([imageError, gazeError],p.Results.errorReg);
 objError(isinf(objError))=realmax;
 
 end
