@@ -93,13 +93,13 @@ function sceneGeometry = estimateSceneParams(pupilFileName, perimeterFileName, g
     perimeterFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3015/032417/EyeTracking/GazeCal03_correctedPerimeter.mat';
     glintFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3015/032417/EyeTracking/GazeCal03_glint.mat';
     pupilFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3015/032417/EyeTracking/GazeCal03_pupil.mat';
+    sceneGeometryFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3015/032417/EyeTracking/GazeCal03_sceneGeometry.mat';
 
-    load('/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3015/032417/EyeTracking/GazeCal03_sceneGeometry.mat')
-    frameSet = sceneGeometry.meta.estimateSceneParams.ellipseArrayList;
-    gazeTargets = sceneGeometry.meta.estimateSceneParams.fixationTargetArray;
-    sceneGeometryFileName = '~/Desktop/foo_sceneGeometry.mat';
+    gazeTargets = [ -7, 0, -7, 7, 7, 0, -7, 0, 7 ; 0, -7, -7, 0, -7, 7, 7, 0, 7];
+    frameSet = [ 679, 884, 1180, 1250, 1571, 1663, 1809, 2004, 2075 ];
+    sceneParamsX0 = [18.4018 -2.3126 0.4737 133.5640 0.8896 0.9513 1.0269 0.9962];
 
-    estimateSceneParams(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, 'frameSet', frameSet, 'gazeTargets', gazeTargets)
+    estimateSceneParams(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, 'frameSet', frameSet, 'gazeTargets', gazeTargets, 'sceneParamsX0', sceneParamsX0)
 %}
 
 
@@ -113,7 +113,7 @@ p.addRequired('glintFileName',@ischar);
 p.addRequired('sceneGeometryFileName',@ischar);
 
 % Optional display and I/O params
-p.addParameter('verbose',false,@islogical);
+p.addParameter('verbose',true,@islogical);
 p.addParameter('grayVideoName','',@(x)(isempty(x) | ischar(x)));
 p.addParameter('pupilFileToVideoSuffixSwitch',{'_pupil.mat','_gray.avi'},@iscell);
 
@@ -218,21 +218,22 @@ keyVals = {...
     'eyePoseUB', p.Results.eyePoseUB,...
     };
 
+
 %% Set up the parallel pool
 if p.Results.useParallel
     startParpool( p.Results.nWorkers, p.Results.verbose );
 end
 
 
-%% Set up a figure
-figure
+%% Set up the fit figure
 nStages = 4;
-addPlotsWrap = @(idx,x) addSubPlots(idx,x,nStages,sceneGeometry,args{:},keyVals);
+figHandle = addSubPlots([],0,nStages);
+addPlotsWrap = @(idx,x) addSubPlots(figHandle,idx,nStages,x,sceneGeometry,args{:},keyVals);
 
 
 %% Set x0
-x = p.Results.sceneParamsX0;
-
+x0 = p.Results.sceneParamsX0;
+x = x0;
 
 %% Define BADS search options
 options = bads('defaults');          % Get a default OPTIONS struct
@@ -244,6 +245,10 @@ options.UncertaintyHandling = 0;     % The objective is deterministic
 % Perform an initial, iterated search, locking parameters for camera
 % distance, eye rotation, and corneal curvature.
 
+% Announce
+if p.Results.verbose
+    fprintf('Stage 1...');
+end
 % Bounds
 bound = [20, 10, 10, 0, 0, 0, 0, 0];
 lb = x - bound;
@@ -251,7 +256,8 @@ ub = x + bound;
 lbp = x - bound./2;
 ubp = x + bound./2;
 % Search
-x = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
+x1 = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
+x = x1;
 % Plot
 addPlotsWrap(1,x);
 
@@ -259,6 +265,10 @@ addPlotsWrap(1,x);
 %% STAGE 2 -- ROTATION CENTER SEARCH
 % Search over the eye rotation center
 
+% Announce
+if p.Results.verbose
+    fprintf('Stage 2...');
+end
 % Bounds
 lb = [x(1:4), 0.75, 0.75, x(7:8)];
 ub = [x(1:4), 1.25, 1.25, x(7:8)];
@@ -267,7 +277,8 @@ ubp = [x(1:4), 1.15, 1.15, x(7:8)];
 % Objective
 myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
 % Search
-x = bads(myObj,x,lb,ub,lbp,ubp,[],options);
+x2 = bads(myObj,x,lb,ub,lbp,ubp,[],options);
+x = x2;
 % Plot
 addPlotsWrap(2,x);
 
@@ -275,6 +286,10 @@ addPlotsWrap(2,x);
 %% STAGE 3 -- TRANSLATION AND CURVATURE SEARCH
 % Lock the rotation centers, search over translation and corneal curvature
 
+% Announce
+if p.Results.verbose
+    fprintf('Stage 3...');
+end
 % Bounds
 bound = [abs(x(1:3).*0.25), 0, 0, 0, x(7:8).*0.25];
 lb = x - bound;
@@ -282,7 +297,8 @@ ub = x + bound;
 lbp = x - bound./2;
 ubp = x + bound./2;
 % Search
-x = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
+x3 = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
+x = x3;
 % Plot
 addPlotsWrap(3,x);
 
@@ -290,6 +306,10 @@ addPlotsWrap(3,x);
 %% STAGE 4 -- COMPLETE SEARCH
 % Search over all parameters
 
+% Announce
+if p.Results.verbose
+    fprintf('Stage 4...');
+end
 % Bounds
 lb  = x./(0.90.^-sign(x));
 lbp = x./(0.95.^-sign(x));
@@ -298,10 +318,10 @@ ub  = x./(1.10.^-sign(x));
 % Objective
 myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
 % Search
-[x, fVal] = bads(myObj,x,lb,ub,lbp,ubp,[],options);
+[x4, fVal] = bads(myObj,x,lb,ub,lbp,ubp,[],options);
+x = x4;
 % Plot
 addPlotsWrap(4,x);
-
 
 
 %% Update the sceneGeometry 
@@ -334,22 +354,64 @@ for kk = 1:length(keys)
     end
 end
 
-% Save the metaData of the original sceneGeometry creation
-metaCreate = sceneGeometry.meta.createSceneGeometry;
 
 % Create a new sceneGeometry with the update key-values
 sceneGeometry = createSceneGeometry(sceneGeometryVarargin{:});
 
 % Update and move the meta data around
-sceneGeometry.meta.estimateSceneParams.create = sceneGeometry.meta.createSceneGeometry;
-sceneGeometry.meta.createSceneGeometry = metaCreate;
-sceneGeometry.meta.estimateSceneParams.x = x;
+sceneGeometry.meta.estimateSceneParams.x0 = x0;
+sceneGeometry.meta.estimateSceneParams.x1 = x1;
+sceneGeometry.meta.estimateSceneParams.x2 = x2;
+sceneGeometry.meta.estimateSceneParams.x3 = x3;
+sceneGeometry.meta.estimateSceneParams.x4 = x4;
+sceneGeometry.meta.estimateSceneParams.fVal = fVal;
+sceneGeometry.meta.estimateSceneParams.varargin = varargin;
+sceneGeometry.meta.estimateSceneParams.sceneGeometryVarargin = sceneGeometryVarargin;
 
-%% Save the sceneGeometry file
+% Save the sceneGeometry file
 if ~isempty(sceneGeometryFileName)
     save(sceneGeometryFileName,'sceneGeometry');
 end
 
+
+%% Save diagnostic plots
+
+if p.Results.verbose
+    fprintf('Saving plots.\n');
+end
+[sceneGeomPath,sceneGeomName,] = fileparts(sceneGeometryFileName);
+diagnosticDirName = fullfile(sceneGeomPath,[sceneGeomName '_diagnostics']);
+if ~exist(diagnosticDirName, 'dir')
+    mkdir(diagnosticDirName);
+else
+    rmdir(diagnosticDirName, 's');
+    mkdir(diagnosticDirName);
+end
+
+% Find the video for this pupil file
+if ~isempty(p.Results.grayVideoName)
+    grayVideoName = p.Results.grayVideoName;
+else
+    grayVideoName = strrep(pupilFileName,p.Results.pupilFileToVideoSuffixSwitch{1},p.Results.pupilFileToVideoSuffixSwitch{2});
+end
+
+% Get the modeled eye poses
+[ ~, modelEyePose] = calcGlintGazeError( sceneGeometry, args{:}, keyVals{:} );
+
+% Save the staged fit results
+figureName = fullfile(diagnosticDirName,[sceneGeomName '_fitsByStage.pdf']);
+saveas(figHandle,figureName)
+
+% Create an eye model montage
+figureName = fullfile(diagnosticDirName,[sceneGeomName '_sceneDiagnosticMontage_eyeModel.png']);
+saveEyeModelMontage(sceneGeometry, modelEyePose, frameSet, grayVideoName, figureName)
+
+
+%% alert the user that we are done with the routine
+if p.Results.verbose
+    toc
+    fprintf('\n');
+end
 
 end
 
@@ -403,35 +465,219 @@ end
 
 
 
-function addSubPlots(idx,x,nStages,sceneGeometry,perimeter,gazeTargets, ellipseRMSE, glintData, keyVals)
+function figHandle = addSubPlots(figHandle,idx,nStages,x,sceneGeometry,perimeter,gazeTargets, ellipseRMSE, glintData, keyVals)
 
-[ ~, ~, modelGlint, modelPoseGaze, modelVecGaze] = ...
+% Prepare the figure
+if idx == 0
+    figHandle=figure('Visible','off');
+    set(gcf,'PaperOrientation','landscape');
+    set(figHandle, 'Units','inches')
+    height = 11;
+    width = 11;
+    
+    % The last two parameters of 'Position' define the figure size
+    set(figHandle, 'Position',[25 5 width height],...
+        'PaperSize',[width height],...
+        'PaperPositionMode','auto',...
+        'Color','w');
+    return
+else
+    set(0, 'CurrentFigure', figHandle)
+end
+
+% Get the model output
+[ ~, modelEyePose, modelGlint, modelPoseGaze, modelVecGaze, ~, ~, rawErrors] = ...
     calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), perimeter, gazeTargets, ellipseRMSE, glintData, keyVals{:});
 
-nCols = 3;
-
-subplot(nStages,nCols,(idx-1)*nCols+1)
-plot(gazeTargets(1,:),gazeTargets(2,:),'ok'); hold on;
-plot(modelPoseGaze(1,:),modelPoseGaze(2,:),'xr'); hold on;
-ylim([-10 10])
-axis equal
-title(['Stage ' num2str(idx) ' -- poseGaze']);
+% We are going to have four sub-plots
+nCols = 4;
 
 
-subplot(nStages,nCols,(idx-1)*nCols+2)
+% 4. Glint-pupil vec matching gaze targets
+subplot(nStages,nCols,(idx-1)*nCols+4)
 plot(gazeTargets(1,:),gazeTargets(2,:),'ok'); hold on;
 plot(modelVecGaze(1,:),modelVecGaze(2,:),'xr'); hold on;
 ylim([-10 10])
 axis equal
-title(['Stage ' num2str(idx) ' -- vecGaze']);
+myLabel = sprintf('Gaze vec [%2.2f]',rawErrors(4));
+title(myLabel);
 
-
+% 3. EyePose matching gaze targets
 subplot(nStages,nCols,(idx-1)*nCols+3)
+plot(gazeTargets(1,:),gazeTargets(2,:),'ok'); hold on;
+plot(modelPoseGaze(1,:),modelPoseGaze(2,:),'xr'); hold on;
+ylim([-10 10])
+axis equal
+myLabel = sprintf('Gaze pose [%2.2f]',rawErrors(3));
+title(myLabel);
+
+% 2. Glint fits
+subplot(nStages,nCols,(idx-1)*nCols+2)
 plot(glintData.X,glintData.Y,'ok'); hold on;
 plot(modelGlint.X,modelGlint.Y,'xr'); hold on;
 axis equal
-title(['Stage ' num2str(idx) ' -- glint']);
+myLabel = sprintf('Glint [%2.2f]',rawErrors(2));
+title(myLabel);
 
+% 1. Perimeter fits
+% Define a figure
+hFig = figure( 'Visible', 'off');
+dim = 150;
+imshow(ones(dim,dim),'Border', 'tight');
+drawnow;
+hAxes = get(hFig,'CurrentAxes');
+hold on;
+for ii = 1:length(ellipseRMSE)
+    Xp = perimeter.data{ii}.Xp;
+    meanXp = mean(Xp);
+    Xp = Xp - meanXp + dim/2;
+    Yp = perimeter.data{ii}.Yp;
+    meanYp = mean(Yp);
+    Yp = Yp - meanYp + dim/2;
+    p1 = plot(hAxes,Xp,Yp,'.k');
+    xlim([1 dim]);
+    ylim([1 dim]);
+    drawnow;
+    hold on;
+    pupilEllipseParams = projectModelEye(modelEyePose(ii,:),updateSceneGeometry( sceneGeometry, x ));
+    pupilEllipseParams(1) = pupilEllipseParams(1) - meanXp + dim/2;
+    pupilEllipseParams(2) = pupilEllipseParams(2) - meanYp + dim/2;
+    p2 = addTransparentEllipseToFigure(pupilEllipseParams,dim,dim,'red',1,hAxes);
+    axis off;
+    drawnow;
+    thisFrame=getframe(hFig);
+    framesToMontage(:,:,:,ii) = thisFrame.cdata;
+    delete(p1); delete(p2);
+    drawnow;
+end
+close(hFig)
+set(0, 'CurrentFigure', figHandle)
+subplot(nStages,nCols,(idx-1)*nCols+1)
+montage(framesToMontage)
+myLabel = sprintf('Perimeter [%2.2f]',rawErrors(1));
+title(myLabel);
+
+xRange=get(gca,'XLim');
+yRange=get(gca,'YLim');
+ht = text(0*xRange(1)-0.2*xRange(2),0.5*yRange(2),['Stage ' num2str(idx)]);
+set(ht,'Rotation',90)
+set(ht,'FontSize',18)
 drawnow
 
 end
+
+
+
+
+function saveEyeModelMontage(sceneGeometry, modelEyePose, frameSet, grayVideoName, montageFileName)
+% Saves a montage with the model eye superimposed.
+
+% Silence some errors that can arise during the forward projection
+warningState = warning;
+warning('off','projectModelEye:ellipseFitFailed');
+
+% Sort the ellipse array list so that the frames appear in temporal order
+[frameSet, sortOrder] = sort(frameSet);
+modelEyePose = modelEyePose(sortOrder,:);
+
+% Check that the file exists
+if exist(grayVideoName,'file') && ~isempty(frameSet)
+    
+    % Open the video object
+    videoInObj = videoIOWrapper(grayVideoName,'ioAction','read');
+    
+    % Get the video properties
+    videoSizeX = videoInObj.Width;
+    videoSizeY = videoInObj.Height;
+    nFrames = floor(videoInObj.Duration*videoInObj.FrameRate);
+    
+    % Define a variable to hold the selected frames
+    framesToMontage = zeros(videoSizeY,videoSizeX,3,length(frameSet),'uint8');
+    
+    % Define a figure
+    hFig = figure( 'Visible', 'off');
+    hAxes = gca();
+    
+    % Loop through the frames and keep the matching ones
+    for ii = 1:length(frameSet)
+        idx = frameSet(ii);
+        videoInObj.CurrentTime = (idx - 1)/(videoInObj.FrameRate);
+        sourceFrame = readFrame(videoInObj);
+        imshow(sourceFrame,'Border', 'tight','Parent',hAxes);
+        hold on
+        axis off;
+        % Add the rendered eye model
+        eyePose = modelEyePose(ii,:);
+        if ~any(isnan(eyePose))
+            renderEyePose(eyePose, sceneGeometry, 'newFigure', false, ...
+                'modelEyeLabelNames', {'retina' 'irisPerimeter' 'pupilEllipse' 'cornea' 'glint_01' 'glint_02'}, ...
+                'modelEyePlotColors', {'.w' '.b' '-g' '.y' 'xr' 'xr'}, ...
+                'modelEyeAlpha', [0.25 0.25 0.25 0.25 1 1],...
+                'modelEyeSymbolSizeScaler',1.5,...
+                'showAzimuthPlane',true);
+        end
+        % Get the frame
+        drawnow;
+        thisFrame=getframe(hFig);
+        % Add a text label for the frame number
+        frameLabel = sprintf('frame: %d',idx);
+        thisFrame.cdata = insertText(thisFrame.cdata,[20 20],frameLabel,'FontSize',30);
+        % Store the frame. Detect if we have a bad or empty frame and then
+        % skip if that is the case
+        if all(size(squeeze(framesToMontage(:,:,:,ii)))==size(thisFrame.cdata))
+            framesToMontage(:,:,:,ii) = thisFrame.cdata;
+        end
+        % hold off
+        hold off
+    end
+    
+    % Close the temporary figure
+    close(hFig);
+    
+    % Prepare the figure
+    figHandle=figure('visible','off');
+    set(gcf,'PaperOrientation','landscape');
+    set(figHandle, 'Units','inches')
+    height = 6;
+    width = 11;
+    
+    % The last two parameters of 'Position' define the figure size
+    set(figHandle, 'Position',[25 5 width height],...
+        'PaperSize',[width height],...
+        'PaperPositionMode','auto',...
+        'Color','w');
+    
+    % Turn off a warning that can occur during the montage step
+    warningState = warning;
+    warning('off','images:initSize:adjustingMag');
+    
+    % Create the montage
+    montage(framesToMontage);
+    
+    % Restore the warning state
+    warning(warningState);
+    
+    % Save the montage
+    saveas(figHandle,montageFileName)
+    
+    % Close the figure
+    close(figHandle)
+    
+    % Rotate the figure by 90 degrees clockwise, because I can't get the
+    % MATLAB plotting routines to output the image how I want it.
+    A = imread(montageFileName);
+    A = rot90(A,3);
+    imwrite(A,montageFileName);
+    
+    % close the video object
+    clear videoInObj
+    
+end % There is a file to plot
+
+% Restore the warning state
+warning(warningState);
+
+end % saveEyeModelMontage
+
+
+
