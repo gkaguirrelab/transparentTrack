@@ -255,8 +255,8 @@ warnState = warning();
 
 
 % Loop through the frames
-%parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
-for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
+parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
+%for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
     
     % Update progress
     if verbose
@@ -304,7 +304,7 @@ for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
             end
             % If we have glintData, extract the glintCoord
             if ~isempty(glintData)
-                glintCoord = [glintData.X(ii,:); glintData.Y(ii,:)];
+                glintCoord = [glintData.X(ii,:), glintData.Y(ii,:)];
             else
                 glintCoord = [];
             end

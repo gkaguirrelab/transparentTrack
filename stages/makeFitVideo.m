@@ -284,7 +284,7 @@ for ii = 1:nFrames
     % add glint
     if ~isempty(p.Results.glintFileName)
         for gg = 1:size(glintData.X,2)
-        hPlot(end+1) = plot(glintData.X(ii,gg),glintData.Y(ii,gg),['*' p.Results.glintColor]);
+        hPlot(end+1) = plot(glintData.X(ii,gg),glintData.Y(ii,gg),['.' p.Results.glintColor]);
         end
     end
     

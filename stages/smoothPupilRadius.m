@@ -120,6 +120,7 @@ p.addParameter('hostname',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional fitting params
+p.addParameter('glintFileName',[],@(x)(isempty(x) || ischar(x)));
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,5],@isnumeric);
 p.addParameter('exponentialTauParam',10,@isnumeric);
@@ -155,6 +156,14 @@ clear dataLoad
 dataLoad=load(sceneGeometryFileName);
 sceneGeometry=dataLoad.sceneGeometry;
 clear dataLoad
+
+% Load the glint file if passed
+if ~isempty(p.Results.glintFileName)
+    % Load the sceneGeometry file
+    load(p.Results.glintFileName,'glintData');
+else
+    glintData = [];
+end
 
 % If an adjustedCameraPositionTranslation and/or torsion values have been
 % passed, update these fields of the sceneGeometry
@@ -429,14 +438,23 @@ parfor (ii = 1:nFrames, nWorkers)
             cameraPosition = cameraPosition + relativeCameraPosition.values(:,ii);
             adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
         end
-        
+
+        % If we have glintData, extract the glintCoord
+        if ~isempty(glintData)
+            glintCoord = [glintData.X(ii,:), glintData.Y(ii,:)];
+        else
+            glintCoord = [];
+        end
+            
         % Turn off warnings that can arise when fitting bad frames
         warning('off','projectModelEye:rayTracingError');
         warning('off','projectModelEye:ellipseFitFailed');
         
         % Perform the fit
         [posteriorEyePose, posteriorEyePoseObjectiveError, posteriorEllipseParams, fitAtBound] = ...
-            eyePoseEllipseFit(Xp, Yp, adjustedSceneGeometry, 'eyePoseLB', lb_pin, 'eyePoseUB', ub_pin, 'x0', x0);
+            eyePoseEllipseFit(Xp, Yp, adjustedSceneGeometry, ...
+            'glintCoord',glintCoord, ...
+            'eyePoseLB', lb_pin, 'eyePoseUB', ub_pin, 'x0', x0);
         
         % Calculate the uniformity of the distribution of perimeter points
         % around the center of the fitted ellipse
