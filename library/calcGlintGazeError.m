@@ -1,4 +1,4 @@
-function [ objError, modelEyePose, modelGlint, modelPoseGaze, modelVecGaze, poseRegParams, vectorRegParams] = calcGlintGazeError( sceneGeometry, perimeter, gazeTargets, ellipseRMSE, glintData, varargin )
+function [ objError, modelEyePose, modelGlint, modelPoseGaze, modelVecGaze, poseRegParams, vectorRegParams, rawErrors] = calcGlintGazeError( sceneGeometry, perimeter, gazeTargets, ellipseRMSE, glintData, varargin )
 % The error in prediction of gaze and glint location for a sceneGeometry
 %
 % Syntax:
@@ -109,11 +109,8 @@ modelGlintX = nan(nFrames,1);
 modelGlintY = nan(nFrames,1);
 perimFitError = nan(nFrames,1);
 pupilCenter = nan(nFrames,2);
-modelPupilCenter = nan(nFrames,2);
 
 % These are some magic numbers used in retrieving the glint
-nStopPerimPoints = 5;
-glintIdx = nStopPerimPoints*2+1;
 
 % Loop over the frames and obtain the modeled eyePose and glint
 parfor ii = 1:nFrames
@@ -131,8 +128,7 @@ parfor ii = 1:nFrames
     end
         
     % Get the glint coordinates
-    [fittedEllipse, fittedGlint] = projectModelEye(modelEyePose(ii,:), sceneGeometry, ...
-        'nStopPerimPoints',nStopPerimPoints);
+    [fittedEllipse, fittedGlint] = projectModelEye(modelEyePose(ii,:), sceneGeometry);
     
     % Store the empirical pupil center
     pupilCenter(ii,:) = fittedEllipse(1:2);
@@ -210,6 +206,7 @@ end
 
 
 %% Return the error
+rawErrors = [perimError glintError poseError, vectorError];
 objError = nanNorm([imageError, gazeError],p.Results.errorReg);
 objError(isinf(objError))=realmax;
 
