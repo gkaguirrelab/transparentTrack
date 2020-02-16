@@ -97,9 +97,8 @@ function sceneGeometry = estimateSceneParams(pupilFileName, perimeterFileName, g
 
     gazeTargets = [ -7, 0, -7, 7, 7, 0, -7, 0, 7 ; 0, -7, -7, 0, -7, 7, 7, 0, 7];
     frameSet = [ 679, 884, 1180, 1250, 1571, 1663, 1809, 2004, 2075 ];
-    sceneParamsX0 = [18.4018 -2.3126 0.4737 133.5640 0.8896 0.9513 1.0269 0.9962];
 
-    estimateSceneParams(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, 'frameSet', frameSet, 'gazeTargets', gazeTargets, 'sceneParamsX0', sceneParamsX0)
+    estimateSceneParams(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, 'frameSet', frameSet, 'gazeTargets', gazeTargets)
 %}
 
 
@@ -210,7 +209,7 @@ ellipseRMSE = pupilData.initial.ellipses.RMSE(frameSet);
 glintData.X = glintData.X(frameSet); glintData.Y = glintData.Y(frameSet);
 
 % Assemble these components into the args variable
-args = {perimeter, gazeTargets, ellipseRMSE, glintData};
+args = {perimeter, glintData, ellipseRMSE, gazeTargets};
 
 % Assemble the key-values
 keyVals = {...
@@ -256,8 +255,8 @@ ub = x + bound;
 lbp = x - bound./2;
 ubp = x + bound./2;
 % Search
-x1 = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
-x = x1;
+x = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
+xStages(1,:) = x;
 % Plot
 addPlotsWrap(1,x);
 
@@ -277,8 +276,8 @@ ubp = [x(1:4), 1.15, 1.15, x(7:8)];
 % Objective
 myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
 % Search
-x2 = bads(myObj,x,lb,ub,lbp,ubp,[],options);
-x = x2;
+x = bads(myObj,x,lb,ub,lbp,ubp,[],options);
+xStages(2,:) = x;
 % Plot
 addPlotsWrap(2,x);
 
@@ -297,8 +296,8 @@ ub = x + bound;
 lbp = x - bound./2;
 ubp = x + bound./2;
 % Search
-x3 = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
-x = x3;
+x = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
+xStages(3,:) = x;
 % Plot
 addPlotsWrap(3,x);
 
@@ -318,8 +317,8 @@ ub  = x./(1.10.^-sign(x));
 % Objective
 myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
 % Search
-[x4, fVal] = bads(myObj,x,lb,ub,lbp,ubp,[],options);
-x = x4;
+[x, fVal] = bads(myObj,x,lb,ub,lbp,ubp,[],options);
+xStages(4,:) = x;
 % Plot
 addPlotsWrap(4,x);
 
@@ -360,10 +359,9 @@ sceneGeometry = createSceneGeometry(sceneGeometryVarargin{:});
 
 % Update and move the meta data around
 sceneGeometry.meta.estimateSceneParams.x0 = x0;
-sceneGeometry.meta.estimateSceneParams.x1 = x1;
-sceneGeometry.meta.estimateSceneParams.x2 = x2;
-sceneGeometry.meta.estimateSceneParams.x3 = x3;
-sceneGeometry.meta.estimateSceneParams.x4 = x4;
+for ii = 1:nStages
+    sceneGeometry.meta.estimateSceneParams.(['x' num2str(ii)]) = xStages(ii,:);
+end
 sceneGeometry.meta.estimateSceneParams.fVal = fVal;
 sceneGeometry.meta.estimateSceneParams.varargin = varargin;
 sceneGeometry.meta.estimateSceneParams.sceneGeometryVarargin = sceneGeometryVarargin;
@@ -400,6 +398,7 @@ end
 
 % Save the staged fit results
 figureName = fullfile(diagnosticDirName,[sceneGeomName '_fitsByStage.pdf']);
+addSupTitle(figHandle,sceneGeomName);
 saveas(figHandle,figureName)
 
 % Create an eye model montage
@@ -462,10 +461,18 @@ end
 end
 
 
+function addSupTitle(figHandle,str)
+    set(0, 'CurrentFigure', figHandle);
+    gcf
+    axes('Position',[0 0 1 1],'visible','off','Tag','suptitle');
+    ht=text(.5,0.98,str);set(ht,'horizontalalignment','center','fontsize',14,'Interpreter','none');
+    drawnow
+end
+    
+    
 
 
-
-function figHandle = addSubPlots(figHandle,idx,nStages,x,sceneGeometry,perimeter,gazeTargets, ellipseRMSE, glintData, keyVals)
+function figHandle = addSubPlots(figHandle,idx,nStages,x,sceneGeometry,perimeter,glintData,ellipseRMSE,gazeTargets,keyVals)
 
 % Prepare the figure
 if idx == 0
@@ -487,7 +494,7 @@ end
 
 % Get the model output
 [ ~, modelEyePose, modelGlint, modelPoseGaze, modelVecGaze, ~, ~, rawErrors] = ...
-    calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), perimeter, gazeTargets, ellipseRMSE, glintData, keyVals{:});
+    calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), perimeter, glintData, ellipseRMSE, gazeTargets, keyVals{:});
 
 % We are going to have four sub-plots
 nCols = 4;
@@ -557,12 +564,23 @@ montage(framesToMontage)
 myLabel = sprintf('Perimeter [%2.2f]',rawErrors(1));
 title(myLabel);
 
+% Text label that indicates stage
 xRange=get(gca,'XLim');
 yRange=get(gca,'YLim');
 ht = text(0*xRange(1)-0.2*xRange(2),0.5*yRange(2),['Stage ' num2str(idx)]);
 set(ht,'Rotation',90)
 set(ht,'FontSize',18)
 drawnow
+
+% If this is the last panel, put an annotation for the x parameters at the
+% bottom.
+if idx == nStages
+    gcf
+    axes('Position',[0 0 1 1],'visible','off','Tag','subtitle');
+    str = sprintf('Camera torsion: %2.1f, position: [%2.1f, %2.1f, %2.1f]; Rotation center joint, diff [%2.2f, %2.2f]; Corneal curvature joint diff [%2.2f, %2.2f]',x);
+    ht=text(.5,0.05,str);set(ht,'horizontalalignment','center','fontsize',12);
+    drawnow
+end
 
 end
 
