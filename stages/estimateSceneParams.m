@@ -503,7 +503,7 @@ function figHandle = addSubPlots(figHandle,idx,nStages,x,sceneGeometry,perimeter
 
 % Prepare the figure
 if idx == 0
-    figHandle=figure('Visible','on');
+    figHandle=figure('Visible','off');
     set(gcf,'PaperOrientation','landscape');
     set(figHandle, 'Units','inches')
     height = 11;
