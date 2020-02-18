@@ -98,7 +98,7 @@ function sceneGeometry = estimateSceneParams(pupilFileName, perimeterFileName, g
     gazeTargets = [ -7, 0, -7, 7, 7, 0, -7, 0, 7 ; 0, -7, -7, 0, -7, 7, 7, 0, 7];
     frameSet = [ 679, 884, 1180, 1250, 1571, 1663, 1809, 2004, 2075 ];
 
-    estimateSceneParams(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, 'frameSet', frameSet, 'gazeTargets', gazeTargets)
+    estimateSceneParams(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, 'frameSet', frameSet, 'gazeTargets', gazeTargets);
 %}
 
 
@@ -117,7 +117,7 @@ p.addParameter('grayVideoName','',@(x)(isempty(x) | ischar(x)));
 p.addParameter('pupilFileToVideoSuffixSwitch',{'_pupil.mat','_gray.avi'},@iscell);
 
 % Optional flow control params
-p.addParameter('useParallel',false,@islogical);
+p.addParameter('useParallel',true,@islogical);
 p.addParameter('nWorkers',[],@(x)(isempty(x) || isnumeric(x)));
 
 % Optional environment parameters
@@ -128,13 +128,12 @@ p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@i
 
 % Optional analysis params
 p.addParameter('sceneParamsX0',[0 0 0 130 1 1 1 1],@isnumeric);
+p.addParameter('lockDepth',true,@islogical);
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 p.addParameter('frameSet',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('gazeTargets',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('fixSpectacleLens',[],@(x)(isempty(x) | isnumeric(x)));
-p.addParameter('nBinsPerDimension',4,@isnumeric);
-p.addParameter('badFrameErrorThreshold',2, @isnumeric);
 
 % parse
 p.parse(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, varargin{:})
@@ -144,7 +143,7 @@ p.parse(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, 
 
 %% Announce we are starting
 if p.Results.verbose
-    tic
+    ticObject = tic();
     fprintf(['Estimating scene parameters. Started ' char(datetime('now')) '\n']);
 end
 
@@ -314,10 +313,14 @@ lb  = x./(0.90.^-sign(x));
 lbp = x./(0.95.^-sign(x));
 ubp = x./(1.05.^-sign(x));
 ub  = x./(1.10.^-sign(x));
+% if we have been told to lock the depth parameter, do so
+if p.Results.lockDepth
+    lb(4) = x(4); lbp(4) = x(4); ubp(4) = x(4); ub(4) = x(4);
+end
 % Objective
 myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
 % Search
-[x, fVal] = bads(myObj,x,lb,ub,lbp,ubp,[],options);
+x = bads(myObj,x,lb,ub,lbp,ubp,[],options);
 xStages(4,:) = x;
 % Plot
 addPlotsWrap(4,x);
@@ -328,6 +331,10 @@ addPlotsWrap(4,x);
 % The fitted sceneGeometry
 f = updateSceneGeometry( sceneGeometry, x );
 
+% Obtain the model components at the solution
+[ fVal, modelEyePose, modelPupilEllipse, modelGlintCoord, modelPoseGaze, modelVecGaze, poseRegParams, vectorRegParams, rawErrors] = ...
+    calcGlintGazeError( f, args{:}, keyVals{:} );
+
 % The varargin originally used to create the sceneGeometry
 sceneGeometryVarargin = sceneGeometry.meta.createSceneGeometry.varargin;
 
@@ -336,12 +343,20 @@ keys = {...
     'cameraTorsion',...
     'cameraTranslation',...
     'rotationCenters',...
-    'measuredCornealCurvature'};
+    'measuredCornealCurvature',...
+    'fixationEyePose',...
+    'screenTorsion',...
+    'screenRotMat',...
+    };
 values = {...
     f.cameraPosition.torsion, ...
     f.cameraPosition.translation, ...
     f.eye.rotationCenters, ...
-    f.eye.cornea.kvals};
+    f.eye.cornea.kvals, ...
+    poseRegParams.t, ...
+    poseRegParams.theta, ...    
+    poseRegParams.R, ...
+    };
 
 % Loop through the keys and either update or add
 for kk = 1:length(keys)
@@ -353,18 +368,32 @@ for kk = 1:length(keys)
     end
 end
 
+% Get the execution time
+executionTime = toc(ticObject);
 
 % Create a new sceneGeometry with the update key-values
 sceneGeometry = createSceneGeometry(sceneGeometryVarargin{:});
 
 % Update and move the meta data around
+sceneGeometry.meta.estimateSceneParams = p.Results;
 sceneGeometry.meta.estimateSceneParams.x0 = x0;
 for ii = 1:nStages
     sceneGeometry.meta.estimateSceneParams.(['x' num2str(ii)]) = xStages(ii,:);
 end
 sceneGeometry.meta.estimateSceneParams.fVal = fVal;
+sceneGeometry.meta.estimateSceneParams.executionTime = executionTime;
 sceneGeometry.meta.estimateSceneParams.varargin = varargin;
 sceneGeometry.meta.estimateSceneParams.sceneGeometryVarargin = sceneGeometryVarargin;
+
+% Add the model components at the solution to the meta data
+sceneGeometry.meta.estimateSceneParams.modelEyePose = modelEyePose;
+sceneGeometry.meta.estimateSceneParams.modelPupilEllipse = modelPupilEllipse;
+sceneGeometry.meta.estimateSceneParams.modelGlintCoord = modelGlintCoord;
+sceneGeometry.meta.estimateSceneParams.modelPoseGaze = modelPoseGaze;
+sceneGeometry.meta.estimateSceneParams.modelVecGaze = modelVecGaze;
+sceneGeometry.meta.estimateSceneParams.poseRegParams = poseRegParams;
+sceneGeometry.meta.estimateSceneParams.vectorRegParams = vectorRegParams;
+sceneGeometry.meta.estimateSceneParams.rawErrors = rawErrors;
 
 % Save the sceneGeometry file
 if ~isempty(sceneGeometryFileName)
@@ -408,7 +437,7 @@ saveEyeModelMontage(sceneGeometry, modelEyePose, frameSet, grayVideoName, figure
 
 %% alert the user that we are done with the routine
 if p.Results.verbose
-    toc
+    executionTime
     fprintf('\n');
 end
 
@@ -476,7 +505,7 @@ function figHandle = addSubPlots(figHandle,idx,nStages,x,sceneGeometry,perimeter
 
 % Prepare the figure
 if idx == 0
-    figHandle=figure('Visible','off');
+    figHandle=figure('Visible','on');
     set(gcf,'PaperOrientation','landscape');
     set(figHandle, 'Units','inches')
     height = 11;
@@ -493,7 +522,7 @@ else
 end
 
 % Get the model output
-[ ~, modelEyePose, modelGlint, modelPoseGaze, modelVecGaze, ~, ~, rawErrors] = ...
+[ ~, ~, modelPupilEllipse, modelGlintCoord, modelPoseGaze, modelVecGaze, ~, ~, rawErrors] = ...
     calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), perimeter, glintData, ellipseRMSE, gazeTargets, keyVals{:});
 
 % We are going to have four sub-plots
@@ -521,7 +550,7 @@ title(myLabel);
 % 2. Glint fits
 subplot(nStages,nCols,(idx-1)*nCols+2)
 plot(glintData.X,glintData.Y,'ok'); hold on;
-plot(modelGlint.X,modelGlint.Y,'xr'); hold on;
+plot(modelGlintCoord.X,modelGlintCoord.Y,'xr'); hold on;
 axis equal
 myLabel = sprintf('Glint [%2.2f]',rawErrors(2));
 title(myLabel);
@@ -546,7 +575,7 @@ for ii = 1:length(ellipseRMSE)
     ylim([1 dim]);
     drawnow;
     hold on;
-    pupilEllipseParams = projectModelEye(modelEyePose(ii,:),updateSceneGeometry( sceneGeometry, x ));
+    pupilEllipseParams = modelPupilEllipse(ii,:);
     pupilEllipseParams(1) = pupilEllipseParams(1) - meanXp + dim/2;
     pupilEllipseParams(2) = pupilEllipseParams(2) - meanYp + dim/2;
     p2 = addTransparentEllipseToFigure(pupilEllipseParams,dim,dim,'red',1,hAxes);
@@ -607,7 +636,6 @@ if exist(grayVideoName,'file') && ~isempty(frameSet)
     % Get the video properties
     videoSizeX = videoInObj.Width;
     videoSizeY = videoInObj.Height;
-    nFrames = floor(videoInObj.Duration*videoInObj.FrameRate);
     
     % Define a variable to hold the selected frames
     framesToMontage = zeros(videoSizeY,videoSizeX,3,length(frameSet),'uint8');
