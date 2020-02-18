@@ -420,7 +420,7 @@ options.UncertaintyHandling = 0;     % The objective is deterministic
 
 % Bounds
 x0 = sceneGeometryIn.meta.estimateSceneParams.x4;
-bound = [0, 10, 10, 10s, 0, 0, 0, 0];
+bound = [0, 10, 10, 10, 0, 0, 0, 0];
 lb = x0 - bound;
 ub = x0 + bound;
 lbp = x0 - bound./2;
@@ -429,7 +429,7 @@ ubp = x0 + bound./2;
 myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometryIn, x ), args{:}, keyVals{:} );
 % Search
 x = bads(myObj,x0,lb,ub,lbp,ubp,[],options);
-%x = [2.1916   -2.1038    1.4475  130.0000    0.8141    0.9445    1.1067    1.0150];
+%x = [2.1916   -2.1520    1.3944  130.0000    0.8141    0.9445    1.1067    1.0150];
 
 
 %% Optional display mode
