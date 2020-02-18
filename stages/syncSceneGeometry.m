@@ -50,9 +50,13 @@ function syncSceneGeometry(pupilFileName, varargin)
 % Examples:
 %{
     % Invoke the file picker GUI
-    syncSceneGeometry('','displayMode',true,'alignMethod','shape');
+    syncSceneGeometry('','displayMode',true,'verbose',true,'alignMethod','shape');
 %}
-
+%{
+    sceneGeometryFileNameToSync = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3015/032417/EyeTracking/GazeCal03_sceneGeometry.mat';
+    pupilFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3015/032417/EyeTracking/tfMRI_MOVIE_AP_run01_pupil.mat';
+    syncSceneGeometry(pupilFileName, 'sceneGeometryFileNameToSync', sceneGeometryFileNameToSync) 
+%}
 
 %% Parse vargin for options passed here
 p = inputParser; p.KeepUnmatched = true;
@@ -62,7 +66,7 @@ p.addRequired('pupilFileName',@ischar);
 
 % Optional display and I/O params
 p.addParameter('sceneGeometryFileNameToSync','',@(x)(ischar(x) | iscell(x)));
-p.addParameter('verbose',true,@islogical);
+p.addParameter('verbose',false,@islogical);
 p.addParameter('displayMode',false,@islogical);
 p.addParameter('saveAdjustedSceneGeometry',true,@islogical);
 p.addParameter('saveDiagnosticPlot',true,@islogical);
@@ -74,10 +78,8 @@ p.addParameter('nWorkers',[],@(x)(isempty(x) || isnumeric(x)));
 
 % Optional fitting params
 p.addParameter('alignMethod','gazePre',@(x)(ischar(x) | iscell(x)));
-p.addParameter('deltaPix',[],@isnumeric);
-p.addParameter('deltaDeg',[],@isnumeric);
-p.addParameter('deltaScale',[],@isnumeric);
-p.addParameter('deltaPose',[],@isnumeric);
+p.addParameter('sceneSyncBound',[0, 10, 10, 0, 0, 0, 0, 0],@isnumeric);
+p.addParameter('sceneSyncX',[],@isnumeric);
 p.addParameter('eyePositionTargetLengthFrames',10,@isscalar);
 p.addParameter('gazeErrorThreshTol',0.25,@isscalar);
 
@@ -420,7 +422,7 @@ options.UncertaintyHandling = 0;     % The objective is deterministic
 
 % Bounds
 x0 = sceneGeometryIn.meta.estimateSceneParams.x4;
-bound = [0, 10, 10, 10, 0, 0, 0, 0];
+bound = p.Results.sceneSyncBound;
 lb = x0 - bound;
 ub = x0 + bound;
 lbp = x0 - bound./2;
@@ -428,8 +430,11 @@ ubp = x0 + bound./2;
 % Objective
 myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometryIn, x ), args{:}, keyVals{:} );
 % Search
-x = bads(myObj,x0,lb,ub,lbp,ubp,[],options);
-%x = [2.1916   -2.1520    1.3944  130.0000    0.8141    0.9445    1.1067    1.0150];
+if isempty(p.Results.sceneSyncX)
+    x = bads(myObj,x0,lb,ub,lbp,ubp,[],options);
+else
+    x = p.Results.sceneSyncX;
+end
 
 
 %% Optional display mode
@@ -437,8 +442,9 @@ x = bads(myObj,x0,lb,ub,lbp,ubp,[],options);
 % adjust the delta variables
 
 if p.Results.displayMode
-    
+        
     % Provide some instructions for the operator
+    fprintf([sceneGeometryInPath '\n']);
     fprintf('Adjust horizontal and vertical camera translation with the arrow keys.\n');
     fprintf('Adjust depth camera translation with + and -.\n');
     fprintf('Adjust camera torsion with j and k.\n');
@@ -446,7 +452,6 @@ if p.Results.displayMode
     fprintf('Turn on and off perimeter display with p.\n');
     fprintf('Turn on and off model display with m.\n');
     fprintf('Press esc to exit.\n\n');
-    fprintf([sceneGeometryInPath '\n']);
     
     % Create a figure
     figHandle = figure();
@@ -474,12 +479,6 @@ if p.Results.displayMode
             
             % Update the perimeter points
             XpDisplay = XpMoving; YpDisplay = YpMoving;
-            
-            % Display the perimeter points
-            if showPerimeter
-                idx = sub2ind(size(displayImage),round(YpDisplay),round(XpDisplay));
-                displayImage(idx)=255;
-            end
                         
         else
             % Work with the fixed frame
@@ -488,12 +487,12 @@ if p.Results.displayMode
             % Update the perimeter
             XpDisplay = XpFixed; YpDisplay = YpFixed;
             
-            % Display the perimeter points
-            if showPerimeter
-                idx = sub2ind(size(displayImage),round(YpDisplay),round(XpDisplay));
-                displayImage(idx)=255;
-            end
-            
+        end
+        
+        % Display the perimeter points
+        if showPerimeter
+            idx = sub2ind(size(displayImage),round(YpDisplay),round(XpDisplay));
+            displayImage(idx)=255;
         end
         
         % Add the eye model
@@ -524,7 +523,7 @@ if p.Results.displayMode
             % Remove the updating annotation
             delete(annotHandle);
         end
-        
+
         % Move the moving image
         if showMoving
             % Get the 2D registration params that brings the movingImage
@@ -540,7 +539,7 @@ if p.Results.displayMode
         ax = gca;
         ax.Toolbar = [];
         hold on
-        % Add a label and store the image
+        % Add a label
         if showMoving
             text(20,30,'MOVING', 'Color', 'r','Fontsize',16);
         else
@@ -563,15 +562,15 @@ if p.Results.displayMode
                 case 31
                     x(3)=x(3)+0.1;
                 case {45 95}
-                    x(4)=x(4)-0.1;
+                    x(4)=x(4)-1;
                 case {61 43}
-                    x(4)=x(4)+0.1;
+                    x(4)=x(4)+1;
                 case 102
                     showMoving = ~showMoving;
                 case 106
-                    x(1)=x(1)-0.5;
-                case 107
                     x(1)=x(1)+0.5;
+                case 107
+                    x(1)=x(1)-0.5;
                 case 112
                     showPerimeter = ~showPerimeter;
                 case 109
@@ -592,30 +591,53 @@ end
 
 
 %% Create the adjusted sceneGeometry
-sceneGeometryAdjusted = sceneGeometryIn;
+sceneGeometryAdjusted = updateSceneGeometry( sceneGeometryIn, x );
 
-% Update the sceneGeometry torsion
-sceneGeometryAdjusted.cameraPosition.torsion = x(1);
 
-% Update the sceneGeometry translation
-sceneGeometryAdjusted.cameraPosition.translation = x(2:4)';
+%% Update the fixation angles
+[~,modeledEyePose] = calcGlintGazeError( sceneGeometryAdjusted, args{:}, keyVals{:} );
+medianEyePoseFixed = median(modeledEyePose);
+sceneGeometryAdjusted.screenPosition.fixationEyePose = medianEyePoseFixed(1:2)';
 
 
 %% Create and save a diagnostic figure
 if p.Results.saveDiagnosticPlot
     
-    % Fixed frame
-    displayImage = videoFrameFixed;
+    % Moving frame -- Typically the gazeCal source
+    displayImage = videoFrameMoving;
     tmpFig = figure('visible','off');
     renderEyePose(eyePoseMoving, sceneGeometryIn, ...
         'newFigure', false, 'visible', false, ...
         'backgroundImage',displayImage, ...
         'showAzimuthPlane', true, ...
-        'modelEyeLabelNames', {'retina' 'pupilEllipse' 'cornea'}, ...
-        'modelEyePlotColors', {'.w' '-g' '.y'}, ...
-        'modelEyeSymbolSizeScaler',1.5,...
-        'modelEyeAlpha', 0.25);
-    text(20,30,sceneGeometryInStem, 'Color', 'r','Fontsize',16,'Interpreter','none');
+                'modelEyeLabelNames', {'retina' 'pupilEllipse' 'cornea' 'glint_01'}, ...
+                'modelEyePlotColors', {'.w' '-g' '.y' 'xr'}, ...
+                'modelEyeSymbolSizeScaler',1.5,...
+                'modelEyeAlpha', [0.25 0.25 0.25 1]);            
+    text(20,30,sceneGeometryInStem, 'Color', 'g','Fontsize',16,'Interpreter','none');
+    msg = ['frame ' num2str(referenceFrameMoving)];
+    addAnnotation(msg);
+    hold on
+    plot([size(displayImage,2)/2, size(displayImage,2)/2],[0 size(displayImage,2)],'-b');
+    plot([0 size(displayImage,1)],[size(displayImage,1)/2, size(displayImage,1)/2],'-b');
+    tmpFrame = getframe(gcf);
+    imageSet(1) = {tmpFrame.cdata};
+    close(tmpFig);
+
+        
+    % Fixed frame -- The acquisition for which we have new sceneGeometry
+    displayImage = videoFrameFixed;
+    eyePoseFixed = eyePoseEllipseFit(XpFixed, YpFixed, sceneGeometryAdjusted,'glintCoord',glintCoordFixed,keyVals{:});
+    tmpFig = figure('visible','off');
+    renderEyePose(eyePoseFixed, sceneGeometryAdjusted, ...
+        'newFigure', false, 'visible', false, ...
+        'backgroundImage',displayImage, ...
+        'showAzimuthPlane', true, ...
+                'modelEyeLabelNames', {'retina' 'pupilEllipse' 'cornea' 'glint_01'}, ...
+                'modelEyePlotColors', {'.w' '-g' '.y' 'xr'}, ...
+                'modelEyeSymbolSizeScaler',1.5,...
+                'modelEyeAlpha', [0.25 0.25 0.25 1]);            
+    text(20,30,sceneGeometryOutStem, 'Color', 'r','Fontsize',16,'Interpreter','none');
     msg = ['frame ' num2str(referenceFrameFixed)];
     addAnnotation(msg);
     % Add cross hairs
@@ -623,33 +645,14 @@ if p.Results.saveDiagnosticPlot
     plot([size(displayImage,2)/2, size(displayImage,2)/2],[0 size(displayImage,2)],'-b');
     plot([0 size(displayImage,1)],[size(displayImage,1)/2, size(displayImage,1)/2],'-b');
     tmpFrame = getframe(gcf);
-    imageSet(1) = {tmpFrame.cdata};
-    close(tmpFig);
-    
-    % Moving frame
-    displayImage = fixedFrame;
-    tmpFig = figure('visible','off');
-    renderEyePose(eyePoseMoving+deltaPose, sceneGeometryAdjusted, ...
-        'newFigure', false, 'visible', false, ...
-        'backgroundImage',displayImage, ...
-        'showAzimuthPlane', true, ...
-        'modelEyeLabelNames', {'retina' 'pupilEllipse' 'cornea'}, ...
-        'modelEyePlotColors', {'.w' '-g' '.y'}, ...
-        'modelEyeSymbolSizeScaler',1.5,...
-        'modelEyeAlpha', 0.25);
-    text(20,30,sceneGeometryOutStem, 'Color', 'g','Fontsize',16,'Interpreter','none');
-    msg = ['frame ' num2str(referenceFrameFixed)];
-    addAnnotation(msg);
-    hold on
-    plot([size(displayImage,2)/2, size(displayImage,2)/2],[0 size(displayImage,2)],'-b');
-    plot([0 size(displayImage,1)],[size(displayImage,1)/2, size(displayImage,1)/2],'-b');
-    tmpFrame = getframe(gcf);
     imageSet(2) = {tmpFrame.cdata};
     close(tmpFig);
     
+    
     % Difference image
-    adjMovingFrame = updateMovingFrame(fixedFrame,deltaPix,deltaDeg,deltaScale,cameraOffsetPoint);
-    displayImage = videoFrameFixed - adjMovingFrame;
+    regParams = calcImageTransform(sceneGeometryIn,x,cameraOffsetPoint);
+    adjMovingFrame = updateFrame(videoFrameMoving,regParams,cameraOffsetPoint);
+    displayImage = videoFrameFixed - double(adjMovingFrame);
     tmpFig = figure('visible','off');
     imshow(displayImage,[], 'Border', 'tight');
     text(20,30,'Difference', 'Color', 'w','Fontsize',16,'Interpreter','none');
@@ -685,15 +688,17 @@ if p.Results.saveDiagnosticPlot
     annotation('textbox', [0.15, .125, 0, 0], 'string', alignMethod,'FontWeight','bold','FitBoxToText','on','LineStyle','none','HorizontalAlignment','left','Interpreter','none')     
     
     % Report the run lengths
-    msg = sprintf('runLength [fixed, moving] = %2.0f, %2.0f',runLengthFixed,runLengthMoving);
+    msg = sprintf('runLength fixed = %2.0f',runLengthFixed);
     annotation('textbox', [0.75, .125, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','left','Interpreter','none')     
     
     % Add a text summary below. If any delta fixation angle is geater than
     % 1 deg, print the message text in red to alert that this was a large
     % eye rotation change.
-    msg = sprintf('delta pixels = [x, y] = [%2.1f, %2.1f]',deltaPix);
+    deltaX = x-x0;
+    deltaPose = medianEyePoseFixed - eyePoseMoving;
+    msg = sprintf('delta torsion [deg] = %2.1f',deltaX(1));
     annotation('textbox', [0.5, .175, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
-    msg = sprintf('delta translation [mm] [x; y; z] = [%2.3f; %2.3f; %2.3f]',deltaMM);
+    msg = sprintf('delta translation [mm] [x; y; z] = [%2.3f; %2.3f; %2.3f]',deltaX(2:4));
     annotation('textbox', [0.5, .125, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
     msg = sprintf('delta eye pose [azi, ele, tor, radius] = [%2.3f, %2.3f, %2.3f, %2.3f]',deltaPose);
     msgColor = 'black';
@@ -701,8 +706,6 @@ if p.Results.saveDiagnosticPlot
         msgColor = 'red';
     end
     annotation('textbox', [0.5, .075, 0, 0], 'string', msg,'Color',msgColor,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
-    msg = sprintf('delta torsion [deg] = %2.3f',deltaDeg);
-    annotation('textbox', [0.5, .025, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
     
     % Save and close the figure
     tmp = fullfile(sceneGeometryOutPath,[sceneGeometryOutStem '_sceneSync_QA.pdf']);
@@ -724,7 +727,8 @@ if p.Results.saveAdjustedSceneGeometry
         relativeCameraPosition.values(:,referenceFrameFixed);
     
     % Add the meta data
-    sceneGeometryAdjusted.meta.syncSceneGeometry = p;
+    sceneGeometryAdjusted.meta.syncSceneGeometry = p.Results;
+    sceneGeometryAdjusted.meta.syncSceneGeometry.x = x;
     
     % Set the variable name
     sceneGeometry = sceneGeometryAdjusted;
@@ -739,9 +743,9 @@ if p.Results.displayMode
     tmp=strsplit(sceneGeometryInPath,filesep);
     outline = [tmp{end-3} char(9) tmp{end-2} char(9) 'fixed: ' sceneGeometryInStem ', moving: ' sceneGeometryOutStem '\n'] ;
     fprintf(outline)
-    outline = ['alignMethod' char(9) 'deltaPix' char(9) 'deltaDeg' char(9) 'deltaScale' char(9) 'deltaPose\n'];
+    outline = ['alignMethod' char(9) 'x' char(9) 'eyePose\n'];
     fprintf(outline)
-    outline = sprintf(['{''' alignMethod '''}' char(9) '[ %2.2f, %2.2f ]' char(9) '[ %2.1f ]' char(9) '[ %2.1f ]' char(9) '[ %2.2f, %2.2f, %2.2f, %2.2f ]\n'],deltaPix,deltaDeg,deltaScale,deltaPose);
+    outline = sprintf(['{''' alignMethod '''}' char(9) '[ %2.2f, %2.2f, %2.2f, %2.2f, %2.2f, %2.2f, %2.2f, %2.2f ]' char(9) '[ %2.2f, %2.2f, %2.2f, %2.2f ]\n'],x,medianEyePoseFixed);
     fprintf(outline)
     fprintf('\n')
 end
@@ -774,21 +778,10 @@ B = [pupilEllipseB1(1:2)',pupilEllipseB2(1:2)',pupilEllipseB3(1:2)']-cameraOffse
 regParams = absor(...
     A,...
     B,...
-    'doScale',false,...
+    'doScale',true,...
     'doTrans',true);
 end
 
-function [Xp, Yp] = updatePerimeter(Xp,Yp,regParams,cameraOffsetPoint)
-% Calculate the displacement of the image in pixels
-
-% Create a matrix of the perimeter points
-v = [(Xp-cameraOffsetPoint(1))';(Yp-cameraOffsetPoint(2))';ones(size(Xp'))];
-% Apply the rotation
-v = regParams.M*v;
-% Extract the Xp and Yp vectors
-Xp = v(1,:)'+cameraOffsetPoint(1);
-Yp = v(2,:)'+cameraOffsetPoint(2);
-end
 
 function displayImage = updateFrame(movingFrame,regParams,cameraOffsetPoint)
 
@@ -801,15 +794,15 @@ for ii=1:size(movingFrame,3)
     tmpImagePad(padVals(1)+1:padVals(1)+size(tmpImage,1), ...
         padVals(2)+1:padVals(2)+size(tmpImage,2) ) = tmpImage;
     tmpImage = tmpImagePad;
-    % Apply the scaling
-    tmpImage = imresize(tmpImage,regParams.s);
+    % Rotate the image
+    tmpImage = imrotateAround(tmpImage, cameraOffsetPoint(2), cameraOffsetPoint(1), regParams.theta, 'bicubic');
     % Apply the x and y translation
     tmpImage = imtranslate(tmpImage,regParams.t','method','cubic');
+    % Apply the scaling
+    tmpImage = HardZoom(tmpImage,regParams.s);
     % Crop out the padding
     tmpImage = tmpImage(padVals(1)+1:padVals(1)+size(movingFrame,1), ...
         padVals(2)+1:padVals(2)+size(movingFrame,2));
-    % Rotate the image
-    tmpImage = imrotateAround(tmpImage, cameraOffsetPoint(2), cameraOffsetPoint(1), regParams.theta, 'bicubic');
     % Store this dimension
     displayImage(:,:,ii)=uint8(tmpImage);
 end
@@ -835,6 +828,34 @@ drawnow
 end
 
 
+function OutPicture = HardZoom(InPicture, ZoomFactor)
+      % Si el factor de escala es 1, no se hace nada
+      if ZoomFactor == 1
+          OutPicture = InPicture;
+          return;
+      end
+      % Se obtienen las dimensiones de las imágenes
+      ySize = size(InPicture, 1);
+      xSize = size(InPicture, 2);
+      zSize = size(InPicture, 3);
+      yCrop = floor(ySize / 2 * abs(ZoomFactor - 1));
+      xCrop = floor(xSize / 2 * abs(ZoomFactor - 1));
+      % Si el factor de escala es 0 se devuelve una imagen en negro
+      if ZoomFactor == 0
+          OutPicture = uint8(zeros(ySize, xSize, zSize));
+          return;
+      end
+      % Se reescala y se reposiciona en en centro
+      zoomPicture = imresize(InPicture, ZoomFactor);
+      ySizeZ = size(zoomPicture, 1);
+      xSizeZ = size(zoomPicture, 2);      
+      if ZoomFactor > 1
+          OutPicture = zoomPicture( 1+yCrop:yCrop+ySize, 1+xCrop:xCrop+xSize, :);
+      else
+          OutPicture = uint8(zeros(ySize, xSize, zSize));
+          OutPicture( 1+yCrop:yCrop+ySizeZ, 1+xCrop:xCrop+xSizeZ, :) = zoomPicture;
+      end
+end
 
 
 function output = imrotateAround(image, pointY, pointX, angle, varargin)
