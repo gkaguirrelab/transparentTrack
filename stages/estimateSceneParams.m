@@ -140,8 +140,8 @@ p.parse(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, 
 
 
 %% Announce we are starting
+ticObject = tic();
 if p.Results.verbose
-    ticObject = tic();
     fprintf(['Estimating scene parameters. Started ' char(datetime('now')) '\n']);
 end
 

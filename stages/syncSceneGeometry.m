@@ -88,6 +88,15 @@ p.addParameter('gazeErrorThreshTol',0.25,@isscalar);
 p.parse(pupilFileName, varargin{:});
 
 
+
+
+%% Announce we are starting
+ticObject = tic();
+if p.Results.verbose
+    fprintf(['Syncing scene geometry. Started ' char(datetime('now')) '\n']);
+end
+
+
 %% Load sceneGeometryIn files
 % This sceneGeometry--and its associated video, perimeter, and pupil
 % data--constitute the "moving" measurements.
@@ -429,6 +438,10 @@ lbp = x0 - bound./2;
 ubp = x0 + bound./2;
 % Objective
 myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometryIn, x ), args{:}, keyVals{:} );
+% Announce
+if p.Results.verbose
+    fprintf('Searing across scene params...');
+end
 % Search
 if isempty(p.Results.sceneSyncX)
     x = bads(myObj,x0,lb,ub,lbp,ubp,[],options);
@@ -714,6 +727,8 @@ if p.Results.saveDiagnosticPlot
     
 end
 
+% Get the execution time
+executionTime = toc(ticObject);
 
 %% Save the adjusted sceneGeometry
 if p.Results.saveAdjustedSceneGeometry
@@ -729,6 +744,7 @@ if p.Results.saveAdjustedSceneGeometry
     % Add the meta data
     sceneGeometryAdjusted.meta.syncSceneGeometry = p.Results;
     sceneGeometryAdjusted.meta.syncSceneGeometry.x = x;
+    sceneGeometryAdjusted.meta.executionTime = executionTime;
     
     % Set the variable name
     sceneGeometry = sceneGeometryAdjusted;
@@ -748,6 +764,13 @@ if p.Results.displayMode
     outline = sprintf(['{''' alignMethod '''}' char(9) '[ %2.2f, %2.2f, %2.2f, %2.2f, %2.2f, %2.2f, %2.2f, %2.2f ]' char(9) '[ %2.2f, %2.2f, %2.2f, %2.2f ]\n'],x,medianEyePoseFixed);
     fprintf(outline)
     fprintf('\n')
+end
+
+
+%% alert the user that we are done with the routine
+if p.Results.verbose
+    executionTime
+    fprintf('\n');
 end
 
 
