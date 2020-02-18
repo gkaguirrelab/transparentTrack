@@ -96,9 +96,19 @@ function sceneGeometry = estimateSceneParams(pupilFileName, perimeterFileName, g
     sceneGeometryFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3015/032417/EyeTracking/GazeCal03_sceneGeometry.mat';
     gazeTargets = [ -7, 0, -7, 7, 7, 0, -7, 0, 7 ; 0, -7, -7, 0, -7, 7, 7, 0, 7];
     frameSet = [ 679, 884, 1180, 1250, 1571, 1663, 1809, 2004, 2075 ];
-    estimateSceneParams(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, 'frameSet', frameSet, 'gazeTargets', gazeTargets);
+    varargin = {'axialLength',23.45,'sphericalAmetropia',-0.5,'measuredCornealCurvature',[41.80,42.80,178]};
+    estimateSceneParams(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, 'frameSet', frameSet, 'gazeTargets', gazeTargets, varargin{:});
 %}
-
+%{
+    perimeterFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3021/060917/EyeTracking/GazeCal02_correctedPerimeter.mat';
+    glintFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3021/060917/EyeTracking/GazeCal02_glint.mat';
+    pupilFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3021/060917/EyeTracking/GazeCal02_pupil.mat';
+    sceneGeometryFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3021/060917/EyeTracking/GazeCal02_sceneGeometry.mat';
+    gazeTargets = [ -7, -7, 7, 0, 0, 7, 0, 7, -7 ; 0, 7, -7, -7, 0, 7, 7, 0, -7];
+    frameSet = [ 730, 882, 971, 1114, 1250, 1382, 1467, 1593, 1672 ];
+    varargin = {'axialLength',25.29,'sphericalAmetropia',-5.25,'contactLens',-5.25,'sceneParamsX0',[ 4.35, -1.98, -2.90, 116.31, 0.80, 0.96, 1, 1, 0 ]};
+    estimateSceneParams(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, 'frameSet', frameSet, 'gazeTargets', gazeTargets, varargin{:});
+%}
 
 %% input parser
 p = inputParser; p.KeepUnmatched = true;
@@ -125,7 +135,7 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional analysis params
-p.addParameter('sceneParamsX0',[0 0 0 130 1 1 1 1],@isnumeric);
+p.addParameter('sceneParamsX0',[0 0 0 130 1 1 1 1 0],@isnumeric);
 p.addParameter('lockDepth',true,@islogical);
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
@@ -246,11 +256,12 @@ if p.Results.verbose
     fprintf('Stage 1...');
 end
 % Bounds
-bound = [20, 10, 10, 0, 0, 0, 0, 0];
+bound = [20, 10, 10, 0, 0, 0, 0, 0, 0];
 lb = x - bound;
 ub = x + bound;
 lbp = x - bound./2;
 ubp = x + bound./2;
+[lb,ub,lbp,ubp] = cornealCurvConstraint(sceneGeometry,lb,ub,lbp,ubp);
 % Search
 x = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
 xStages(1,:) = x;
@@ -266,10 +277,11 @@ if p.Results.verbose
     fprintf('Stage 2...');
 end
 % Bounds
-lb = [x(1:4), 0.75, 0.75, x(7:8)];
-ub = [x(1:4), 1.25, 1.25, x(7:8)];
-lbp = [x(1:4), 0.85, 0.85, x(7:8)];
-ubp = [x(1:4), 1.15, 1.15, x(7:8)];
+lb = [x(1:4), 0.75, 0.75, x(7:9)];
+ub = [x(1:4), 1.25, 1.25, x(7:9)];
+lbp = [x(1:4), 0.85, 0.85, x(7:9)];
+ubp = [x(1:4), 1.15, 1.15, x(7:9)];
+[lb,ub,lbp,ubp] = cornealCurvConstraint(sceneGeometry,lb,ub,lbp,ubp);
 % Objective
 myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
 % Search
@@ -287,11 +299,12 @@ if p.Results.verbose
     fprintf('Stage 3...');
 end
 % Bounds
-bound = [abs(x(1:3).*0.25), 0, 0, 0, x(7:8).*0.25];
+bound = [abs(x(1:3).*0.25), 0, 0, 0, x(7:8).*0.25 90];
 lb = x - bound;
 ub = x + bound;
 lbp = x - bound./2;
 ubp = x + bound./2;
+[lb,ub,lbp,ubp] = cornealCurvConstraint(sceneGeometry,lb,ub,lbp,ubp);
 % Search
 x = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
 xStages(3,:) = x;
@@ -311,6 +324,7 @@ lb  = x./(0.90.^-sign(x));
 lbp = x./(0.95.^-sign(x));
 ubp = x./(1.05.^-sign(x));
 ub  = x./(1.10.^-sign(x));
+[lb,ub,lbp,ubp] = cornealCurvConstraint(sceneGeometry,lb,ub,lbp,ubp);
 % if we have been told to lock the depth parameter, do so
 if p.Results.lockDepth
     lb(4) = x(4); lbp(4) = x(4); ubp(4) = x(4); ub(4) = x(4);
@@ -449,6 +463,17 @@ end
 %%%%%%%%%%%% LOCAL FUNCTIONS
 
 
+function [lb,ub,lbp,ubp] = cornealCurvConstraint(sceneGeometry,lb,ub,lbp,ubp)
+% The first of the corneal curvature values must always be smaller than the
+% second. This constrains the differential scaling value that can be
+% present for the last parameter.
+kvals = sceneGeometry.eye.cornea.kvals;
+diffScaleUpperBound = kvals(2)/kvals(1);
+lb(8) = min([lb(8) diffScaleUpperBound]);
+ub(8) = min([ub(8) diffScaleUpperBound]);
+lbp(8) = min([lbp(8) diffScaleUpperBound]);
+ubp(8) = min([ubp(8) diffScaleUpperBound]);
+end
 
 
 function [x, fVal] = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options)
@@ -503,7 +528,7 @@ function figHandle = addSubPlots(figHandle,idx,nStages,x,sceneGeometry,perimeter
 
 % Prepare the figure
 if idx == 0
-    figHandle=figure('Visible','off');
+    figHandle=figure('Visible','on');
     set(gcf,'PaperOrientation','landscape');
     set(figHandle, 'Units','inches')
     height = 11;
@@ -555,7 +580,7 @@ title(myLabel);
 
 % 1. Perimeter fits
 % Define a figure
-hFig = figure( 'Visible', 'off');
+hFig = figure( 'Visible', 'on');
 dim = 150;
 imshow(ones(dim,dim),'Border', 'tight');
 drawnow;

@@ -19,6 +19,7 @@ function sceneGeometryOut = updateSceneGeometry( sceneGeometryIn, x )
 %                            x(6) - differential eye rotation center scaler
 %                            x(7) - joint corneal curvature scaler
 %                            x(8) - differential corneal curvature scaler
+%                            x(9) - angle for the kvals (0-180)
 %
 % Outputs:
 %   sceneGeometryOut     - Structure. See createSceneGeometry.m
@@ -51,6 +52,7 @@ kvals = sceneGeometryIn.eye.cornea.kvals;
 kvals(1:2) = kvals(1:2) .* x(7);
 kvals(1) = kvals(1) * x(8);
 kvals(2) = kvals(2) / x(8);
+kvals(3) = x(9);
 eye.meta.measuredCornealCurvature = kvals;
 cornea = human.cornea( eye );
 
