@@ -37,18 +37,18 @@ sceneGeometryOut.cameraPosition.translation = x(2:4)';
 % Extract the eye field
 eye = sceneGeometryIn.eye;
 
-% Obtain the default rotation centers for this eye
-rotationCenters = human.rotationCenters( eye );
+% Obtain the current rotation centers for this eye
+rotationCenters = sceneGeometryIn.eye.rotationCenters;
 
 % Scale the rotation center values by the joint and differential
 % parameters
 sceneGeometryOut.eye.rotationCenters.azi = rotationCenters.azi .* x(5) .* x(6);
 sceneGeometryOut.eye.rotationCenters.ele = rotationCenters.ele .* x(5) ./ x(6);
 
-% Create the updated cornea 
-radii = quadric.radii(eye.cornea.front.S);
-D = @(radius) (radii(1) * 337.5) ./ radius.^2;
-kvals = D(radii(2:3)) .* x(7);
+% Obtain the current kVals for this eye
+kvals = sceneGeometryIn.eye.cornea.kvals;
+% Scale the curvature component
+kvals(1:2) = kvals(1:2) .* x(7);
 kvals(1) = kvals(1) * x(8);
 kvals(2) = kvals(2) / x(8);
 eye.meta.measuredCornealCurvature = kvals;

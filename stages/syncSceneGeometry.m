@@ -421,7 +421,7 @@ options.Display = 'off';             % Silence display output
 options.UncertaintyHandling = 0;     % The objective is deterministic
 
 % Bounds
-x0 = sceneGeometryIn.meta.estimateSceneParams.x4;
+x0 = [sceneGeometryIn.meta.estimateSceneParams.x4(1:4) 1 1 1 1];
 bound = p.Results.sceneSyncBound;
 lb = x0 - bound;
 ub = x0 + bound;
