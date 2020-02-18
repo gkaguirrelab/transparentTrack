@@ -110,14 +110,17 @@ else
     modelEyePose = p.Results.modelEyePose;
 end
 
-% Allocate the loop variables
+% Allocate the loop and return variables
 modelGlintX = nan(nFrames,1);
 modelGlintY = nan(nFrames,1);
 perimFitError = nan(nFrames,1);
 pupilCenter = nan(nFrames,2);
 modelPupilEllipse = nan(nFrames,5);
+modelPoseGaze = nan(nFrames,2);
+modelVecGaze = nan(nFrames,2);
+poseRegParams = struct();
+vectorRegParams = struct();
 
-% These are some magic numbers used in retrieving the glint
 
 % Loop over the frames and obtain the modeled eyePose and glint
 parfor ii = 1:nFrames
@@ -191,12 +194,10 @@ glintError = nanNorm(glintDistances,weights);
 % These are errors in matching the position of the fixation targets on the
 % screen. The error is in degrees of visual angle. We need to have gaze
 % targets to compute this error
-
 if isempty(gazeTargets)
     poseError = nan;
     vectorError = nan;
-else
-    
+else    
     % poseError -- eye rotation equal to the visual angle
     poseRegParams = absor(...
         modelEyePose(:,1:2)',...
