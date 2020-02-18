@@ -106,7 +106,7 @@ function sceneGeometry = estimateSceneParams(pupilFileName, perimeterFileName, g
     sceneGeometryFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3021/060917/EyeTracking/GazeCal02_sceneGeometry.mat';
     gazeTargets = [ -7, -7, 7, 0, 0, 7, 0, 7, -7 ; 0, 7, -7, -7, 0, 7, 7, 0, -7];
     frameSet = [ 730, 882, 971, 1114, 1250, 1382, 1467, 1593, 1672 ];
-    varargin = {'axialLength',25.29,'sphericalAmetropia',-5.25,'contactLens',-5.25,'sceneParamsX0',[ 4.35, -1.98, -2.90, 116.31, 0.80, 0.96, 1, 1, 0 ]};
+    varargin = {'axialLength',25.29,'sphericalAmetropia',-5.25,'sceneParamsX0',[ 4.35, -2, -3.5, 120, 0.80, 0.96, 1, 1, 0 ],'lockDepth', false};
     estimateSceneParams(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, 'frameSet', frameSet, 'gazeTargets', gazeTargets, varargin{:});
 %}
 
@@ -629,7 +629,7 @@ drawnow
 if idx == nStages
     gcf
     axes('Position',[0 0 1 1],'visible','off','Tag','subtitle');
-    str = sprintf('Camera torsion: %2.1f, position: [%2.1f, %2.1f, %2.1f]; Rotation center joint, diff [%2.2f, %2.2f]; Corneal curvature joint diff [%2.2f, %2.2f]',x);
+    str = sprintf('Camera torsion: %2.1f, position: [%2.1f, %2.1f, %2.1f]; Rotation center joint, diff [%2.2f, %2.2f]; Corneal curvature joint, diff, angle [%2.2f, %2.2f, %2.2f]',x);
     ht=text(.5,0.05,str);set(ht,'horizontalalignment','center','fontsize',12);
     drawnow
 end
