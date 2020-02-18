@@ -87,7 +87,7 @@ p.addRequired('gazeTargets',@isnumeric);
 p.addParameter('modelEyePose',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
-p.addParameter('errorReg',[1 1 3 3],@isscalar);
+p.addParameter('errorReg',[1 3 3 1],@isscalar);
 
 % Parse and check the parameters
 p.parse(sceneGeometry, perimeter, glintData, ellipseRMSE, gazeTargets, varargin{:});

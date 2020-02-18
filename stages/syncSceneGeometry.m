@@ -32,20 +32,57 @@ function syncSceneGeometry(pupilFileName, varargin)
 % Optional key/value pairs (display and I/O):
 %  'sceneGeometryFileNameToSync' - Full path to the .mat file that contains
 %                           the sceneGeometry to be used.
-%  'verbose'              - Logical. Default false.
-%  'displayMode'          - Logical. Default false.
-%  'saveAdjustedSceneGeometry' - Logical.
+%  'displayMode'          - Logical. Controls if a GUI interface is
+%                           provided after the search stage to allow the
+%                           user to adjust the scene geometry parameters
+%                           by hand.
+%  'verbose'              - Logical.
+%  'saveAdjustedSceneGeometry' - Logical. Controls if the adjusted 
+%                           sceneGeometry file is saved. If so, the file
+%                           name will be derived from the pupilFile name.
 %  'saveDiagnosticPlot'   - Logical.
-%  'doNotSyncSceneToItself' - Logical.
+%  'doNotSyncSceneToItself' - Logical. Strange things could happen if a the
+%                           user requests that a sceneGeometry file be
+%                           synced to itself. This circumstance is detected
+%                           and the routine exits unless this flag is set
+%                           to false.
 %   
+% Optional key/value pairs (flow control)
+%  'useParallel'          - If set to true, use the MATLAB parallel pool
+%  'nWorkers'             - Specify the number of workers in the parallel
+%                           pool. If undefined the default number will be
+%                           used.
+%
 % Optional key/value pairs (fitting params):
-%  'alignMethod'          - Char vec, or cell array of char vecs.
-%  'deltaPix'             - Numeric.
-%  'deltaDeg'             - Numeric.
-%  'deltaScale'           - Numeric.
-%  'deltaPose'            - Numeric.
-%  'eyePositionTargetLengthFrames' - Scalar.
-%  'gazeErrorThreshTol'   - Scalar.
+%  'alignMethod'          - Char vec. Controls how the routine selects
+%                           frames from the pupilFile acquisition to use
+%                           as the fixed target to which the sceneGeometry
+%                           is adjusted. Valid options are:
+%                               {'gazePre','gazePost','shape'}
+%  'sceneSyncX'           - 1x8 vector. If set, these scene parameter
+%                           values will be used for the adjusted
+%                           sceneGeometry, instead of performing a search
+%                           to try and find optimal parameters.
+%  'sceneSyncBound'       - 1x8 vector. Defines the +-bounds on the scene
+%                           parameters for the search that brings the
+%                           source sceneGeometry into alignment with the
+%                           fixed, target pupilFile data. As properties of
+%                           the eye itself (rotation center, corneal
+%                           curvature) are considered fixed, the last four
+%                           values of this vector are usually set to zero.
+%                           Also, given a single eyePose as a target, the
+%                           model has difficulty adjusting torsion (the
+%                           first parameter) and depth (the fourth
+%                           parameter) so these are typically set to zero
+%                           as well.
+%  'eyePositionTargetLengthFrames' - Scalar. The number of sequential 
+%                           frames from the target acquisition that will be
+%                           found and used to define the position of the
+%                           eye to be fit.
+%  'gazeErrorThreshTol'   - Scalar. The run of frames must have a deviation
+%                           of less than this value. The precise meaning of
+%                           the value will differ for the different
+%                           alignment methods.
 %
 % Examples:
 %{
@@ -66,8 +103,8 @@ p.addRequired('pupilFileName',@ischar);
 
 % Optional display and I/O params
 p.addParameter('sceneGeometryFileNameToSync','',@(x)(ischar(x) | iscell(x)));
-p.addParameter('verbose',false,@islogical);
 p.addParameter('displayMode',false,@islogical);
+p.addParameter('verbose',true,@islogical);
 p.addParameter('saveAdjustedSceneGeometry',true,@islogical);
 p.addParameter('saveDiagnosticPlot',true,@islogical);
 p.addParameter('doNotSyncSceneToItself',true,@islogical);
@@ -78,8 +115,8 @@ p.addParameter('nWorkers',[],@(x)(isempty(x) || isnumeric(x)));
 
 % Optional fitting params
 p.addParameter('alignMethod','gazePre',@(x)(ischar(x) | iscell(x)));
-p.addParameter('sceneSyncBound',[0, 10, 10, 0, 0, 0, 0, 0],@isnumeric);
 p.addParameter('sceneSyncX',[],@isnumeric);
+p.addParameter('sceneSyncBound',[0, 10, 10, 0, 0, 0, 0, 0],@isnumeric);
 p.addParameter('eyePositionTargetLengthFrames',10,@isscalar);
 p.addParameter('gazeErrorThreshTol',0.25,@isscalar);
 
@@ -440,7 +477,7 @@ ubp = x0 + bound./2;
 myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometryIn, x ), args{:}, keyVals{:} );
 % Announce
 if p.Results.verbose
-    fprintf('Searing across scene params...');
+    fprintf('Searching across scene params...');
 end
 % Search
 if isempty(p.Results.sceneSyncX)
