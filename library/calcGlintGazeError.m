@@ -1,8 +1,8 @@
-function [ objError, modelEyePose, modelGlint, modelPoseGaze, modelVecGaze, poseRegParams, vectorRegParams, rawErrors] = calcGlintGazeError( sceneGeometry, perimeter, glintData, ellipseRMSE, gazeTargets, varargin )
+function [ objError, modelEyePose, modelPupilEllipse, modelGlintCoord, modelPoseGaze, modelVecGaze, poseRegParams, vectorRegParams, rawErrors] = calcGlintGazeError( sceneGeometry, perimeter, glintData, ellipseRMSE, gazeTargets, varargin )
 % Error in prediction of image and gaze for a sceneGeometry
 %
 % Syntax:
-%   [ objError, modelEyePose, modelGlint, modelPoseGaze, modelVecGaze, poseRegParams, vectorRegParams, rawErrors] = calcGlintGazeError( sceneGeometry, perimeter, glintData, ellipseRMSE, gazeTargets, varargin )
+%   [ objError, modelEyePose, modelPupilEllipse, modelGlintCoord, modelPoseGaze, modelVecGaze, poseRegParams, vectorRegParams, rawErrors] = calcGlintGazeError( sceneGeometry, perimeter, glintData, ellipseRMSE, gazeTargets, varargin )
 %
 % Description:
 %   The sceneGeometry defines a physical system of an eye, a camera (with a
@@ -53,7 +53,8 @@ function [ objError, modelEyePose, modelGlint, modelPoseGaze, modelVecGaze, pose
 %   objError              - Scalar. The overall model error.
 %   modelEyePose          - f x 4 matrix of modeled eyePose positions 
 %                           for the passed frames.
-%   modelGlint            - Structure. The modeled glint locations.
+%   modelPupilEllipse     - f x 5 matrix of ellipses fit to the pupil.
+%   modelGlintCoord       - Structure. The modeled glint locations.
 %   modelPoseGaze         - f x 2 matrix of modeled gaze locations in 
 %                           horizontal and vertical degrees of visual angle
 %                           derived from the eye rotation.
@@ -86,7 +87,7 @@ p.addRequired('gazeTargets',@isnumeric);
 p.addParameter('modelEyePose',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
-p.addParameter('errorReg',[1 1 2 2],@isscalar);
+p.addParameter('errorReg',[1 1 3 3],@isscalar);
 
 % Parse and check the parameters
 p.parse(sceneGeometry, perimeter, glintData, ellipseRMSE, gazeTargets, varargin{:});
@@ -109,11 +110,12 @@ else
     modelEyePose = p.Results.modelEyePose;
 end
 
-% Allocate the glint loop variables
+% Allocate the loop variables
 modelGlintX = nan(nFrames,1);
 modelGlintY = nan(nFrames,1);
 perimFitError = nan(nFrames,1);
 pupilCenter = nan(nFrames,2);
+modelPupilEllipse = nan(nFrames,5);
 
 % These are some magic numbers used in retrieving the glint
 
@@ -129,28 +131,48 @@ parfor ii = 1:nFrames
     
     % Get the eyePose
     if calcEyePose
-        [modelEyePose(ii,:),perimFitError(ii)] = eyePoseEllipseFit(Xp, Yp, sceneGeometry, 'glintCoord', glintCoord);
+        modelEyePose(ii,:) = eyePoseEllipseFit(Xp, Yp, sceneGeometry, 'glintCoord', glintCoord);
     end
         
     % Get the glint coordinates
-    [fittedEllipse, fittedGlint] = projectModelEye(modelEyePose(ii,:), sceneGeometry);
+    [modelPupilEllipse_loop, modelGlintCoord_loop] = projectModelEye(modelEyePose(ii,:), sceneGeometry);    
+    modelPupilEllipse(ii,:) = modelPupilEllipse_loop;
     
+    % Get the error in fitting the perimeter with the ellipse
+    if any(isnan(modelPupilEllipse_loop))
+        % Set fVal to something arbitrarily large
+        perimFitError(ii) = 1e6;
+    else
+        % This is the RMSE of the distance values of the boundary
+        % points to the ellipse fit.
+        explicitEllipse = ellipse_transparent2ex(modelPupilEllipse_loop);
+        if isempty(explicitEllipse)
+            perimFitError(ii) = 1e6;
+        else
+            if any(isnan(explicitEllipse))
+                perimFitError(ii) = 1e6;
+            else
+                perimFitError(ii) = sqrt(nanmean(ellipsefit_distance(Xp,Yp,explicitEllipse).^2));
+            end
+        end
+    end
+        
     % Store the empirical pupil center
-    pupilCenter(ii,:) = fittedEllipse(1:2);
+    pupilCenter(ii,:) = modelPupilEllipse_loop(1:2);
     
     % Store the glint coordinate, and Inf if we didn't get a glint
-    if isempty(fittedGlint)
+    if isempty(modelGlintCoord_loop)
         modelGlintX(ii) = Inf;
         modelGlintY(ii) = Inf;
     else
-        modelGlintX(ii) = fittedGlint(1);
-        modelGlintY(ii) = fittedGlint(2);
+        modelGlintX(ii) = modelGlintCoord_loop(1);
+        modelGlintY(ii) = modelGlintCoord_loop(2);
     end
 end
 
 % Store the parpool loop variables
-modelGlint.X = modelGlintX;
-modelGlint.Y = modelGlintY;
+modelGlintCoord.X = modelGlintX;
+modelGlintCoord.Y = modelGlintY;
 
 
 %% Image error
@@ -161,7 +183,7 @@ modelGlint.Y = modelGlintY;
 perimError = nanNorm(perimFitError,weights);
 
 % glintError -- fit of the model to the glint locations
-glintDistances = sqrt(sum([modelGlint.X - glintData.X, modelGlint.Y - glintData.Y].^2,2));
+glintDistances = sqrt(sum([modelGlintCoord.X - glintData.X, modelGlintCoord.Y - glintData.Y].^2,2));
 glintError = nanNorm(glintDistances,weights);
 
 
@@ -188,7 +210,7 @@ else
     % vectorError -- vector between the glint and pupil center used to model
     % eye position
     glintSign = [1;-1];
-    centerDiff = (pupilCenter - [modelGlint.X modelGlint.Y])' .* ...
+    centerDiff = (pupilCenter - [modelGlintCoord.X modelGlintCoord.Y])' .* ...
         glintSign;
     if any(isnan(sum(centerDiff))) || any(isinf(sum(centerDiff)))
         vectorError = inf;
