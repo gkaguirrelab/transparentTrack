@@ -275,7 +275,7 @@ for ii = 1:p.Results.searchIterations
     
     % Announce
     if p.Results.verbose
-        fprintf('Stage 1...');
+        fprintf(['Iter 0' num2str(ii) ', Stage 1...']);
     end
     % Bounds
     bound = [20, 10, 10, 0, 0, 0, 0, 0, 0];
@@ -377,7 +377,7 @@ for ii = 1:p.Results.searchIterations
     
     %% Save the fit-by-stage plot
     if p.Results.verbose
-        fprintf('Saving plots...');
+        fprintf('Saving plots...\n');
     end
     
     % Save the staged fit results
