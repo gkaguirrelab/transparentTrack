@@ -106,7 +106,7 @@ function sceneGeometry = estimateSceneParams(pupilFileName, perimeterFileName, g
     sceneGeometryFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3021/060917/EyeTracking/GazeCal02_sceneGeometry.mat';
     gazeTargets = [ -7, -7, 7, 0, 0, 7, 0, 7, -7 ; 0, 7, -7, -7, 0, 7, 7, 0, -7];
     frameSet = [ 730, 882, 971, 1114, 1250, 1382, 1467, 1593, 1672 ];
-    varargin = {'axialLength',25.29,'sphericalAmetropia',-5.25,'sceneParamsX0',[ 4.35, -2, -3.5, 120, 0.80, 0.96, 1, 1, 0 ],'lockDepth', false};
+    varargin = {'axialLength',25.29,'sphericalAmetropia',-5.25,'sceneParamsX0',[ 11.5504 -3.0653 -3.8704 124.2764 0.8830 0.9858 1.0495 0.9987 0 ],'lockDepth', false};
     estimateSceneParams(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, 'frameSet', frameSet, 'gazeTargets', gazeTargets, varargin{:});
 %}
 
@@ -320,10 +320,10 @@ if p.Results.verbose
     fprintf('Stage 4...');
 end
 % Bounds
-lb  = x./(0.90.^-sign(x));
-lbp = x./(0.95.^-sign(x));
-ubp = x./(1.05.^-sign(x));
-ub  = x./(1.10.^-sign(x));
+lb  = [x(1:8)./(0.90.^-sign(x(1:8))), x(9)-45];
+lbp = [x(1:8)./(0.95.^-sign(x(1:8))), x(9)-22.5];
+ubp = [x(1:8)./(1.05.^-sign(x(1:8))), x(9)+22.5];
+ub  = [x(1:8)./(1.10.^-sign(x(1:8))), x(9)+45];
 [lb,ub,lbp,ubp] = cornealCurvConstraint(sceneGeometry,lb,ub,lbp,ubp);
 % if we have been told to lock the depth parameter, do so
 if p.Results.lockDepth
@@ -473,6 +473,12 @@ lb(8) = min([lb(8) diffScaleUpperBound]);
 ub(8) = min([ub(8) diffScaleUpperBound]);
 lbp(8) = min([lbp(8) diffScaleUpperBound]);
 ubp(8) = min([ubp(8) diffScaleUpperBound]);
+
+% Keep the corneal axis between +-90
+lb(9) = max([lb(9) -90]);
+ub(9) = min([ub(9) 90]);
+lbp(9) = max([lbp(9) -90]);
+ubp(9) = min([ubp(9) 90]);
 end
 
 
