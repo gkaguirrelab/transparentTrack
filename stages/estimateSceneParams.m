@@ -151,7 +151,8 @@ p.parse(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, 
 %% Error if gazeTargets or frameSet are empty
 % Could add code here to derive these automatically if not set
 if isempty(p.Results.frameSet) || isempty(p.Results.gazeTargets)
-    error('estimateSceneParams:undefinedFramesOrTargets','The routine currently requires that the frameSet and gazeTargets key-values be defined');
+    warning('estimateSceneParams:undefinedFramesOrTargets','The routine currently requires that the frameSet and gazeTargets key-values be defined; returning');
+    return
 end
 
 
