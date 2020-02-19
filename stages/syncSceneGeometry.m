@@ -28,16 +28,72 @@ function syncSceneGeometry(pupilFileName, varargin)
 %   pupilFileName         - Full path to the .mat file that contains the
 %                           pupil data to which the sceneGeometry should be
 %                           synced.
-%
-%   sceneGeometryFileNameToSync - Full path to the .mat file that contains
+%   
+% Optional key/value pairs (display and I/O):
+%  'sceneGeometryFileNameToSync' - Full path to the .mat file that contains
 %                           the sceneGeometry to be used.
+%  'displayMode'          - Logical. Controls if a GUI interface is
+%                           provided after the search stage to allow the
+%                           user to adjust the scene geometry parameters
+%                           by hand.
+%  'verbose'              - Logical.
+%  'saveAdjustedSceneGeometry' - Logical. Controls if the adjusted 
+%                           sceneGeometry file is saved. If so, the file
+%                           name will be derived from the pupilFile name.
+%  'saveDiagnosticPlot'   - Logical.
+%  'doNotSyncSceneToItself' - Logical. Strange things could happen if a the
+%                           user requests that a sceneGeometry file be
+%                           synced to itself. This circumstance is detected
+%                           and the routine exits unless this flag is set
+%                           to false.
+%   
+% Optional key/value pairs (flow control)
+%  'useParallel'          - If set to true, use the MATLAB parallel pool
+%  'nWorkers'             - Specify the number of workers in the parallel
+%                           pool. If undefined the default number will be
+%                           used.
+%
+% Optional key/value pairs (fitting params):
+%  'alignMethod'          - Char vec. Controls how the routine selects
+%                           frames from the pupilFile acquisition to use
+%                           as the fixed target to which the sceneGeometry
+%                           is adjusted. Valid options are:
+%                               {'gazePre','gazePost','shape'}
+%  'sceneSyncX'           - 1x8 vector. If set, these scene parameter
+%                           values will be used for the adjusted
+%                           sceneGeometry, instead of performing a search
+%                           to try and find optimal parameters.
+%  'sceneSyncBound'       - 1x8 vector. Defines the +-bounds on the scene
+%                           parameters for the search that brings the
+%                           source sceneGeometry into alignment with the
+%                           fixed, target pupilFile data. As properties of
+%                           the eye itself (rotation center, corneal
+%                           curvature) are considered fixed, the last four
+%                           values of this vector are usually set to zero.
+%                           Also, given a single eyePose as a target, the
+%                           model has difficulty adjusting torsion (the
+%                           first parameter) and depth (the fourth
+%                           parameter) so these are typically set to zero
+%                           as well.
+%  'eyePositionTargetLengthFrames' - Scalar. The number of sequential 
+%                           frames from the target acquisition that will be
+%                           found and used to define the position of the
+%                           eye to be fit.
+%  'gazeErrorThreshTol'   - Scalar. The run of frames must have a deviation
+%                           of less than this value. The precise meaning of
+%                           the value will differ for the different
+%                           alignment methods.
 %
 % Examples:
 %{
     % Invoke the file picker GUI
-    syncSceneGeometry('','displayMode',true,'alignMethod','shape');
+    syncSceneGeometry('','displayMode',true,'verbose',true,'alignMethod','shape');
 %}
-
+%{
+    sceneGeometryFileNameToSync = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3015/032417/EyeTracking/GazeCal03_sceneGeometry.mat';
+    pupilFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3015/032417/EyeTracking/tfMRI_MOVIE_AP_run01_pupil.mat';
+    syncSceneGeometry(pupilFileName, 'sceneGeometryFileNameToSync', sceneGeometryFileNameToSync) 
+%}
 
 %% Parse vargin for options passed here
 p = inputParser; p.KeepUnmatched = true;
@@ -47,19 +103,21 @@ p.addRequired('pupilFileName',@ischar);
 
 % Optional display and I/O params
 p.addParameter('sceneGeometryFileNameToSync','',@(x)(ischar(x) | iscell(x)));
-p.addParameter('verbose',true,@islogical);
 p.addParameter('displayMode',false,@islogical);
+p.addParameter('verbose',true,@islogical);
 p.addParameter('saveAdjustedSceneGeometry',true,@islogical);
 p.addParameter('saveDiagnosticPlot',true,@islogical);
 p.addParameter('doNotSyncSceneToItself',true,@islogical);
 
+% Optional flow control params
+p.addParameter('useParallel',true,@islogical);
+p.addParameter('nWorkers',[],@(x)(isempty(x) || isnumeric(x)));
+
 % Optional fitting params
-p.addParameter('alignMethod','shape',@(x)(ischar(x) | iscell(x)));
-p.addParameter('deltaPix',[],@isnumeric);
-p.addParameter('deltaDeg',[],@isnumeric);
-p.addParameter('deltaScale',[],@isnumeric);
-p.addParameter('deltaPose',[],@isnumeric);
-p.addParameter('eyePositionTargetLengthFrames',30,@isscalar);
+p.addParameter('alignMethod','gazePre',@(x)(ischar(x) | iscell(x)));
+p.addParameter('sceneSyncX',[],@isnumeric);
+p.addParameter('sceneSyncBound',[0, 10, 10, 0, 0, 0, 0, 0],@isnumeric);
+p.addParameter('eyePositionTargetLengthFrames',10,@isscalar);
 p.addParameter('gazeErrorThreshTol',0.25,@isscalar);
 
 
@@ -67,9 +125,18 @@ p.addParameter('gazeErrorThreshTol',0.25,@isscalar);
 p.parse(pupilFileName, varargin{:});
 
 
+
+
+%% Announce we are starting
+ticObject = tic();
+if p.Results.verbose
+    fprintf(['Syncing scene geometry. Started ' char(datetime('now')) '\n']);
+end
+
+
 %% Load sceneGeometryIn files
 % This sceneGeometry--and its associated video, perimeter, and pupil
-% data--constitute the "fixed" measurements.
+% data--constitute the "moving" measurements.
 
 % Get the name and path
 if iscell(p.Results.sceneGeometryFileNameToSync)
@@ -124,152 +191,45 @@ load(tmp,'perimeter');
 %% Derive properties from sceneGeometryIn
 % The sceneGeometryIn specifies a particular eyePose as corresponding to a
 % screen fixation position of [0 0]. We identify pupil, perimeter, and
-% video frame measurements tht best represent the appearance of the eye at
-% this position.
+% video frame measurements at this position.
 
 % Get the camera offset point. This is where the center of the video image
 % lands on the camera sensor array.
 cameraOffsetPoint = [sceneGeometryIn.cameraIntrinsic.matrix(1,3), ...
     sceneGeometryIn.cameraIntrinsic.matrix(2,3)];
 
-% Obtain the eye rotation values from the pupilData, and convert these into
-% gaze position on the screen.
-tmp = pupilData.radiusSmoothed.eyePoses.values(:,1:2)';
-gazePosition = (sceneGeometryIn.screenPosition.R * tmp + sceneGeometryIn.screenPosition.fixationAngles(1:2)')';
 
-% As we will be trying to find the frames during which the gaze was
-% directed towards the center of the screen, non-zero gaze position counts
-% as error in the search below.
-eyeMatchError = sqrt(sum(gazePosition.^2,2));
+%% Find the fixation frame for the MOVING image
+% This is the sceneGeometry file that (typically) was derived during a
+% gazeCalibration procedure.
 
-
-%% Find the set of frames for the fixed image
-
-% Anonymous function to grab the indicies of when runs of frames begin
-pullStartIndices = @(vec) vec(1:2:end-1);
-
-% Anonymous function to grab the length of each run
-pullRunLengths = @(vec) vec(2:2:end)-pullStartIndices(vec);
-
-% Find the minimum fixation error threshold that results in a run of
-% consecutive frames at fixation of the target length.
-targetLength = p.Results.eyePositionTargetLengthFrames;
-
-% Anonynous function that provides the lengths of runs of frames for which
-% the eyeMatch error is below a threshold.
-runStarts = @(thresh) find(diff([0,(eyeMatchError < thresh)',0]==1));
-
-% Set the fzero search options
-options = optimset('fzero');
-options.Display = 'off';
-
-% Adjust the targetLength as needed to achieve a threshVal below threshTol.
-stillWorking = true;
-while stillWorking
-    % An objective function that expresses the difference of the longest
-    % run length from the target run length (e.g., 30 frames long). The
-    % business with the min([1e6 ...]) is to handle the case when the run
-    % set is empty, and thus would otherwise return an empty variable for
-    % the objective.
-    myObj = @(thresh) min([1e6, (targetLength - max(pullRunLengths(runStarts(thresh))))]);
-    
-    % The minimum threshold eyeMatchError that results in a run length that
-    % matches the target run length.
-    threshValFixed = fzero(myObj,0.5,options);
-    
-    % Check to see if the search has met our threshold criteria, or if we
-    % have run the targetLength down as short as it can go.
-    if threshValFixed < p.Results.gazeErrorThreshTol || targetLength == 1
-        stillWorking = false;
-    else
-        targetLength = targetLength-1;
-    end
-end
-
-% Check if we found a solution
-if ~isfinite(threshValFixed)
-    warning('Unable to find a suitable set of frames from sceneGeometryIn')
-    return
-end
-
-% Find the start point of this run of frames
-runLengths = pullRunLengths(runStarts(threshValFixed));
-runIndices = pullStartIndices(runStarts(threshValFixed));
-runLengthFixed = targetLength-myObj(threshValFixed);
-startIndexFixed = runIndices(runLengths == runLengthFixed);
-startIndexFixed = startIndexFixed(1);
-
-% Check that the signed gaze error is acceptable. If not, adopt an
-% alternate strategy for picking the frames
-signedError = sqrt(sum(gazePosition(startIndexFixed:startIndexFixed+runLengthFixed-1,1))^2 + ...
-    sum(gazePosition(startIndexFixed:startIndexFixed+runLengthFixed-1,2))^2);
-if signedError > p.Results.gazeErrorThreshTol
-    % Functions to return signed and unsigned error as a function of
-    % runLength
-    signedErrorByRunLength = @(k) sqrt(movsum(gazePosition(:,1),k,'Endpoints','fill').^2 + movsum(gazePosition(:,2),k,'Endpoints','fill').^2);
-    unsignedErrorByRunLength = @(k) movsum( sqrt(gazePosition(:,1).^2 + gazePosition(:,2).^2),k,'Endpoints','fill' )./k;
-    % Reset the targetLength
-    targetLength = p.Results.eyePositionTargetLengthFrames;
-    % Loop through and find the maximum target length that produces an
-    % acceptable signed and unsigned error
-    stillWorking = true;
-    while stillWorking
-        validIdx = find ( double( signedErrorByRunLength(targetLength) < p.Results.gazeErrorThreshTol ) .* ...
-            double( unsignedErrorByRunLength(targetLength) < p.Results.gazeErrorThreshTol ) );        
-        if length(validIdx) > 1
-            stillWorking = false;
-            startIndexFixed = validIdx(1) - floor(targetLength/2);
-            runLengthFixed = targetLength;
-        else
-            targetLength = targetLength - 1;
-        end
-        % if targetLength has hit 1, we have run out of chances. Just take
-        % the frame with the least signed error
-        if targetLength == 1
-            [~,startIndexFixed] = min(signedErrorByRunLength(targetLength));
-            runLengthFixed = 1;
-            stillWorking = false;
-        end
-    end
-end
-
-% Find the frame with the lowest ellipse RMSE during this period. We will
-% desginate this frame the referenceFrame for the fixed (sceneGeometryIn)
-% measurements
-rmseVals = pupilData.radiusSmoothed.ellipses.RMSE(startIndexFixed:startIndexFixed+runLengthFixed-1);
-referenceFrameFixed = startIndexFixed + find(rmseVals == min(rmseVals)) - 1;
+% Which of the list of frames is the [0,0] fixation frame
+idx = find((sceneGeometryIn.meta.estimateSceneParams.gazeTargets(1,:)==0).*(sceneGeometryIn.meta.estimateSceneParams.gazeTargets(2,:)==0));
+referenceFrameMoving = sceneGeometryIn.meta.estimateSceneParams.frameSet(idx);
 
 % Obtain and store the pupil perimeter points for this frame
-XpFixed = perimeter.data{referenceFrameFixed}.Xp;
-YpFixed = perimeter.data{referenceFrameFixed}.Yp;
+XpMoving = perimeter.data{referenceFrameMoving}.Xp;
+YpMoving = perimeter.data{referenceFrameMoving}.Yp;
 
-% The eyePose for this reference frame is set to the fixation value for the
-% sceneGeometry, with the pupil size set to the median value for this run
-% of frames.
-eyePoseFixed = nanmedian(pupilData.radiusSmoothed.eyePoses.values(startIndexFixed:startIndexFixed+runLengthFixed-1,:),1);
-eyePoseFixed(1:3) = -sceneGeometryIn.screenPosition.fixationAngles;
+% Store the pupilEllipse for this frame
+pupilEllipseMoving = sceneGeometryIn.meta.estimateSceneParams.modelPupilEllipse(idx,:);
 
-% Load in the median image from the period of fixation for sceneGeometryIn.
-% This is the "fixed" frame.
+% The eyePose for this reference frame is the modeled value
+eyePoseMoving = sceneGeometryIn.meta.estimateSceneParams.modelEyePose(idx,:);
+
+% Load in the image for this frame. This is the "moving" frame.
 tmp = fullfile(sceneGeometryInPath,[sceneGeometryInStem '_gray.avi']);
-videoFrameFixed = makeMedianVideoImage(tmp,'startFrame',startIndexFixed,'nFrames',runLengthFixed);
+videoFrameMoving = makeMedianVideoImage(tmp,'startFrame',referenceFrameMoving,'nFrames',1);
 
-% Find the median pupil center across the frames for the run of frames
-pupilCenterPixelsFixed = [ ...
-    nanmedian(pupilData.radiusSmoothed.ellipses.values(startIndexFixed:startIndexFixed+runLengthFixed-1,1),1), ...
-    nanmedian(pupilData.radiusSmoothed.ellipses.values(startIndexFixed:startIndexFixed+runLengthFixed-1,2),1) ];
-
-% Find the median shape of the pupil during the run of frames, expressed as
-% theta and rho values (SEE: csaEllipseError)
-pupilRhoShapeFixed = nanmedian(pupilData.radiusSmoothed.ellipses.values(startIndexFixed:startIndexFixed+runLengthFixed-1,4),1);
-pupilRhoShapeFixed = 1-sqrt(1-pupilRhoShapeFixed^2);
-pupilThetaShapeFixed = nanmedian(pupilData.radiusSmoothed.ellipses.values(startIndexFixed:startIndexFixed+runLengthFixed-1,5),1);
-pupilThetaShapeFixed = pupilThetaShapeFixed*2;
+% Find the shape of the pupil for this frame, expressed as theta and rho
+% values (SEE: csaEllipseError)
+pupilRhoShapeFixed = 1-sqrt(1-pupilEllipseMoving(4)^2);
+pupilThetaShapeFixed = pupilEllipseMoving(5)*2;
 
 
 %% Load sceneGeometryOut files
 % This acquisition--and its associated video, perimeter, and pupil
-% data--constitute the "moving" measurements. Our goal is to adjust the
+% data--constitute the "fixed" measurements. Our goal is to adjust the
 % sceneGeometryIn to best match this acquisition.
 
 % If the pupilFileName is not defined, offer some choices
@@ -282,7 +242,7 @@ if isempty(pupilFileName)
     fileList = fileList(keep);
     
     % Ask the operator which of the videos we wish to adjust
-    fprintf('\n\nSelect the pupil data to adjust:\n')
+    fprintf('\n\nSelect the pupil data to target:\n')
     for pp=1:length(fileList)
         optionName=['\t' num2str(pp) '. ' fileList(pp).name '\n'];
         fprintf(optionName);
@@ -308,20 +268,22 @@ tmp = fullfile(sceneGeometryOutPath,[sceneGeometryOutStem '_timebase.mat']);
 load(tmp,'timebase');
 tmp =  fullfile(sceneGeometryOutPath,[sceneGeometryOutStem '_pupil.mat']);
 load(tmp,'pupilData');
+tmp =  fullfile(sceneGeometryOutPath,[sceneGeometryOutStem '_glint.mat']);
+load(tmp,'glintData');
 tmp =  fullfile(sceneGeometryOutPath,[sceneGeometryOutStem '_correctedPerimeter.mat']);
 load(tmp,'perimeter');
 tmp =  fullfile(sceneGeometryOutPath,[sceneGeometryOutStem '_relativeCameraPosition.mat']);
 load(tmp,'relativeCameraPosition');
 
-% Identify the acqStartTimeMoving, which is the time point at which the
+% Identify the acqStartTimeFixed, which is the time point at which the
 % fMRI acquisition began
-[~, acqStartFrameMoving] = min(abs(timebase.values));
+[~, acqStartFrameFixed] = min(abs(timebase.values));
 
 
 %% Check if we are syncing a sceneGeometry to itself
 if p.Results.doNotSyncSceneToItself && strcmp(sceneGeometryInStem,sceneGeometryOutStem)
     if p.Results.verbose
-        fprintf('Detected that the sceneGeometry source is the same as the acquisition; returning.\n');
+        fprintf('Detected that the sceneGeometry source is the same as the target acquisition; returning.\n');
     end
     return
 end
@@ -329,7 +291,7 @@ end
 
 %% Find the target window for the acqusition
 % Identify a window of frames from the acquisition during which the eye is
-% fixating upon "screen position" [0, 0], and an error metric for the
+% fixating "screen position" [0, 0], and an error metric for the
 % difference of fixation position between the sceneGeometryIn and each
 % frame of the acquisition. The approach varies based upon the alignMethod
 % flag.
@@ -345,7 +307,7 @@ switch alignMethod
         % when the eye was in the most consistent position, and closest to
         % the median position.
         windowStart = 1;
-        windowEnd = acqStartFrameMoving;
+        windowEnd = acqStartFrameFixed;
         gazeX = pupilData.initial.ellipses.values(windowStart:windowEnd,1);
         gazeY = pupilData.initial.ellipses.values(windowStart:windowEnd,2);
         medianX = nanmedian(gazeX);
@@ -362,12 +324,12 @@ switch alignMethod
         % stare at a fixation point in the center of the screen after the
         % start of the acquisition. This could also work for movie viewing,
         % if we are willing to assume that the median gaze position during
-        % a movie is the center of the screen.
+        % the first 10 seconds of a movie is the center of the screen.
         % Find the period after to the start of the scan when the eye was
         % in the most consistent position, and closest to the median
         % position.
-        windowStart = acqStartFrameMoving;
-        windowEnd = acqStartFrameMoving+600;
+        windowStart = acqStartFrameFixed;
+        windowEnd = acqStartFrameFixed+600;
         gazeX = pupilData.initial.ellipses.values(windowStart:windowEnd,1);
         gazeY = pupilData.initial.ellipses.values(windowStart:windowEnd,2);
         medianX = nanmedian(gazeX);
@@ -383,7 +345,7 @@ switch alignMethod
         % Find the period after the start of the scan when the pupil has a
         % shape most similar to the shape from the sceneGeometry file for
         % gaze [0 0].
-        windowStart = acqStartFrameMoving;
+        windowStart = acqStartFrameFixed;
         windowEnd = size(pupilData.initial.ellipses.values,1);
         pupilRhoShapeMoving = pupilData.initial.ellipses.values(windowStart:windowEnd,4);
         pupilRhoShapeMoving = 1-sqrt(1-pupilRhoShapeMoving.^2);
@@ -408,9 +370,19 @@ end
 % consecutive frames at fixation of the target length.
 targetLength = p.Results.eyePositionTargetLengthFrames;
 
+% Anonymous function to grab the indicies of when runs of frames begin
+pullStartIndices = @(vec) vec(1:2:end-1);
+
+% Anonymous function to grab the length of each run
+pullRunLengths = @(vec) vec(2:2:end)-pullStartIndices(vec);
+
 % Anonynous function that provides the lengths of runs of frames for which
 % the eyeMatch error is below a threshold.
 runStarts = @(thresh) find(diff([0,(eyeMatchError < thresh)',0]==1));
+
+% Set the fzero search options
+options = optimset('fzero');
+options.Display = 'off';
 
 % Adjust the targetLength as needed to achieve a threshVal below threshTol.
 stillWorking = true;
@@ -423,11 +395,11 @@ while stillWorking
     myObj = @(thresh) min([1e6, (targetLength - max(pullRunLengths(runStarts(thresh))))]);
     
     % Perform the search
-    threshValMoving = fzero(myObj,x0,options);
+    threshValFixed = fzero(myObj,x0,options);
     
     % Check to see if the search has met our threshold criteria, or if we
     % have run the targetLength down as short as it can go.
-    if threshValMoving < p.Results.gazeErrorThreshTol || targetLength == 1
+    if threshValFixed < p.Results.gazeErrorThreshTol || targetLength == 1
         stillWorking = false;
     else
         targetLength = targetLength-1;
@@ -435,81 +407,83 @@ while stillWorking
 end
 
 % Check if we found a solution
-if ~isfinite(threshValMoving)
+if ~isfinite(threshValFixed)
     warning('Unable to find a suitable set of frames from the acquisition')
     return
 end
 
 % Find the start point of this run of frames
-runLengths = pullRunLengths(runStarts(threshValMoving));
-runIndices = pullStartIndices(runStarts(threshValMoving))+windowStart-1;
-runLengthMoving = targetLength-myObj(threshValMoving);
-startIndexMoving = runIndices(runLengths == runLengthMoving);
-startIndexMoving = startIndexMoving(1);
+runLengths = pullRunLengths(runStarts(threshValFixed));
+runIndices = pullStartIndices(runStarts(threshValFixed))+windowStart-1;
+runLengthFixed = targetLength-myObj(threshValFixed);
+startIndexFixed = runIndices(runLengths == runLengthFixed);
+startIndexFixed = startIndexFixed(1);
+frameSetFixed = startIndexFixed:startIndexFixed+runLengthFixed-1;
 
 % Find the frame with the lowest ellipse RMSE during the target window
-rmseVals = pupilData.initial.ellipses.RMSE(startIndexMoving:startIndexMoving+runLengthMoving-1);
-referenceFrameMoving = startIndexMoving + find(rmseVals == min(rmseVals)) - 1;
+ellipseRMSE = pupilData.initial.ellipses.RMSE(frameSetFixed);
+referenceFrameFixed = startIndexFixed + find(ellipseRMSE == min(ellipseRMSE)) - 1;
 
+% Extract the frames we want
+XpFixed = perimeter.data{referenceFrameFixed}.Xp;
+YpFixed = perimeter.data{referenceFrameFixed}.Yp;
+perimeter.data = perimeter.data(frameSetFixed);
+ellipseRMSE = pupilData.initial.ellipses.RMSE(frameSetFixed);
+glintCoordFixed = [glintData.X(referenceFrameFixed), glintData.Y(referenceFrameFixed)];
+glintData.X = glintData.X(frameSetFixed); glintData.Y = glintData.Y(frameSetFixed);
 
-%% Derive properties from the acquisition
-% Obtain some measurements of things from within the target window of the
-% acqusition
-
-% The pupil perimeter for the reference frame
-XpMoving = perimeter.data{referenceFrameMoving}.Xp;
-YpMoving = perimeter.data{referenceFrameMoving}.Yp;
-
-% Obtain the median [x y] position of the pupil center during the target
-% period of the moving image, and use this to determine the displacement
-% (in pixels) from the [x y] position of the pupil center during the
-% corresponding target period from the fixed (sceneGeometryIn) image.
-
-% Get the pupil center for the fames from the moving video
-pupilCenterPixelsMoving = [ ...
-    nanmedian(pupilData.initial.ellipses.values(startIndexMoving:startIndexMoving+runLengthMoving-1,1),1), ...
-    nanmedian(pupilData.initial.ellipses.values(startIndexMoving:startIndexMoving+runLengthMoving-1,2),1) ];
-
-% Load in the median image from the target period for acquisition.
-% This is the "moving" frame.
+% Load in the best image from the target period for acquisition. This is
+% the "fixed" frame.
 tmp = fullfile(sceneGeometryOutPath,[sceneGeometryOutStem '_gray.avi']);
-movingFrame = makeMedianVideoImage(tmp,'startFrame',startIndexMoving,'nFrames',runLengthMoving);
+videoFrameFixed = makeMedianVideoImage(tmp,'startFrame',referenceFrameFixed,'nFrames',1);
 
 
-%% Set the displacement of the moving image in pixels and degrees
-% This can either be passed as a key-value, or derived from the
-% sceneGeometry and acquisition
+%% Create the moving sceneGeometry
+% We will search across camera torsion and translation parameters to fit
+% the fixed frame
 
-if isempty(p.Results.deltaPix)
-    % The adjustment is the difference in pupil centers from the fixed
-    % and moving videos
-    deltaPix = pupilCenterPixelsFixed - pupilCenterPixelsMoving;
-else
-    deltaPix = p.Results.deltaPix;
+% For the eyePose to be equal to the fixationPose
+poseBound = [2 2 0];
+eyePoseLB = [eyePoseMoving(1:3)-poseBound 0.1];
+eyePoseUB = [eyePoseMoving(1:3)+poseBound 4];
+
+% Assemble these components into the args variable
+args = {perimeter, glintData, ellipseRMSE, []};
+
+% Assemble the key-values
+keyVals = {...
+    'eyePoseLB', eyePoseLB,...
+    'eyePoseUB', eyePoseUB,...
+    };
+
+%% Set up the parallel pool
+if p.Results.useParallel
+    startParpool( p.Results.nWorkers, p.Results.verbose );
 end
 
-if isempty(p.Results.deltaScale)
-    deltaScale = 1;
-else
-    deltaScale = p.Results.deltaScale;
-end
+%% Define BADS search options
+options = bads('defaults');          % Get a default OPTIONS struct
+options.Display = 'off';             % Silence display output
+options.UncertaintyHandling = 0;     % The objective is deterministic
 
-if isempty(p.Results.deltaDeg)
-    % No change is made to the torsion unless we are in display mode
-    deltaDeg = 0;
-else
-    deltaDeg = p.Results.deltaDeg;
+% Bounds
+x0 = [sceneGeometryIn.meta.estimateSceneParams.x4(1:4) 1 1 1 1];
+bound = p.Results.sceneSyncBound;
+lb = x0 - bound;
+ub = x0 + bound;
+lbp = x0 - bound./2;
+ubp = x0 + bound./2;
+% Objective
+myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometryIn, x ), args{:}, keyVals{:} );
+% Announce
+if p.Results.verbose
+    fprintf('Searching across scene params...');
 end
-
-if isempty(p.Results.deltaPose)
-    deltaPose = [0, 0, 0, 0];
-    % Get the pupil size for the moving frame and incorporate this into the
-    % deltaPose
-    [XpTmp, YpTmp] = updatePerimeter(XpMoving,YpMoving,deltaPix,deltaDeg,deltaScale,cameraOffsetPoint);
-    tmpPose = eyePoseEllipseFit(XpTmp, YpTmp, sceneGeometryIn,'x0',eyePoseFixed);
-    deltaPose(4) = tmpPose(4) - eyePoseFixed(4);
+% Search
+if isempty(p.Results.sceneSyncX)
+    x = bads(myObj,x0,lb,ub,lbp,ubp,[],options);
 else
-    deltaPose = p.Results.deltaPose;
+    x = p.Results.sceneSyncX;
 end
 
 
@@ -518,19 +492,16 @@ end
 % adjust the delta variables
 
 if p.Results.displayMode
-    
+        
     % Provide some instructions for the operator
+    fprintf([sceneGeometryInPath '\n']);
     fprintf('Adjust horizontal and vertical camera translation with the arrow keys.\n');
     fprintf('Adjust depth camera translation with + and -.\n');
     fprintf('Adjust camera torsion with j and k.\n');
-    fprintf('Re-calculate moving image eyePose with u.\n');
-    fprintf('Adjust moving image eyePose (azi and ele) with w-a-s-d.\n');
-    fprintf('Adjust moving image pupil size (azi and ele) with q-e.\n');
     fprintf('Switch between moving and fixed image by pressing f.\n');
     fprintf('Turn on and off perimeter display with p.\n');
     fprintf('Turn on and off model display with m.\n');
     fprintf('Press esc to exit.\n\n');
-    fprintf([sceneGeometryInPath '\n']);
     
     % Create a figure
     figHandle = figure();
@@ -541,7 +512,7 @@ if p.Results.displayMode
     text(20,30,'FIXED', 'Color', 'g','Fontsize',16);
     
     % Prepare for the loop
-    showMoving = true;
+    showMoving = false;
     showPerimeter=false;
     showModel=false;
     stillWorking = true;
@@ -554,24 +525,11 @@ if p.Results.displayMode
         
         if showMoving
             % Work with the moving frame
-            displayImage = updateMovingFrame(movingFrame,deltaPix,deltaDeg,deltaScale,cameraOffsetPoint);
+            displayImage = videoFrameMoving;
             
             % Update the perimeter points
-            [XpDisplay, YpDisplay] = updatePerimeter(XpMoving,YpMoving,deltaPix,deltaDeg,deltaScale,cameraOffsetPoint);
-            
-            % Display the perimeter points
-            if showPerimeter
-                idx = sub2ind(size(displayImage),round(YpDisplay),round(XpDisplay));
-                displayImage(idx)=255;
-            end
-            
-            % Display the image
-            imshow(displayImage,[],'Border','tight');
-            ax = gca;
-            ax.Toolbar = [];
-            hold on
-            text(20,30,'MOVING', 'Color', 'r','Fontsize',16);
-            
+            XpDisplay = XpMoving; YpDisplay = YpMoving;
+                        
         else
             % Work with the fixed frame
             displayImage = videoFrameFixed;
@@ -579,20 +537,15 @@ if p.Results.displayMode
             % Update the perimeter
             XpDisplay = XpFixed; YpDisplay = YpFixed;
             
-            % Display the perimeter points
-            if showPerimeter
-                idx = sub2ind(size(displayImage),round(YpDisplay),round(XpDisplay));
-                displayImage(idx)=255;
-            end
-            
-            imshow(displayImage,[],'Border','tight');
-            ax = gca;
-            ax.Toolbar = [];
-            hold on
-            text(20,30,'FIXED', 'Color', 'g','Fontsize',16);
         end
         
-        % Show the eye model
+        % Display the perimeter points
+        if showPerimeter
+            idx = sub2ind(size(displayImage),round(YpDisplay),round(XpDisplay));
+            displayImage(idx)=255;
+        end
+        
+        % Add the eye model
         if showModel
             % Let the user know this will take a few seconds
             text_str = 'Updating model...';
@@ -600,21 +553,47 @@ if p.Results.displayMode
             % Set the eye pose, depending upon if we are looking at the
             % fixed or moving image
             if showMoving
-                eyePoseDisplay = eyePoseFixed+deltaPose;
+                sceneGeometryDisplay = sceneGeometryIn;
+                eyePoseDisplay = eyePoseMoving;
             else
-                eyePoseDisplay = eyePoseFixed;
+                sceneGeometryDisplay = updateSceneGeometry( sceneGeometryIn, x );
+                eyePoseDisplay = eyePoseEllipseFit(XpFixed, YpFixed, sceneGeometryDisplay,'glintCoord',glintCoordFixed,keyVals{:});
             end
             % Render the eye model
-            renderEyePose(eyePoseDisplay, sceneGeometryIn, ...
-                'newFigure', false, 'visible', true, ...
+            [tmpHandle,~,displayImage]=renderEyePose(eyePoseDisplay, sceneGeometryDisplay, ...
+                'newFigure', true, 'visible', false, ...
+                'backgroundImage', displayImage, ...
                 'showAzimuthPlane', true, ...
-                'modelEyeLabelNames', {'retina' 'pupilEllipse' 'cornea'}, ...
-                'modelEyePlotColors', {'.w' '-g' '.y'}, ...
+                'modelEyeLabelNames', {'retina' 'pupilEllipse' 'cornea' 'glint_01'}, ...
+                'modelEyePlotColors', {'.w' '-g' '.y' 'xr'}, ...
                 'modelEyeSymbolSizeScaler',1.5,...
-                'modelEyeAlpha', 0.25);
-            hold on
+                'modelEyeAlpha', [0.25 0.25 0.25 1]);
+            close(tmpHandle);
+            displayImage = displayImage.cdata;
             % Remove the updating annotation
             delete(annotHandle);
+        end
+
+        % Move the moving image
+        if showMoving
+            % Get the 2D registration params that brings the movingImage
+            % into the fixedImage space
+            regParams = calcImageTransform(sceneGeometryIn,x,cameraOffsetPoint);
+            
+            % Update the image            
+            displayImage = updateFrame(displayImage,regParams,cameraOffsetPoint);
+        end
+            
+        % Display the image
+        imshow(displayImage,[],'Border','tight');
+        ax = gca;
+        ax.Toolbar = [];
+        hold on
+        % Add a label
+        if showMoving
+            text(20,30,'MOVING', 'Color', 'r','Fontsize',16);
+        else
+            text(20,30,'FIXED', 'Color', 'g','Fontsize',16);
         end
         
         % Add a marker for the camera CoP
@@ -625,42 +604,23 @@ if p.Results.displayMode
             keyChoiceValue = double(get(gcf,'CurrentCharacter'));
             switch keyChoiceValue
                 case 28
-                    deltaPix(1)=deltaPix(1)-1;
+                    x(2)=x(2)-0.1;
                 case 29
-                    deltaPix(1)=deltaPix(1)+1;
+                    x(2)=x(2)+0.1;
                 case 30
-                    deltaPix(2)=deltaPix(2)-1;
+                    x(3)=x(3)-0.1;
                 case 31
-                    deltaPix(2)=deltaPix(2)+1;
+                    x(3)=x(3)+0.1;
                 case {45 95}
-                    deltaScale = deltaScale+0.01;
+                    x(4)=x(4)-1;
                 case {61 43}
-                    deltaScale = deltaScale-0.01;
-                case 117
-                    text_str = 'updating...';
-                    annotHandle = addAnnotation(text_str);
-                    [XpTmp, YpTmp] = updatePerimeter(XpMoving,YpMoving,deltaPix,deltaDeg,deltaScale,cameraOffsetPoint);
-                    tmpPose = eyePoseEllipseFit(XpTmp, YpTmp, sceneGeometryIn,'x0',eyePoseFixed);
-                    deltaPose = tmpPose - eyePoseFixed;
-                    delete(annotHandle);
-                case 119
-                    deltaPose(2) = deltaPose(2)+0.5;
-                case 115
-                    deltaPose(2) = deltaPose(2)-0.5;
-                case 97
-                    deltaPose(1) = deltaPose(1)-0.5;
-                case 100
-                    deltaPose(1) = deltaPose(1)+0.5;
-                case 113
-                    deltaPose(4) = deltaPose(4)-0.25;
-                case 101
-                    deltaPose(4) = deltaPose(4)+0.25;
+                    x(4)=x(4)+1;
                 case 102
                     showMoving = ~showMoving;
                 case 106
-                    deltaDeg = deltaDeg - 1;
+                    x(1)=x(1)+0.5;
                 case 107
-                    deltaDeg = deltaDeg + 1;
+                    x(1)=x(1)-0.5;
                 case 112
                     showPerimeter = ~showPerimeter;
                 case 109
@@ -681,35 +641,53 @@ end
 
 
 %% Create the adjusted sceneGeometry
-sceneGeometryAdjusted = sceneGeometryIn;
+sceneGeometryAdjusted = updateSceneGeometry( sceneGeometryIn, x );
 
-% Update the sceneGeometry torsion
-sceneGeometryAdjusted.cameraPosition.torsion = sceneGeometryIn.cameraPosition.torsion - deltaDeg;
 
-% Find the change in mm of extrinsic camera translation needed to shift the
-% eye model the observed number of pixels
-adjustedTranslation = calcCameraTranslationPixels(sceneGeometryAdjusted,eyePoseFixed,deltaPix);
-deltaMM = sceneGeometryIn.cameraPosition.translation - adjustedTranslation;
-
-% Update the sceneGeometry translation
-sceneGeometryAdjusted.cameraPosition.translation = adjustedTranslation;
+%% Update the fixation angles
+[~,modeledEyePose] = calcGlintGazeError( sceneGeometryAdjusted, args{:}, keyVals{:} );
+medianEyePoseFixed = median(modeledEyePose);
+sceneGeometryAdjusted.screenPosition.fixationEyePose = medianEyePoseFixed(1:2)';
 
 
 %% Create and save a diagnostic figure
 if p.Results.saveDiagnosticPlot
     
-    % Fixed frame
-    displayImage = videoFrameFixed;
+    % Moving frame -- Typically the gazeCal source
+    displayImage = videoFrameMoving;
     tmpFig = figure('visible','off');
-    renderEyePose(eyePoseFixed, sceneGeometryIn, ...
+    renderEyePose(eyePoseMoving, sceneGeometryIn, ...
         'newFigure', false, 'visible', false, ...
         'backgroundImage',displayImage, ...
         'showAzimuthPlane', true, ...
-        'modelEyeLabelNames', {'retina' 'pupilEllipse' 'cornea'}, ...
-        'modelEyePlotColors', {'.w' '-g' '.y'}, ...
-        'modelEyeSymbolSizeScaler',1.5,...
-        'modelEyeAlpha', 0.25);
-    text(20,30,sceneGeometryInStem, 'Color', 'r','Fontsize',16,'Interpreter','none');
+                'modelEyeLabelNames', {'retina' 'pupilEllipse' 'cornea' 'glint_01'}, ...
+                'modelEyePlotColors', {'.w' '-g' '.y' 'xr'}, ...
+                'modelEyeSymbolSizeScaler',1.5,...
+                'modelEyeAlpha', [0.25 0.25 0.25 1]);            
+    text(20,30,sceneGeometryInStem, 'Color', 'g','Fontsize',16,'Interpreter','none');
+    msg = ['frame ' num2str(referenceFrameMoving)];
+    addAnnotation(msg);
+    hold on
+    plot([size(displayImage,2)/2, size(displayImage,2)/2],[0 size(displayImage,2)],'-b');
+    plot([0 size(displayImage,1)],[size(displayImage,1)/2, size(displayImage,1)/2],'-b');
+    tmpFrame = getframe(gcf);
+    imageSet(1) = {tmpFrame.cdata};
+    close(tmpFig);
+
+        
+    % Fixed frame -- The acquisition for which we have new sceneGeometry
+    displayImage = videoFrameFixed;
+    eyePoseFixed = eyePoseEllipseFit(XpFixed, YpFixed, sceneGeometryAdjusted,'glintCoord',glintCoordFixed,keyVals{:});
+    tmpFig = figure('visible','off');
+    renderEyePose(eyePoseFixed, sceneGeometryAdjusted, ...
+        'newFigure', false, 'visible', false, ...
+        'backgroundImage',displayImage, ...
+        'showAzimuthPlane', true, ...
+                'modelEyeLabelNames', {'retina' 'pupilEllipse' 'cornea' 'glint_01'}, ...
+                'modelEyePlotColors', {'.w' '-g' '.y' 'xr'}, ...
+                'modelEyeSymbolSizeScaler',1.5,...
+                'modelEyeAlpha', [0.25 0.25 0.25 1]);            
+    text(20,30,sceneGeometryOutStem, 'Color', 'r','Fontsize',16,'Interpreter','none');
     msg = ['frame ' num2str(referenceFrameFixed)];
     addAnnotation(msg);
     % Add cross hairs
@@ -717,33 +695,14 @@ if p.Results.saveDiagnosticPlot
     plot([size(displayImage,2)/2, size(displayImage,2)/2],[0 size(displayImage,2)],'-b');
     plot([0 size(displayImage,1)],[size(displayImage,1)/2, size(displayImage,1)/2],'-b');
     tmpFrame = getframe(gcf);
-    imageSet(1) = {tmpFrame.cdata};
-    close(tmpFig);
-    
-    % Moving frame
-    displayImage = movingFrame;
-    tmpFig = figure('visible','off');
-    renderEyePose(eyePoseFixed+deltaPose, sceneGeometryAdjusted, ...
-        'newFigure', false, 'visible', false, ...
-        'backgroundImage',displayImage, ...
-        'showAzimuthPlane', true, ...
-        'modelEyeLabelNames', {'retina' 'pupilEllipse' 'cornea'}, ...
-        'modelEyePlotColors', {'.w' '-g' '.y'}, ...
-        'modelEyeSymbolSizeScaler',1.5,...
-        'modelEyeAlpha', 0.25);
-    text(20,30,sceneGeometryOutStem, 'Color', 'g','Fontsize',16,'Interpreter','none');
-    msg = ['frame ' num2str(referenceFrameMoving)];
-    addAnnotation(msg);
-    hold on
-    plot([size(displayImage,2)/2, size(displayImage,2)/2],[0 size(displayImage,2)],'-b');
-    plot([0 size(displayImage,1)],[size(displayImage,1)/2, size(displayImage,1)/2],'-b');
-    tmpFrame = getframe(gcf);
     imageSet(2) = {tmpFrame.cdata};
     close(tmpFig);
     
+    
     % Difference image
-    adjMovingFrame = updateMovingFrame(movingFrame,deltaPix,deltaDeg,deltaScale,cameraOffsetPoint);
-    displayImage = videoFrameFixed - adjMovingFrame;
+    regParams = calcImageTransform(sceneGeometryIn,x,cameraOffsetPoint);
+    adjMovingFrame = updateFrame(videoFrameMoving,regParams,cameraOffsetPoint);
+    displayImage = videoFrameFixed - double(adjMovingFrame);
     tmpFig = figure('visible','off');
     imshow(displayImage,[], 'Border', 'tight');
     text(20,30,'Difference', 'Color', 'w','Fontsize',16,'Interpreter','none');
@@ -779,15 +738,17 @@ if p.Results.saveDiagnosticPlot
     annotation('textbox', [0.15, .125, 0, 0], 'string', alignMethod,'FontWeight','bold','FitBoxToText','on','LineStyle','none','HorizontalAlignment','left','Interpreter','none')     
     
     % Report the run lengths
-    msg = sprintf('runLength [fixed, moving] = %2.0f, %2.0f',runLengthFixed,runLengthMoving);
+    msg = sprintf('runLength fixed = %2.0f',runLengthFixed);
     annotation('textbox', [0.75, .125, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','left','Interpreter','none')     
     
     % Add a text summary below. If any delta fixation angle is geater than
     % 1 deg, print the message text in red to alert that this was a large
     % eye rotation change.
-    msg = sprintf('delta pixels = [x, y] = [%2.1f, %2.1f]',deltaPix);
+    deltaX = x-x0;
+    deltaPose = medianEyePoseFixed - eyePoseMoving;
+    msg = sprintf('delta torsion [deg] = %2.1f',deltaX(1));
     annotation('textbox', [0.5, .175, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
-    msg = sprintf('delta translation [mm] [x; y; z] = [%2.3f; %2.3f; %2.3f]',deltaMM);
+    msg = sprintf('delta translation [mm] [x; y; z] = [%2.3f; %2.3f; %2.3f]',deltaX(2:4));
     annotation('textbox', [0.5, .125, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
     msg = sprintf('delta eye pose [azi, ele, tor, radius] = [%2.3f, %2.3f, %2.3f, %2.3f]',deltaPose);
     msgColor = 'black';
@@ -795,8 +756,6 @@ if p.Results.saveDiagnosticPlot
         msgColor = 'red';
     end
     annotation('textbox', [0.5, .075, 0, 0], 'string', msg,'Color',msgColor,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
-    msg = sprintf('delta torsion [deg] = %2.3f',deltaDeg);
-    annotation('textbox', [0.5, .025, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
     
     % Save and close the figure
     tmp = fullfile(sceneGeometryOutPath,[sceneGeometryOutStem '_sceneSync_QA.pdf']);
@@ -805,6 +764,8 @@ if p.Results.saveDiagnosticPlot
     
 end
 
+% Get the execution time
+executionTime = toc(ticObject);
 
 %% Save the adjusted sceneGeometry
 if p.Results.saveAdjustedSceneGeometry
@@ -815,10 +776,12 @@ if p.Results.saveAdjustedSceneGeometry
     % acquisition and the reference frame
     sceneGeometryAdjusted.cameraPosition.translation = ...
         sceneGeometryAdjusted.cameraPosition.translation + ...
-        relativeCameraPosition.values(:,referenceFrameMoving);
+        relativeCameraPosition.values(:,referenceFrameFixed);
     
     % Add the meta data
-    sceneGeometryAdjusted.meta.syncSceneGeometry = p;
+    sceneGeometryAdjusted.meta.syncSceneGeometry = p.Results;
+    sceneGeometryAdjusted.meta.syncSceneGeometry.x = x;
+    sceneGeometryAdjusted.meta.executionTime = executionTime;
     
     % Set the variable name
     sceneGeometry = sceneGeometryAdjusted;
@@ -833,11 +796,18 @@ if p.Results.displayMode
     tmp=strsplit(sceneGeometryInPath,filesep);
     outline = [tmp{end-3} char(9) tmp{end-2} char(9) 'fixed: ' sceneGeometryInStem ', moving: ' sceneGeometryOutStem '\n'] ;
     fprintf(outline)
-    outline = ['alignMethod' char(9) 'deltaPix' char(9) 'deltaDeg' char(9) 'deltaScale' char(9) 'deltaPose\n'];
+    outline = ['alignMethod' char(9) 'x' char(9) 'eyePose\n'];
     fprintf(outline)
-    outline = sprintf(['{''' alignMethod '''}' char(9) '[ %2.2f, %2.2f ]' char(9) '[ %2.1f ]' char(9) '[ %2.1f ]' char(9) '[ %2.2f, %2.2f, %2.2f, %2.2f ]\n'],deltaPix,deltaDeg,deltaScale,deltaPose);
+    outline = sprintf(['{''' alignMethod '''}' char(9) '[ %2.2f, %2.2f, %2.2f, %2.2f, %2.2f, %2.2f, %2.2f, %2.2f ]' char(9) '[ %2.2f, %2.2f, %2.2f, %2.2f ]\n'],x,medianEyePoseFixed);
     fprintf(outline)
     fprintf('\n')
+end
+
+
+%% alert the user that we are done with the routine
+if p.Results.verbose
+    executionTime
+    fprintf('\n');
 end
 
 
@@ -849,46 +819,56 @@ end % Main function
 
 %% LOCAL FUNCTIONS
 
-function [Xp, Yp] = updatePerimeter(Xp,Yp,deltaPix,deltaDeg,deltaScale,cameraOffsetPoint)
 
-% Create a matrix of the perimeter points
-v = [Xp';Yp'];
+function regParams = calcImageTransform(sceneGeometry,x,cameraOffsetPoint)
+% Determine the rotation and translation matrices that describe the change
+% in an image induced by the updated sceneParameters
+f = updateSceneGeometry(sceneGeometry,x);
 
-% Create the translation matrix
-t = repmat([deltaPix(1); deltaPix(2)], 1, length(Xp));
+pupilEllipseA1 = projectModelEye([ 0 1 0 1],sceneGeometry,'pupilRayFunc',[]);
+pupilEllipseA2 = projectModelEye([-1 0 0 1],sceneGeometry,'pupilRayFunc',[]);
+pupilEllipseA3 = projectModelEye([ 1 0 0 1],sceneGeometry,'pupilRayFunc',[]);
+pupilEllipseB1 = projectModelEye([ 0 1 0 1],f,'pupilRayFunc',[]);
+pupilEllipseB2 = projectModelEye([-1 0 0 1],f,'pupilRayFunc',[]);
+pupilEllipseB3 = projectModelEye([ 1 0 0 1],f,'pupilRayFunc',[]);
 
-% Translate the points
-v = v+t;
+A = [pupilEllipseA1(1:2)',pupilEllipseA2(1:2)',pupilEllipseA3(1:2)']-cameraOffsetPoint';
+B = [pupilEllipseB1(1:2)',pupilEllipseB2(1:2)',pupilEllipseB3(1:2)']-cameraOffsetPoint';
 
-% Set up the rotation matrix
-center = repmat([cameraOffsetPoint(1); cameraOffsetPoint(2)], 1, length(Xp));
-theta = deg2rad(deltaDeg);
-R = [cos(theta) -sin(theta); sin(theta) cos(theta)];
-
-% Apply the rotation
-v = R*(v - center) + center;
-
-% Extract the Xp and Yp vectors
-Xp = v(1,:)';
-Yp = v(2,:)';
-
+regParams = absor(...
+    A,...
+    B,...
+    'doScale',true,...
+    'doTrans',true);
 end
 
 
-function p = calcCameraTranslationPixels(sceneGeometry,eyePose,deltaPix)
-% Find the change in the extrinsic camera translation needed to shift
-% the eye model the observed number of pixels for an eye with zero rotation
-p0 = sceneGeometry.cameraPosition.translation;
-ub = sceneGeometry.cameraPosition.translation + [20; 20; 0];
-lb = sceneGeometry.cameraPosition.translation - [20; 20; 0];
-place = {'cameraPosition' 'translation'};
-mySG = @(p) setfield(sceneGeometry,place{:},p);
-pupilCenter = @(k) k(1:2);
-targetPupilCenter = pupilCenter(projectModelEye(eyePose,sceneGeometry)) - deltaPix;
-myError = @(p) norm(targetPupilCenter-pupilCenter(projectModelEye(eyePose,mySG(p))));
-options = optimoptions(@fmincon,'Diagnostics','off','Display','off');
-p = fmincon(myError,p0,[],[],[],[],lb,ub,[],options);
+function displayImage = updateFrame(movingFrame,regParams,cameraOffsetPoint)
+
+for ii=1:size(movingFrame,3)
+    tmpImage = squeeze(movingFrame(:,:,ii));
+    % Embed the movingFrame within a larger image that is padded
+    % with mid-point background values
+    padVals = round(size(tmpImage)./2);
+    tmpImagePad = zeros(size(tmpImage)+padVals.*2)+125;
+    tmpImagePad(padVals(1)+1:padVals(1)+size(tmpImage,1), ...
+        padVals(2)+1:padVals(2)+size(tmpImage,2) ) = tmpImage;
+    tmpImage = tmpImagePad;
+    % Rotate the image
+    tmpImage = imrotateAround(tmpImage, cameraOffsetPoint(2), cameraOffsetPoint(1), regParams.theta, 'bicubic');
+    % Apply the x and y translation
+    tmpImage = imtranslate(tmpImage,regParams.t','method','cubic');
+    % Apply the scaling
+    tmpImage = HardZoom(tmpImage,regParams.s);
+    % Crop out the padding
+    tmpImage = tmpImage(padVals(1)+1:padVals(1)+size(movingFrame,1), ...
+        padVals(2)+1:padVals(2)+size(movingFrame,2));
+    % Store this dimension
+    displayImage(:,:,ii)=uint8(tmpImage);
 end
+
+end
+
 
 
 function annotHandle = addAnnotation(text_str)
@@ -908,25 +888,33 @@ drawnow
 end
 
 
-function displayImage = updateMovingFrame(movingFrame,deltaPix,deltaDeg,deltaScale,cameraOffsetPoint)
-
-% Embed the movingFrame within a larger image that is padded
-% with mid-point background values
-padVals = round(size(movingFrame)./2);
-displayImagePad = zeros(size(movingFrame)+padVals.*2)+125;
-displayImagePad(padVals(1)+1:padVals(1)+size(movingFrame,1), ...
-    padVals(2)+1:padVals(2)+size(movingFrame,2) ) = movingFrame;
-displayImage = displayImagePad;
-% Apply the scaling
-scaledImage = imresize(displayImage,deltaScale);
-% Apply the x and y translation
-displayImage = imtranslate(displayImage,deltaPix,'method','cubic');
-% Crop out the padding
-displayImage = displayImage(padVals(1)+1:padVals(1)+size(movingFrame,1), ...
-    padVals(2)+1:padVals(2)+size(movingFrame,2));
-% Rotate the image
-displayImage = imrotateAround(displayImage, cameraOffsetPoint(2), cameraOffsetPoint(1), -deltaDeg, 'bicubic');
-
+function OutPicture = HardZoom(InPicture, ZoomFactor)
+      % Si el factor de escala es 1, no se hace nada
+      if ZoomFactor == 1
+          OutPicture = InPicture;
+          return;
+      end
+      % Se obtienen las dimensiones de las imágenes
+      ySize = size(InPicture, 1);
+      xSize = size(InPicture, 2);
+      zSize = size(InPicture, 3);
+      yCrop = floor(ySize / 2 * abs(ZoomFactor - 1));
+      xCrop = floor(xSize / 2 * abs(ZoomFactor - 1));
+      % Si el factor de escala es 0 se devuelve una imagen en negro
+      if ZoomFactor == 0
+          OutPicture = uint8(zeros(ySize, xSize, zSize));
+          return;
+      end
+      % Se reescala y se reposiciona en en centro
+      zoomPicture = imresize(InPicture, ZoomFactor);
+      ySizeZ = size(zoomPicture, 1);
+      xSizeZ = size(zoomPicture, 2);      
+      if ZoomFactor > 1
+          OutPicture = zoomPicture( 1+yCrop:yCrop+ySize, 1+xCrop:xCrop+xSize, :);
+      else
+          OutPicture = uint8(zeros(ySize, xSize, zSize));
+          OutPicture( 1+yCrop:yCrop+ySizeZ, 1+xCrop:xCrop+xSizeZ, :) = zoomPicture;
+      end
 end
 
 
@@ -981,54 +969,3 @@ rot = imrotate(padded, angle, method, 'crop');
 output = rot(padY+1-shiftY:end-padY-shiftY, padX+1-shiftX:end-padX-shiftX, :);
 end
 
-
-function weights = weightFunc(pupilData,perimeter,startIndex,runLength)
-%% Calculate likelhood SD across frames
-% Obtain a measure for each frame of how completely the perimeter points
-% define a full, 360 degrees around the pupil. This index of coverage of
-% the pupil perimeter is distVals. If there is a perfectly uniform angular
-% distribution of points in space around the pupil perimeter, then the
-% distVals value will be zero. If there are perimeter points only at a
-% single angular location around the pupil cirle, then the distVal will 1.
-
-% The likelihood SD is based upon the RMSE of the fit of the elipse to the
-% perimeter points for each frame
-RMSE = pupilData.initial.ellipses.RMSE(startIndex:startIndex+runLength-1)';
-
-% Define the bins over which the distribution of perimeter angles will be
-% evaluated. 20 bins works pretty well.
-nDivisions = 20;
-histBins = linspace(-pi,pi,nDivisions);
-
-% Anonymous function returns the linear non-uniformity of a set of values,
-% ranging from 0 when perfectly uniform to 1 when completely non-uniform.
-nonUniformity = @(x) (sum(abs(x/sum(x)-mean(x/sum(x))))/2)/(1-1/length(x));
-
-% Loop over frames. Frames which have no perimeter points will be given a
-% distVal of NaN.
-for ii = 1:runLength
-    
-    % Obtain the center of this fitted ellipse
-    centerX = pupilData.initial.ellipses.values(startIndex+ii-1,1);
-    centerY = pupilData.initial.ellipses.values(startIndex+ii-1,2);
-    
-    % Obtain the set of perimeter points
-    Xp = perimeter.data{startIndex+ii-1}.Xp;
-    Yp = perimeter.data{startIndex+ii-1}.Xp;
-    
-    % Calculate the deviation of the distribution of points from uniform
-    linearNonUniformity(ii) = nonUniformity(histcounts(atan2(Yp-centerY,Xp-centerX),histBins));
-end
-
-% Subject the linearNonUniformity vector to a non-linear transformation.
-% This has the effect of changing 0 --> 0.1, 0.8 --> 1, and values > 0.8
-% --> infinity. This causes pupil perimeters with support at a single
-% location (as opposed to fully around the perimeter) to have a markedly
-% increased likelihood SD. Also, set InF values to something arbitrarily
-% large.
-distVals = (1./(1-sqrt(linearNonUniformity)))./10;
-distVals(isinf(distVals)) = 1e20;
-
-% The weight for each frame is the inverse of the RMSE multiplied by the distVal
-weights = 1./(distVals.*RMSE);
-end

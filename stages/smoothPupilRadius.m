@@ -51,6 +51,9 @@ function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, scene
 %  'hostname'             - AUTOMATIC; The host
 %
 % Optional key/value pairs (fitting)
+%  'glintFileName'        - Full path to a glint file. When available, the
+%                           glint is used to constrain the eyePose that is
+%                           found to fit the pupil perimeter.
 %  'eyePoseLB'            - Lower bound on the eyePose
 %  'eyePoseUB'            - Upper bound on the eyePose
 %  'exponentialTauParam'  - The time constant (in video frames) of the
@@ -74,17 +77,6 @@ function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, scene
 %                           this acquisition. If set to empty (the default)
 %                           the routine derives this values from the
 %                           sceneConstrained fit results.
-%  'adjustedCameraPositionTranslation' - 3x1 vector that provides position
-%                           of the camera relative to the origin of the
-%                           world coordinate system (which is the anterior
-%                           surface of the cornea in primary gaze). This
-%                           value is used to update the sceneGeometry file
-%                           to account for head movement that has taken
-%                           place between the sceneGeometry acquisition and
-%                           the acquisition undergoing analysis. This
-%                           updated camera position should reflect the
-%                           camera position at the start of the current
-%                           acquisition.
 %  'relativeCameraPositionFileName' - Char. This is the full path to a
 %                           relativeCameraPosition.mat file that provides
 %                           the relative position of the camera at each
@@ -120,15 +112,13 @@ p.addParameter('hostname',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional fitting params
+p.addParameter('glintFileName',[],@(x)(isempty(x) || ischar(x)));
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,5],@isnumeric);
 p.addParameter('exponentialTauParam',10,@isnumeric);
 p.addParameter('likelihoodErrorMultiplier',2.0,@isnumeric);
 p.addParameter('fitLabel','sceneConstrained',@ischar);
 p.addParameter('fixedPriorPupilRadius',[],@isnumeric);
-p.addParameter('forceFreshFit',false,@islogical);
-p.addParameter('adjustedCameraPositionTranslation',[],@isnumeric);
-p.addParameter('adjustedCameraPositionTorsion',[],@isnumeric);
 p.addParameter('relativeCameraPositionFileName',[],@ischar);
 
 
@@ -142,35 +132,26 @@ radiusIdx = 4; % The 4th eyePose entry holds the radius value
 
 %% Load and check data
 % Load the pupil perimeter data
-dataLoad=load(perimeterFileName);
-perimeter=dataLoad.perimeter;
-clear dataLoad
+load(perimeterFileName,'perimeter');
 
 % Load the pupil data
-dataLoad=load(pupilFileName);
-pupilData=dataLoad.pupilData;
-clear dataLoad
+load(pupilFileName,'pupilData');
 
 % Load the sceneGeometry file
-dataLoad=load(sceneGeometryFileName);
-sceneGeometry=dataLoad.sceneGeometry;
-clear dataLoad
+load(sceneGeometryFileName,'sceneGeometry');
 
-% If an adjustedCameraPositionTranslation and/or torsion values have been
-% passed, update these fields of the sceneGeometry
-if ~isempty(p.Results.adjustedCameraPositionTranslation)
-    sceneGeometry.cameraPosition.translation = p.Results.adjustedCameraPositionTranslation;
-end
-if ~isempty(p.Results.adjustedCameraPositionTorsion)
-    sceneGeometry.cameraPosition.torsion = p.Results.adjustedCameraPositionTorsion;
+% Load the glint file if passed
+if ~isempty(p.Results.glintFileName)
+    % Load the sceneGeometry file
+    load(p.Results.glintFileName,'glintData');
+else
+    glintData = [];
 end
 
 % Load the relativeCameraPosition file if passed and it exists
 if ~isempty(p.Results.relativeCameraPositionFileName)
     if exist(p.Results.relativeCameraPositionFileName, 'file')==2
-        dataLoad=load(p.Results.relativeCameraPositionFileName);
-        relativeCameraPosition=dataLoad.relativeCameraPosition;
-        clear dataLoad
+        load(p.Results.relativeCameraPositionFileName,'relativeCameraPosition');
     else
         relativeCameraPosition=[];
     end
@@ -429,14 +410,23 @@ parfor (ii = 1:nFrames, nWorkers)
             cameraPosition = cameraPosition + relativeCameraPosition.values(:,ii);
             adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
         end
-        
+
+        % If we have glintData, extract the glintCoord
+        if ~isempty(glintData)
+            glintCoord = [glintData.X(ii,:), glintData.Y(ii,:)];
+        else
+            glintCoord = [];
+        end
+            
         % Turn off warnings that can arise when fitting bad frames
         warning('off','projectModelEye:rayTracingError');
         warning('off','projectModelEye:ellipseFitFailed');
         
         % Perform the fit
         [posteriorEyePose, posteriorEyePoseObjectiveError, posteriorEllipseParams, fitAtBound] = ...
-            eyePoseEllipseFit(Xp, Yp, adjustedSceneGeometry, 'eyePoseLB', lb_pin, 'eyePoseUB', ub_pin, 'x0', x0);
+            eyePoseEllipseFit(Xp, Yp, adjustedSceneGeometry, ...
+            'glintCoord',glintCoord, ...
+            'eyePoseLB', lb_pin, 'eyePoseUB', ub_pin, 'x0', x0);
         
         % Calculate the uniformity of the distribution of perimeter points
         % around the center of the fitted ellipse

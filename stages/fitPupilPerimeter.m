@@ -72,23 +72,15 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %                           to an aspect ration of 4:5.
 %  'eyePoseLB'            - Lower bound on the eyePose
 %  'eyePoseUB'            - Upper bound on the eyePose
+%  'glintFileName'        - Full path to a glint file. When available, the
+%                           glint is used to constrain the eyePose that is
+%                           found to fit the pupil perimeter.
 %  'sceneGeometryFileName' - Full path to a sceneGeometry file. When the
 %                           sceneGeometry is available, fitting is
 %                           performed in terms of eye parameters instead of
 %                           ellipse parameters
 %  'fitLabel'             - The field name in the pupilData structure where
 %                           the results of the fitting will be stored.
-%  'adjustedCameraPositionTranslation' - 3x1 vector that provides position
-%                           of the camera relative to the origin of the
-%                           world coordinate system (which is the anterior
-%                           surface of the cornea in primary gaze). This
-%                           value is used to update the sceneGeometry file
-%                           to account for head movement that has taken
-%                           place between the sceneGeometry acquisition and
-%                           the acquisition undergoing analysis. This
-%                           updated camera position should reflect the
-%                           camera position at the start of the current
-%                           acquisition.
 %  'relativeCameraPositionFileName' - Char. This is the full path to a
 %                           relativeCameraPosition.mat file that provides
 %                           the position of the camera at each video frame
@@ -132,8 +124,8 @@ p.addParameter('ellipseTransparentUB',[640,480,20000,0.6,pi],@(x)(isempty(x) || 
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,5],@isnumeric);
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) || ischar(x)));
+p.addParameter('glintFileName',[],@(x)(isempty(x) || ischar(x)));
 p.addParameter('fitLabel',[],@(x)(isempty(x) | ischar(x)));
-p.addParameter('adjustedCameraPositionTranslation',[],@isnumeric);
 p.addParameter('relativeCameraPositionFileName',[],@ischar);
 
 
@@ -147,18 +139,14 @@ nEyePoseParams=4; % 4 eyePose values (azimuth, elevation, torsion, radius)
 %% Load data
 % Load the pupil perimeter data. It will be a structure variable
 % "perimeter", with the fields .data and .meta
-dataLoad=load(perimeterFileName);
-perimeter=dataLoad.perimeter;
-clear dataLoad
+load(perimeterFileName,'perimeter');
 
 % Load the pupilData file if it exists and we have been given a
 % sceneGeometry file. In this circumstance, we are loading the file that
 % contains the initial fit, and we are not going to add the scene
 % constrained fit.
 if exist(p.Results.pupilFileName, 'file')==2 && ~isempty(p.Results.sceneGeometryFileName)
-    dataLoad=load(pupilFileName);
-    pupilData=dataLoad.pupilData;
-    clear dataLoad
+    load(pupilFileName,'pupilData');
 else
     pupilData=[];
 end
@@ -166,28 +154,23 @@ end
 % Load the sceneGeometry file if passed
 if ~isempty(p.Results.sceneGeometryFileName)
     % Load the sceneGeometry file
-    dataLoad=load(p.Results.sceneGeometryFileName);
-    sceneGeometry=dataLoad.sceneGeometry;
-    clear dataLoad
-    % An earlier version of the code defined a non-zero iris thickness. We
-    % force this to zero here to speed computation
-    sceneGeometry.eye.iris.thickness=0;
-    % If an adjustedCameraPositionTranslation value has been passed, update
-    % this field of the sceneGeometry
-    if ~isempty(p.Results.adjustedCameraPositionTranslation)
-        % Update the cameraPosition
-        sceneGeometry.cameraPosition.translation = p.Results.adjustedCameraPositionTranslation;
-    end
+    load(p.Results.sceneGeometryFileName,'sceneGeometry');
 else
     sceneGeometry = [];
+end
+
+% Load the glint file if passed
+if ~isempty(p.Results.glintFileName)
+    % Load the sceneGeometry file
+    load(p.Results.glintFileName,'glintData');
+else
+    glintData = [];
 end
 
 % Load the relativeCameraPosition file if passed and it exists
 if ~isempty(p.Results.relativeCameraPositionFileName)
     if exist(p.Results.relativeCameraPositionFileName, 'file')==2
-        dataLoad=load(p.Results.relativeCameraPositionFileName);
-        relativeCameraPosition=dataLoad.relativeCameraPosition;
-        clear dataLoad
+        load(p.Results.relativeCameraPositionFileName,'relativeCameraPosition');
     else
         relativeCameraPosition=[];
     end
@@ -293,6 +276,12 @@ parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
                 cameraPosition = cameraPosition + relativeCameraPosition.values(:,ii);
                 adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
             end
+            % If we have glintData, extract the glintCoord
+            if ~isempty(glintData)
+                glintCoord = [glintData.X(ii,:), glintData.Y(ii,:)];
+            else
+                glintCoord = [];
+            end
             % Find the eyePose parameters that best fit the pupil
             % perimeter. This can take between 1 and 10 seconds, with
             % longer search times for partial pupil ellipses. We don't
@@ -302,6 +291,7 @@ parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
             % generous boundaries.
             [eyePose, objectiveError, ellipseParamsTransparent, fitAtBound] = ...
                 eyePoseEllipseFit(Xp, Yp, adjustedSceneGeometry, ...
+                'glintCoord',glintCoord, ...
                 'rmseThresh', initialRMSE(ii)*1.2, ...
                 'rmseThreshIter', initialRMSE(ii)*0.2, ...
                 'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB);

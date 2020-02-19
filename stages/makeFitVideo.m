@@ -105,8 +105,8 @@ p.addParameter('glintColor', 'r', @ischar);
 p.addParameter('perimeterColor', 'w', @ischar);
 p.addParameter('pupilColor', 'green', @ischar);
 p.addParameter('pupilRMSERangeAlphaScaler',[1,4],@isnumeric);
-p.addParameter('modelEyeLabelNames', {'retina' 'irisPerimeter' 'cornea' 'glint'}, @iscell);
-p.addParameter('modelEyePlotColors', {'.w' '.b' '.y' 'or'}, @iscell);
+p.addParameter('modelEyeLabelNames', {'retina' 'irisPerimeter' 'cornea' 'glint_01' 'glint_02'}, @iscell);
+p.addParameter('modelEyePlotColors', {'.w' '.b' '.y' 'or' 'or'}, @iscell);
 p.addParameter('modelEyeMaxAlpha', 0, @isnumeric);
 p.addParameter('modelEyeRMSERangeAlphaScaler',[1,4],@isnumeric);
 p.addParameter('modelEyeSymbolSizeScaler',1,@isnumeric);
@@ -284,7 +284,7 @@ for ii = 1:nFrames
     % add glint
     if ~isempty(p.Results.glintFileName)
         for gg = 1:size(glintData.X,2)
-        hPlot(end+1) = plot(glintData.X(ii,gg),glintData.Y(ii,gg),['*' p.Results.glintColor]);
+        hPlot(end+1) = plot(glintData.X(ii,gg),glintData.Y(ii,gg),['.' p.Results.glintColor]);
         end
     end
     
