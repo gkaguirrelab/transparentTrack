@@ -106,7 +106,7 @@ function sceneGeometry = estimateSceneParams(pupilFileName, perimeterFileName, g
     sceneGeometryFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3021/060917/EyeTracking/GazeCal02_sceneGeometry.mat';
     gazeTargets = [ -7, -7, 7, 0, 0, 7, 0, 7, -7 ; 0, 7, -7, -7, 0, 7, 7, 0, -7];
     frameSet = [ 730, 882, 971, 1114, 1250, 1382, 1467, 1593, 1672 ];
-    varargin = {'axialLength',25.29,'sphericalAmetropia',-5.25,'sceneParamsX0',[ 11.5504 -3.0653 -3.8704 124.2764 0.8830 0.9858 1.0495 0.9987 0 ],'lockDepth', false};
+    varargin = {'axialLength',25.29,'sphericalAmetropia',-5.25,'sceneParamsX0',[ 10.2446 -3.2242 -3.8030 124.1518 0.8628 0.9635 1.0488 0.9931 29.3357 ]};
     estimateSceneParams(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, 'frameSet', frameSet, 'gazeTargets', gazeTargets, varargin{:});
 %}
 
@@ -135,8 +135,8 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional analysis params
-p.addParameter('sceneParamsX0',[0 0 0 130 1 1 1 1 0],@isnumeric);
-p.addParameter('lockDepth',true,@islogical);
+p.addParameter('sceneParamsX0',[0 0 0 120 1 1 1 1 0],@isnumeric);
+p.addParameter('lockDepth',false,@islogical);
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 p.addParameter('frameSet',[],@(x)(isempty(x) | isnumeric(x)));
@@ -169,8 +169,8 @@ gazeTargets = p.Results.gazeTargets;
 % world from the perspective of the eye. This alteration scales the
 % apparent visual field positions of the targets and results in a
 % concomittant change in eye movement amplitude. Note that while a contact
-% lens also has a magnification effect (albeit smaller), the lens rotates
-% with the eye. Thus, eye movement amplitude is not altered.
+% lens also has a (smaller) magnification effect, the lens rotates with the
+% eye. Thus, eye movement amplitude is not altered.
 if ~isempty(gazeTargets)
     % Default to no change
     magnification = 1;
@@ -204,11 +204,7 @@ load(glintFileName,'glintData');
 
 %% Restrict the materials to the frameSet
 
-% Handle the frameset
 frameSet = p.Results.frameSet;
-if isempty(frameSet)
-    % Call here to selectFrameSet
-end
 
 % Extract the frames we want
 perimeter.data = perimeter.data(frameSet);
@@ -240,6 +236,7 @@ addPlotsWrap = @(idx,x) addSubPlots(figHandle,idx,nStages,x,sceneGeometry,args{:
 %% Set x0
 x0 = p.Results.sceneParamsX0;
 x = x0;
+
 
 %% Define BADS search options
 options = bads('defaults');          % Get a default OPTIONS struct
@@ -320,10 +317,10 @@ if p.Results.verbose
     fprintf('Stage 4...');
 end
 % Bounds
-lb  = [x(1:8)./(0.90.^-sign(x(1:8))), x(9)-45];
-lbp = [x(1:8)./(0.95.^-sign(x(1:8))), x(9)-22.5];
-ubp = [x(1:8)./(1.05.^-sign(x(1:8))), x(9)+22.5];
-ub  = [x(1:8)./(1.10.^-sign(x(1:8))), x(9)+45];
+lb  = [x(1:8)./(0.90.^-sign(x(1:8))), x(9)-10];
+lbp = [x(1:8)./(0.95.^-sign(x(1:8))), x(9)-5];
+ubp = [x(1:8)./(1.05.^-sign(x(1:8))), x(9)+5];
+ub  = [x(1:8)./(1.10.^-sign(x(1:8))), x(9)+10];
 [lb,ub,lbp,ubp] = cornealCurvConstraint(sceneGeometry,lb,ub,lbp,ubp);
 % if we have been told to lock the depth parameter, do so
 if p.Results.lockDepth
@@ -386,7 +383,7 @@ executionTime = toc(ticObject);
 % Create a new sceneGeometry with the update key-values
 sceneGeometry = createSceneGeometry(sceneGeometryVarargin{:});
 
-% Update and move the meta data around
+% Update the meta data
 sceneGeometry.meta.estimateSceneParams = p.Results;
 sceneGeometry.meta.estimateSceneParams.x0 = x0;
 for ii = 1:nStages
@@ -396,8 +393,6 @@ sceneGeometry.meta.estimateSceneParams.fVal = fVal;
 sceneGeometry.meta.estimateSceneParams.executionTime = executionTime;
 sceneGeometry.meta.estimateSceneParams.varargin = varargin;
 sceneGeometry.meta.estimateSceneParams.sceneGeometryVarargin = sceneGeometryVarargin;
-
-% Add the model components at the solution to the meta data
 sceneGeometry.meta.estimateSceneParams.modelEyePose = modelEyePose;
 sceneGeometry.meta.estimateSceneParams.modelPupilEllipse = modelPupilEllipse;
 sceneGeometry.meta.estimateSceneParams.modelGlintCoord = modelGlintCoord;
@@ -444,7 +439,7 @@ saveas(figHandle,figureName)
 
 % Create an eye model montage
 figureName = fullfile(diagnosticDirName,[sceneGeomName '_sceneDiagnosticMontage_eyeModel.png']);
-saveEyeModelMontage(sceneGeometry, modelEyePose, frameSet, grayVideoName, figureName)
+saveEyeModelMontage(sceneGeometry, modelEyePose, frameSet, grayVideoName, figureName);
 
 
 %% alert the user that we are done with the routine
@@ -521,7 +516,7 @@ end
 
 function addSupTitle(figHandle,str)
     set(0, 'CurrentFigure', figHandle);
-    gcf
+    gcf;
     axes('Position',[0 0 1 1],'visible','off','Tag','suptitle');
     ht=text(.5,0.98,str);set(ht,'horizontalalignment','center','fontsize',14,'Interpreter','none');
     drawnow
@@ -633,7 +628,7 @@ drawnow
 % If this is the last panel, put an annotation for the x parameters at the
 % bottom.
 if idx == nStages
-    gcf
+    gcf;
     axes('Position',[0 0 1 1],'visible','off','Tag','subtitle');
     str = sprintf('Camera torsion: %2.1f, position: [%2.1f, %2.1f, %2.1f]; Rotation center joint, diff [%2.2f, %2.2f]; Corneal curvature joint, diff, angle [%2.2f, %2.2f, %2.2f]',x);
     ht=text(.5,0.05,str);set(ht,'horizontalalignment','center','fontsize',12);
