@@ -236,7 +236,8 @@ end
 %% Set up the fit figure
 nStages = 4;
 figHandle = addSubPlots([],0,nStages);
-addPlotsWrap = @(idx,x) addSubPlots(figHandle,idx,nStages,x,sceneGeometry,args{:},keyVals);
+boundTol = 1e-6;
+addPlotsWrap = @(idx,x,fitAtBound) addSubPlots(figHandle,idx,nStages,x,sceneGeometry,args{:},fitAtBound,keyVals);
 
 
 %% Set x0
@@ -269,8 +270,11 @@ ubp = x + bound./2;
 % Search
 x = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
 xStages(1,:) = x;
+% Identify any params that hit a bound in the final search stage
+notLocked = lb ~= ub;
+fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
 % Plot
-addPlotsWrap(1,x);
+addPlotsWrap(1,x,fitAtBound);
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -292,8 +296,11 @@ myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:
 % Search
 x = bads(myObj,x,lb,ub,lbp,ubp,[],options);
 xStages(2,:) = x;
+% Identify any params that hit a bound in the final search stage
+notLocked = lb ~= ub;
+fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
 % Plot
-addPlotsWrap(2,x);
+addPlotsWrap(2,x,fitAtBound);
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -314,8 +321,11 @@ ubp = x + bound./2;
 % Search
 x = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
 xStages(3,:) = x;
+% Identify any params that hit a bound in the final search stage
+notLocked = lb ~= ub;
+fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
 % Plot
-addPlotsWrap(3,x);
+addPlotsWrap(3,x,fitAtBound);
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -341,8 +351,12 @@ myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:
 % Search
 x = bads(myObj,x,lb,ub,lbp,ubp,[],options);
 xStages(4,:) = x;
+% Identify any params that hit a bound in the final search stage
+notLocked = lb ~= ub;
+fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
 % Plot
-addPlotsWrap(4,x);
+addPlotsWrap(4,x,fitAtBound);
+
 
 
 %% Update the sceneGeometry 
@@ -399,6 +413,7 @@ sceneGeometry.meta.estimateSceneParams.x0 = x0;
 for ii = 1:nStages
     sceneGeometry.meta.estimateSceneParams.(['x' num2str(ii)]) = xStages(ii,:);
 end
+sceneGeometry.meta.estimateSceneParams.fitAtBound = fitAtBound;
 sceneGeometry.meta.estimateSceneParams.fVal = fVal;
 sceneGeometry.meta.estimateSceneParams.executionTime = executionTime;
 sceneGeometry.meta.estimateSceneParams.varargin = varargin;
@@ -421,7 +436,7 @@ end
 %% Save diagnostic plots
 
 if p.Results.verbose
-    fprintf('Saving plots.\n');
+    fprintf('Saving plots...');
 end
 [sceneGeomPath,sceneGeomName,] = fileparts(sceneGeometryFileName);
 diagnosticDirName = fullfile(sceneGeomPath,[sceneGeomName '_diagnostics']);
@@ -454,8 +469,7 @@ saveEyeModelMontage(sceneGeometry, modelEyePose, frameSet, grayVideoName, figure
 
 %% alert the user that we are done with the routine
 if p.Results.verbose
-    executionTime
-    fprintf('\n');
+    fprintf([num2str(executionTime) '\n']);
 end
 
 end
@@ -535,7 +549,7 @@ end
     
 
 
-function figHandle = addSubPlots(figHandle,idx,nStages,x,sceneGeometry,perimeter,glintData,ellipseRMSE,gazeTargets,keyVals)
+function figHandle = addSubPlots(figHandle,idx,nStages,x,sceneGeometry,perimeter,glintData,ellipseRMSE,gazeTargets,fitAtBound,keyVals)
 
 % Prepare the figure
 if idx == 0
@@ -591,7 +605,7 @@ title(myLabel);
 
 % 1. Perimeter fits
 % Define a figure
-hFig = figure( 'Visible', 'on');
+hFig = figure( 'Visible', 'off');
 dim = 150;
 imshow(ones(dim,dim),'Border', 'tight');
 drawnow;
@@ -636,12 +650,23 @@ set(ht,'FontSize',18)
 drawnow
 
 % If this is the last panel, put an annotation for the x parameters at the
-% bottom.
+% bottom. Report params that hit a bound in red.
 if idx == nStages
     gcf;
-    axes('Position',[0 0 1 1],'visible','off','Tag','subtitle');
-    str = sprintf('Camera torsion: %2.1f, position: [%2.1f, %2.1f, %2.1f]; Rotation center joint, diff [%2.2f, %2.2f]; Corneal curvature joint, diff, angle [%2.2f, %2.2f, %2.2f]',x);
-    ht=text(.5,0.055,str);set(ht,'horizontalalignment','center','fontsize',12);
+    axes('Position',[0 0 1 1],'Visible','off','Tag','subtitle');
+    str = sprintf('Camera torsion: $color-start$%2.1f$$color-end$$, position: [$color-start$%2.1f$$color-end$$, $color-start$%2.1f$$color-end$$, $color-start$%2.1f$$color-end$$]; Rotation center joint, diff [$color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$]; Corneal curvature joint, diff, angle [$color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$]',x);
+    tagIdx = strfind(str,'$color-start$');
+    for ii=1:length(fitAtBound)
+        if fitAtBound(ii)
+            str(tagIdx(ii):tagIdx(ii)+12) = '\color{red$$}';
+        else
+            str(tagIdx(ii):tagIdx(ii)+12) = '\color{black}';
+        end
+    end
+    str = strrep(str,'$$color-end$$','\color{black}');
+    str = strrep(str,'$$','');
+    ht=text(.5,0.055,str);
+    set(ht,'horizontalalignment','center','fontsize',12);
     str = sprintf('x = [ %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f ]',x);
     ht=text(.5,0.025,str);set(ht,'horizontalalignment','center','fontsize',12);
     drawnow
@@ -717,7 +742,7 @@ if exist(grayVideoName,'file') && ~isempty(frameSet)
     close(hFig);
     
     % Prepare the figure
-    figHandle=figure('visible','off');
+    figHandle=figure('Visible','off');
     set(gcf,'PaperOrientation','landscape');
     set(figHandle, 'Units','inches')
     height = 6;

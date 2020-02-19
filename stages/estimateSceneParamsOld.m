@@ -820,7 +820,7 @@ warning('off','projectModelEye:ellipseFitFailed');
 ellipses = sceneGeometry.meta.estimateSceneParams.search.ellipses;
 
 % Prepare the figure
-figHandle=figure('visible','off');
+figHandle=figure('Visible','off');
 set(gcf,'PaperOrientation','landscape');
 
 set(figHandle, 'Units','inches')
@@ -1132,7 +1132,7 @@ if exist(grayVideoName,'file') && ~isempty(ellipseArrayList)
     close(hFig);
     
     % Prepare the figure
-    figHandle=figure('visible','off');
+    figHandle=figure('Visible','off');
     set(gcf,'PaperOrientation','landscape');
     set(figHandle, 'Units','inches')
     height = 6;
@@ -1241,7 +1241,7 @@ if exist(grayVideoName,'file') && ~isempty(ellipseArrayList)
     close(hFig);
     
     % Prepare the figure
-    figHandle=figure('visible','off');
+    figHandle=figure('Visible','off');
     set(gcf,'PaperOrientation','landscape');
     set(figHandle, 'Units','inches')
     height = 6;
@@ -1294,7 +1294,7 @@ modeled = (R * poses(:,1:2)' + t)';
 targets = sceneGeometry.meta.estimateSceneParams.search.fixationTargetArray';
 
 % Prepare the figure
-figHandle=figure('visible','off');
+figHandle=figure('Visible','off');
 set(gcf,'PaperOrientation','landscape');
 set(figHandle, 'Units','inches')
 height = 6;
