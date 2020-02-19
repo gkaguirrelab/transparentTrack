@@ -354,10 +354,11 @@ for ii = 1:p.Results.searchIterations
         fprintf('Stage 4...');
     end
     % Bounds
-    lb  = [x(1:8)./(0.90.^-sign(x(1:8))), x(9)-10];
-    lbp = [x(1:8)./(0.95.^-sign(x(1:8))), x(9)-5];
-    ubp = [x(1:8)./(1.05.^-sign(x(1:8))), x(9)+5];
-    ub  = [x(1:8)./(1.10.^-sign(x(1:8))), x(9)+10];
+    bb = 0.1 / ii;
+    lb  = [x(1:8)./((1-bb).^-sign(x(1:8))), x(9)-10];
+    lbp = [x(1:8)./((1-bb/2).^-sign(x(1:8))), x(9)-5];
+    ubp = [x(1:8)./((1+bb/2).^-sign(x(1:8))), x(9)+5];
+    ub  = [x(1:8)./((1+bb).^-sign(x(1:8))), x(9)+10];
     [lb,ub,lbp,ubp] = cornealCurvConstraint(sceneGeometry,lb,ub,lbp,ubp);
     % Lock the depth parameter if so instructed
     if p.Results.lockDepth
