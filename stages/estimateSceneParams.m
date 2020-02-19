@@ -641,9 +641,9 @@ if idx == nStages
     gcf;
     axes('Position',[0 0 1 1],'visible','off','Tag','subtitle');
     str = sprintf('Camera torsion: %2.1f, position: [%2.1f, %2.1f, %2.1f]; Rotation center joint, diff [%2.2f, %2.2f]; Corneal curvature joint, diff, angle [%2.2f, %2.2f, %2.2f]',x);
-    ht=text(.5,0.075,str);set(ht,'horizontalalignment','center','fontsize',12);
-    str = sprintf('x = [ %2.1f, %2.1f, %2.1f, %2.1f, %2.1f, %2.1f, %2.1f, %2.1f, %2.1f ]',x);
-    ht=text(.5,0.075,str);set(ht,'horizontalalignment','center','fontsize',12);
+    ht=text(.5,0.055,str);set(ht,'horizontalalignment','center','fontsize',12);
+    str = sprintf('x = [ %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f ]',x);
+    ht=text(.5,0.025,str);set(ht,'horizontalalignment','center','fontsize',12);
     drawnow
 end
 
