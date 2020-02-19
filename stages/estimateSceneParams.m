@@ -135,6 +135,7 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional analysis params
+p.addParameter('searchIterations',2,@isscalar);
 p.addParameter('sceneParamsX0',[0 0 0 120 1 1 1 1 0],@isnumeric);
 p.addParameter('lockDepth',false,@islogical);
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
@@ -234,13 +235,6 @@ if p.Results.useParallel
 end
 
 
-%% Set up the fit figure
-nStages = 4;
-figHandle = addSubPlots([],0,nStages);
-boundTol = 1e-6;
-addPlotsWrap = @(idx,x,fitAtBound) addSubPlots(figHandle,idx,nStages,x,sceneGeometry,args{:},fitAtBound,keyVals);
-
-
 %% Set x0
 x0 = p.Results.sceneParamsX0;
 x = x0;
@@ -252,112 +246,147 @@ options.Display = 'off';             % Silence display output
 options.UncertaintyHandling = 0;     % The objective is deterministic
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% STAGE 1 -- TORSION / TRANSLATION SEARCH
-% Perform an initial, iterated search, locking parameters for camera
-% distance, eye rotation, and corneal curvature.
-
-% Announce
-if p.Results.verbose
-    fprintf('Stage 1...');
+%% Create a directory to save the diagnostic plots
+[sceneGeomPath,sceneGeomName,] = fileparts(sceneGeometryFileName);
+diagnosticDirName = fullfile(sceneGeomPath,[sceneGeomName '_diagnostics']);
+if ~exist(diagnosticDirName, 'dir')
+    mkdir(diagnosticDirName);
+else
+    rmdir(diagnosticDirName, 's');
+    mkdir(diagnosticDirName);
 end
-% Bounds
-bound = [20, 10, 10, 0, 0, 0, 0, 0, 0];
-lb = x - bound;
-ub = x + bound;
-lbp = x - bound./2;
-ubp = x + bound./2;
-[lb,ub,lbp,ubp] = cornealCurvConstraint(sceneGeometry,lb,ub,lbp,ubp);
-% Search
-x = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
-xStages(1,:) = x;
-% Identify any params that hit a bound in the final search stage
-notLocked = lb ~= ub;
-fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
-% Plot
-addPlotsWrap(1,x,fitAtBound);
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% STAGE 2 -- ROTATION CENTER SEARCH
-% Search over the eye rotation center
+%% Loop over iterations
 
-% Announce
-if p.Results.verbose
-    fprintf('Stage 2...');
-end
-% Bounds
-lb = [x(1:4), 0.75, 0.75, x(7:9)];
-ub = [x(1:4), 1.25, 1.25, x(7:9)];
-lbp = [x(1:4), 0.85, 0.85, x(7:9)];
-ubp = [x(1:4), 1.15, 1.15, x(7:9)];
-[lb,ub,lbp,ubp] = cornealCurvConstraint(sceneGeometry,lb,ub,lbp,ubp);
-% Objective
-myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
-% Search
-x = bads(myObj,x,lb,ub,lbp,ubp,[],options);
-xStages(2,:) = x;
-% Identify any params that hit a bound in the final search stage
-notLocked = lb ~= ub;
-fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
-% Plot
-addPlotsWrap(2,x,fitAtBound);
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% STAGE 3 -- TRANSLATION AND CURVATURE SEARCH
-% Lock the rotation centers, search over translation and corneal curvature
-
-% Announce
-if p.Results.verbose
-    fprintf('Stage 3...');
-end
-% Bounds
-bound = [abs(x(1:3).*0.25), 0, 0, 0, x(7:8).*0.25 90];
-lb = x - bound;
-ub = x + bound;
-lbp = x - bound./2;
-ubp = x + bound./2;
-[lb,ub,lbp,ubp] = cornealCurvConstraint(sceneGeometry,lb,ub,lbp,ubp);
-% Search
-x = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
-xStages(3,:) = x;
-% Identify any params that hit a bound in the final search stage
-notLocked = lb ~= ub;
-fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
-% Plot
-addPlotsWrap(3,x,fitAtBound);
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% STAGE 4 -- COMPLETE SEARCH
-% Search over all parameters
-
-% Announce
-if p.Results.verbose
-    fprintf('Stage 4...');
-end
-% Bounds
-lb  = [x(1:8)./(0.90.^-sign(x(1:8))), x(9)-10];
-lbp = [x(1:8)./(0.95.^-sign(x(1:8))), x(9)-5];
-ubp = [x(1:8)./(1.05.^-sign(x(1:8))), x(9)+5];
-ub  = [x(1:8)./(1.10.^-sign(x(1:8))), x(9)+10];
-[lb,ub,lbp,ubp] = cornealCurvConstraint(sceneGeometry,lb,ub,lbp,ubp);
-% Lock the depth parameter if so instructed
-if p.Results.lockDepth
-    lb(4) = x(4); lbp(4) = x(4); ubp(4) = x(4); ub(4) = x(4);
-end
-% Objective
-myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
-% Search
-x = bads(myObj,x,lb,ub,lbp,ubp,[],options);
-xStages(4,:) = x;
-% Identify any params that hit a bound in the final search stage
-notLocked = lb ~= ub;
-fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
-% Plot
-addPlotsWrap(4,x,fitAtBound);
-
+for ii = 1:p.Results.searchIterations
+    
+    %% Set up the fit figure
+    nStages = 4;
+    figHandle = addSubPlots([],0,nStages);
+    boundTol = 1e-6;
+    addPlotsWrap = @(idx,x,fitAtBound) addSubPlots(figHandle,idx,nStages,x,sceneGeometry,args{:},fitAtBound,keyVals);
+    
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %% STAGE 1 -- TORSION / TRANSLATION SEARCH
+    % Perform an initial, iterated search, locking parameters for camera
+    % distance, eye rotation, and corneal curvature.
+    
+    % Announce
+    if p.Results.verbose
+        fprintf('Stage 1...');
+    end
+    % Bounds
+    bound = [20, 10, 10, 0, 0, 0, 0, 0, 0];
+    lb = x - bound;
+    ub = x + bound;
+    lbp = x - bound./2;
+    ubp = x + bound./2;
+    [lb,ub,lbp,ubp] = cornealCurvConstraint(sceneGeometry,lb,ub,lbp,ubp);
+    % Search
+    x = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
+    xStages(1,:) = x;
+    % Identify any params that hit a bound in the final search stage
+    notLocked = lb ~= ub;
+    fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
+    % Plot
+    addPlotsWrap(1,x,fitAtBound);
+    
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %% STAGE 2 -- ROTATION CENTER SEARCH
+    % Search over the eye rotation center
+    
+    % Announce
+    if p.Results.verbose
+        fprintf('Stage 2...');
+    end
+    % Bounds
+    lb = [x(1:4), 0.75, 0.75, x(7:9)];
+    ub = [x(1:4), 1.25, 1.25, x(7:9)];
+    lbp = [x(1:4), 0.85, 0.85, x(7:9)];
+    ubp = [x(1:4), 1.15, 1.15, x(7:9)];
+    [lb,ub,lbp,ubp] = cornealCurvConstraint(sceneGeometry,lb,ub,lbp,ubp);
+    % Objective
+    myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
+    % Search
+    x = bads(myObj,x,lb,ub,lbp,ubp,[],options);
+    xStages(2,:) = x;
+    % Identify any params that hit a bound in the final search stage
+    notLocked = lb ~= ub;
+    fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
+    % Plot
+    addPlotsWrap(2,x,fitAtBound);
+    
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %% STAGE 3 -- TRANSLATION AND CURVATURE SEARCH
+    % Lock the rotation centers, search over translation and corneal curvature
+    
+    % Announce
+    if p.Results.verbose
+        fprintf('Stage 3...');
+    end
+    % Bounds
+    bound = [abs(x(1:3).*0.25), 0, 0, 0, x(7:8).*0.25 90];
+    lb = x - bound;
+    ub = x + bound;
+    lbp = x - bound./2;
+    ubp = x + bound./2;
+    [lb,ub,lbp,ubp] = cornealCurvConstraint(sceneGeometry,lb,ub,lbp,ubp);
+    % Search
+    x = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
+    xStages(3,:) = x;
+    % Identify any params that hit a bound in the final search stage
+    notLocked = lb ~= ub;
+    fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
+    % Plot
+    addPlotsWrap(3,x,fitAtBound);
+    
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %% STAGE 4 -- COMPLETE SEARCH
+    % Search over all parameters
+    
+    % Announce
+    if p.Results.verbose
+        fprintf('Stage 4...');
+    end
+    % Bounds
+    lb  = [x(1:8)./(0.90.^-sign(x(1:8))), x(9)-10];
+    lbp = [x(1:8)./(0.95.^-sign(x(1:8))), x(9)-5];
+    ubp = [x(1:8)./(1.05.^-sign(x(1:8))), x(9)+5];
+    ub  = [x(1:8)./(1.10.^-sign(x(1:8))), x(9)+10];
+    [lb,ub,lbp,ubp] = cornealCurvConstraint(sceneGeometry,lb,ub,lbp,ubp);
+    % Lock the depth parameter if so instructed
+    if p.Results.lockDepth
+        lb(4) = x(4); lbp(4) = x(4); ubp(4) = x(4); ub(4) = x(4);
+    end
+    % Objective
+    myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
+    % Search
+    x = bads(myObj,x,lb,ub,lbp,ubp,[],options);
+    xStages(4,:) = x;
+    % Identify any params that hit a bound in the final search stage
+    notLocked = lb ~= ub;
+    fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
+    % Plot
+    addPlotsWrap(4,x,fitAtBound);
+    
+    
+    %% Save the fit-by-stage plot
+    if p.Results.verbose
+        fprintf('Saving plots...');
+    end
+    
+    % Save the staged fit results
+    figureName = fullfile(diagnosticDirName,[sceneGeomName '_fitsByStage_iter0' num2str(ii) '.pdf']);
+    addSupTitle(figHandle,sceneGeomName);
+    saveas(figHandle,figureName)
+    
+    
+end % searchIterations
 
 
 %% Update the sceneGeometry 
@@ -434,19 +463,7 @@ if ~isempty(sceneGeometryFileName)
 end
 
 
-%% Save diagnostic plots
-
-if p.Results.verbose
-    fprintf('Saving plots...');
-end
-[sceneGeomPath,sceneGeomName,] = fileparts(sceneGeometryFileName);
-diagnosticDirName = fullfile(sceneGeomPath,[sceneGeomName '_diagnostics']);
-if ~exist(diagnosticDirName, 'dir')
-    mkdir(diagnosticDirName);
-else
-    rmdir(diagnosticDirName, 's');
-    mkdir(diagnosticDirName);
-end
+%% Save the final diagnostic model fit montage
 
 % Find the video for this pupil file
 if ~isempty(p.Results.grayVideoName)
@@ -457,11 +474,6 @@ end
 
 % Get the modeled eye poses
 [ ~, modelEyePose] = calcGlintGazeError( sceneGeometry, args{:}, keyVals{:} );
-
-% Save the staged fit results
-figureName = fullfile(diagnosticDirName,[sceneGeomName '_fitsByStage.pdf']);
-addSupTitle(figHandle,sceneGeomName);
-saveas(figHandle,figureName)
 
 % Create an eye model montage
 figureName = fullfile(diagnosticDirName,[sceneGeomName '_sceneDiagnosticMontage_eyeModel.png']);
