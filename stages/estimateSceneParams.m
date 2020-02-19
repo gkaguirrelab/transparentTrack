@@ -11,8 +11,8 @@ function sceneGeometry = estimateSceneParams(pupilFileName, perimeterFileName, g
 %   and the glint to estimate these scene parameters. The accuracy of the
 %   estimate is much improved by supplying the location of visual targets
 %   that the eye was fixated upon during each of the observations. It is
-%   also necessary to provide a reasonably accurate value for the distance
-%   of the camera from the eye.
+%   also valuable to provide a reasonably accurate value for the distance
+%   of the camera from the eye in the sceneParamsX0 vector. 
 %
 % Inputs:
 %	pupilFileName
@@ -71,11 +71,11 @@ function sceneGeometry = estimateSceneParams(pupilFileName, perimeterFileName, g
 %                           fixation targets, subject to a translation and
 %                           rotation matrix. If left empty, the search will
 %                           minimize error in the joint specification of
-%                           ellipse centers and shape. If needed, the
+%                           the glint and pupil perimeter. If needed, the
 %                           visual angle of the stimuli will be adjusted
 %                           for min/magnification produced by spectacle
 %                           lenses worn by the subject.
-%  'fixSpectacleLens'     - Scalar. This parameter is used to handle an
+%  'fixSpectacleLens'     - Scalar. This parameter is used to handle the
 %                           unusual circumstance in which the eye viewing a
 %                           fixation array is behind a spectacle lens, but
 %                           the eye being modeled for pupil appearance is
@@ -106,7 +106,7 @@ function sceneGeometry = estimateSceneParams(pupilFileName, perimeterFileName, g
     sceneGeometryFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3021/060917/EyeTracking/GazeCal02_sceneGeometry.mat';
     gazeTargets = [ -7, -7, 7, 0, 0, 7, 0, 7, -7 ; 0, 7, -7, -7, 0, 7, 7, 0, -7];
     frameSet = [ 730, 882, 971, 1114, 1250, 1382, 1467, 1593, 1672 ];
-    varargin = {'axialLength',25.29,'sphericalAmetropia',-5.25,'sceneParamsX0',[ 10.2446 -3.2242 -3.8030 124.1518 0.8628 0.9635 1.0488 0.9931 29.3357 ]};
+    varargin = {'axialLength',25.29,'sphericalAmetropia',-5.25,'contactLens',-5.25,'sceneParamsX0',[ 10.2446 -3.2242 -3.8030 124.1518 0.8628 0.9635 1.0488 0.9931 29.3357 ]};
     estimateSceneParams(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, 'frameSet', frameSet, 'gazeTargets', gazeTargets, varargin{:});
 %}
 
@@ -147,6 +147,12 @@ p.addParameter('fixSpectacleLens',[],@(x)(isempty(x) | isnumeric(x)));
 p.parse(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, varargin{:})
 
 
+
+%% Error if gazeTargets or frameSet are empty
+% Could add code here to derive these automatically if not set
+if isempty(p.Results.frameSet) || isempty(p.Results.gazeTargets)
+    error('estimateSceneParams:undefinedFramesOrTargets','The routine currently requires that the frameSet and gazeTargets key-values be defined');
+end
 
 
 %% Announce we are starting
@@ -244,6 +250,7 @@ options.Display = 'off';             % Silence display output
 options.UncertaintyHandling = 0;     % The objective is deterministic
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% STAGE 1 -- TORSION / TRANSLATION SEARCH
 % Perform an initial, iterated search, locking parameters for camera
 % distance, eye rotation, and corneal curvature.
@@ -266,6 +273,7 @@ xStages(1,:) = x;
 addPlotsWrap(1,x);
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% STAGE 2 -- ROTATION CENTER SEARCH
 % Search over the eye rotation center
 
@@ -288,6 +296,7 @@ xStages(2,:) = x;
 addPlotsWrap(2,x);
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% STAGE 3 -- TRANSLATION AND CURVATURE SEARCH
 % Lock the rotation centers, search over translation and corneal curvature
 
@@ -309,6 +318,7 @@ xStages(3,:) = x;
 addPlotsWrap(3,x);
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% STAGE 4 -- COMPLETE SEARCH
 % Search over all parameters
 
@@ -322,7 +332,7 @@ lbp = [x(1:8)./(0.95.^-sign(x(1:8))), x(9)-5];
 ubp = [x(1:8)./(1.05.^-sign(x(1:8))), x(9)+5];
 ub  = [x(1:8)./(1.10.^-sign(x(1:8))), x(9)+10];
 [lb,ub,lbp,ubp] = cornealCurvConstraint(sceneGeometry,lb,ub,lbp,ubp);
-% if we have been told to lock the depth parameter, do so
+% Lock the depth parameter if so instructed
 if p.Results.lockDepth
     lb(4) = x(4); lbp(4) = x(4); ubp(4) = x(4); ub(4) = x(4);
 end
@@ -529,7 +539,7 @@ function figHandle = addSubPlots(figHandle,idx,nStages,x,sceneGeometry,perimeter
 
 % Prepare the figure
 if idx == 0
-    figHandle=figure('Visible','on');
+    figHandle=figure('Visible','off');
     set(gcf,'PaperOrientation','landscape');
     set(figHandle, 'Units','inches')
     height = 11;
@@ -631,7 +641,9 @@ if idx == nStages
     gcf;
     axes('Position',[0 0 1 1],'visible','off','Tag','subtitle');
     str = sprintf('Camera torsion: %2.1f, position: [%2.1f, %2.1f, %2.1f]; Rotation center joint, diff [%2.2f, %2.2f]; Corneal curvature joint, diff, angle [%2.2f, %2.2f, %2.2f]',x);
-    ht=text(.5,0.05,str);set(ht,'horizontalalignment','center','fontsize',12);
+    ht=text(.5,0.075,str);set(ht,'horizontalalignment','center','fontsize',12);
+    str = sprintf('x = [ %2.1f, %2.1f, %2.1f, %2.1f, %2.1f, %2.1f, %2.1f, %2.1f, %2.1f ]',x);
+    ht=text(.5,0.075,str);set(ht,'horizontalalignment','center','fontsize',12);
     drawnow
 end
 
