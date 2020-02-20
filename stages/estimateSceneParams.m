@@ -303,11 +303,11 @@ for ii = 1:p.Results.searchIterations
         fprintf('Stage 2...');
     end
     % Bounds
-    lb = [x(1:4), 0.75, 0.75, x(7:9)];
+    lb = [x(1:4), 0.50, 0.75, x(7:9)];
     ub = [x(1:4), 1.25, 1.25, x(7:9)];
-    lbp = [x(1:4), 0.85, 0.85, x(7:9)];
+    lbp = [x(1:4), 0.75, 0.85, x(7:9)];
     ubp = [x(1:4), 1.15, 1.15, x(7:9)];
-    [lb,ub,lbp,ubp] = cornealCurvConstraint(sceneGeometry,lb,ub,lbp,ubp);
+    [lb,ub,lbp,ubp] = cornealCurvConstraint(sceneGeometry,x,lb,ub,lbp,ubp);
     % Objective
     myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
     % Search
