@@ -283,7 +283,7 @@ for ii = 1:p.Results.searchIterations
     ub = x + bound;
     lbp = x - bound./2;
     ubp = x + bound./2;
-    [lb,ub,lbp,ubp] = cornealCurvConstraint(sceneGeometry,lb,ub,lbp,ubp);
+    [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp);
     % Search
     x = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
     xStages(1,:) = x;
@@ -307,7 +307,7 @@ for ii = 1:p.Results.searchIterations
     ub = [x(1:4), 1.25, 1.25, x(7:9)];
     lbp = [x(1:4), 0.75, 0.85, x(7:9)];
     ubp = [x(1:4), 1.15, 1.15, x(7:9)];
-    [lb,ub,lbp,ubp] = cornealCurvConstraint(sceneGeometry,x,lb,ub,lbp,ubp);
+    [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp);
     % Objective
     myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
     % Search
@@ -334,7 +334,7 @@ for ii = 1:p.Results.searchIterations
     ub = x + bound;
     lbp = x - bound./2;
     ubp = x + bound./2;
-    [lb,ub,lbp,ubp] = cornealCurvConstraint(sceneGeometry,lb,ub,lbp,ubp);
+    [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp);
     % Search
     x = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
     xStages(3,:) = x;
@@ -359,7 +359,7 @@ for ii = 1:p.Results.searchIterations
     lbp = [x(1:8)./((1-bb/2).^-sign(x(1:8))), x(9)-5];
     ubp = [x(1:8)./((1+bb/2).^-sign(x(1:8))), x(9)+5];
     ub  = [x(1:8)./((1+bb).^-sign(x(1:8))), x(9)+10];
-    [lb,ub,lbp,ubp] = cornealCurvConstraint(sceneGeometry,lb,ub,lbp,ubp);
+    [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp);
     % Lock the depth parameter if so instructed
     if p.Results.lockDepth
         lb(4) = x(4); lbp(4) = x(4); ubp(4) = x(4); ub(4) = x(4);
@@ -496,7 +496,7 @@ end
 %%%%%%%%%%%% LOCAL FUNCTIONS
 
 
-function [lb,ub,lbp,ubp] = cornealCurvConstraint(sceneGeometry,lb,ub,lbp,ubp)
+function [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp)
 % The first of the corneal curvature values must always be smaller than the
 % second. This constrains the differential scaling value that can be
 % present for the last parameter.
@@ -512,6 +512,12 @@ lb(9) = max([lb(9) -90]);
 ub(9) = min([ub(9) 90]);
 lbp(9) = max([lbp(9) -90]);
 ubp(9) = min([ubp(9) 90]);
+
+% Ensure that x is within bounds
+x=min([ub; x]);
+x=max([lb; x]);
+
+
 end
 
 
