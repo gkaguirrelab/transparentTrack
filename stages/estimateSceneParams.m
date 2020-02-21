@@ -109,6 +109,17 @@ function sceneGeometry = estimateSceneParams(pupilFileName, perimeterFileName, g
     varargin = {'axialLength',25.29,'sphericalAmetropia',-5.25,'contactLens',-5.25,'sceneParamsX0',[ 10.2446 -3.2242 -3.8030 124.1518 0.8628 0.9635 1.0488 0.9931 29.3357 ]};
     estimateSceneParams(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, 'frameSet', frameSet, 'gazeTargets', gazeTargets, varargin{:});
 %}
+%{
+    perimeterFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3009/102516/EyeTracking/GazeCal01_correctedPerimeter.mat';
+    glintFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3009/102516/EyeTracking/GazeCal01_glint.mat';
+    pupilFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3009/102516/EyeTracking/GazeCal01_pupil.mat';
+    sceneGeometryFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3009/102516/EyeTracking/GazeCal01_sceneGeometry.mat';
+    gazeTargets = [ 7, 0, 0, 0, -7, -7, 7, 7, -7 ; -7, 7, -7, 0, 0, -7, 0, 7, 7];
+    frameSet = [ 446, 573, 707, 794, 932, 1090, 1207, 1320, 1401 ];
+    varargin = {'axialLength',24.9,'sphericalAmetropia',-3.75,'spectacleLens',-3,'sceneParamsX0',[ 4.46, -0.00, -1.00, 145.22, 0.68, 1.03, 1, 1, 0 ]};
+    estimateSceneParams(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, 'frameSet', frameSet, 'gazeTargets', gazeTargets, varargin{:});
+%}
+
 
 %% input parser
 p = inputParser; p.KeepUnmatched = true;
