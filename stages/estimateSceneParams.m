@@ -116,7 +116,7 @@ function sceneGeometry = estimateSceneParams(pupilFileName, perimeterFileName, g
     sceneGeometryFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3009/102516/EyeTracking/GazeCal01_sceneGeometry.mat';
     gazeTargets = [ 7, 0, 0, 0, -7, -7, 7, 7, -7 ; -7, 7, -7, 0, 0, -7, 0, 7, 7];
     frameSet = [ 446, 573, 707, 794, 932, 1090, 1207, 1320, 1401 ];
-    varargin = {'axialLength',24.9,'sphericalAmetropia',-3.75,'spectacleLens',-3,'sceneParamsX0',[ 4.46, -0.00, -1.00, 145.22, 0.68, 1.03, 1, 1, 0 ]};
+    varargin = {'axialLength',24.9,'sphericalAmetropia',-3.75,'spectacleLens',-3,'sceneParamsX0',[ 4.46, -0.00, -1.00, 145.22, 0.68, 1.03, 1, 1, 0, 0 ]};
     estimateSceneParams(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, 'frameSet', frameSet, 'gazeTargets', gazeTargets, varargin{:});
 %}
 
@@ -147,7 +147,7 @@ p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@i
 
 % Optional analysis params
 p.addParameter('searchIterations',2,@isscalar);
-p.addParameter('sceneParamsX0',[0 0 0 120 1 1 1 1 0],@isnumeric);
+p.addParameter('sceneParamsX0',[0 0 0 120 1 1 1 1 0 0],@isnumeric);
 p.addParameter('lockDepth',false,@islogical);
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
@@ -289,7 +289,7 @@ for ii = 1:p.Results.searchIterations
         fprintf(['Iter 0' num2str(ii) ', Stage 1...']);
     end
     % Bounds
-    bound = [20, 10, 10, 0, 0, 0, 0, 0, 0];
+    bound = [20, 10, 10, 0, 0, 0, 0, 0, 0, 0];
     lb = x - bound;
     ub = x + bound;
     lbp = x - bound./2;
@@ -314,10 +314,10 @@ for ii = 1:p.Results.searchIterations
         fprintf('Stage 2...');
     end
     % Bounds
-    lb = [x(1:4), 0.50, 0.75, x(7:9)];
-    ub = [x(1:4), 1.25, 1.25, x(7:9)];
-    lbp = [x(1:4), 0.75, 0.85, x(7:9)];
-    ubp = [x(1:4), 1.15, 1.15, x(7:9)];
+    lb = [x(1:4), 0.50, 0.75, x(7:10)];
+    ub = [x(1:4), 1.25, 1.25, x(7:10)];
+    lbp = [x(1:4), 0.75, 0.85, x(7:10)];
+    ubp = [x(1:4), 1.15, 1.15, x(7:10)];
     [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp);
     % Objective
     myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
@@ -340,7 +340,7 @@ for ii = 1:p.Results.searchIterations
         fprintf('Stage 3...');
     end
     % Bounds
-    bound = [abs(x(1:3).*0.25), 0, 0, 0, x(7:8).*0.25 90];
+    bound = [abs(x(1:3).*0.25), 0, 0, 0, x(7:8).*0.25 90 5];
     lb = x - bound;
     ub = x + bound;
     lbp = x - bound./2;
@@ -366,10 +366,10 @@ for ii = 1:p.Results.searchIterations
     end
     % Bounds
     bb = 0.1 / ii;
-    lb  = [x(1:8)./((1-bb).^-sign(x(1:8))), x(9)-10];
-    lbp = [x(1:8)./((1-bb/2).^-sign(x(1:8))), x(9)-5];
-    ubp = [x(1:8)./((1+bb/2).^-sign(x(1:8))), x(9)+5];
-    ub  = [x(1:8)./((1+bb).^-sign(x(1:8))), x(9)+10];
+    lb  = [x(1:8)./((1-bb).^-sign(x(1:8))), x(9)-10, x(10)-5];
+    lbp = [x(1:8)./((1-bb/2).^-sign(x(1:8))), x(9)-5, x(10)-2.5];
+    ubp = [x(1:8)./((1+bb/2).^-sign(x(1:8))), x(9)+5, x(10)+2.5];
+    ub  = [x(1:8)./((1+bb).^-sign(x(1:8))), x(9)+10, x(10)+5];
     [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp);
     % Lock the depth parameter if so instructed
     if p.Results.lockDepth
@@ -518,7 +518,7 @@ ub(8) = min([ub(8) diffScaleUpperBound]);
 lbp(8) = min([lbp(8) diffScaleUpperBound]);
 ubp(8) = min([ubp(8) diffScaleUpperBound]);
 
-% Keep the corneal axis between +-90
+% Keep the corneal axis (torsion) between +-90
 lb(9) = max([lb(9) -90]);
 ub(9) = min([ub(9) 90]);
 lbp(9) = max([lbp(9) -90]);

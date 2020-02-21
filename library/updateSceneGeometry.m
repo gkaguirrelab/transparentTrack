@@ -53,6 +53,7 @@ kvals(1:2) = kvals(1:2) .* x(7);
 kvals(1) = kvals(1) * x(8);
 kvals(2) = kvals(2) / x(8);
 kvals(3) = x(9);
+kvals(4) = x(10);
 eye.meta.measuredCornealCurvature = kvals;
 cornea = human.cornea( eye );
 sceneGeometryIn.eye.cornea = cornea;
