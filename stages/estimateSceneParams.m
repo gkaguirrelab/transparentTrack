@@ -685,7 +685,7 @@ drawnow
 if idx == nStages
     gcf;
     axes('Position',[0 0 1 1],'Visible','off','Tag','subtitle');
-    str = sprintf('Camera torsion: $color-start$%2.1f$$color-end$$, position: [$color-start$%2.1f$$color-end$$, $color-start$%2.1f$$color-end$$, $color-start$%2.1f$$color-end$$]; Rotation center joint, diff [$color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$]; Corneal curvature joint, diff, torsion, tilt [$color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$]',x);
+    str = sprintf('Camera tor: $color-start$%2.1f$$color-end$$, position: [$color-start$%2.1f$$color-end$$, $color-start$%2.1f$$color-end$$, $color-start$%2.1f$$color-end$$]; Rotation center joint, diff [$color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$]; Corneal curv joint, diff, tor, tilt [$color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$]',x);
     tagIdx = strfind(str,'$color-start$');
     for ii=1:length(fitAtBound)
         if fitAtBound(ii)
