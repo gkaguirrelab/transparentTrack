@@ -685,7 +685,7 @@ drawnow
 if idx == nStages
     gcf;
     axes('Position',[0 0 1 1],'Visible','off','Tag','subtitle');
-    str = sprintf('Camera torsion: $color-start$%2.1f$$color-end$$, position: [$color-start$%2.1f$$color-end$$, $color-start$%2.1f$$color-end$$, $color-start$%2.1f$$color-end$$]; Rotation center joint, diff [$color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$]; Corneal curvature joint, diff, angle [$color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$]',x);
+    str = sprintf('Camera torsion: $color-start$%2.1f$$color-end$$, position: [$color-start$%2.1f$$color-end$$, $color-start$%2.1f$$color-end$$, $color-start$%2.1f$$color-end$$]; Rotation center joint, diff [$color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$]; Corneal curvature joint, diff, torsion, tilt [$color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$]',x);
     tagIdx = strfind(str,'$color-start$');
     for ii=1:length(fitAtBound)
         if fitAtBound(ii)
@@ -698,7 +698,7 @@ if idx == nStages
     str = strrep(str,'$$','');
     ht=text(.5,0.055,str);
     set(ht,'horizontalalignment','center','fontsize',12);
-    str = sprintf('x = [ %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f ]',x);
+    str = sprintf('x = [ %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f ]',x);
     ht=text(.5,0.025,str);set(ht,'horizontalalignment','center','fontsize',12);
     drawnow
 end
