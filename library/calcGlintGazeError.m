@@ -206,7 +206,7 @@ else
         'doScale',false,...
         'doTrans',true);
     modelPoseGaze = poseRegParams.R * modelEyePose(:,1:2)' + poseRegParams.t;
-    poseError = nanNorm(sqrt(sum(gazeTargets - modelPoseGaze).^2)',weights);
+    poseError = nanNorm(sqrt(sum( (gazeTargets - modelPoseGaze).^2 ))',weights);
     
     % vectorError -- vector between the glint and pupil center used to model
     % eye position
@@ -224,7 +224,7 @@ else
             'doTrans',true);
         vectorRegParams.glintSign = glintSign;
         modelVecGaze = vectorRegParams.s * vectorRegParams.R * centerDiff + vectorRegParams.t;
-        vectorError = nanNorm(sqrt(sum(gazeTargets - modelVecGaze).^2)',weights);
+        vectorError = nanNorm(sqrt(sum( (gazeTargets - modelVecGaze).^2 ))',weights);
     end
     
 end
