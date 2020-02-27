@@ -96,7 +96,7 @@ function sceneGeometry = estimateSceneParams(pupilFileName, perimeterFileName, g
     sceneGeometryFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3015/032417/EyeTracking/GazeCal03_sceneGeometry.mat';
     gazeTargets = [ -7, 0, -7, 7, 7, 0, -7, 0, 7 ; 0, -7, -7, 0, -7, 7, 7, 0, 7];
     frameSet = [ 679, 884, 1180, 1250, 1571, 1663, 1809, 2004, 2075 ];
-    varargin = {'axialLength',23.45,'sphericalAmetropia',-0.5,'measuredCornealCurvature',[41.80,42.80,178]};
+    varargin = {'axialLength',23.45,'sphericalAmetropia',-0.5,'measuredCornealCurvature',[41.80,42.80,178],'sceneParamsX0',[ 12.05, -0.73, 1.00, 136.13, 0.84, 0.96, 1, 1, 0, 0 ]};
     estimateSceneParams(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, 'frameSet', frameSet, 'gazeTargets', gazeTargets, varargin{:});
 %}
 %{
@@ -116,7 +116,7 @@ function sceneGeometry = estimateSceneParams(pupilFileName, perimeterFileName, g
     sceneGeometryFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3009/102516/EyeTracking/GazeCal01_sceneGeometry.mat';
     gazeTargets = [ 7, 0, 0, 0, -7, -7, 7, 7, -7 ; -7, 7, -7, 0, 0, -7, 0, 7, 7];
     frameSet = [ 446, 573, 707, 794, 932, 1090, 1207, 1320, 1401 ];
-    varargin = {'axialLength',24.9,'sphericalAmetropia',-3.75,'spectacleLens',-3,'sceneParamsX0',[ 4.46, -0.00, -1.00, 145.22, 0.68, 1.03, 1, 1, 0, 0 ]};
+    varargin = {'axialLength',24.9,'sphericalAmetropia',-3.75,'spectacleLens',-3,'sceneParamsX0',[ 1.4209    0.2927   -1.1814  148.9227    0.7344    1.0208    1.0374    0.9895    7.9403   -0.6859 ]};
     estimateSceneParams(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, 'frameSet', frameSet, 'gazeTargets', gazeTargets, varargin{:});
 %}
 
@@ -146,7 +146,7 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional analysis params
-p.addParameter('searchIterations',2,@isscalar);
+p.addParameter('searchIterations',1,@isscalar);
 p.addParameter('sceneParamsX0',[0 0 0 120 1 1 1 1 0 0],@isnumeric);
 p.addParameter('lockDepth',false,@islogical);
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
@@ -190,29 +190,28 @@ gazeTargets = p.Results.gazeTargets;
 % concomittant change in eye movement amplitude. Note that while a contact
 % lens also has a (smaller) magnification effect, the lens rotates with the
 % eye. Thus, eye movement amplitude is not altered.
-if ~isempty(gazeTargets)
-    % Default to no change
-    magnification = 1;
-    % If fixSpectacleLens is set, use this value to calculate a
-    % magnification and apply it
-    if ~isempty(p.Results.fixSpectacleLens)
-        modVarargin = varargin;
-        idx = find(strcmp(modVarargin,'spectacleLens'));
-        if ~isempty(idx)
-            modVarargin{idx+1} = p.Results.fixSpectacleLens;
-        else
-            modVarargin = [modVarargin 'spectacleLens' p.Results.fixSpectacleLens];
-        end        
-        tmpSceneGeometry = createSceneGeometry(modVarargin{:});
-        magnification = tmpSceneGeometry.refraction.retinaToCamera.magnification.spectacle;
+
+% Default to no change
+magnification = 1;
+% If fixSpectacleLens is set, use this value to calculate a
+% magnification and apply it
+if ~isempty(p.Results.fixSpectacleLens)
+    modVarargin = varargin;
+    idx = find(strcmp(modVarargin,'spectacleLens'));
+    if ~isempty(idx)
+        modVarargin{idx+1} = p.Results.fixSpectacleLens;
     else
-        % check if there is a spectacle magnification field
-        if isfield(sceneGeometry.refraction.retinaToCamera.magnification,'spectacle')
-            magnification = sceneGeometry.refraction.retinaToCamera.magnification.spectacle;
-        end
+        modVarargin = [modVarargin 'spectacleLens' p.Results.fixSpectacleLens];
     end
-    gazeTargets = gazeTargets .* magnification;
+    tmpSceneGeometry = createSceneGeometry(modVarargin{:});
+    magnification = tmpSceneGeometry.refraction.retinaToCamera.magnification.spectacle;
+else
+    % check if there is a spectacle magnification field
+    if isfield(sceneGeometry.refraction.retinaToCamera.magnification,'spectacle')
+        magnification = sceneGeometry.refraction.retinaToCamera.magnification.spectacle;
+    end
 end
+gazeTargets = gazeTargets .* magnification;
 
 
 %% Load the materials
@@ -358,7 +357,7 @@ for ii = 1:p.Results.searchIterations
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %% STAGE 4 -- COMPLETE SEARCH
-    % Search over all parameters
+    % Search over all parameters (twice)
     
     % Announce
     if p.Results.verbose
@@ -377,7 +376,15 @@ for ii = 1:p.Results.searchIterations
     end
     % Objective
     myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
-    % Search
+    % Search once
+    x = bads(myObj,x,lb,ub,lbp,ubp,[],options);
+    % Search again with tighter bounds
+    bb=bb./2;
+    lb  = [x(1:8)./((1-bb).^-sign(x(1:8))), x(9)-10, x(10)-5];
+    lbp = [x(1:8)./((1-bb/2).^-sign(x(1:8))), x(9)-5, x(10)-2.5];
+    ubp = [x(1:8)./((1+bb/2).^-sign(x(1:8))), x(9)+5, x(10)+2.5];
+    ub  = [x(1:8)./((1+bb).^-sign(x(1:8))), x(9)+10, x(10)+5];
+    [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp);
     x = bads(myObj,x,lb,ub,lbp,ubp,[],options);
     xStages(4,:) = x;
     % Identify any params that hit a bound in the final search stage
@@ -460,6 +467,7 @@ sceneGeometry.meta.estimateSceneParams.fVal = fVal;
 sceneGeometry.meta.estimateSceneParams.executionTime = executionTime;
 sceneGeometry.meta.estimateSceneParams.varargin = varargin;
 sceneGeometry.meta.estimateSceneParams.sceneGeometryVarargin = sceneGeometryVarargin;
+sceneGeometry.meta.estimateSceneParams.magnification = magnification;
 sceneGeometry.meta.estimateSceneParams.modelEyePose = modelEyePose;
 sceneGeometry.meta.estimateSceneParams.modelPupilEllipse = modelPupilEllipse;
 sceneGeometry.meta.estimateSceneParams.modelGlintCoord = modelGlintCoord;
@@ -489,7 +497,7 @@ end
 
 % Create an eye model montage
 figureName = fullfile(diagnosticDirName,[sceneGeomName '_sceneDiagnosticMontage_eyeModel.png']);
-saveEyeModelMontage(sceneGeometry, modelEyePose, frameSet, grayVideoName, figureName);
+saveEyeModelMontage(sceneGeometry, modelEyePose, perimeter, frameSet, grayVideoName, figureName);
 
 
 %% alert the user that we are done with the routine
@@ -708,7 +716,7 @@ end
 
 
 
-function saveEyeModelMontage(sceneGeometry, modelEyePose, frameSet, grayVideoName, montageFileName)
+function saveEyeModelMontage(sceneGeometry, modelEyePose, perimeter, frameSet, grayVideoName, montageFileName)
 % Saves a montage with the model eye superimposed.
 
 % Silence some errors that can arise during the forward projection
@@ -718,6 +726,7 @@ warning('off','projectModelEye:ellipseFitFailed');
 % Sort the ellipse array list so that the frames appear in temporal order
 [frameSet, sortOrder] = sort(frameSet);
 modelEyePose = modelEyePose(sortOrder,:);
+perimeter.data = perimeter.data(sortOrder);
 
 % Check that the file exists
 if exist(grayVideoName,'file') && ~isempty(frameSet)
@@ -736,14 +745,22 @@ if exist(grayVideoName,'file') && ~isempty(frameSet)
     hFig = figure( 'Visible', 'off');
     hAxes = gca();
     
+    % A counter for which frame of the video is currently available to read
+    curFrame = 0;
+    
     % Loop through the frames and keep the matching ones
     for ii = 1:length(frameSet)
         idx = frameSet(ii);
-        videoInObj.CurrentTime = (idx - 1)/(videoInObj.FrameRate);
-        sourceFrame = readFrame(videoInObj);
+        % Read up to the desired frame
+        while curFrame < idx
+            sourceFrame = readFrame(videoInObj);
+            curFrame = curFrame + 1;
+        end
         imshow(sourceFrame,'Border', 'tight','Parent',hAxes);
         hold on
         axis off;
+        % Add the pupil perimeter
+        plot(perimeter.data{ii}.Xp ,perimeter.data{ii}.Yp, '.w', 'MarkerSize', 1);
         % Add the rendered eye model
         eyePose = modelEyePose(ii,:);
         if ~any(isnan(eyePose))

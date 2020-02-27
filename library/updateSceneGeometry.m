@@ -64,11 +64,11 @@ opticalSystemGlint = sceneGeometryIn.refraction.glint.opticalSystem;
 opticalSystemGlint(tearFilmIdx,1:10) = cornea.tears.S;
 sceneGeometryOut.refraction.glint.opticalSystem = opticalSystemGlint;
 
-% Update the stopToCamera optical system with the new cornea
-corneaBackIdx = find(strcmp(sceneGeometryIn.refraction.stopToCamera.surfaceLabels,'cornea.back'));
-opticalSystemStopToCamera = sceneGeometryIn.refraction.stopToCamera.opticalSystem;
-opticalSystemStopToCamera(corneaBackIdx:corneaBackIdx+2,1:10) = cornea.S;
-sceneGeometryOut.refraction.stopToCamera.opticalSystem = opticalSystemStopToCamera;
+% Update the stopToMedium optical system with the new cornea
+corneaBackIdx = find(strcmp(sceneGeometryIn.refraction.stopToMedium.surfaceLabels,'cornea.back'));
+opticalSystemStopToMedium = sceneGeometryIn.refraction.stopToMedium.opticalSystem;
+opticalSystemStopToMedium(corneaBackIdx:corneaBackIdx+2,1:10) = cornea.S;
+sceneGeometryOut.refraction.stopToMedium.opticalSystem = opticalSystemStopToMedium;
 
 
 end
