@@ -376,18 +376,9 @@ for ii = 1:p.Results.searchIterations
     end
     % Objective
     myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
-    % Search once
+    % Search
     x = bads(myObj,x,lb,ub,lbp,ubp,[],options);
-    % Search again with tighter bounds
-    bb=bb./2;
-    lb  = [x(1:8)./((1-bb).^-sign(x(1:8))), x(9)-10, x(10)-5];
-    lbp = [x(1:8)./((1-bb/2).^-sign(x(1:8))), x(9)-5, x(10)-2.5];
-    ubp = [x(1:8)./((1+bb/2).^-sign(x(1:8))), x(9)+5, x(10)+2.5];
-    ub  = [x(1:8)./((1+bb).^-sign(x(1:8))), x(9)+10, x(10)+5];
-    [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp);
-    x = bads(myObj,x,lb,ub,lbp,ubp,[],options);
-    xStages(4,:) = x;
-    % Identify any params that hit a bound in the final search stage
+    % Identify any params that hit a bound
     notLocked = lb ~= ub;
     fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
     % Plot
