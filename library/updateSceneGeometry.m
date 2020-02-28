@@ -56,7 +56,7 @@ kvals(3) = x(9);
 kvals(4) = x(10);
 eye.meta.measuredCornealCurvature = kvals;
 cornea = human.cornea( eye );
-sceneGeometryIn.eye.cornea = cornea;
+sceneGeometryOut.eye.cornea = cornea;
 
 % Update the glint optical system with the new tearfilm
 tearFilmIdx = strcmp(sceneGeometryIn.refraction.glint.surfaceLabels,'cornea.tearfilm');
