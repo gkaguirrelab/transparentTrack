@@ -378,6 +378,7 @@ for ii = 1:p.Results.searchIterations
     myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
     % Search
     x = bads(myObj,x,lb,ub,lbp,ubp,[],options);
+    xStages(4,:) = x;
     % Identify any params that hit a bound
     notLocked = lb ~= ub;
     fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
