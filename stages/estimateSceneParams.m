@@ -416,7 +416,7 @@ end % searchIterations
 f = updateSceneGeometry( sceneGeometry, x );
 
 % Obtain the model components at the solution
-[ fVal, modelEyePose, modelPupilEllipse, modelGlintCoord, modelPoseGaze, modelVecGaze, poseRegParams, vectorRegParams, rawErrors] = ...
+[ ~, modelEyePose, modelPupilEllipse, modelGlintCoord, modelPoseGaze, modelVecGaze, poseRegParams, vectorRegParams, rawErrors] = ...
     calcGlintGazeError( f, args{:}, keyVals{:} );
 
 % The varargin originally used to create the sceneGeometry
@@ -465,7 +465,7 @@ for ii = 1:nStages
     sceneGeometry.meta.estimateSceneParams.(['x' num2str(ii)]) = xStages(ii,:);
 end
 sceneGeometry.meta.estimateSceneParams.fitAtBound = fitAtBound;
-sceneGeometry.meta.estimateSceneParams.fVal = fVal;
+sceneGeometry.meta.estimateSceneParams.fVals = fVals;
 sceneGeometry.meta.estimateSceneParams.executionTime = executionTime;
 sceneGeometry.meta.estimateSceneParams.varargin = varargin;
 sceneGeometry.meta.estimateSceneParams.sceneGeometryVarargin = sceneGeometryVarargin;
