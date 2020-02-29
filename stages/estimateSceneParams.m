@@ -248,7 +248,7 @@ end
 %% Set x0
 x0 = p.Results.sceneParamsX0;
 x = x0;
-
+fValCurrent = Inf;
 
 %% Define BADS search options
 options = bads('defaults');          % Get a default OPTIONS struct
@@ -268,7 +268,6 @@ end
 
 
 %% Loop over iterations
-
 for ii = 1:p.Results.searchIterations
     
     %% Set up the fit figure
@@ -295,14 +294,16 @@ for ii = 1:p.Results.searchIterations
     ubp = x + bound./2;
     [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp);
     % Search
-    x = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
-    xStages(1,:) = x;
-    % Identify any params that hit a bound in the final search stage
-    notLocked = lb ~= ub;
-    fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
-    % Plot
-    addPlotsWrap(1,x,fitAtBound);
-    
+    [xStages(1,:), fVals(1)] = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
+    if fVals(1) < fValCurrent
+        x = xStages(1,:);
+        fValCurrent = fVals(1);
+        % Identify any params that hit a bound in the final search stage
+        notLocked = lb ~= ub;
+        fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
+        % Plot
+        addPlotsWrap(1,x,fitAtBound);
+    end
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %% STAGE 2 -- ROTATION CENTER SEARCH
@@ -321,13 +322,16 @@ for ii = 1:p.Results.searchIterations
     % Objective
     myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
     % Search
-    x = bads(myObj,x,lb,ub,lbp,ubp,[],options);
-    xStages(2,:) = x;
-    % Identify any params that hit a bound in the final search stage
-    notLocked = lb ~= ub;
-    fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
-    % Plot
-    addPlotsWrap(2,x,fitAtBound);
+    [xStages(2,:), fVals(2)] = bads(myObj,x,lb,ub,lbp,ubp,[],options);
+    if fVals(2) < fValCurrent
+        x = xStages(2,:);
+        fValCurrent = fVals(2);
+        % Identify any params that hit a bound in the final search stage
+        notLocked = lb ~= ub;
+        fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
+        % Plot
+        addPlotsWrap(2,x,fitAtBound);
+    end
     
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -346,13 +350,16 @@ for ii = 1:p.Results.searchIterations
     ubp = x + bound./2;
     [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp);
     % Search
-    x = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
-    xStages(3,:) = x;
-    % Identify any params that hit a bound in the final search stage
-    notLocked = lb ~= ub;
-    fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
-    % Plot
-    addPlotsWrap(3,x,fitAtBound);
+    [xStages(3,:), fVals(3)] = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
+    if fVals(3) < fValCurrent
+        x = xStages(3,:);
+        fValCurrent = fVals(3);
+        % Identify any params that hit a bound in the final search stage
+        notLocked = lb ~= ub;
+        fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
+        % Plot
+        addPlotsWrap(3,x,fitAtBound);
+    end
     
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -377,14 +384,16 @@ for ii = 1:p.Results.searchIterations
     % Objective
     myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
     % Search
-    x = bads(myObj,x,lb,ub,lbp,ubp,[],options);
-    xStages(4,:) = x;
-    % Identify any params that hit a bound
-    notLocked = lb ~= ub;
-    fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
-    % Plot
-    addPlotsWrap(4,x,fitAtBound);
-    
+    [xStages(4,:), fVals(4)] = bads(myObj,x,lb,ub,lbp,ubp,[],options);
+    if fVals(4) < fValCurrent
+        x = xStages(4,:);
+        fValCurrent = fVals(4);
+        % Identify any params that hit a bound
+        notLocked = lb ~= ub;
+        fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
+        % Plot
+        addPlotsWrap(4,x,fitAtBound);
+    end
     
     %% Save the fit-by-stage plot
     if p.Results.verbose
@@ -392,6 +401,7 @@ for ii = 1:p.Results.searchIterations
     end
     
     % Save the staged fit results
+    addPlotsWrap(5,x,fitAtBound);
     figureName = fullfile(diagnosticDirName,[sceneGeomName '_fitsByStage_iter0' num2str(ii) '.pdf']);
     addSupTitle(figHandle,sceneGeomName);
     saveas(figHandle,figureName)
@@ -600,6 +610,32 @@ else
     set(0, 'CurrentFigure', figHandle)
 end
 
+
+% If this is the last panel, put an annotation for the x parameters at the
+% bottom. Report params that hit a bound in red.
+if idx == nStages+1
+    gcf;
+    axes('Position',[0 0 1 1],'Visible','off','Tag','subtitle');
+    str = sprintf('Camera tor: $color-start$%2.1f$$color-end$$, position: [$color-start$%2.1f$$color-end$$, $color-start$%2.1f$$color-end$$, $color-start$%2.1f$$color-end$$]; Rotation center joint, diff [$color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$]; Corneal curv joint, diff, tor, tilt [$color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$]',x);
+    tagIdx = strfind(str,'$color-start$');
+    for ii=1:length(fitAtBound)
+        if fitAtBound(ii)
+            str(tagIdx(ii):tagIdx(ii)+12) = '\color{red$$}';
+        else
+            str(tagIdx(ii):tagIdx(ii)+12) = '\color{black}';
+        end
+    end
+    str = strrep(str,'$$color-end$$','\color{black}');
+    str = strrep(str,'$$','');
+    ht=text(.5,0.055,str);
+    set(ht,'horizontalalignment','center','fontsize',12);
+    str = sprintf('x = [ %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f ]',x);
+    ht=text(.5,0.025,str);set(ht,'horizontalalignment','center','fontsize',12);
+    drawnow
+    return
+end
+
+
 % Get the model output
 [ ~, ~, modelPupilEllipse, modelGlintCoord, modelPoseGaze, modelVecGaze, ~, ~, rawErrors] = ...
     calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), perimeter, glintData, ellipseRMSE, gazeTargets, keyVals{:});
@@ -680,28 +716,6 @@ set(ht,'Rotation',90)
 set(ht,'FontSize',18)
 drawnow
 
-% If this is the last panel, put an annotation for the x parameters at the
-% bottom. Report params that hit a bound in red.
-if idx == nStages
-    gcf;
-    axes('Position',[0 0 1 1],'Visible','off','Tag','subtitle');
-    str = sprintf('Camera tor: $color-start$%2.1f$$color-end$$, position: [$color-start$%2.1f$$color-end$$, $color-start$%2.1f$$color-end$$, $color-start$%2.1f$$color-end$$]; Rotation center joint, diff [$color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$]; Corneal curv joint, diff, tor, tilt [$color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$]',x);
-    tagIdx = strfind(str,'$color-start$');
-    for ii=1:length(fitAtBound)
-        if fitAtBound(ii)
-            str(tagIdx(ii):tagIdx(ii)+12) = '\color{red$$}';
-        else
-            str(tagIdx(ii):tagIdx(ii)+12) = '\color{black}';
-        end
-    end
-    str = strrep(str,'$$color-end$$','\color{black}');
-    str = strrep(str,'$$','');
-    ht=text(.5,0.055,str);
-    set(ht,'horizontalalignment','center','fontsize',12);
-    str = sprintf('x = [ %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f ]',x);
-    ht=text(.5,0.025,str);set(ht,'horizontalalignment','center','fontsize',12);
-    drawnow
-end
 
 end
 
