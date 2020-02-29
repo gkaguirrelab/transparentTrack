@@ -146,7 +146,8 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional analysis params
-p.addParameter('searchIterations',1,@isscalar);
+p.addParameter('searchIterations',3,@isscalar);
+p.addParameter('searchThresh',1.0,@isscalar);
 p.addParameter('sceneParamsX0',[0 0 0 120 1 1 1 1 0 0],@isnumeric);
 p.addParameter('lockDepth',false,@islogical);
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
@@ -250,6 +251,7 @@ x0 = p.Results.sceneParamsX0;
 x = x0;
 fValCurrent = Inf;
 
+
 %% Define BADS search options
 options = bads('defaults');          % Get a default OPTIONS struct
 options.Display = 'off';             % Silence display output
@@ -268,7 +270,9 @@ end
 
 
 %% Loop over iterations
-for ii = 1:p.Results.searchIterations
+ii = 1;
+stillSearching = true;
+while stillSearching
     
     %% Set up the fit figure
     nStages = 4;
@@ -406,6 +410,12 @@ for ii = 1:p.Results.searchIterations
     addSupTitle(figHandle,sceneGeomName);
     saveas(figHandle,figureName)
     
+    % Check if we are done searching
+    if fValCurrent < p.Results.searchThresh || ii == p.Results.searchIterations
+        stillSearching = false;
+    else
+        ii = ii + 1;
+    end
     
 end % searchIterations
 
@@ -537,8 +547,6 @@ ubp(9) = min([ubp(9) 90]);
 % Ensure that x is within bounds
 x=min([ub; x]);
 x=max([lb; x]);
-
-
 end
 
 
