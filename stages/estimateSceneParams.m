@@ -470,6 +470,7 @@ sceneGeometry = createSceneGeometry(sceneGeometryVarargin{:});
 
 % Update the meta data
 sceneGeometry.meta.estimateSceneParams = p.Results;
+sceneGeometry.meta.estimateSceneParams.x = x;
 sceneGeometry.meta.estimateSceneParams.x0 = x0;
 for ii = 1:nStages
     sceneGeometry.meta.estimateSceneParams.(['x' num2str(ii)]) = xStages(ii,:);
