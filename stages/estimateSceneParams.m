@@ -12,7 +12,7 @@ function sceneGeometry = estimateSceneParams(pupilFileName, perimeterFileName, g
 %   estimate is much improved by supplying the location of visual targets
 %   that the eye was fixated upon during each of the observations. It is
 %   also valuable to provide a reasonably accurate value for the distance
-%   of the camera from the eye in the sceneParamsX0 vector. 
+%   of the camera from the eye in the sceneParamsX0 vector.
 %
 % Inputs:
 %	pupilFileName
@@ -83,6 +83,20 @@ function sceneGeometry = estimateSceneParams(pupilFileName, perimeterFileName, g
 %                           to calculate a magnification factor for the
 %                           fixation target array, but does not apply this
 %                           spectacle to the eye being modeled.
+%  'searchThresh'         - Scalar. Search iterations will be repeated
+%                           until the fVal is below this threshold, or the
+%                           maximum number of search iterations has been
+%                           reached.
+%  'searchIterations'     - Scalar integer. The maximum number of search
+%                           iterations to conduct.
+%  'sceneParamsX0'        - 1x10 vector. Scene parameters to use as the
+%                           starting point for the search.
+%  'lockDepth'            - Logical. If set to true then the x0 value for
+%                           the camera translation depth will be held
+%                           constant.
+%  'lockBiometry'         - Logical. If set to true then the biometric
+%                           properties of the eye will be locked at their
+%                           x0 values.
 %
 % Outputs
 %	sceneGeometry         - A structure that contains the components of the
@@ -146,15 +160,16 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional analysis params
-p.addParameter('searchIterations',3,@isscalar);
-p.addParameter('searchThresh',1.0,@isscalar);
-p.addParameter('sceneParamsX0',[0 0 0 120 1 1 1 1 0 0],@isnumeric);
-p.addParameter('lockDepth',false,@islogical);
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 p.addParameter('frameSet',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('gazeTargets',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('fixSpectacleLens',[],@(x)(isempty(x) | isnumeric(x)));
+p.addParameter('searchThresh',1.0,@isscalar);
+p.addParameter('searchIterations',3,@(x)(isscalar(x) && isinteger(x)));
+p.addParameter('sceneParamsX0',[0 0 0 120 1 1 1 1 0 0],@isnumeric);
+p.addParameter('lockDepth',false,@islogical);
+p.addParameter('lockBiometry',false,@islogical);
 
 % parse
 p.parse(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, varargin{:})
@@ -296,7 +311,7 @@ while stillSearching
     ub = x + bound;
     lbp = x - bound./2;
     ubp = x + bound./2;
-    [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp);
+    [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp,p.Results.lockDepth,p.Results.lockBiometry);
     % Search
     [xStages(1,:), fVals(1)] = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
     if fVals(1) < fValCurrent
@@ -322,7 +337,7 @@ while stillSearching
     ub = [x(1:4), 1.25, 1.25, x(7:10)];
     lbp = [x(1:4), 0.75, 0.85, x(7:10)];
     ubp = [x(1:4), 1.15, 1.15, x(7:10)];
-    [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp);
+    [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp,p.Results.lockDepth,p.Results.lockBiometry);
     % Objective
     myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
     % Search
@@ -352,7 +367,7 @@ while stillSearching
     ub = x + bound;
     lbp = x - bound./2;
     ubp = x + bound./2;
-    [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp);
+    [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp,p.Results.lockDepth,p.Results.lockBiometry);
     % Search
     [xStages(3,:), fVals(3)] = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
     if fVals(3) < fValCurrent
@@ -380,11 +395,7 @@ while stillSearching
     lbp = [x(1:8)./((1-bb/2).^-sign(x(1:8))), x(9)-5, x(10)-2.5];
     ubp = [x(1:8)./((1+bb/2).^-sign(x(1:8))), x(9)+5, x(10)+2.5];
     ub  = [x(1:8)./((1+bb).^-sign(x(1:8))), x(9)+10, x(10)+5];
-    [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp);
-    % Lock the depth parameter if so instructed
-    if p.Results.lockDepth
-        lb(4) = x(4); lbp(4) = x(4); ubp(4) = x(4); ub(4) = x(4);
-    end
+    [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp,p.Results.lockDepth,p.Results.lockBiometry);
     % Objective
     myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
     % Search
@@ -420,7 +431,7 @@ while stillSearching
 end % searchIterations
 
 
-%% Update the sceneGeometry 
+%% Update the sceneGeometry
 
 % The fitted sceneGeometry
 f = updateSceneGeometry( sceneGeometry, x );
@@ -448,7 +459,7 @@ values = {...
     f.eye.rotationCenters, ...
     f.eye.cornea.kvals, ...
     poseRegParams.t, ...
-    poseRegParams.theta, ...    
+    poseRegParams.theta, ...
     poseRegParams.R, ...
     };
 
@@ -528,7 +539,7 @@ end
 %%%%%%%%%%%% LOCAL FUNCTIONS
 
 
-function [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp)
+function [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp,lockDepth,lockBiometry)
 % The first of the corneal curvature values must always be smaller than the
 % second. This constrains the differential scaling value that can be
 % present for the last parameter.
@@ -545,6 +556,22 @@ ub(9) = min([ub(9) 90]);
 lbp(9) = max([lbp(9) -90]);
 ubp(9) = min([ubp(9) 90]);
 
+% lockDepth if request
+if lockDepth
+    lb(4) = x(4);
+    ub(4) = x(4);
+    lbp(4) = x(4);
+    ubp(4) = x(4);
+end
+
+% lockBiometry if request
+if lockBiometry
+    lb(5:10) = x(5:10);
+    ub(5:10) = x(5:10);
+    lbp(5:10) = x(5:10);
+    ubp(5:10) = x(5:10);
+end
+
 % Ensure that x is within bounds
 x=min([ub; x]);
 x=max([lb; x]);
@@ -558,8 +585,8 @@ function [x, fVal] = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,
 %  [x, fVal] = iterativeSearch(x,sceneGeometry,args,lb,ub,lbp,ubp)
 %
 % Description:
-%   
-%   
+%
+%
 xLast = x;
 fValLast = realmax;
 stillSearching  = true;
@@ -589,14 +616,14 @@ end
 
 
 function addSupTitle(figHandle,str)
-    set(0, 'CurrentFigure', figHandle);
-    gcf;
-    axes('Position',[0 0 1 1],'visible','off','Tag','suptitle');
-    ht=text(.5,0.98,str);set(ht,'horizontalalignment','center','fontsize',14,'Interpreter','none');
-    drawnow
+set(0, 'CurrentFigure', figHandle);
+gcf;
+axes('Position',[0 0 1 1],'visible','off','Tag','suptitle');
+ht=text(.5,0.98,str);set(ht,'horizontalalignment','center','fontsize',14,'Interpreter','none');
+drawnow
 end
-    
-    
+
+
 
 
 function figHandle = addSubPlots(figHandle,idx,nStages,x,sceneGeometry,perimeter,glintData,ellipseRMSE,gazeTargets,fitAtBound,keyVals)
