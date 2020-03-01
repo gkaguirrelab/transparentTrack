@@ -89,7 +89,7 @@ function sceneGeometry = estimateSceneParams(pupilFileName, perimeterFileName, g
 %                           reached.
 %  'searchIterations'     - Scalar integer. The maximum number of search
 %                           iterations to conduct.
-%  'sceneParamsX0'        - 1x10 vector. Scene parameters to use as the
+%  'sceneParamsX0'        - 1x11 vector. Scene parameters to use as the
 %                           starting point for the search.
 %  'lockDepth'            - Logical. If set to true then the x0 value for
 %                           the camera translation depth will be held
@@ -167,7 +167,7 @@ p.addParameter('gazeTargets',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('fixSpectacleLens',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('searchThresh',1.0,@isscalar);
 p.addParameter('searchIterations',3,@(x)(isscalar(x) && isinteger(x)));
-p.addParameter('sceneParamsX0',[0 0 0 120 1 1 1 1 0 0],@isnumeric);
+p.addParameter('sceneParamsX0',[0 0 0 120 1 1 1 1 0 0 0],@isnumeric);
 p.addParameter('lockDepth',false,@islogical);
 p.addParameter('lockBiometry',false,@islogical);
 
@@ -306,7 +306,7 @@ while stillSearching
         fprintf(['Iter 0' num2str(ii) ', Stage 1...']);
     end
     % Bounds
-    bound = [20, 10, 10, 0, 0, 0, 0, 0, 0, 0];
+    bound = [20, 10, 10, 0, 0, 0, 0, 0, 0, 0, 0];
     lb = x - bound;
     ub = x + bound;
     lbp = x - bound./2;
@@ -333,10 +333,10 @@ while stillSearching
         fprintf('Stage 2...');
     end
     % Bounds
-    lb = [x(1:4), 0.50, 0.75, x(7:10)];
-    ub = [x(1:4), 1.25, 1.25, x(7:10)];
-    lbp = [x(1:4), 0.75, 0.85, x(7:10)];
-    ubp = [x(1:4), 1.15, 1.15, x(7:10)];
+    lb = [x(1:4), 0.50, 0.75, x(7:11)];
+    ub = [x(1:4), 1.25, 1.25, x(7:11)];
+    lbp = [x(1:4), 0.75, 0.85, x(7:11)];
+    ubp = [x(1:4), 1.15, 1.15, x(7:11)];
     [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp,p.Results.lockDepth,p.Results.lockBiometry);
     % Objective
     myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
@@ -362,7 +362,7 @@ while stillSearching
         fprintf('Stage 3...');
     end
     % Bounds
-    bound = [abs(x(1:3).*0.25), 0, 0, 0, x(7:8).*0.25 90 5];
+    bound = [abs(x(1:3).*0.25), 0, 0, 0, x(7:8).*0.25 90 5 5];
     lb = x - bound;
     ub = x + bound;
     lbp = x - bound./2;
@@ -391,10 +391,10 @@ while stillSearching
     end
     % Bounds
     bb = 0.1 / ii;
-    lb  = [x(1:8)./((1-bb).^-sign(x(1:8))), x(9)-10, x(10)-5];
-    lbp = [x(1:8)./((1-bb/2).^-sign(x(1:8))), x(9)-5, x(10)-2.5];
-    ubp = [x(1:8)./((1+bb/2).^-sign(x(1:8))), x(9)+5, x(10)+2.5];
-    ub  = [x(1:8)./((1+bb).^-sign(x(1:8))), x(9)+10, x(10)+5];
+    lb  = [x(1:8)./((1-bb).^-sign(x(1:8))), x(9)-10, x(10:11)-5];
+    lbp = [x(1:8)./((1-bb/2).^-sign(x(1:8))), x(9)-5, x(10:11)-2.5];
+    ubp = [x(1:8)./((1+bb/2).^-sign(x(1:8))), x(9)+5, x(10:11)+2.5];
+    ub  = [x(1:8)./((1+bb).^-sign(x(1:8))), x(9)+10, x(10:11)+5];
     [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp,p.Results.lockDepth,p.Results.lockBiometry);
     % Objective
     myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
@@ -566,10 +566,10 @@ end
 
 % lockBiometry if request
 if lockBiometry
-    lb(5:10) = x(5:10);
-    ub(5:10) = x(5:10);
-    lbp(5:10) = x(5:10);
-    ubp(5:10) = x(5:10);
+    lb(5:10) = x(5:11);
+    ub(5:10) = x(5:11);
+    lbp(5:10) = x(5:11);
+    ubp(5:10) = x(5:11);
 end
 
 % Ensure that x is within bounds
@@ -652,7 +652,7 @@ end
 if idx == nStages+1
     gcf;
     axes('Position',[0 0 1 1],'Visible','off','Tag','subtitle');
-    str = sprintf('Camera tor: $color-start$%2.1f$$color-end$$, position: [$color-start$%2.1f$$color-end$$, $color-start$%2.1f$$color-end$$, $color-start$%2.1f$$color-end$$]; Rotation center joint, diff [$color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$]; Corneal curv joint, diff, tor, tilt [$color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$]',x);
+    str = sprintf('Camera tor: $color-start$%2.1f$$color-end$$, position: [$color-start$%2.1f$$color-end$$, $color-start$%2.1f$$color-end$$, $color-start$%2.1f$$color-end$$]; Rot center joint, diff [$color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$]; Cornea curv joint, diff, tor, tilt, tip [$color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$]',x);
     tagIdx = strfind(str,'$color-start$');
     for ii=1:length(fitAtBound)
         if fitAtBound(ii)
@@ -665,7 +665,7 @@ if idx == nStages+1
     str = strrep(str,'$$','');
     ht=text(.5,0.055,str);
     set(ht,'horizontalalignment','center','fontsize',12);
-    str = sprintf('x = [ %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f ]',x);
+    str = sprintf('x = [ %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f ]',x);
     ht=text(.5,0.025,str);set(ht,'horizontalalignment','center','fontsize',12);
     drawnow
     return
