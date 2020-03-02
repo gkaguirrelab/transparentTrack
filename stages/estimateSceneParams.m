@@ -120,7 +120,7 @@ function sceneGeometry = estimateSceneParams(pupilFileName, perimeterFileName, g
     sceneGeometryFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3021/060917/EyeTracking/GazeCal02_sceneGeometry.mat';
     gazeTargets = [ -7, -7, 7, 0, 0, 7, 0, 7, -7 ; 0, 7, -7, -7, 0, 7, 7, 0, -7];
     frameSet = [ 730, 882, 971, 1114, 1250, 1382, 1467, 1593, 1672 ];
-    varargin = {'axialLength',25.29,'sphericalAmetropia',-5.25,'contactLens',-5.25,'sceneParamsX0',[ 10.2446 -3.2242 -3.8030 124.1518 0.8628 0.9635 1.0488 0.9931 29.3357 0 ]};
+    varargin = {'axialLength',25.29,'sphericalAmetropia',-5.25,'contactLens',-5.25,'sceneParamsX0',[ 10.2446 -3.2242 -3.8030 124.1518 0.8628 0.9635 1.0488 0.9931 29.3357 0 0]};
     estimateSceneParams(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, 'frameSet', frameSet, 'gazeTargets', gazeTargets, varargin{:});
 %}
 %{
@@ -313,16 +313,19 @@ while stillSearching
     ubp = x + bound./2;
     [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp,p.Results.lockDepth,p.Results.lockBiometry);
     % Search
-    [xStages(1,:), fVals(1)] = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
-    if fVals(1) < fValCurrent
-        x = xStages(1,:);
-        fValCurrent = fVals(1);
-        % Identify any params that hit a bound in the final search stage
-        notLocked = lb ~= ub;
-        fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
-        % Plot
-        addPlotsWrap(1,x,fitAtBound);
+    if any(lb ~= ub)
+        [xStages(1,:), fVals(1)] = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
+        if fVals(1) < fValCurrent
+            x = xStages(1,:);
+            fValCurrent = fVals(1);
+            % Identify any params that hit a bound in the final search stage
+            notLocked = lb ~= ub;
+            fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
+            % Plot
+            addPlotsWrap(1,x,fitAtBound);
+        end
     end
+    
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %% STAGE 2 -- ROTATION CENTER SEARCH
@@ -341,15 +344,17 @@ while stillSearching
     % Objective
     myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
     % Search
-    [xStages(2,:), fVals(2)] = bads(myObj,x,lb,ub,lbp,ubp,[],options);
-    if fVals(2) < fValCurrent
-        x = xStages(2,:);
-        fValCurrent = fVals(2);
-        % Identify any params that hit a bound in the final search stage
-        notLocked = lb ~= ub;
-        fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
-        % Plot
-        addPlotsWrap(2,x,fitAtBound);
+    if any(lb ~= ub)
+        [xStages(2,:), fVals(2)] = bads(myObj,x,lb,ub,lbp,ubp,[],options);
+        if fVals(2) < fValCurrent
+            x = xStages(2,:);
+            fValCurrent = fVals(2);
+            % Identify any params that hit a bound in the final search stage
+            notLocked = lb ~= ub;
+            fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
+            % Plot
+            addPlotsWrap(2,x,fitAtBound);
+        end
     end
     
     
@@ -369,15 +374,17 @@ while stillSearching
     ubp = x + bound./2;
     [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp,p.Results.lockDepth,p.Results.lockBiometry);
     % Search
-    [xStages(3,:), fVals(3)] = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
-    if fVals(3) < fValCurrent
-        x = xStages(3,:);
-        fValCurrent = fVals(3);
-        % Identify any params that hit a bound in the final search stage
-        notLocked = lb ~= ub;
-        fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
-        % Plot
-        addPlotsWrap(3,x,fitAtBound);
+    if any(lb ~= ub)
+        [xStages(3,:), fVals(3)] = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
+        if fVals(3) < fValCurrent
+            x = xStages(3,:);
+            fValCurrent = fVals(3);
+            % Identify any params that hit a bound in the final search stage
+            notLocked = lb ~= ub;
+            fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
+            % Plot
+            addPlotsWrap(3,x,fitAtBound);
+        end
     end
     
     
@@ -399,15 +406,17 @@ while stillSearching
     % Objective
     myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
     % Search
-    [xStages(4,:), fVals(4)] = bads(myObj,x,lb,ub,lbp,ubp,[],options);
-    if fVals(4) < fValCurrent
-        x = xStages(4,:);
-        fValCurrent = fVals(4);
-        % Identify any params that hit a bound
-        notLocked = lb ~= ub;
-        fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
-        % Plot
-        addPlotsWrap(4,x,fitAtBound);
+    if any(lb ~= ub)
+        [xStages(4,:), fVals(4)] = bads(myObj,x,lb,ub,lbp,ubp,[],options);
+        if fVals(4) < fValCurrent
+            x = xStages(4,:);
+            fValCurrent = fVals(4);
+            % Identify any params that hit a bound
+            notLocked = lb ~= ub;
+            fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
+            % Plot
+            addPlotsWrap(4,x,fitAtBound);
+        end
     end
     
     %% Save the fit-by-stage plot
@@ -540,6 +549,24 @@ end
 
 
 function [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp,lockDepth,lockBiometry)
+
+
+% lockDepth if requested
+if lockDepth
+    lb(4) = x(4);
+    ub(4) = x(4);
+    lbp(4) = x(4);
+    ubp(4) = x(4);
+end
+
+% lockBiometry if requested
+if lockBiometry
+    lb(5:11) = x(5:11);
+    ub(5:11) = x(5:11);
+    lbp(5:11) = x(5:11);
+    ubp(5:11) = x(5:11);
+end
+
 % The first of the corneal curvature values must always be smaller than the
 % second. This constrains the differential scaling value that can be
 % present for the last parameter.
@@ -556,25 +583,10 @@ ub(9) = min([ub(9) 90]);
 lbp(9) = max([lbp(9) -90]);
 ubp(9) = min([ubp(9) 90]);
 
-% lockDepth if request
-if lockDepth
-    lb(4) = x(4);
-    ub(4) = x(4);
-    lbp(4) = x(4);
-    ubp(4) = x(4);
-end
-
-% lockBiometry if request
-if lockBiometry
-    lb(5:10) = x(5:11);
-    ub(5:10) = x(5:11);
-    lbp(5:10) = x(5:11);
-    ubp(5:10) = x(5:11);
-end
-
 % Ensure that x is within bounds
 x=min([ub; x]);
 x=max([lb; x]);
+
 end
 
 
