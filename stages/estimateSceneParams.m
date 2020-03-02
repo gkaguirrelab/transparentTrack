@@ -91,12 +91,8 @@ function sceneGeometry = estimateSceneParams(pupilFileName, perimeterFileName, g
 %                           iterations to conduct.
 %  'sceneParamsX0'        - 1x11 vector. Scene parameters to use as the
 %                           starting point for the search.
-%  'lockDepth'            - Logical. If set to true then the x0 value for
-%                           the camera translation depth will be held
-%                           constant.
-%  'lockBiometry'         - Logical. If set to true then the biometric
-%                           properties of the eye will be locked at their
-%                           x0 values.
+%  'sceneParamsToLock'    - 1x11 vector. Any param positions set to unity
+%                           will be locked at their x0 values.
 %
 % Outputs
 %	sceneGeometry         - A structure that contains the components of the
@@ -168,8 +164,7 @@ p.addParameter('fixSpectacleLens',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('searchThresh',1.0,@isscalar);
 p.addParameter('searchIterations',3,@(x)(isscalar(x) && isinteger(x)));
 p.addParameter('sceneParamsX0',[0 0 0 120 1 1 1 1 0 0 0],@isnumeric);
-p.addParameter('lockDepth',false,@islogical);
-p.addParameter('lockBiometry',false,@islogical);
+p.addParameter('sceneParamsToLock',[0 0 0 0 0 0 0 0 0 0 0],@isnumeric);
 
 % parse
 p.parse(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, varargin{:})
@@ -311,7 +306,7 @@ while stillSearching
     ub = x + bound;
     lbp = x - bound./2;
     ubp = x + bound./2;
-    [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp,p.Results.lockDepth,p.Results.lockBiometry);
+    [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp,p.Results.sceneParamsToLock);
     % Search
     if any(lb ~= ub)
         [xStages(1,:), fVals(1)] = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
@@ -340,7 +335,7 @@ while stillSearching
     ub = [x(1:4), 1.25, 1.25, x(7:11)];
     lbp = [x(1:4), 0.75, 0.85, x(7:11)];
     ubp = [x(1:4), 1.15, 1.15, x(7:11)];
-    [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp,p.Results.lockDepth,p.Results.lockBiometry);
+    [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp,p.Results.sceneParamsToLock);
     % Objective
     myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
     % Search
@@ -372,7 +367,7 @@ while stillSearching
     ub = x + bound;
     lbp = x - bound./2;
     ubp = x + bound./2;
-    [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp,p.Results.lockDepth,p.Results.lockBiometry);
+    [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp,p.Results.sceneParamsToLock);
     % Search
     if any(lb ~= ub)
         [xStages(3,:), fVals(3)] = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
@@ -402,7 +397,7 @@ while stillSearching
     lbp = [x(1:8)./((1-bb/2).^-sign(x(1:8))), x(9)-5, x(10:11)-2.5];
     ubp = [x(1:8)./((1+bb/2).^-sign(x(1:8))), x(9)+5, x(10:11)+2.5];
     ub  = [x(1:8)./((1+bb).^-sign(x(1:8))), x(9)+10, x(10:11)+5];
-    [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp,p.Results.lockDepth,p.Results.lockBiometry);
+    [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp,p.Results.sceneParamsToLock);
     % Objective
     myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
     % Search
@@ -548,24 +543,14 @@ end
 %%%%%%%%%%%% LOCAL FUNCTIONS
 
 
-function [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp,lockDepth,lockBiometry)
+function [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp,sceneParamsToLock)
 
 
-% lockDepth if requested
-if lockDepth
-    lb(4) = x(4);
-    ub(4) = x(4);
-    lbp(4) = x(4);
-    ubp(4) = x(4);
-end
-
-% lockBiometry if requested
-if lockBiometry
-    lb(5:11) = x(5:11);
-    ub(5:11) = x(5:11);
-    lbp(5:11) = x(5:11);
-    ubp(5:11) = x(5:11);
-end
+% Lock params
+lb(sceneParamsToLock) = x(sceneParamsToLock);
+ub(sceneParamsToLock) = x(sceneParamsToLock);
+lbp(sceneParamsToLock) = x(sceneParamsToLock);
+ubp(sceneParamsToLock) = x(sceneParamsToLock);
 
 % The first of the corneal curvature values must always be smaller than the
 % second. This constrains the differential scaling value that can be
