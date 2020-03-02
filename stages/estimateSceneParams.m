@@ -164,7 +164,7 @@ p.addParameter('fixSpectacleLens',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('searchThresh',1.0,@isscalar);
 p.addParameter('searchIterations',3,@(x)(isscalar(x) && isinteger(x)));
 p.addParameter('sceneParamsX0',[0 0 0 120 1 1 1 1 0 0 0],@isnumeric);
-p.addParameter('sceneParamsToLock',[0 0 0 0 0 0 0 0 0 0 0],@isnumeric);
+p.addParameter('sceneParamsToLock',logical([0 0 0 0 0 0 0 0 0 0 0]),@islogical);
 
 % parse
 p.parse(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, varargin{:})
