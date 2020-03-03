@@ -1,4 +1,4 @@
-function sceneGeometry = estimateSceneParams(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, varargin)
+function [sceneGeometry, x, fValCurrent] = estimateSceneParams(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, varargin)
 % Estimate scene geometry parameters from pupil and glint measurements
 %
 % Syntax:
@@ -29,6 +29,7 @@ function sceneGeometry = estimateSceneParams(pupilFileName, perimeterFileName, g
 %                           video corresponding to the passed pupilData
 %                           file can be found and used to create the
 %                           ellipse array montage plot.
+%  'saveDiagnosticPlot'   - Logical.
 %
 % Optional key/value pairs (flow control)
 %  'useParallel'          - If set to true, use the MATLAB parallel pool
@@ -144,6 +145,7 @@ p.addRequired('sceneGeometryFileName',@ischar);
 p.addParameter('verbose',true,@islogical);
 p.addParameter('grayVideoName','',@(x)(isempty(x) | ischar(x)));
 p.addParameter('pupilFileToVideoSuffixSwitch',{'_pupil.mat','_gray.avi'},@iscell);
+p.addParameter('saveDiagnosticPlot',true,@islogical);
 
 % Optional flow control params
 p.addParameter('useParallel',true,@islogical);
@@ -271,13 +273,14 @@ options.UncertaintyHandling = 0;     % The objective is deterministic
 %% Create a directory to save the diagnostic plots
 [sceneGeomPath,sceneGeomName,] = fileparts(sceneGeometryFileName);
 diagnosticDirName = fullfile(sceneGeomPath,[sceneGeomName '_diagnostics']);
-if ~exist(diagnosticDirName, 'dir')
-    mkdir(diagnosticDirName);
-else
-    rmdir(diagnosticDirName, 's');
-    mkdir(diagnosticDirName);
+if p.Results.saveDiagnosticPlot
+    if ~exist(diagnosticDirName, 'dir')
+        mkdir(diagnosticDirName);
+    else
+        rmdir(diagnosticDirName, 's');
+        mkdir(diagnosticDirName);
+    end
 end
-
 
 %% Loop over iterations
 ii = 1;
@@ -313,11 +316,8 @@ while stillSearching
         if fVals(1) < fValCurrent
             x = xStages(1,:);
             fValCurrent = fVals(1);
-            % Identify any params that hit a bound in the final search stage
-            notLocked = lb ~= ub;
-            fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
             % Plot
-            addPlotsWrap(1,x,fitAtBound);
+            addPlotsWrap(1,x,[]);
         end
     end
     
@@ -344,11 +344,8 @@ while stillSearching
         if fVals(2) < fValCurrent
             x = xStages(2,:);
             fValCurrent = fVals(2);
-            % Identify any params that hit a bound in the final search stage
-            notLocked = lb ~= ub;
-            fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
             % Plot
-            addPlotsWrap(2,x,fitAtBound);
+            addPlotsWrap(2,x,[]);
         end
     end
     
@@ -362,7 +359,7 @@ while stillSearching
         fprintf('Stage 3...');
     end
     % Bounds
-    bound = [abs(x(1:3).*0.25), 0, 0, 0, x(7:8).*0.25 90 5 5];
+    bound = [abs(x(1:3).*0.25), 0, 0, 0, x(7).*0.1 x(8).*0.025 90 5 5];
     lb = x - bound;
     ub = x + bound;
     lbp = x - bound./2;
@@ -374,11 +371,8 @@ while stillSearching
         if fVals(3) < fValCurrent
             x = xStages(3,:);
             fValCurrent = fVals(3);
-            % Identify any params that hit a bound in the final search stage
-            notLocked = lb ~= ub;
-            fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
             % Plot
-            addPlotsWrap(3,x,fitAtBound);
+            addPlotsWrap(3,x,[]);
         end
     end
     
@@ -392,11 +386,11 @@ while stillSearching
         fprintf('Stage 4...');
     end
     % Bounds
-    bb = 0.1 / ii;
-    lb  = [x(1:8)./((1-bb).^-sign(x(1:8))), x(9)-10, x(10:11)-5];
-    lbp = [x(1:8)./((1-bb/2).^-sign(x(1:8))), x(9)-5, x(10:11)-2.5];
-    ubp = [x(1:8)./((1+bb/2).^-sign(x(1:8))), x(9)+5, x(10:11)+2.5];
-    ub  = [x(1:8)./((1+bb).^-sign(x(1:8))), x(9)+10, x(10:11)+5];
+    bb = [0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.025] / ii;
+    lb  = [x(1:8)./((1-bb).^-sign(x(1:8))), x(9)-10/ii, x(10:11)-5/ii];
+    lbp = [x(1:8)./((1-bb/2).^-sign(x(1:8))), x(9)-5/ii, x(10:11)-2.5/ii];
+    ubp = [x(1:8)./((1+bb/2).^-sign(x(1:8))), x(9)+5/ii, x(10:11)+2.5/ii];
+    ub  = [x(1:8)./((1+bb).^-sign(x(1:8))), x(9)+10/ii, x(10:11)+5/ii];
     [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp,p.Results.sceneParamsToLock);
     % Objective
     myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
@@ -406,11 +400,8 @@ while stillSearching
         if fVals(4) < fValCurrent
             x = xStages(4,:);
             fValCurrent = fVals(4);
-            % Identify any params that hit a bound
-            notLocked = lb ~= ub;
-            fitAtBound = any([(abs(x(notLocked)-lb(notLocked)) < boundTol); (abs(x(notLocked)-ub(notLocked)) < boundTol)]);
             % Plot
-            addPlotsWrap(4,x,fitAtBound);
+            addPlotsWrap(4,x,[]);
         end
     end
     
@@ -418,12 +409,19 @@ while stillSearching
     if p.Results.verbose
         fprintf('Saving plots...\n');
     end
+
+    % Identify any unlocked params that hit a bound
+    fitAtBound = logical(any([(abs(x-lb) < boundTol); (abs(x-ub) < boundTol)]));
+    fitAtBound(p.Results.sceneParamsToLock) = false;
     
     % Save the staged fit results
     addPlotsWrap(5,x,fitAtBound);
     figureName = fullfile(diagnosticDirName,[sceneGeomName '_fitsByStage_iter0' num2str(ii) '.pdf']);
     addSupTitle(figHandle,sceneGeomName);
-    saveas(figHandle,figureName)
+    if p.Results.saveDiagnosticPlot
+        saveas(figHandle,figureName)
+    end
+    close(figHandle);
     
     % Check if we are done searching
     if fValCurrent < p.Results.searchThresh || ii == p.Results.searchIterations
@@ -512,21 +510,23 @@ end
 
 
 %% Save the final diagnostic model fit montage
+if p.Results.saveDiagnosticPlot
+    
+    % Find the video for this pupil file
+    if ~isempty(p.Results.grayVideoName)
+        grayVideoName = p.Results.grayVideoName;
+    else
+        grayVideoName = strrep(pupilFileName,p.Results.pupilFileToVideoSuffixSwitch{1},p.Results.pupilFileToVideoSuffixSwitch{2});
+    end
+    
+    % Get the modeled eye poses
+    [ ~, modelEyePose] = calcGlintGazeError( sceneGeometry, args{:}, keyVals{:} );
+    
+    % Create an eye model montage
+    figureName = fullfile(diagnosticDirName,[sceneGeomName '_sceneDiagnosticMontage_eyeModel.png']);
+    saveEyeModelMontage(sceneGeometry, modelEyePose, perimeter, frameSet, grayVideoName, figureName);
 
-% Find the video for this pupil file
-if ~isempty(p.Results.grayVideoName)
-    grayVideoName = p.Results.grayVideoName;
-else
-    grayVideoName = strrep(pupilFileName,p.Results.pupilFileToVideoSuffixSwitch{1},p.Results.pupilFileToVideoSuffixSwitch{2});
 end
-
-% Get the modeled eye poses
-[ ~, modelEyePose] = calcGlintGazeError( sceneGeometry, args{:}, keyVals{:} );
-
-% Create an eye model montage
-figureName = fullfile(diagnosticDirName,[sceneGeomName '_sceneDiagnosticMontage_eyeModel.png']);
-saveEyeModelMontage(sceneGeometry, modelEyePose, perimeter, frameSet, grayVideoName, figureName);
-
 
 %% alert the user that we are done with the routine
 if p.Results.verbose
