@@ -160,7 +160,6 @@ p.addRequired('glintFileName',@isstr);
 p.addParameter('verbose',false,@islogical);
 p.addParameter('displayMode',false,@islogical);
 
-
 % Optional flow control params
 p.addParameter('nFrames',Inf,@isnumeric);
 p.addParameter('startFrame',1,@isnumeric);

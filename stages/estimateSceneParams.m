@@ -166,11 +166,18 @@ p.addParameter('fixSpectacleLens',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('searchThresh',1.0,@isscalar);
 p.addParameter('searchIterations',3,@(x)(isscalar(x) && isinteger(x)));
 p.addParameter('sceneParamsX0',[0 0 0 120 1 1 1 1 0 0 0],@isnumeric);
-p.addParameter('sceneParamsToLock',logical([0 0 0 0 0 0 0 0 0 0 0]),@islogical);
+p.addParameter('sceneParamsToSearch',[1 1 1 1 1 1 1 1 1 1 1],@isnumeric);
+p.addParameter('sceneParamsBounds',[20 20 20 20 0.25 0.15 0.1 0.025 90 5 5],@isnumeric);
+p.addParameter('stageSearchSets',...
+    [1 1 1 0 0 0 0 0 0 0 0; ...
+     1 1 1 1 1 1 0 0 0 0 0; ...
+     0 0 0 0 0 0 1 1 1 1 1; ...
+     1 1 1 1 1 1 1 1 1 1 1],@isnumeric);
 
 % parse
 p.parse(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, varargin{:})
 
+nStages = size(p.Results.stageSearchSets,1);
 
 
 %% Error if gazeTargets or frameSet are empty
@@ -234,7 +241,6 @@ load(glintFileName,'glintData');
 
 
 %% Restrict the materials to the frameSet
-
 frameSet = p.Results.frameSet;
 
 % Extract the frames we want
@@ -282,137 +288,50 @@ if p.Results.saveDiagnosticPlot
     end
 end
 
+
+%% Create the objective function
+myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
+
+
 %% Loop over iterations
 ii = 1;
 stillSearching = true;
 while stillSearching
     
     %% Set up the fit figure
-    nStages = 4;
     figHandle = addSubPlots([],0,nStages);
     boundTol = 1e-6;
     addPlotsWrap = @(idx,x,fitAtBound) addSubPlots(figHandle,idx,nStages,x,sceneGeometry,args{:},fitAtBound,keyVals);
     
-    
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    %% STAGE 1 -- TORSION / TRANSLATION SEARCH
-    % Perform an initial, iterated search, locking parameters for camera
-    % distance, eye rotation, and corneal curvature.
-    
-    % Announce
-    if p.Results.verbose
-        fprintf(['Iter 0' num2str(ii) ', Stage 1...']);
-    end
-    % Bounds
-    bound = [20, 10, 10, 0, 0, 0, 0, 0, 0, 0, 0];
-    lb = x - bound;
-    ub = x + bound;
-    lbp = x - bound./2;
-    ubp = x + bound./2;
-    [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp,p.Results.sceneParamsToLock);
-    % Search
-    if any(lb ~= ub)
-        [xStages(1,:), fVals(1)] = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
-        if fVals(1) < fValCurrent
-            x = xStages(1,:);
-            fValCurrent = fVals(1);
-            % Plot
-            addPlotsWrap(1,x,[]);
+    % Loop over stages
+    for ss = 1:nStages
+        % Announce
+        if p.Results.verbose
+            fprintf(['Iter 0' num2str(ii) ', Stage ' num2str(ss) '...']);
         end
-    end
-    
-    
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    %% STAGE 2 -- ROTATION CENTER SEARCH
-    % Search over the eye rotation center
-    
-    % Announce
-    if p.Results.verbose
-        fprintf('Stage 2...');
-    end
-    % Bounds
-    lb = [x(1:4), 0.50, 0.75, x(7:11)];
-    ub = [x(1:4), 1.25, 1.25, x(7:11)];
-    lbp = [x(1:4), 0.75, 0.85, x(7:11)];
-    ubp = [x(1:4), 1.15, 1.15, x(7:11)];
-    [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp,p.Results.sceneParamsToLock);
-    % Objective
-    myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
-    % Search
-    if any(lb ~= ub)
-        [xStages(2,:), fVals(2)] = bads(myObj,x,lb,ub,lbp,ubp,[],options);
-        if fVals(2) < fValCurrent
-            x = xStages(2,:);
-            fValCurrent = fVals(2);
-            % Plot
-            addPlotsWrap(2,x,[]);
+        searchSet = logical(p.Results.stageSearchSets(ss,:) .* p.Results.sceneParamsToSearch);
+        [x,lb,ub,lbp,ubp] = setBounds(sceneGeometry,x,p.Results.sceneParamsBounds./ii,searchSet);
+        % Search
+        if any(lb ~= ub)
+            [xStages(ii,ss,:), fVals(ii,ss)] = bads(myObj,x,lb,ub,lbp,ubp,[],options);
+            if fVals(ii,ss) < fValCurrent
+                x = xStages(ii,ss,:);
+                fValCurrent = fVals(ii,ss);
+                % Plot
+                addPlotsWrap(s,x,[]);
+            end
         end
-    end
-    
-    
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    %% STAGE 3 -- TRANSLATION AND CURVATURE SEARCH
-    % Lock the rotation centers, search over translation and corneal curvature
-    
-    % Announce
-    if p.Results.verbose
-        fprintf('Stage 3...');
-    end
-    % Bounds
-    bound = [abs(x(1:3).*0.25), 0, 0, 0, x(7).*0.1 x(8).*0.025 90 5 5];
-    lb = x - bound;
-    ub = x + bound;
-    lbp = x - bound./2;
-    ubp = x + bound./2;
-    [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp,p.Results.sceneParamsToLock);
-    % Search
-    if any(lb ~= ub)
-        [xStages(3,:), fVals(3)] = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options);
-        if fVals(3) < fValCurrent
-            x = xStages(3,:);
-            fValCurrent = fVals(3);
-            % Plot
-            addPlotsWrap(3,x,[]);
-        end
-    end
-    
-    
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    %% STAGE 4 -- COMPLETE SEARCH
-    % Search over all parameters (twice)
-    
-    % Announce
-    if p.Results.verbose
-        fprintf('Stage 4...');
-    end
-    % Bounds
-    bb = [0.1 0.1 0.1 0.1 0.1 0.1 0.1 0.025] / ii;
-    lb  = [x(1:8)./((1-bb).^-sign(x(1:8))), x(9)-10/ii, x(10:11)-5/ii];
-    lbp = [x(1:8)./((1-bb/2).^-sign(x(1:8))), x(9)-5/ii, x(10:11)-2.5/ii];
-    ubp = [x(1:8)./((1+bb/2).^-sign(x(1:8))), x(9)+5/ii, x(10:11)+2.5/ii];
-    ub  = [x(1:8)./((1+bb).^-sign(x(1:8))), x(9)+10/ii, x(10:11)+5/ii];
-    [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp,p.Results.sceneParamsToLock);
-    % Objective
-    myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
-    % Search
-    if any(lb ~= ub)
-        [xStages(4,:), fVals(4)] = bads(myObj,x,lb,ub,lbp,ubp,[],options);
-        if fVals(4) < fValCurrent
-            x = xStages(4,:);
-            fValCurrent = fVals(4);
-            % Plot
-            addPlotsWrap(4,x,[]);
-        end
+        
     end
     
     %% Save the fit-by-stage plot
     if p.Results.verbose
         fprintf('Saving plots...\n');
     end
-
-    % Identify any unlocked params that hit a bound
+    
+    % Identify any unlocked params that hit a bound on the last search
     fitAtBound = logical(any([(abs(x-lb) < boundTol); (abs(x-ub) < boundTol)]));
-    fitAtBound(p.Results.sceneParamsToLock) = false;
+    fitAtBound(~p.Results.sceneParamsToSearch) = false;
     
     % Save the staged fit results
     addPlotsWrap(5,x,fitAtBound);
@@ -485,11 +404,9 @@ sceneGeometry = createSceneGeometry(sceneGeometryVarargin{:});
 sceneGeometry.meta.estimateSceneParams = p.Results;
 sceneGeometry.meta.estimateSceneParams.x = x;
 sceneGeometry.meta.estimateSceneParams.x0 = x0;
-for ii = 1:nStages
-    sceneGeometry.meta.estimateSceneParams.(['x' num2str(ii)]) = xStages(ii,:);
-end
-sceneGeometry.meta.estimateSceneParams.fitAtBound = fitAtBound;
+sceneGeometry.meta.estimateSceneParams.xStages = xStages;
 sceneGeometry.meta.estimateSceneParams.fVals = fVals;
+sceneGeometry.meta.estimateSceneParams.fitAtBound = fitAtBound;
 sceneGeometry.meta.estimateSceneParams.executionTime = executionTime;
 sceneGeometry.meta.estimateSceneParams.varargin = varargin;
 sceneGeometry.meta.estimateSceneParams.sceneGeometryVarargin = sceneGeometryVarargin;
@@ -525,7 +442,7 @@ if p.Results.saveDiagnosticPlot
     % Create an eye model montage
     figureName = fullfile(diagnosticDirName,[sceneGeomName '_sceneDiagnosticMontage_eyeModel.png']);
     saveEyeModelMontage(sceneGeometry, modelEyePose, perimeter, frameSet, grayVideoName, figureName);
-
+    
 end
 
 %% alert the user that we are done with the routine
@@ -543,14 +460,19 @@ end
 %%%%%%%%%%%% LOCAL FUNCTIONS
 
 
-function [x,lb,ub,lbp,ubp] = constrainBounds(sceneGeometry,x,lb,ub,lbp,ubp,sceneParamsToLock)
+function [x,lb,ub,lbp,ubp] = setBounds(sceneGeometry,x,bb,searchSet)
 
+% Apply the bounds
+lb = x - bb;
+lbp = x - bb./2;
+ubp = x + bb./2;
+ub = x + bb;
 
 % Lock params
-lb(sceneParamsToLock) = x(sceneParamsToLock);
-ub(sceneParamsToLock) = x(sceneParamsToLock);
-lbp(sceneParamsToLock) = x(sceneParamsToLock);
-ubp(sceneParamsToLock) = x(sceneParamsToLock);
+lb(~searchSet) = x(~searchSet);
+ub(~searchSet) = x(~searchSet);
+lbp(~searchSet) = x(~searchSet);
+ubp(~searchSet) = x(~searchSet);
 
 % The first of the corneal curvature values must always be smaller than the
 % second. This constrains the differential scaling value that can be
@@ -574,42 +496,6 @@ x=max([lb; x]);
 
 end
 
-
-function [x, fVal] = iterativeSearch(x,sceneGeometry,args,keyVals,lb,ub,lbp,ubp,options)
-% Implements an iterative search for scene parameters
-%
-% Syntax:
-%  [x, fVal] = iterativeSearch(x,sceneGeometry,args,lb,ub,lbp,ubp)
-%
-% Description:
-%
-%
-xLast = x;
-fValLast = realmax;
-stillSearching  = true;
-
-while stillSearching
-    
-    % obtain the modelEyePose
-    [ ~, modelEyePose] = calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:});
-    % Update the objective
-    myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:}, 'modelEyePose', modelEyePose );
-    % Perform the search
-    x = bads(myObj,x,lb,ub,lbp,ubp,[],options);
-    % The objective we care about is for the complete objective
-    fVal = calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
-    % Evalaute the results
-    if fVal >= fValLast
-        x = xLast;
-        fVal = fValLast;
-        stillSearching = false;
-    else
-        xLast = x;
-        fValLast = fVal;
-    end
-end
-
-end
 
 
 function addSupTitle(figHandle,str)

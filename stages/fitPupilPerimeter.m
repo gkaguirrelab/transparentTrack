@@ -312,11 +312,9 @@ parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
     
     if p.Results.displayMode
         plotFig = figure; hold on;
-        hPlot = gobjects(0);
-        
-         hPlot(end+1) = plot(perimeter.data{ii}.Xp ,perimeter.data{ii}.Yp, ['.' 'k'], 'MarkerSize', 1);
-        
-        
+        hPlot = gobjects(0);        
+%        hPlot(end+1) = plot(perimeter.data{ii}.Xp ,perimeter.data{ii}.Yp, ['.' 'k'], 'MarkerSize', 1);
+                
         % build ellipse impicit equation
         pFitImplicit = ellipse_ex2im(ellipse_transparent2ex(ellipseParamsTransparent));
         fh=@(x,y) pFitImplicit(1).*x.^2 +pFitImplicit(2).*x.*y +pFitImplicit(3).*y.^2 +pFitImplicit(4).*x +pFitImplicit(5).*y +pFitImplicit(6);
