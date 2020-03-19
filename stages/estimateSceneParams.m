@@ -317,7 +317,7 @@ while stillSearching
                 x = xStages(ii,ss,:);
                 fValCurrent = fVals(ii,ss);
                 % Plot
-                addPlotsWrap(s,x,[]);
+                addPlotsWrap(ss,x,[]);
             end
         end
         
