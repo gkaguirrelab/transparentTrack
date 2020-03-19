@@ -19,7 +19,7 @@ function sceneGeometryOut = updateSceneGeometry( sceneGeometryIn, x )
 %                            x(6) - differential eye rotation center scaler
 %                            x(7) - joint corneal curvature scaler
 %                            x(8) - differential corneal curvature scaler
-%                            x(9) - angle for the kvals (0-180)
+%                            x(9:11) - angle for the kvals (0-180)
 %
 % Outputs:
 %   sceneGeometryOut     - Structure. See createSceneGeometry.m
