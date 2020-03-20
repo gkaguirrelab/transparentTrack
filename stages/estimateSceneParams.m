@@ -314,8 +314,8 @@ while stillSearching
         if any(lb ~= ub)
             [xStages(ii,ss,:), fVals(ii,ss)] = bads(myObj,x,lb,ub,lbp,ubp,[],options);
             if fVals(ii,ss) < fValCurrent
-                x = xStages(ii,ss,:);
-                fValCurrent = fVals(ii,ss);
+                x = squeeze(xStages(ii,ss,:));
+                fValCurrent = squeeze(fVals(ii,ss));
                 % Plot
                 addPlotsWrap(ss,x,[]);
             end
