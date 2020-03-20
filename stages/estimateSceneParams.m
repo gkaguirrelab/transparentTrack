@@ -312,10 +312,12 @@ while stillSearching
         [x,lb,ub,lbp,ubp] = setBounds(sceneGeometry,x,p.Results.sceneParamsBounds./ii,searchSet);
         % Search
         if any(lb ~= ub)
-            [xStages(ii,ss,:), fVals(ii,ss)] = bads(myObj,x,lb,ub,lbp,ubp,[],options);
-            if fVals(ii,ss) < fValCurrent
-                x = squeeze(xStages(ii,ss,:));
-                fValCurrent = squeeze(fVals(ii,ss));
+            [xCandidate, fValCandidate] = bads(myObj,x,lb,ub,lbp,ubp,[],options);
+            if fValCandidate < fValCurrent
+                x = xCandidate;
+                fValCurrent = fValCandidate;
+                xStages(ii,ss,:) = xCandidate;
+                fVals(ii,ss) = fValCandidate;
                 % Plot
                 addPlotsWrap(ss,x,[]);
             end
