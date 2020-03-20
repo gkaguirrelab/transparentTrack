@@ -335,7 +335,7 @@ while stillSearching
     fitAtBound(~p.Results.sceneParamsToSearch) = false;
     
     % Save the staged fit results
-    addPlotsWrap(5,x,fitAtBound);
+    addPlotsWrap(nStages+1,x,fitAtBound);
     figureName = fullfile(diagnosticDirName,[sceneGeomName '_fitsByStage_iter0' num2str(ii) '.pdf']);
     addSupTitle(figHandle,sceneGeomName);
     if p.Results.saveDiagnosticPlot
@@ -562,7 +562,6 @@ end
 
 % We are going to have four sub-plots
 nCols = 4;
-
 
 % 4. Glint-pupil vec matching gaze targets
 subplot(nStages,nCols,(idx-1)*nCols+4)
