@@ -165,13 +165,13 @@ p.addParameter('gazeTargets',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('fixSpectacleLens',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('searchThresh',1.0,@isscalar);
 p.addParameter('searchIterations',2,@(x)(isscalar(x) && isinteger(x)));
-p.addParameter('sceneParamsX0',[0 0 0 120 1 1 1 1 0 0 0],@isnumeric);
-p.addParameter('sceneParamsToSearch',[1 1 1 1 1 1 1 1 1 1 1],@isnumeric);
-p.addParameter('sceneParamsBounds',[20 20 20 20 0.25 0.15 0.1 0.025 90 5 5],@isnumeric);
+p.addParameter('sceneParamsX0',[0 0 0 120 1 1 0 0 1 1 0 0 0],@isnumeric);
+p.addParameter('sceneParamsToSearch',[1 1 1 1 1 1 1 1 0 0 1 1 1],@isnumeric);
+p.addParameter('sceneParamsBounds',[20 20 20 20 0.25 0.15 10 10 0.1 0.025 90 5 5],@isnumeric);
 p.addParameter('stageSearchSets',...
-    [1 1 1 0 0 0 0 0 0 0 0; ...
-     1 1 1 1 1 1 0 0 0 0 0; ...
-     1 1 1 1 1 1 1 1 1 1 1],@isnumeric);
+    [1 1 1 0 0 0 0 0 0 0 0 0 0; ...
+     1 1 1 1 1 1 0 0 0 0 0 0 0; ...
+     1 1 1 1 1 1 1 1 0 0 1 1 1],@isnumeric);
 
 % parse
 p.parse(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, varargin{:})

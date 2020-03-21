@@ -17,9 +17,10 @@ function sceneGeometryOut = updateSceneGeometry( sceneGeometryIn, x )
 %                            x(2:4) - camera position
 %                            x(5) - joint eye rotation center scaler
 %                            x(6) - differential eye rotation center scaler
-%                            x(7) - joint corneal curvature scaler
-%                            x(8) - differential corneal curvature scaler
-%                            x(9:11) - angle for the kvals (0-180)
+%                            x(7:8) - primary eye position (azi ele)
+%                            x(9) - joint corneal curvature scaler
+%                            x(10) - differential corneal curvature scaler
+%                            x(11:13) - angles for the kvals (0-180)
 %
 % Outputs:
 %   sceneGeometryOut     - Structure. See createSceneGeometry.m
@@ -46,15 +47,18 @@ rotationCenters = sceneGeometryIn.eye.rotationCenters;
 sceneGeometryOut.eye.rotationCenters.azi = rotationCenters.azi .* x(5) .* x(6);
 sceneGeometryOut.eye.rotationCenters.ele = rotationCenters.ele .* x(5) ./ x(6);
 
+% Store the primary position
+sceneGeometryOut.eye.rotationCenters.primaryPosition = x(7:8);
+
 % Obtain the current kVals for this eye
 kvals = sceneGeometryIn.eye.cornea.kvals;
 % Scale the curvature component
-kvals(1:2) = kvals(1:2) .* x(7);
-kvals(1) = kvals(1) * x(8);
-kvals(2) = kvals(2) / x(8);
-kvals(3) = x(9);
-kvals(4) = x(10);
-kvals(5) = x(11);
+kvals(1:2) = kvals(1:2) .* x(9);
+kvals(1) = kvals(1) * x(10);
+kvals(2) = kvals(2) / x(10);
+kvals(3) = x(11);
+kvals(4) = x(12);
+kvals(5) = x(13);
 eye.meta.measuredCornealCurvature = kvals;
 cornea = human.cornea( eye );
 sceneGeometryOut.eye.cornea = cornea;
