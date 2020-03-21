@@ -117,7 +117,7 @@ function [sceneGeometry, x, fValCurrent] = estimateSceneParams(pupilFileName, pe
     sceneGeometryFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3021/060917/EyeTracking/GazeCal02_sceneGeometry.mat';
     gazeTargets = [ -7, -7, 7, 0, 0, 7, 0, 7, -7 ; 0, 7, -7, -7, 0, 7, 7, 0, -7];
     frameSet = [ 730, 882, 971, 1114, 1250, 1382, 1467, 1593, 1672 ];
-    varargin = {'axialLength',25.29,'sphericalAmetropia',-5.25,'contactLens',-5.25,'sceneParamsX0',[ 10.2446 -3.2242 -3.8030 124.1518 0.8628 0.9635 1.0488 0.9931 29.3357 0 0]};
+    varargin = {'axialLength',25.29,'sphericalAmetropia',-5.25,'contactLens',-5.25,'sceneParamsX0',[ 10.2446 -3.2242 -3.8030 124.1518 0.8628 0.9635 0 0 1.0488 0.9931 29.3357 0 0]};
     estimateSceneParams(pupilFileName, perimeterFileName, glintFileName, sceneGeometryFileName, 'frameSet', frameSet, 'gazeTargets', gazeTargets, varargin{:});
 %}
 %{
@@ -166,7 +166,7 @@ p.addParameter('fixSpectacleLens',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('searchThresh',1.0,@isscalar);
 p.addParameter('searchIterations',2,@(x)(isscalar(x) && isinteger(x)));
 p.addParameter('sceneParamsX0',[0 0 0 120 1 1 0 0 1 1 0 0 0],@isnumeric);
-p.addParameter('sceneParamsToSearch',[1 1 1 1 1 1 1 1 0 0 1 1 1],@isnumeric);
+p.addParameter('sceneParamsToSearch',[1 1 0 0 0 0 0 0 0 0 0 0 0],@isnumeric);
 p.addParameter('sceneParamsBounds',[20 20 20 20 0.25 0.15 10 10 0.1 0.025 90 5 5],@isnumeric);
 p.addParameter('stageSearchSets',...
     [1 1 1 0 0 0 0 0 0 0 0 0 0; ...
@@ -291,6 +291,10 @@ end
 %% Create the objective function
 myObj = @(x) calcGlintGazeError( updateSceneGeometry( sceneGeometry, x ), args{:}, keyVals{:} );
 
+
+%% Pre-define some loop variables
+xStages = [];
+fVals = [];
 
 %% Loop over iterations
 ii = 1;
@@ -442,7 +446,7 @@ if p.Results.saveDiagnosticPlot
     
     % Create an eye model montage
     figureName = fullfile(diagnosticDirName,[sceneGeomName '_sceneDiagnosticMontage_eyeModel.png']);
-    saveEyeModelMontage(sceneGeometry, modelEyePose, perimeter, frameSet, grayVideoName, figureName);
+    saveEyeModelMontage(sceneGeometry, modelEyePose, perimeter, frameSet, gazeTargets, grayVideoName, figureName);
     
 end
 
@@ -597,6 +601,23 @@ imshow(ones(dim,dim),'Border', 'tight');
 drawnow;
 hAxes = get(hFig,'CurrentAxes');
 hold on;
+
+% position the frames in the grid by their eye pose. First, figure out how
+% many grid squares we have
+nFrames = size(gazeTargets,2);
+nGrid = ceil(sqrt(nFrames));
+
+% Convert the gazeTargets array into an ordered list to store the frames
+pos = gazeTargets ./ max(unique(abs(gazeTargets)));
+
+% Reverse the sign of the elevation row, as positive eye movements
+% correspond to the eye moving upwards in the image
+pos(2,:) = -pos(2,:);
+
+% Convet the positions into an ordered list
+montageOrder = (pos(2,:)+nGrid-1).*nGrid+pos(1,:)-1;
+
+% Show the frames
 for ii = 1:length(ellipseRMSE)
     Xp = perimeter.data{ii}.Xp;
     meanXp = mean(Xp);
@@ -616,7 +637,7 @@ for ii = 1:length(ellipseRMSE)
     axis off;
     drawnow;
     thisFrame=getframe(hFig);
-    framesToMontage(:,:,:,ii) = thisFrame.cdata;
+    framesToMontage(:,:,:,montageOrder(ii)) = thisFrame.cdata;
     delete(p1); delete(p2);
     drawnow;
 end
@@ -641,17 +662,36 @@ end
 
 
 
-function saveEyeModelMontage(sceneGeometry, modelEyePose, perimeter, frameSet, grayVideoName, montageFileName)
+function saveEyeModelMontage(sceneGeometry, modelEyePose, perimeter, frameSet, gazeTargets, grayVideoName, montageFileName)
 % Saves a montage with the model eye superimposed.
 
 % Silence some errors that can arise during the forward projection
 warningState = warning;
 warning('off','projectModelEye:ellipseFitFailed');
 
+
+% We will create a square grid of frames, and try to position the frames in
+% the grid by their eye pose. First, figure out how many grid squares we
+% have
+nFrames = length(frameSet);
+nGrid = ceil(sqrt(nFrames));
+
+% Convert the gazeTargets array into an ordered list to store the frames
+pos = gazeTargets ./ max(unique(abs(gazeTargets)));
+
+% Reverse the sign of the elevation row, as positive eye movements
+% correspond to the eye moving upwards in the image
+pos(2,:) = -pos(2,:);
+
+% Convet the positions into an ordered list
+montageOrder = (pos(2,:)+nGrid-1).*nGrid+pos(1,:)-1;
+
 % Sort the ellipse array list so that the frames appear in temporal order
 [frameSet, sortOrder] = sort(frameSet);
+montageOrder = montageOrder(sortOrder);
 modelEyePose = modelEyePose(sortOrder,:);
 perimeter.data = perimeter.data(sortOrder);
+
 
 % Check that the file exists
 if exist(grayVideoName,'file') && ~isempty(frameSet)
@@ -664,7 +704,7 @@ if exist(grayVideoName,'file') && ~isempty(frameSet)
     videoSizeY = videoInObj.Height;
     
     % Define a variable to hold the selected frames
-    framesToMontage = zeros(videoSizeY,videoSizeX,3,length(frameSet),'uint8');
+    framesToMontage = zeros(videoSizeY,videoSizeX,3,nGrid^2,'uint8');
     
     % Define a figure
     hFig = figure( 'Visible', 'off');
@@ -705,7 +745,7 @@ if exist(grayVideoName,'file') && ~isempty(frameSet)
         % Store the frame. Detect if we have a bad or empty frame and then
         % skip if that is the case
         if all(size(squeeze(framesToMontage(:,:,:,ii)))==size(thisFrame.cdata))
-            framesToMontage(:,:,:,ii) = thisFrame.cdata;
+            framesToMontage(:,:,:,montageOrder(ii)) = thisFrame.cdata;
         end
         % hold off
         hold off
