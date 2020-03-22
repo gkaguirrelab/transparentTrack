@@ -166,9 +166,13 @@ p.parse(videoStemName, frameSet, gazeTargets, varargin{:})
 
 %% Define model parameters
 eyeParamLabels = {'cornea_K1','cornea_K2','cornea_torsion','cornea_tilt','cornea_tip','rotationDepth_joint','rotationDepth_diff'};
-sceneParamLabels = {'primaryPosition_azi','primaryPosition_ele','camera_torsion','camera_horizontal','camera_vertical','camera_depth'};
 corneaIdx = 1:5;
 rotationIdx = 6:7;
+sceneParamLabels = {'primaryPosition_azi','primaryPosition_ele','camera_torsion','camera_horizontal','camera_vertical','camera_depth'};
+primaryPosIdx = 1:2;
+cameraTorsion = 3;
+cameraPlaneTrans = 4:5;
+cameraDepthTrans = 6;
 
 nEyeParams = length(eyeParamLabels);
 nSceneParams = length(sceneParamLabels);
@@ -245,15 +249,12 @@ for ss = 1:length(videoStemName)
     % Identify the two translation parameters for each scene and apply
     % bounds
     searchSet = zeros(size(xBounds));
-    idx = nEyeParams + (ss-1)*nSceneParams+2;
-    searchSet(idx:idx+1)=1;
+    idx = nEyeParams + (ss-1)*nSceneParams+cameraPlaneTrans;
+    searchSet(idx)=1;
     [x,lb,ub,lbp,ubp] = setBounds(x,xBounds,searchSet);
-    x = bads(myObjScene{ss},x,lb,ub,lbp,ubp,nonbcon,options);
+    [x, fValCurrent] = bads(myObjScene{ss},x,lb,ub,lbp,ubp,nonbcon,options)
     
 end
-
-fValCurrent = myObjAll(x);
-
 
 % Now search across rotation centers
 searchSet = zeros(size(xBounds));
