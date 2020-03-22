@@ -26,11 +26,6 @@ function [ objError, modelEyePose, modelPupilEllipse, modelGlintCoord, modelPose
 %   gazeTargets           - Vector.
 %
 % Optional key/value pairs:
-%  'modelEyePose'         - Empty or 2xn vector, where n is the number of
-%                           frames to be modeled. If left empty, the
-%                           eyePose will be derived from the perimeter
-%                           data. Passing the eyePose data speeds the
-%                           execution of this routine.
 %  'eyePoseLB/UB'         - 1x4 vector. Upper / lower bounds on the eyePose
 %                           [azimuth, elevation, torsion, pupil radius].
 %                           The torsion value is unusued and is bounded to
@@ -84,10 +79,9 @@ p.addRequired('ellipseRMSE',@isnumeric);
 p.addRequired('gazeTargets',@isnumeric);
 
 % Optional
-p.addParameter('modelEyePose',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
-p.addParameter('errorReg',[1 2 4 2],@isscalar);
+p.addParameter('errorReg',[1 2 4 2],@isnumeric);
 
 % Parse and check the parameters
 p.parse(sceneGeometry, perimeter, glintData, ellipseRMSE, gazeTargets, varargin{:});
@@ -101,16 +95,9 @@ nFrames = length(glintData.X);
 % RMSE
 weights = 1./ellipseRMSE;
 
-% Handle if we are calculating eyePose
-if isempty(p.Results.modelEyePose)
-    calcEyePose = true;
-    modelEyePose = nan(nFrames,4);
-else
-    calcEyePose = false;
-    modelEyePose = p.Results.modelEyePose;
-end
 
 % Allocate the loop and return variables
+modelEyePose = nan(nFrames,4);
 modelGlintX = nan(nFrames,1);
 modelGlintY = nan(nFrames,1);
 perimFitError = nan(nFrames,1);
@@ -133,9 +120,7 @@ parfor ii = 1:nFrames
     glintCoord = [glintData.X(ii) glintData.Y(ii)];
     
     % Get the eyePose
-    if calcEyePose
-        modelEyePose(ii,:) = eyePoseEllipseFit(Xp, Yp, sceneGeometry, 'glintCoord', glintCoord);
-    end
+    modelEyePose(ii,:) = eyePoseEllipseFit(Xp, Yp, sceneGeometry, 'glintCoord', glintCoord);
         
     % Get the glint coordinates
     [modelPupilEllipse_loop, modelGlintCoord_loop] = projectModelEye(modelEyePose(ii,:), sceneGeometry);    

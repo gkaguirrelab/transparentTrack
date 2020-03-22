@@ -12,15 +12,12 @@ function sceneGeometryOut = updateSceneGeometry( sceneGeometryIn, x )
 %
 % Inputs:
 %   sceneGeometryIn       - Structure. See createSceneGeometry.m
-%   x                     - 1x8 vector. The elements x are:
-%                            x(1) - camera torsion
-%                            x(2:4) - camera position
-%                            x(5) - joint eye rotation center scaler
-%                            x(6) - differential eye rotation center scaler
-%                            x(7:8) - primary eye position (azi ele)
-%                            x(9) - joint corneal curvature scaler
-%                            x(10) - differential corneal curvature scaler
-%                            x(11:13) - angles for the kvals (0-180)
+%   x                     - 1x13 vector. The elements x are:
+%                            x(1:5) - kvals
+%                            x(6:7) - [joint, differential] eye rotation scaler
+%                            x(8:9) - primary eye position [azi ele]
+%                            x(10) - camera torsion
+%                            x(11:13) - camera translation
 %
 % Outputs:
 %   sceneGeometryOut     - Structure. See createSceneGeometry.m
@@ -30,36 +27,19 @@ function sceneGeometryOut = updateSceneGeometry( sceneGeometryIn, x )
 % Copy the sceneGeometry from input to output
 sceneGeometryOut = sceneGeometryIn;
 
-% Store the camera torsion
-sceneGeometryOut.cameraPosition.torsion = x(1);
-
-% Store the extrinsic camera translation vector
-sceneGeometryOut.cameraPosition.translation = x(2:4)';
-
 % Extract the eye field
 eye = sceneGeometryIn.eye;
 
-% Obtain the current rotation centers for this eye
-rotationCenters = sceneGeometryIn.eye.rotationCenters;
+% Update the eye meta data with the values from x
+eye.meta.kvals = x(1:5);
+eye.meta.rotationCenterScalers = x(6:7);
+eye.meta.primaryPosition = x(8:9);
 
-% Scale the rotation center values by the joint and differential
-% parameters
-sceneGeometryOut.eye.rotationCenters.azi = rotationCenters.azi .* x(5) .* x(6);
-sceneGeometryOut.eye.rotationCenters.ele = rotationCenters.ele .* x(5) ./ x(6);
+% Update the rotation centers
+rotationCenters = human.rotationCenters( eye );
+sceneGeometryOut.eye.rotationCenters = rotationCenters;
 
-% Store the primary position
-sceneGeometryOut.eye.rotationCenters.primaryPosition = x(7:8);
-
-% Obtain the current kVals for this eye
-kvals = sceneGeometryIn.eye.cornea.kvals;
-% Scale the curvature component
-kvals(1:2) = kvals(1:2) .* x(9);
-kvals(1) = kvals(1) * x(10);
-kvals(2) = kvals(2) / x(10);
-kvals(3) = x(11);
-kvals(4) = x(12);
-kvals(5) = x(13);
-eye.meta.measuredCornealCurvature = kvals;
+% Update the cornea
 cornea = human.cornea( eye );
 sceneGeometryOut.eye.cornea = cornea;
 
@@ -74,6 +54,12 @@ corneaBackIdx = find(strcmp(sceneGeometryIn.refraction.stopToMedium.surfaceLabel
 opticalSystemStopToMedium = sceneGeometryIn.refraction.stopToMedium.opticalSystem;
 opticalSystemStopToMedium(corneaBackIdx:corneaBackIdx+2,1:10) = cornea.S;
 sceneGeometryOut.refraction.stopToMedium.opticalSystem = opticalSystemStopToMedium;
+
+% Store the camera torsion
+sceneGeometryOut.cameraPosition.torsion = x(10);
+
+% Store the extrinsic camera translation vector
+sceneGeometryOut.cameraPosition.translation = x(11:13)';
 
 
 end
