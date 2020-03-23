@@ -253,7 +253,7 @@ for ss = 1:nScenes
     idx = nEyeParams + (ss-1)*nSceneParams+cameraPlaneTrans;
     searchSet(idx)=1;
     [x,lb,ub,lbp,ubp] = setBounds(x,xBounds,searchSet);
-    [x, fValCurrent] = bads(mySceneObjects{ss},x,lb,ub,lbp,ubp,nonbcon,options)
+    [x, fValCurrent] = bads(myObjAll,x,lb,ub,lbp,ubp,nonbcon,options)
     foo=1;
 end
 
