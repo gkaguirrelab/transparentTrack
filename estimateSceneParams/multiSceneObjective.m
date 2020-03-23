@@ -9,8 +9,13 @@ function fVal = multiSceneObjective(x,mySceneObjects,nEyeParams,nSceneParams, ve
         fValScene(ss) = mySceneObjects{ss}.calcError(subX);
     end
 
+    % Take the L2 norm of the scene objectives
     fVal = norm(fValScene);
     
+    % BADS can't handle Inf in the objective, so replace with real max
+    fVal = min([fVal realmax]);
+    
+    % Report the status to the screen
     if verbose
         str = 'fVal = %2.2d; x = [ ';
         for pp = 1:length(x)-1
