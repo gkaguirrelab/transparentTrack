@@ -151,9 +151,9 @@ p.addParameter('eyeArgs',{''},@iscell);
 p.addParameter('sceneArgs',{''},@iscell);
 p.addParameter('searchThresh',1.0,@isscalar);
 p.addParameter('eyeParamsX0',[44.2410, 45.6302, 0, 2.5000, 0, 1, 1],@isnumeric);
-p.addParameter('eyeParamsBounds',[0.25, 0.15, 0.1, 0.1, 90, 5, 5],@isnumeric);
+p.addParameter('eyeParamsBounds',[5, 5, 90, 5, 5, 0.25, 0.15],@isnumeric);
 p.addParameter('sceneParamsX0',{[0 0 0 120 0 0]},@iscell);
-p.addParameter('sceneParamsBounds',[20 20 20 20 10 10],@isnumeric);
+p.addParameter('sceneParamsBounds',[10 10 20 20 20 20],@isnumeric);
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 p.addParameter('errorReg',[1 2 4 2],@isnumeric);
@@ -174,6 +174,7 @@ cameraTorsion = 3;
 cameraPlaneTrans = 4:5;
 cameraDepthTrans = 6;
 
+nScenes = length(videoStemName);
 nEyeParams = length(eyeParamLabels);
 nSceneParams = length(sceneParamLabels);
 
@@ -192,14 +193,14 @@ keyVals = {...
     };
 
 % Loop through the scenes and create an objective function
-for ss = 1:length(videoStemName)
+for ss = 1:nScenes
     
     % The arguments for createSceneGeometry for this video entry are a
     % combination of the eyeArgs, and the sceneArgs for this video
     setupArgs = [p.Results.eyeArgs,p.Results.sceneArgs{ss}];
     
     % Create the objective for this scene
-    myObjScene{ss} = createSceneObjective(...
+    mySceneObjects{ss} = sceneObj(...
         videoStemName{ss}, frameSet{ss}, gazeTargets{ss}, ...
         setupArgs, keyVals);
         
@@ -212,7 +213,7 @@ end
 
 % Create the objective function which is the norm of all objective
 % functions
-myObjAll = @(x) norm(cellfun(@(scene) scene(x),myObjScene));
+myObjAll = @(x) multiSceneObjective(x,mySceneObjects,nEyeParams,nSceneParams);
 
 
 %% Define BADS search options
@@ -244,7 +245,7 @@ x = x0;
 fValCurrent = myObjAll(x)
 
 % Perform an initial search of horizontal and vertical camera translation
-for ss = 1:length(videoStemName)
+for ss = 1:nScenes
 
     % Identify the two translation parameters for each scene and apply
     % bounds
@@ -252,18 +253,18 @@ for ss = 1:length(videoStemName)
     idx = nEyeParams + (ss-1)*nSceneParams+cameraPlaneTrans;
     searchSet(idx)=1;
     [x,lb,ub,lbp,ubp] = setBounds(x,xBounds,searchSet);
-    [x, fValCurrent] = bads(myObjScene{ss},x,lb,ub,lbp,ubp,nonbcon,options)
-    
+    [x, fValCurrent] = bads(mySceneObjects{ss},x,lb,ub,lbp,ubp,nonbcon,options)
+    foo=1;
 end
 
-% Now search across rotation centers
+% Search across rotation centers
 searchSet = zeros(size(xBounds));
 searchSet(rotationIdx) = 1;
 [x,lb,ub,lbp,ubp] = setBounds(x,xBounds,searchSet);
 [x, fValCurrent] = bads(myObjAll,x,lb,ub,lbp,ubp,nonbcon,options)
 
 
-
+searchSet(nEyeParams + ((1:nScenes)-1).*nSceneParams+cameraDepthTrans) = 1;
 
 
 %% alert the user that we are done with the routine
