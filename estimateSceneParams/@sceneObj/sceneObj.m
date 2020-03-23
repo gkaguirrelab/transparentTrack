@@ -18,6 +18,10 @@ classdef sceneObj < handle
     % Fixed after object creation
     properties (SetAccess=private)
 
+        % Stored inputs to the object
+        videoStemName
+        frameSet
+        
         % The arguments for the objective function, consisting of
         % 	[perimeter, glintData, ellipseRMSE, gazeTargets]
         args
@@ -75,6 +79,11 @@ classdef sceneObj < handle
             p.parse(videoStemName, frameSet, gazeTargets, setupArgs, keyVals, varargin{:})
                         
             
+            %% Store inputs in the object
+            obj.videoStemName = videoStemName;
+            obj.frameSet = frameSet;
+            
+            
             %% Create initial sceneGeometry structure
             obj.sceneGeometry = createSceneGeometry(setupArgs{:});
             
@@ -83,8 +92,7 @@ classdef sceneObj < handle
             load([videoStemName '_correctedPerimeter.mat'],'perimeter');
             load([videoStemName '_glint.mat'],'glintData');
             load([videoStemName '_pupil.mat'],'pupilData');
-            
-            
+                        
             % Extract the frames we want
             perimeter.data = perimeter.data(frameSet);
             glintData.X = glintData.X(frameSet); glintData.Y = glintData.Y(frameSet);
@@ -103,13 +111,8 @@ classdef sceneObj < handle
         
         % Required methds
         fVal = calcError(obj, x)
-        
-%         % Set methods -- Changes to these method properties evoke these
-%         % actions
-%         function set.polyDeg(obj, value)
-%             obj.polyDeg = value;
-%             obj.genprojection;
-%         end
+        saveEyeModelMontage(obj)
+        saveModelFitPlot(obj)
         
 
     end
