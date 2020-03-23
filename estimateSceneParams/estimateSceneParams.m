@@ -104,19 +104,31 @@ function estimateSceneParams(videoStemName, frameSet, gazeTargets, varargin)
     % Get the DropBox base directory
     dropboxBaseDir = getpref('eyeTrackTOMEAnalysis','dropboxBaseDir'); 
     videoStemName = {fullfile(dropboxBaseDir,'TOME_processing/session2_spatialStimuli/TOME_3015/032417/EyeTracking/GazeCal01'), ...
-                    fullfile(dropboxBaseDir,'TOME_processing/session2_spatialStimuli/TOME_3015/032417/EyeTracking/GazeCal02')};
+                    fullfile(dropboxBaseDir,'TOME_processing/session2_spatialStimuli/TOME_3015/032417/EyeTracking/GazeCal02'), ...
+                    fullfile(dropboxBaseDir,'TOME_processing/session2_spatialStimuli/TOME_3015/032417/EyeTracking/GazeCal03'), ...
+                    fullfile(dropboxBaseDir,'TOME_processing/session2_spatialStimuli/TOME_3015/032417/EyeTracking/GazeCal04'), ...
+                    fullfile(dropboxBaseDir,'TOME_processing/session1_restAndStructure/TOME_3015/030117/EyeTracking/GazeCal')};
     gazeTargets = {...
         [ -7, 7, 0, 0, 7, -7, 7, -7 ; 7, 0, 0, 7, 7, 0, -7, -7], ...
-    	[ 0, 0, -7, 7, 0, 7, -7, 7, -7 ; -7, 7, 7, -7, 0, 7, -7, 0, 0]};
+    	[ 0, 0, -7, 7, 0, 7, -7, 7, -7 ; -7, 7, 7, -7, 0, 7, -7, 0, 0], ...
+        [ -7, 0, -7, 7, 7, 0, -7, 0, 7 ; 0, -7, -7, 0, -7, 7, 7, 0, 7], ...
+        [ 7, -7, -7, 0, 0, 7, -7, 7, 0 ; 7, 0, 7, 7, -7, -7, -7, 0, 0], ...
+        [ 0, -7, -7, -7, 7, 0, 7, 0, 7 ; -7, 7, -7, 0, -7, 0, 7, 7, 0]};
     frameSet = {...
-        [ 697, 1166, 1300, 1431, 1569, 1711, 1910, 2017 ]
-        [ 621, 818, 1117, 1277, 1487, 1668, 1864, 2004, 2134 ]};
-    sceneArgs = {'',''};
+        [ 697, 1166, 1300, 1431, 1569, 1711, 1910, 2017 ], ...
+        [ 621, 818, 1117, 1277, 1487, 1668, 1864, 2004, 2134 ], ...
+        [ 679, 884, 1180, 1250, 1571, 1663, 1809, 2004, 2075 ], ...
+        [ 573, 710, 921, 1151, 1285, 1483, 1617, 1800, 1878 ], ...
+        [ 660, 842, 904, 1077, 1230, 1328, 1477, 1614, 1670 ]};
+    sceneArgs = {'','','','',''};
     sceneParamsX0 = {...
-        [0 0 0 0 0 140],...
-        [0 0 0 0 0 140]};
+        [0.00, 0.00, -6.88, -2.59, 2.21, 140.81], ...
+        [0.00, 0.00, 2.36, -2.35, 1.19, 140.83], ...
+        [0.00, 0.00, 0.00, 0.00, 0.00, 140.00], ...
+        [0.00, 0.00, 0.00, 0.00, 0.00, 140.00], ...
+        [0.00, 0.00, 0.00, 0.00, 0.00, 140.00]};
     eyeArgs = {'axialLength',23.45,'sphericalAmetropia',-0.5};
-    eyeParamsX0 = [41.80,42.80,0,0,0,1,1];
+    eyeParamsX0 = [41.80, 42.80, 0.00, 0.00, 0.00, 0.91, 0.97];
     estimateSceneParams(videoStemName, frameSet, gazeTargets, ...
         'sceneArgs',sceneArgs, ...
         'sceneParamsX0', sceneParamsX0, ...
@@ -256,15 +268,44 @@ end
 %% Search
 x = x0;
 
-% Define the search set
+% Define the initial search set
 searchSet = rotationSet + cameraTorsionSet + cameraPlaneTransSet + cameraDepthTransSet;
 
 % Set the bounds
 [x,lb,ub,lbp,ubp] = setBounds(x,xBounds,searchSet);
 
-% Perform the search
-[x, fValCurrent] = bads(myObjAll,x,lb,ub,lbp,ubp,nonbcon,options);
+% Perform the initial search
+x = bads(myObjAll,x,lb,ub,lbp,ubp,nonbcon,options);
 
+% Use the fixation results to define eye primary position
+if p.Results.useFixForPrimaryPos
+    poses = [];
+    for ss = 1:nScenes
+        fixationEyePose = mySceneObjects{ss}.fixationEyePose;
+        poses = [poses fixationEyePose(1:2)'];
+    end
+    x(find(primaryPosSet)) = poses;
+end
+
+% Define the full search set
+searchSet = corneaSet + rotationSet + primaryPosSet + cameraTorsionSet + ... 
+    cameraPlaneTransSet + cameraDepthTransSet;
+
+% Set the bounds
+[x,lb,ub,lbp,ubp] = setBounds(x,xBounds,searchSet);
+
+% Perform the search
+x = bads(myObjAll,x,lb,ub,lbp,ubp,nonbcon,options);
+
+% Save the sceneGeometry and plots
+for ss = 1:nScenes
+    mySceneObjects{ss}.saveEyeModelMontage;
+    mySceneObjects{ss}.saveModelFitPlot;
+    mySceneObjects{ss}.saveSceneGeometry;
+end
+
+% Get the execution time
+executionTime = toc(ticObject);
 
 %% alert the user that we are done with the routine
 if p.Results.verbose

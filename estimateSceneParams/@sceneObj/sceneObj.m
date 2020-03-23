@@ -53,6 +53,10 @@ classdef sceneObj < handle
         vectorRegParams
         rawErrors
         
+        fixationEyePose
+        screenTorsion
+        screenRotMat
+        
         % Verbosity
         verbose
 
@@ -113,7 +117,7 @@ classdef sceneObj < handle
         fVal = calcError(obj, x)
         saveEyeModelMontage(obj)
         saveModelFitPlot(obj)
-        
+        saveSceneGeometry(obj)
 
     end
 end

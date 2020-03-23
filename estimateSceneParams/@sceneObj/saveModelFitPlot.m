@@ -20,7 +20,7 @@ glintData = args{2};
 ellipseRMSE = args{3};
 gazeTargets = args{4};
 
-plotFileName = [videoStemName '_modelFitPlot.pdf'];
+plotFileName = [videoStemName '_sceneGeometry_modelFitPlot.pdf'];
 
 
 
@@ -42,7 +42,7 @@ set(figHandle, 'Position',[25 5 width height],...
 nCols = 4;
 
 % 4. Glint-pupil vec matching gaze targets
-subplot(1,nCols,4)
+subplot(2,nCols,4)
 plot(gazeTargets(1,:),gazeTargets(2,:),'ok'); hold on;
 plot(modelVecGaze(1,:),modelVecGaze(2,:),'xr'); hold on;
 ylim([-10 10])
@@ -51,7 +51,7 @@ str = sprintf('Gaze vec [%2.2f]',rawErrors(4));
 title(str);
 
 % 3. EyePose matching gaze targets
-subplot(1,nCols,3)
+subplot(2,nCols,3)
 plot(gazeTargets(1,:),gazeTargets(2,:),'ok'); hold on;
 plot(modelPoseGaze(1,:),modelPoseGaze(2,:),'xr'); hold on;
 ylim([-10 10])
@@ -60,7 +60,7 @@ str = sprintf('Gaze pose [%2.2f]',rawErrors(3));
 title(str);
 
 % 2. Glint fits
-h1 = subplot(1,nCols,2);
+h1 = subplot(2,nCols,2);
 plot(glintData.X,glintData.Y,'ok'); hold on;
 plot(modelGlintCoord.X,modelGlintCoord.Y,'xr');
 set(h1, 'Ydir', 'reverse')
@@ -118,7 +118,7 @@ for ii = 1:length(ellipseRMSE)
 end
 close(hFig)
 set(0, 'CurrentFigure', figHandle)
-subplot(1,nCols,1)
+subplot(2,nCols,1)
 montage(framesToMontage)
 str = sprintf('Perimeter [%2.2f]',rawErrors(1));
 title(str);
@@ -133,7 +133,11 @@ drawnow
 % bottom. Report params that hit a bound in red.
 gcf;
 axes('Position',[0 0 1 1],'Visible','off','Tag','subtitle');
-str = sprintf('Camera tor: $color-start$%2.1f$$color-end$$, trans: [$color-start$%2.1f$$color-end$$, $color-start$%2.1f$$color-end$$, $color-start$%2.1f$$color-end$$]; Rot center joint, diff [$color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$]; primary pos [$color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$]; Cornea curv joint, diff, tor, tilt, tip [$color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$]',x);
+dropboxBaseDir = getpref('eyeTrackTOMEAnalysis','dropboxBaseDir');
+str = strrep(videoStemName,dropboxBaseDir,'');
+ht = text(0.5,0.3,str,'Interpreter', 'none');
+set(ht,'horizontalalignment','center','fontsize',10);
+str = sprintf('Cornea curv joint, diff, tor, tilt, tip [$color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$]; Rot center joint, diff [$color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$]; primary pos [$color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$]; Camera tor: $color-start$%2.1f$$color-end$$, trans: [$color-start$%2.1f$$color-end$$, $color-start$%2.1f$$color-end$$, $color-start$%2.1f$$color-end$$]',x);
 tagIdx = strfind(str,'$color-start$');
 fitAtBound = zeros(size(x));
 for ii=1:length(fitAtBound)
@@ -145,12 +149,12 @@ for ii=1:length(fitAtBound)
 end
 str = strrep(str,'$$color-end$$','\color{black}');
 str = strrep(str,'$$','');
-ht=text(.5,0.055,str);
-set(ht,'horizontalalignment','center','fontsize',12);
+ht=text(.5,0.2,str);
+set(ht,'horizontalalignment','center','fontsize',8);
 str = sprintf('x = [ %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f ]',x);
-ht=text(.5,0.025,str);set(ht,'horizontalalignment','center','fontsize',12);
+ht=text(.5,0.1,str);set(ht,'horizontalalignment','center','fontsize',8);
 drawnow
 
-        saveas(figHandle,plotFileName)
-        
+saveas(figHandle,plotFileName)
+
 end

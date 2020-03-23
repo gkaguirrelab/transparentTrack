@@ -10,7 +10,7 @@ args = obj.args;
 perimeter = args{1};
 gazeTargets = args{4};
 grayVideoName = [videoStemName '_gray.avi'];
-montageFileName = [videoStemName '_eyeModelMontage.png'];
+montageFileName = [videoStemName '_sceneGeometry_eyeModelMontage.png'];
 
 
 

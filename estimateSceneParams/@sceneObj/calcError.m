@@ -30,6 +30,12 @@ obj.poseRegParams = poseRegParams;
 obj.vectorRegParams = vectorRegParams;
 obj.rawErrors = rawErrors;
 
+% Save the fixation 
+obj.fixationEyePose = poseRegParams.t;
+obj.screenTorsion = poseRegParams.theta;
+obj.screenRotMat = poseRegParams.R;
+
+
 end
 
 
