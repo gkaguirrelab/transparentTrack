@@ -150,6 +150,7 @@ p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@i
 p.addParameter('eyeArgs',{''},@iscell);
 p.addParameter('sceneArgs',{''},@iscell);
 p.addParameter('searchThresh',1.0,@isscalar);
+p.addParameter('useFixForPrimaryPos',true,@islogical);
 p.addParameter('eyeParamsX0',[44.2410, 45.6302, 0, 2.5000, 0, 1, 1],@isnumeric);
 p.addParameter('eyeParamsBounds',[5, 5, 90, 5, 5, 0.25, 0.15],@isnumeric);
 p.addParameter('sceneParamsX0',{[0 0 0 120 0 0]},@iscell);
@@ -165,18 +166,28 @@ p.parse(videoStemName, frameSet, gazeTargets, varargin{:})
 
 
 %% Define model parameters
-eyeParamLabels = {'cornea_K1','cornea_K2','cornea_torsion','cornea_tilt','cornea_tip','rotationDepth_joint','rotationDepth_diff'};
-corneaIdx = 1:5;
-rotationIdx = 6:7;
-sceneParamLabels = {'primaryPosition_azi','primaryPosition_ele','camera_torsion','camera_horizontal','camera_vertical','camera_depth'};
-primaryPosIdx = 1:2;
-cameraTorsion = 3;
-cameraPlaneTrans = 4:5;
-cameraDepthTrans = 6;
 
 nScenes = length(videoStemName);
+
+eyeParamLabels = {'cornea_K1','cornea_K2','cornea_torsion','cornea_tilt','cornea_tip','rotationDepth_joint','rotationDepth_diff'};
 nEyeParams = length(eyeParamLabels);
+
+sceneParamLabels = {'primaryPosition_azi','primaryPosition_ele','camera_torsion','camera_horizontal','camera_vertical','camera_depth'};
 nSceneParams = length(sceneParamLabels);
+
+nTotalParams = nEyeParams + nSceneParams * nScenes;
+
+%% Define parameter search sets
+blankSearch = zeros(1,nTotalParams);
+sceneIdxRep = @(idx) nEyeParams + repmat((0:nScenes-1)*nSceneParams,1,length(idx)) + ...
+    cell2mat(arrayfun(@(x) repmat(x,1,nScenes),idx,'UniformOutput',false));
+
+corneaSet = blankSearch; corneaSet(1:5)=1;
+rotationSet = blankSearch; rotationSet(6:7)=1;
+primaryPosSet = blankSearch; primaryPosSet(sceneIdxRep(1:2)) = 1;
+cameraTorsionSet = blankSearch; cameraTorsionSet(sceneIdxRep(3)) = 1;
+cameraPlaneTransSet = blankSearch; cameraPlaneTransSet(sceneIdxRep(4:5)) = 1;
+cameraDepthTransSet = blankSearch; cameraDepthTransSet(sceneIdxRep(6)) = 1;
 
 
 %% Set up the search components
@@ -192,7 +203,7 @@ keyVals = {...
     'errorReg',p.Results.errorReg ...
     };
 
-% Loop through the scenes and create an objective function
+% Loop through the scenes and create scene objective functions
 for ss = 1:nScenes
     
     % The arguments for createSceneGeometry for this video entry are a
@@ -213,7 +224,7 @@ end
 
 % Create the objective function which is the norm of all objective
 % functions
-myObjAll = @(x) multiSceneObjective(x,mySceneObjects,nEyeParams,nSceneParams);
+myObjAll = @(x) multiSceneObjective(x,mySceneObjects,nEyeParams,nSceneParams,p.Results.verbose);
 
 
 %% Define BADS search options
@@ -240,31 +251,17 @@ if p.Results.useParallel
 end
 
 
-%% Set x0
+%% Search
 x = x0;
-fValCurrent = myObjAll(x)
 
-% Perform an initial search of horizontal and vertical camera translation
-for ss = 1:nScenes
+% Define the search set
+searchSet = rotationSet + cameraTorsionSet + cameraPlaneTransSet + cameraDepthTransSet;
 
-    % Identify the two translation parameters for each scene and apply
-    % bounds
-    searchSet = zeros(size(xBounds));
-    idx = nEyeParams + (ss-1)*nSceneParams+cameraPlaneTrans;
-    searchSet(idx)=1;
-    [x,lb,ub,lbp,ubp] = setBounds(x,xBounds,searchSet);
-    [x, fValCurrent] = bads(myObjAll,x,lb,ub,lbp,ubp,nonbcon,options)
-    foo=1;
-end
-
-% Search across rotation centers
-searchSet = zeros(size(xBounds));
-searchSet(rotationIdx) = 1;
+% Set the bounds
 [x,lb,ub,lbp,ubp] = setBounds(x,xBounds,searchSet);
-[x, fValCurrent] = bads(myObjAll,x,lb,ub,lbp,ubp,nonbcon,options)
 
-
-searchSet(nEyeParams + ((1:nScenes)-1).*nSceneParams+cameraDepthTrans) = 1;
+% Perform the search
+[x, fValCurrent] = bads(myObjAll,x,lb,ub,lbp,ubp,nonbcon,options);
 
 
 %% alert the user that we are done with the routine

@@ -1,4 +1,4 @@
-function fVal = multiSceneObjective(x,mySceneObjects,nEyeParams,nSceneParams)
+function fVal = multiSceneObjective(x,mySceneObjects,nEyeParams,nSceneParams, verbose)
 
     nScenes = length(mySceneObjects);
 
@@ -10,5 +10,14 @@ function fVal = multiSceneObjective(x,mySceneObjects,nEyeParams,nSceneParams)
     end
 
     fVal = norm(fValScene);
+    
+    if verbose
+        str = 'fVal = %2.2d; x = [ ';
+        for pp = 1:length(x)-1
+            str = [str '%2.2f, '];
+        end
+        str = sprintf([str '%2.2f ]\n'],fVal,x);
+        fprintf(str);
+    end
 
 end
