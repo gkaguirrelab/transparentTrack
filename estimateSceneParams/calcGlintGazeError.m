@@ -85,7 +85,7 @@ p.addRequired('gazeTargets',@isnumeric);
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 p.addParameter('errorReg',[1 2 4 2],@isnumeric);
-p.addParameter('missedGlintPenalty',1e6,@isnumeric);
+p.addParameter('missedGlintPenalty',1e3,@isnumeric);
 
 % Parse and check the parameters
 p.parse(sceneGeometry, perimeter, glintData, ellipseRMSE, gazeTargets, varargin{:});
@@ -224,11 +224,18 @@ rawErrors = [perimError glintError poseError, vectorError];
 objError = nanNorm(rawErrors,p.Results.errorReg);
 objError(isinf(objError))=realmax;
 
+
 end
+
 
 %%%%% LOCAL FUNCTIONS
 
 function val = nanNorm(vec, weights)
+% Returns a weighted Euclidean norm, ignoring nan values
+%
+% Syntax:
+%  val = nanNorm(vec, weights)
+%
 
 % Prepare the weight vector
 if nargin==1
