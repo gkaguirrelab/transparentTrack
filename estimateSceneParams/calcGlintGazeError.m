@@ -214,8 +214,8 @@ else
         'doTrans',true);
     vectorRegParams.glintSign = glintSign;
     modelVecGaze = vectorRegParams.s * vectorRegParams.R * centerDiff(:,~badFrames) + vectorRegParams.t;
-    glintVecErrors(~badFrames) = sqrt(sum( (gazeTargets(:,~badFrames) - modelVecGaze).^2 ))';
-    vectorError = nanNorm(glintVecErrors,weights);
+    glintVecErrors(~badFrames) = sqrt(sum( (gazeTargets(:,~badFrames) - modelVecGaze).^2 ));
+    vectorError = nanNorm(glintVecErrors',weights);
 end
 
 
