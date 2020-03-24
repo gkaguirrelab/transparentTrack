@@ -81,7 +81,7 @@ classdef sceneObj < handle
             p.addParameter('verbose',false,@islogical);
         
             % parse
-            p.parse(videoStemName, frameSet, gazeTargets, setupArgs, keyVals, varargin{:})
+            p.parse(videoStemName, frameSet, gazeTargets, setupArgs, keyVals, meta, varargin{:})
                         
             
             %% Store inputs in the object
