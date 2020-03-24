@@ -3,7 +3,7 @@ classdef sceneObj < handle
     properties (Constant)
                 
         % foo
-        foo = 3;
+
 
     end
     
@@ -11,7 +11,6 @@ classdef sceneObj < handle
     properties (GetAccess=private)        
 
         % bar 
-        bar = 4;
 
     end
     
@@ -21,6 +20,7 @@ classdef sceneObj < handle
         % Stored inputs to the object
         videoStemName
         frameSet
+        meta
         
         % The arguments for the objective function, consisting of
         % 	[perimeter, glintData, ellipseRMSE, gazeTargets]
@@ -65,7 +65,7 @@ classdef sceneObj < handle
     methods
 
         % Constructor
-        function obj = sceneObj(videoStemName, frameSet, gazeTargets, setupArgs, keyVals, varargin)
+        function obj = sceneObj(videoStemName, frameSet, gazeTargets, setupArgs, keyVals, meta, varargin)
                         
             % instantiate input parser
             p = inputParser; p.KeepUnmatched = false;
@@ -76,8 +76,9 @@ classdef sceneObj < handle
             p.addRequired('gazeTargets',@isnumeric);
             p.addRequired('setupArgs',@iscell);
             p.addRequired('keyVals',@iscell);
+            p.addRequired('meta',@isstruct);
             
-            p.addParameter('verbose',true,@islogical);
+            p.addParameter('verbose',false,@islogical);
         
             % parse
             p.parse(videoStemName, frameSet, gazeTargets, setupArgs, keyVals, varargin{:})
@@ -86,7 +87,8 @@ classdef sceneObj < handle
             %% Store inputs in the object
             obj.videoStemName = videoStemName;
             obj.frameSet = frameSet;
-            
+            obj.meta = meta;
+            obj.verbose = p.Results.verbose;
             
             %% Create initial sceneGeometry structure
             obj.sceneGeometry = createSceneGeometry(setupArgs{:});

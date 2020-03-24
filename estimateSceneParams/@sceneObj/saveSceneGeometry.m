@@ -40,6 +40,7 @@ end
 sceneGeometry = createSceneGeometry(sceneGeometryVarargin{:});
 
 % Update the meta data
+sceneGeometry.meta.estimateSceneParams.p = obj.meta;
 sceneGeometry.meta.estimateSceneParams.x = obj.x;
 sceneGeometry.meta.estimateSceneParams.fVal = obj.fVal;
 sceneGeometry.meta.estimateSceneParams.sceneGeometryVarargin = sceneGeometryVarargin;

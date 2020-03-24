@@ -172,6 +172,7 @@ p.addParameter('sceneParamsBounds',[10 10 20 20 20 20],@isnumeric);
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 p.addParameter('errorReg',[1 2 4 2],@isnumeric);
+p.addParameter('multiSceneNorm',1,@isscalar);
 
 
 % parse
@@ -227,7 +228,8 @@ for ss = 1:nScenes
     % Create the objective for this scene
     mySceneObjects{ss} = sceneObj(...
         videoStemName{ss}, frameSet{ss}, gazeTargets{ss}, ...
-        setupArgs, keyVals);
+        setupArgs, keyVals, p.Results, ...
+        'verbose', p.Results.verbose);
         
     % Assemble the x0 by concatenating the x0 scene params
     x0 = [x0, p.Results.sceneParamsX0{ss}];
@@ -238,7 +240,7 @@ end
 
 % Create the objective function which is the norm of all objective
 % functions
-myObjAll = @(x) multiSceneObjective(x,mySceneObjects,nEyeParams,nSceneParams,p.Results.verbose);
+myObjAll = @(x) multiSceneObjective(x,mySceneObjects,nEyeParams,nSceneParams,p.Results.multiSceneNorm,p.Results.verbose);
 
 
 %% Define BADS search options
@@ -296,6 +298,7 @@ searchSet = corneaSet + rotationSet + primaryPosSet + cameraTorsionSet + ...
 
 % Perform the search
 x = bads(myObjAll,x,lb,ub,lbp,ubp,nonbcon,options);
+myObjAll(x);
 
 % Save the sceneGeometry and plots
 for ss = 1:nScenes
