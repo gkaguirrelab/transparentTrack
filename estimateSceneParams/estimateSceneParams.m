@@ -279,6 +279,13 @@ searchSet = rotationSet + cameraTorsionSet + cameraPlaneTransSet + cameraDepthTr
 % Perform the initial search
 x = bads(myObjAll,x,lb,ub,lbp,ubp,nonbcon,options);
 
+% Save out diagnostic plots for this stage
+fileNameSuffix = '_stage1';
+for ss = 1:nScenes
+    mySceneObjects{ss}.saveEyeModelMontage(fileNameSuffix);
+    mySceneObjects{ss}.saveModelFitPlot(fileNameSuffix);
+end
+
 % Use the fixation results to define eye primary position
 if p.Results.useFixForPrimaryPos
     poses = [];
@@ -301,10 +308,11 @@ x = bads(myObjAll,x,lb,ub,lbp,ubp,nonbcon,options);
 myObjAll(x);
 
 % Save the sceneGeometry and plots
+fileNameSuffix = '_stage2';
 for ss = 1:nScenes
-    mySceneObjects{ss}.saveEyeModelMontage;
-    mySceneObjects{ss}.saveModelFitPlot;
-    mySceneObjects{ss}.saveSceneGeometry;
+    mySceneObjects{ss}.saveEyeModelMontage(fileNameSuffix);
+    mySceneObjects{ss}.saveModelFitPlot(fileNameSuffix);
+    mySceneObjects{ss}.saveSceneGeometry('');
 end
 
 % Get the execution time

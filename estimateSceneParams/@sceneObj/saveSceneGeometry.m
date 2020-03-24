@@ -1,4 +1,4 @@
-function saveSceneGeometry(obj)
+function saveSceneGeometry(obj,fileNameSuffix)
 
 % The varargin originally used to create the sceneGeometry
 sceneGeometryVarargin = obj.sceneGeometry.meta.createSceneGeometry.varargin;
@@ -54,7 +54,7 @@ sceneGeometry.meta.estimateSceneParams.vectorRegParams = obj.vectorRegParams;
 sceneGeometry.meta.estimateSceneParams.rawErrors = obj.rawErrors;
 
 % Save the sceneGeometry file
-sceneGeometryFileName = [obj.videoStemName '_sceneGeometry.mat'];
+sceneGeometryFileName = [obj.videoStemName '_sceneGeometry' fileNameSuffix '.mat'];
 save(sceneGeometryFileName,'sceneGeometry');
 
 

@@ -1,4 +1,4 @@
-function saveEyeModelMontage(obj)
+function saveEyeModelMontage(obj,fileNameSuffix)
 
 %% Obtain variables from the object
 sceneGeometry = obj.sceneGeometry;
@@ -10,7 +10,7 @@ args = obj.args;
 perimeter = args{1};
 gazeTargets = args{4};
 grayVideoName = [videoStemName '_gray.avi'];
-montageFileName = [videoStemName '_sceneGeometry_eyeModelMontage.png'];
+montageFileName = [videoStemName '_sceneGeometry_eyeModelMontage' fileNameSuffix '.png'];
 
 
 

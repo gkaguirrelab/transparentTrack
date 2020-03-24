@@ -1,11 +1,8 @@
-function saveModelFitPlot(obj)
+function saveModelFitPlot(obj,fileNameSuffix)
 
 
 %% Obtain variables from the object
-frameSet = obj.frameSet;
-sceneGeometry = obj.sceneGeometry;
 x = obj.x;
-modelEyePose = obj.modelEyePose;
 modelPupilEllipse = obj.modelPupilEllipse;
 modelGlintCoord = obj.modelGlintCoord;
 modelPoseGaze = obj.modelPoseGaze;
@@ -20,7 +17,7 @@ glintData = args{2};
 ellipseRMSE = args{3};
 gazeTargets = args{4};
 
-plotFileName = [videoStemName '_sceneGeometry_modelFitPlot.pdf'];
+plotFileName = [videoStemName '_sceneGeometry_modelFitPlot' fileNameSuffix '.pdf'];
 
 
 

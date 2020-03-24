@@ -117,9 +117,9 @@ classdef sceneObj < handle
         
         % Required methds
         fVal = calcError(obj, x)
-        saveEyeModelMontage(obj)
-        saveModelFitPlot(obj)
-        saveSceneGeometry(obj)
+        saveEyeModelMontage(obj,fileNameSuffix)
+        saveModelFitPlot(obj,fileNameSuffix)
+        saveSceneGeometry(obj,fileNameSuffix)
 
     end
 end
