@@ -167,7 +167,7 @@ p.addParameter('searchThresh',1.0,@isscalar);
 p.addParameter('useFixForPrimaryPos',true,@islogical);
 p.addParameter('eyeParamsX0',[44.2410, 45.6302, 0, 2.5000, 0, 1, 1],@isnumeric);
 p.addParameter('eyeParamsBounds',[5, 5, 90, 5, 5, 0.25, 0.15],@isnumeric);
-p.addParameter('sceneParamsX0',{[0 0 0 120 0 0]},@iscell);
+p.addParameter('sceneParamsX0',{[0 0 0 0 0 120]},@iscell);
 p.addParameter('sceneParamsBounds',[10 10 20 20 20 20],@isnumeric);
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
