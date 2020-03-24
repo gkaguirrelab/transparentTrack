@@ -43,6 +43,9 @@ function [ objError, modelEyePose, modelPupilEllipse, modelGlintCoord, modelPose
 %                           error that can contribute to the overall model
 %                           error. The weights apply to errors in:
 %                               [perim glint pose vector]
+%  'missedGlintPenalty'   - Scalar. If a glint is not found for one frame,
+%                           then this value is assigned as the error for
+%                           that frame.
 %
 % Outputs:
 %   objError              - Scalar. The overall model error.
@@ -82,6 +85,7 @@ p.addRequired('gazeTargets',@isnumeric);
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 p.addParameter('errorReg',[1 2 4 2],@isnumeric);
+p.addParameter('missedGlintPenalty',1e6,@isnumeric);
 
 % Parse and check the parameters
 p.parse(sceneGeometry, perimeter, glintData, ellipseRMSE, gazeTargets, varargin{:});
@@ -172,6 +176,7 @@ perimError = nanNorm(perimFitError,weights);
 
 % glintError -- fit of the model to the glint locations
 glintDistances = sqrt(sum([modelGlintCoord.X - glintData.X, modelGlintCoord.Y - glintData.Y].^2,2));
+glintDistances(isinf(glintDistances)) = p.Results.missedGlintPenalty;
 glintError = nanNorm(glintDistances,weights);
 
 
@@ -182,7 +187,7 @@ glintError = nanNorm(glintDistances,weights);
 if isempty(gazeTargets)
     poseError = nan;
     vectorError = nan;
-else    
+else
     % poseError -- eye rotation equal to the visual angle
     poseRegParams = absor(...
         modelEyePose(:,1:2)',...
@@ -198,20 +203,19 @@ else
     glintSign = [1;-1];
     centerDiff = (pupilCenter - [modelGlintCoord.X modelGlintCoord.Y])' .* ...
         glintSign;
-    if any(isnan(sum(centerDiff))) || any(isinf(sum(centerDiff)))
-        vectorError = inf;
-    else
-        vectorRegParams = absor(...
-            centerDiff,...
-            gazeTargets,...
-            'weights',weights,...
-            'doScale',true,...
-            'doTrans',true);
-        vectorRegParams.glintSign = glintSign;
-        modelVecGaze = vectorRegParams.s * vectorRegParams.R * centerDiff + vectorRegParams.t;
-        vectorError = nanNorm(sqrt(sum( (gazeTargets - modelVecGaze).^2 ))',weights);
-    end
-    
+    % Identify any invalid points where we did not find a glint
+    badFrames = or(isinf(sum(centerDiff)) , isnan(sum(centerDiff)));
+    glintVecErrors = zeros(size(sum(centerDiff))) + p.Results.missedGlintPenalty;
+    vectorRegParams = absor(...
+        centerDiff(:,~badFrames),...
+        gazeTargets(:,~badFrames),...
+        'weights',weights(~badFrames),...
+        'doScale',true,...
+        'doTrans',true);
+    vectorRegParams.glintSign = glintSign;
+    modelVecGaze = vectorRegParams.s * vectorRegParams.R * centerDiff(:,~badFrames) + vectorRegParams.t;
+    glintVecErrors(~badFrames) = sqrt(sum( (gazeTargets(:,~badFrames) - modelVecGaze).^2 ))';
+    vectorError = nanNorm(glintVecErrors,weights);
 end
 
 
