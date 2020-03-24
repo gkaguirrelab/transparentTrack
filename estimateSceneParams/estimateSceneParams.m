@@ -173,7 +173,7 @@ p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 p.addParameter('errorReg',[1 2 4 2],@isnumeric);
 p.addParameter('multiSceneNorm',1,@isscalar);
-
+p.addParameter('TolMesh',1e-3,@isscalar);
 
 % parse
 p.parse(videoStemName, frameSet, gazeTargets, varargin{:})
@@ -182,21 +182,37 @@ p.parse(videoStemName, frameSet, gazeTargets, varargin{:})
 
 %% Define model parameters
 
+% The number of scenes to be fit
 nScenes = length(videoStemName);
 
+% The eye model parameters that are to be adjusted
 eyeParamLabels = {'cornea_K1','cornea_K2','cornea_torsion','cornea_tilt','cornea_tip','rotationDepth_joint','rotationDepth_diff'};
 nEyeParams = length(eyeParamLabels);
 
+% The scene parameters that are to be adjusted
 sceneParamLabels = {'primaryPosition_azi','primaryPosition_ele','camera_torsion','camera_horizontal','camera_vertical','camera_depth'};
 nSceneParams = length(sceneParamLabels);
 
+% The eye parameters are shared by all scenes, and each scene gets its own
+% set of scene parameters, yielding this many total parameters in the
+% optimization.
 nTotalParams = nEyeParams + nSceneParams * nScenes;
 
+
 %% Define parameter search sets
+% These are vectors that are used to lock or free different sets of
+% parameters in the search
+
+% The searchSet vectors will be of the same size as the parameter vector
 blankSearch = zeros(1,nTotalParams);
+
+% An anonymous function that expands the input index vector [a, b, ...]
+% into a vector given k eyeParams, s sceneParams, and n scenes:
+%	[ e+a+(s*0), e+b+(s*0), e+a+(s*1), e+b+(s*1), ... e+a+(s*(n-1)), e+b+(s*(n-1)) ]
 sceneIdxRep = @(idx) nEyeParams + repmat((0:nScenes-1)*nSceneParams,1,length(idx)) + ...
     cell2mat(arrayfun(@(x) repmat(x,1,nScenes),idx,'UniformOutput',false));
 
+% The search vectors
 corneaSet = blankSearch; corneaSet(1:5)=1;
 rotationSet = blankSearch; rotationSet(6:7)=1;
 primaryPosSet = blankSearch; primaryPosSet(sceneIdxRep(1:2)) = 1;
@@ -204,8 +220,15 @@ cameraTorsionSet = blankSearch; cameraTorsionSet(sceneIdxRep(3)) = 1;
 cameraPlaneTransSet = blankSearch; cameraPlaneTransSet(sceneIdxRep(4:5)) = 1;
 cameraDepthTransSet = blankSearch; cameraDepthTransSet(sceneIdxRep(6)) = 1;
 
+% Create stages of search sets
+searchSets = {...
+    rotationSet + cameraTorsionSet + cameraPlaneTransSet + cameraDepthTransSet, ...
+    corneaSet + rotationSet + primaryPosSet + cameraTorsionSet + cameraPlaneTransSet + cameraDepthTransSet ...
+    };
+nStages = length(searchSets);
 
-%% Set up the search components
+
+%% Set up the search options and objectives
 
 % The eye parameters are the initial entries in x0 and bounds
 x0 = p.Results.eyeParamsX0;
@@ -238,6 +261,9 @@ for ss = 1:nScenes
     xBounds = [xBounds, p.Results.sceneParamsBounds];
 end
 
+% Set the initial value of x to x0
+x = x0;
+
 % Create the objective function which is the norm of all objective
 % functions
 myObjAll = @(x) multiSceneObjective(x,mySceneObjects,nEyeParams,nSceneParams,p.Results.multiSceneNorm,p.Results.verbose);
@@ -247,11 +273,19 @@ myObjAll = @(x) multiSceneObjective(x,mySceneObjects,nEyeParams,nSceneParams,p.R
 options = bads('defaults');          % Get a default OPTIONS struct
 options.Display = 'off';             % Silence display output
 options.UncertaintyHandling = 0;     % The objective is deterministic
+options.TolMesh = p.Results.TolMesh; % Typically 1e-3 is plenty precise
 
 % Define a non-linear constraint for the BADS search that requires first
 % value of the corneal curvature (K1) to be less than the second value (K2)
-% Note that NONBCON expects a matrix input.
+% Note that NONBCON takes a matrix input, which is why we perform this
+% calculation over the first dimension.
 nonbcon = @(x) x(:,1) > x(:,2);
+
+
+%% Set up the parallel pool
+if p.Results.useParallel
+    startParpool( p.Results.nWorkers, p.Results.verbose );
+end
 
 
 %% Announce we are starting
@@ -261,64 +295,48 @@ if p.Results.verbose
 end
 
 
-%% Set up the parallel pool
-if p.Results.useParallel
-    startParpool( p.Results.nWorkers, p.Results.verbose );
-end
-
-
-%% Search
-x = x0;
-
-% Define the initial search set
-searchSet = rotationSet + cameraTorsionSet + cameraPlaneTransSet + cameraDepthTransSet;
-
-% Set the bounds
-[x,lb,ub,lbp,ubp] = setBounds(x,xBounds,searchSet);
-
-% Perform the initial search
-x = bads(myObjAll,x,lb,ub,lbp,ubp,nonbcon,options);
-
-% Save out diagnostic plots for this stage
-fileNameSuffix = '_stage1';
-for ss = 1:nScenes
-    mySceneObjects{ss}.saveEyeModelMontage(fileNameSuffix);
-    mySceneObjects{ss}.saveModelFitPlot(fileNameSuffix);
-end
-
-% Use the fixation results to define eye primary position
-if p.Results.useFixForPrimaryPos
-    poses = [];
+%% Search across stages
+for ii = 1:nStages
+    
+    % Bounds
+    [x,lb,ub,lbp,ubp] = setBounds(x,xBounds,searchSets{ii});
+    
+    % Search
+    x = bads(myObjAll,x,lb,ub,lbp,ubp,nonbcon,options);
+    
+    % Plots
+    fileNameSuffix = sprintf('_stage%02d',ii);
     for ss = 1:nScenes
-        fixationEyePose = mySceneObjects{ss}.fixationEyePose;
-        poses = [poses fixationEyePose(1:2)'];
+        mySceneObjects{ss}.saveEyeModelMontage(fileNameSuffix);
+        mySceneObjects{ss}.saveModelFitPlot(fileNameSuffix);
     end
-    x(find(primaryPosSet)) = poses;
+    
+    % If instructed, use the fixation results to update the primary
+    % position after each stage except the last
+    if p.Results.useFixForPrimaryPos && ii<nStages
+        poses = [];
+        for ss = 1:nScenes
+            fixationEyePose = mySceneObjects{ss}.fixationEyePose;
+            poses = [poses fixationEyePose(1:2)'];
+        end
+        x(find(primaryPosSet)) = poses;
+    end
+    
 end
 
-% Define the full search set
-searchSet = corneaSet + rotationSet + primaryPosSet + cameraTorsionSet + ... 
-    cameraPlaneTransSet + cameraDepthTransSet;
 
-% Set the bounds
-[x,lb,ub,lbp,ubp] = setBounds(x,xBounds,searchSet);
-
-% Perform the search
-x = bads(myObjAll,x,lb,ub,lbp,ubp,nonbcon,options);
+%% Ensure that the scene objects are defined using the final value of x
 myObjAll(x);
 
-% Save the sceneGeometry and plots
-fileNameSuffix = '_stage2';
+
+%% Save the sceneGeometry
 for ss = 1:nScenes
-    mySceneObjects{ss}.saveEyeModelMontage(fileNameSuffix);
-    mySceneObjects{ss}.saveModelFitPlot(fileNameSuffix);
     mySceneObjects{ss}.saveSceneGeometry('');
 end
 
-% Get the execution time
-executionTime = toc(ticObject);
 
-%% alert the user that we are done with the routine
+%% Alert the user that we are done with the routine
+executionTime = toc(ticObject);
 if p.Results.verbose
     fprintf([num2str(executionTime) '\n']);
 end
