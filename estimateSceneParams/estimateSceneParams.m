@@ -370,7 +370,7 @@ for ii = 1:nStages
     
     % Announce
     if p.Results.verbose
-        str = sprintf(['Starting stage %d of %d, ' searchSetLabels{ii} '\n',ii,nStages]);
+        str = sprintf(['Starting stage %d of %d, ' searchSetLabels{ii} '\n'],ii,nStages);
         fprintf(str);
     end
     
