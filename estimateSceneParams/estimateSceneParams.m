@@ -122,11 +122,11 @@ function estimateSceneParams(videoStemName, frameSet, gazeTargets, varargin)
         [ 660, 842, 904, 1077, 1230, 1328, 1477, 1614, 1670 ]};
     sceneArgs = {'','','','',''};
     sceneParamsX0 = {...
-        [0         0  -11.6168   -2.5423    2.4580  144.6680], ...
-        [0         0   -4.7981   -2.2882    1.4291  148.4095], ...
-        [0         0    0.3887   -2.1856    1.0091  140.8621], ...
-        [0         0   10.2627   -3.3679    3.5300  145.6865], ...
-        [0         0    7.7354   -0.8179   -2.7592  142.5255]};
+        [0         0  -11.6168   -2.5423    2.4580  140], ...
+        [0         0   -4.7981   -2.2882    1.4291  140], ...
+        [0         0    0.3887   -2.1856    1.0091  140], ...
+        [0         0   10.2627   -3.3679    3.5300  140], ...
+        [0         0    7.7354   -0.8179   -2.7592  140]};
     eyeArgs = {'axialLength',23.45,'sphericalAmetropia',-0.5};
     eyeParamsX0 = [41.8000   42.8000         0         2.5         0    0.9357    0.9575];
     estimateSceneParams(videoStemName, frameSet, gazeTargets, ...
@@ -173,7 +173,8 @@ p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 p.addParameter('errorReg',[1 2 4 2],@isnumeric);
 p.addParameter('multiSceneNorm',1,@isscalar);
-p.addParameter('TolMesh',1e-3,@isscalar);
+p.addParameter('TolMesh',1e-2,@isscalar);
+p.addParameter('depthChangePenaltyWeight',1,@isscalar);
 
 % parse
 p.parse(videoStemName, frameSet, gazeTargets, varargin{:})
@@ -204,7 +205,7 @@ nTotalParams = nEyeParams + nSceneParams * nScenes;
 % parameters in the search
 
 % The searchSet vectors will be of the same size as the parameter vector
-blankSearch = zeros(1,nTotalParams);
+blankSearch = uint8(zeros(1,nTotalParams));
 
 % An anonymous function that expands the input index vector [a, b, ...]
 % into a vector given k eyeParams, s sceneParams, and n scenes:
@@ -212,7 +213,10 @@ blankSearch = zeros(1,nTotalParams);
 sceneIdxRep = @(idx) nEyeParams + repmat((0:nScenes-1)*nSceneParams,1,length(idx)) + ...
     cell2mat(arrayfun(@(x) repmat(x,1,nScenes),idx,'UniformOutput',false));
 
-% The search vectors
+% The search vectors 
+
+%% REPLACE THE HARD-CODED IDX WITH STRCMP WITH THE PARAM LABELS
+
 corneaSet = blankSearch; corneaSet(1:5)=1;
 rotationSet = blankSearch; rotationSet(6:7)=1;
 primaryPosSet = blankSearch; primaryPosSet(sceneIdxRep(1:2)) = 1;
@@ -222,9 +226,10 @@ cameraDepthTransSet = blankSearch; cameraDepthTransSet(sceneIdxRep(6)) = 1;
 
 % Create stages of search sets
 searchSets = {...
-    rotationSet + cameraTorsionSet + cameraPlaneTransSet + cameraDepthTransSet, ...
-    corneaSet + rotationSet + primaryPosSet + cameraTorsionSet + cameraPlaneTransSet + cameraDepthTransSet ...
+    logical(rotationSet + cameraTorsionSet + cameraPlaneTransSet + cameraDepthTransSet), ...
+    logical(corneaSet + rotationSet + primaryPosSet + cameraTorsionSet + cameraPlaneTransSet + cameraDepthTransSet) ...
     };
+searchSetLabels = {'Camera position and eye rotation','All scene and eye parameters'};
 nStages = length(searchSets);
 
 
@@ -264,9 +269,21 @@ end
 % Set the initial value of x to x0
 x = x0;
 
-% Create the objective function which is the norm of all objective
-% functions
-myObjAll = @(x) multiSceneObjective(x,mySceneObjects,nEyeParams,nSceneParams,p.Results.multiSceneNorm,p.Results.verbose);
+
+%% Anonymous functions for the search
+
+% A regularization function that penalizes changes in depth from the x0
+% values
+depthChangePenaltyMultiplier = @(x) (1 + p.Results.depthChangePenaltyWeight * norm( (x(logical(cameraDepthTransSet)) - x0(logical(cameraDepthTransSet))) ./ x0(logical(cameraDepthTransSet)) ))^2;
+
+% An objective function which is the norm of all objective functions
+myObjAll = @(x) multiSceneObjective(x,mySceneObjects,nEyeParams,nSceneParams,depthChangePenaltyMultiplier,p.Results.multiSceneNorm,p.Results.verbose);
+
+% A non-linear constraint for the BADS search that requires first value of
+% the corneal curvature (K1) to be less than the second value (K2) Note
+% that NONBCON takes a matrix input, which is why we perform this
+% calculation over the first dimension.
+nonbcon = @(x) x(:,1) > x(:,2);
 
 
 %% Define BADS search options
@@ -274,12 +291,6 @@ options = bads('defaults');          % Get a default OPTIONS struct
 options.Display = 'off';             % Silence display output
 options.UncertaintyHandling = 0;     % The objective is deterministic
 options.TolMesh = p.Results.TolMesh; % Typically 1e-3 is plenty precise
-
-% Define a non-linear constraint for the BADS search that requires first
-% value of the corneal curvature (K1) to be less than the second value (K2)
-% Note that NONBCON takes a matrix input, which is why we perform this
-% calculation over the first dimension.
-nonbcon = @(x) x(:,1) > x(:,2);
 
 
 %% Set up the parallel pool

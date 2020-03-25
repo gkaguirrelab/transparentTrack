@@ -2,15 +2,14 @@ classdef sceneObj < handle
     
     properties (Constant)
                 
-        % foo
-
+        % None
 
     end
     
     % Private properties
     properties (GetAccess=private)        
 
-        % bar 
+        % None 
 
     end
     
@@ -37,11 +36,13 @@ classdef sceneObj < handle
         % The sceneGeometry that is being modeled
         sceneGeometry
 
-        % The model parameters
+        % The current model parameters, and the best parameters seen
         x
+        xBest
         
-        % The fVal for the model
+        % The fVal for the current model, and the model performance
         fVal
+        fValBest
         
         % The set of model components returned by calcGlintGazeError
         modelEyePose
@@ -53,6 +54,7 @@ classdef sceneObj < handle
         vectorRegParams
         rawErrors
         
+        % These three are derived from the poseRegParams
         fixationEyePose
         screenTorsion
         screenRotMat
@@ -89,6 +91,10 @@ classdef sceneObj < handle
             obj.frameSet = frameSet;
             obj.meta = meta;
             obj.verbose = p.Results.verbose;
+            
+            
+            %% Initialize some properties
+            obj.fValBest = Inf;
             
             %% Create initial sceneGeometry structure
             obj.sceneGeometry = createSceneGeometry(setupArgs{:});

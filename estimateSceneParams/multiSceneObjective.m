@@ -1,4 +1,4 @@
-function fVal = multiSceneObjective(x,mySceneObjects,nEyeParams,nSceneParams,multiSceneNorm,verbose)
+function fVal = multiSceneObjective(x,mySceneObjects,nEyeParams,nSceneParams,depthChangePenaltyMultiplier,multiSceneNorm,verbose)
 
 
 % Loop over the scenes. Pass the scene params appropriate to that
@@ -16,6 +16,9 @@ fVal = norm(fValScene,multiSceneNorm);
 
 % BADS can't handle Inf in the objective, so replace with real max
 fVal = min([fVal realmax]);
+
+% Apply the regularization to penalize changes in the camera depth
+fVal = fVal * depthChangePenaltyMultiplier(x);
 
 % Report the status to the screen
 if verbose

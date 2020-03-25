@@ -16,6 +16,12 @@ obj.sceneGeometry = updateSceneGeometry( obj.sceneGeometry, x );
 [ fVal, modelEyePose, modelPupilEllipse, modelGlintCoord, modelPoseGaze, modelVecGaze, poseRegParams, vectorRegParams, rawErrors] = ...
     calcGlintGazeError( obj.sceneGeometry, obj.args{:}, obj.keyVals{:} );
 
+% Update fValBest and xBest
+if fVal < obj.fValBest
+    obj.fValBest = fVal;
+    xBest = x;
+end
+
 % Store the parameters and fVal
 obj.x = x;
 obj.fVal = fVal;
