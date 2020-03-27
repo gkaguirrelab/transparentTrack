@@ -62,6 +62,11 @@ classdef sceneObj < handle
         % Verbosity
         verbose
 
+        % The multi-scene objective can stash values here related to the
+        % search across all scene objects
+        multiSceneMeta
+        multiSceneIdx
+        
     end
     
     methods
@@ -95,6 +100,7 @@ classdef sceneObj < handle
             
             %% Initialize some properties
             obj.fValBest = Inf;
+            obj.multiSceneMeta = [];
             
             %% Create initial sceneGeometry structure
             obj.sceneGeometry = createSceneGeometry(setupArgs{:});
