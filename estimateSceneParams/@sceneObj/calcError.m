@@ -10,7 +10,7 @@ if ~isempty(obj.x)
 end
 
 % Update the sceneGeometry
-obj.sceneGeometry = updateSceneGeometry( obj.sceneGeometry, x );
+obj.updateScene( x );
 
 % Calculate the error
 [ fVal, modelEyePose, modelPupilEllipse, modelGlintCoord, modelPoseGaze, modelVecGaze, poseRegParams, vectorRegParams, rawErrors] = ...
@@ -19,11 +19,10 @@ obj.sceneGeometry = updateSceneGeometry( obj.sceneGeometry, x );
 % Update fValBest and xBest
 if fVal < obj.fValBest
     obj.fValBest = fVal;
-    xBest = x;
+    obj.xBest = x;
 end
 
-% Store the parameters and fVal
-obj.x = x;
+% Store the fVal
 obj.fVal = fVal;
 
 % Store all the other model components

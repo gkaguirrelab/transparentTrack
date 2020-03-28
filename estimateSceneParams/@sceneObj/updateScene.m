@@ -1,8 +1,8 @@
-function sceneGeometryOut = updateSceneGeometry( sceneGeometryIn, x )
+function updateScene( obj, x )
 % Update components of the sceneGeometry that impact gaze and glint
 %
 % Syntax:
-%   sceneGeometryOut = updateSceneGeometry( sceneGeometryIn, x )
+%   obj.updateScene( x )
 %
 % Description:
 %   Components of the sceneGeometry define the appearance of the pupil and
@@ -23,6 +23,9 @@ function sceneGeometryOut = updateSceneGeometry( sceneGeometryIn, x )
 %   sceneGeometryOut     - Structure. See createSceneGeometry.m
 %
 
+
+% Retrieve the current sceneGeometry from the object
+sceneGeometryIn = obj.sceneGeometry;
 
 % Copy the sceneGeometry from input to output
 sceneGeometryOut = sceneGeometryIn;
@@ -61,5 +64,10 @@ sceneGeometryOut.cameraPosition.torsion = x(10);
 % Store the extrinsic camera translation vector
 sceneGeometryOut.cameraPosition.translation = x(11:13)';
 
+% Store the updated sceneGeometry in the object
+obj.sceneGeometry = sceneGeometryOut;
+
+% Update the object with the new parameters
+obj.x = x;
 
 end
