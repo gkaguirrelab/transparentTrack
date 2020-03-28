@@ -224,8 +224,10 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional analysis params
+p.addParameter('searchStrategy','twoStage',@ischar);
 p.addParameter('eyeArgs',{''},@iscell);
 p.addParameter('sceneArgs',{''},@iscell);
+p.addParameter('keyArgs',{''},@iscell);
 p.addParameter('useFixForPrimaryPos',true,@islogical);
 p.addParameter('eyeParamsX0',[44.2410, 45.6302, 0, 2.5000, 0, 1, 1],@isnumeric);
 p.addParameter('eyeParamsBounds',[5, 5, 90, 5, 5, 0.25, 0.15],@isnumeric);
@@ -283,12 +285,24 @@ cameraTorsionSet = blankSearch; cameraTorsionSet(sceneIdxRep(3)) = 1;
 cameraPlaneTransSet = blankSearch; cameraPlaneTransSet(sceneIdxRep(4:5)) = 1;
 cameraDepthTransSet = blankSearch; cameraDepthTransSet(sceneIdxRep(6)) = 1;
 
-% Create stages of search sets
-searchSets = {...
-    logical(rotationSet + cameraTorsionSet + cameraPlaneTransSet + cameraDepthTransSet), ...
-    logical(corneaSet + rotationSet + primaryPosSet + cameraTorsionSet + cameraPlaneTransSet + cameraDepthTransSet) ...
-    };
-searchSetLabels = {'Camera position and eye rotation','All scene and eye parameters'};
+% Create stages of search sets, based upon the identified strategy
+switch p.Results.searchStrategy
+    case 'twoStage'
+        searchSets = {...
+            logical(rotationSet + cameraTorsionSet + cameraPlaneTransSet + cameraDepthTransSet), ...
+            logical(corneaSet + rotationSet + primaryPosSet + cameraTorsionSet + cameraPlaneTransSet + cameraDepthTransSet) ...
+            };
+        searchSetLabels = {'Camera position and eye rotation','All scene and eye parameters'};
+
+    case 'cameraPositionOnly'
+        searchSets = {...
+            logical(cameraTorsionSet + cameraPlaneTransSet + cameraDepthTransSet)};
+        searchSetLabels = {'Camera position'};
+    otherwise
+        error('Not a recognized searchStrategy');
+end
+
+
 nStages = length(searchSets);
 
 
@@ -302,7 +316,8 @@ xBounds = p.Results.eyeParamsBounds;
 keyVals = {...
     'eyePoseLB', p.Results.eyePoseLB,...
     'eyePoseUB', p.Results.eyePoseUB,...
-    'errorReg',p.Results.errorReg ...
+    'errorReg',p.Results.errorReg, ...
+    p.Results.keyArgs{:} ...
     };
 
 % Loop through the scenes and create scene objective functions
