@@ -236,7 +236,7 @@ p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 p.addParameter('errorReg',[1 2 4 2],@isnumeric);
 p.addParameter('multiSceneNorm',1,@isscalar);
 p.addParameter('TolMesh',1e-2,@isscalar);
-p.addParameter('depthChangePenaltyWeight',1,@isscalar);
+p.addParameter('depthChangePenaltyWeight',0.5,@isscalar);
 
 % parse
 p.parse(videoStemName, frameSet, gazeTargets, varargin{:})
