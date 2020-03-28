@@ -86,6 +86,9 @@ p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 p.addParameter('errorReg',[1 2 4 2],@isnumeric);
 p.addParameter('missedGlintPenalty',1e3,@isnumeric);
+p.addParameter('poseRegParams',[],@isnumeric);
+p.addParameter('vectorRegParams',[],@isnumeric);
+
 
 % Parse and check the parameters
 p.parse(sceneGeometry, perimeter, glintData, ellipseRMSE, gazeTargets, varargin{:});
@@ -188,34 +191,99 @@ if isempty(gazeTargets)
     poseError = nan;
     vectorError = nan;
 else
-    % poseError -- eye rotation equal to the visual angle
-    poseRegParams = absor(...
-        modelEyePose(:,1:2)',...
-        gazeTargets,...
-        'weights',weights,...
-        'doScale',false,...
-        'doTrans',true);
-    modelPoseGaze = poseRegParams.R * modelEyePose(:,1:2)' + poseRegParams.t;
-    poseError = nanNorm(sqrt(sum( (gazeTargets - modelPoseGaze).^2 ))',weights);
+    %% poseError
+    % Match eye rotation to visual angle of fixation targets
     
-    % vectorError -- vector between the glint and pupil center used to model
-    % eye position
+    % Identify frames for which we have a gaze target, and thus are
+    % eligible for this calculation
+    validFrames = ~isnan(sum(gazeTargets));
+    
+    % Create variable to hold the error per frame and the modeled gaze. By
+    % default, a frame that does not have an associate gaze target will not
+    % contribute to the calculation of the poseError, so this vector is
+    % initialized as nans.
+    poseErrorByFrame = nan(size(sum(gazeTargets)));
+    modelPoseGaze = nan(size(modelEyePose(:,1:2)))';
+    
+    % Either calculate or use the supplied poseRegParams
+    if isempty(p.Results.poseRegParams)
+        poseRegParams = absor(...
+            modelEyePose(validFrames,1:2)',...
+            gazeTargets(:,validFrames),...
+            'weights',weights(validFrames),...
+            'doScale',false,...
+            'doTrans',true);
+    else
+        poseRegParams = p.Results.poseRegParams;
+    end
+    
+    % Calculate the eyePose gaze and error for the modeled frames
+    modelPoseGaze(:,validFrames) = poseRegParams.R * modelEyePose(validFrames,1:2)' + poseRegParams.t;
+    poseErrorByFrame(validFrames) = sqrt(sum( (gazeTargets(:,validFrames) - modelPoseGaze(:,validFrames)).^2 ))';
+    
+    % Store the pose error
+    poseError = nanNorm(poseErrorByFrame',weights);
+    
+    
+    %% vectorError
+    % Find a transformation between gaze pose and the vectors that connect
+    % the glint and pupil center
+    
+    % The relationship between image y glint position and eye elevation is
+    % sign reversed. Thinking this through is left as an exercise to the
+    % reader.
     glintSign = [1;-1];
+    
+    % Obtain the x,y differences between the pupil center and glint for
+    % each frame
     centerDiff = (pupilCenter - [modelGlintCoord.X modelGlintCoord.Y])' .* ...
         glintSign;
-    % Identify any invalid points where we did not find a glint
-    badFrames = or(isinf(sum(centerDiff)) , isnan(sum(centerDiff)));
-    glintVecErrors = zeros(size(sum(centerDiff))) + p.Results.missedGlintPenalty;
-    vectorRegParams = absor(...
-        centerDiff(:,~badFrames),...
-        gazeTargets(:,~badFrames),...
-        'weights',weights(~badFrames),...
-        'doScale',true,...
-        'doTrans',true);
-    vectorRegParams.glintSign = glintSign;
-    modelVecGaze = vectorRegParams.s * vectorRegParams.R * centerDiff(:,~badFrames) + vectorRegParams.t;
-    glintVecErrors(~badFrames) = sqrt(sum( (gazeTargets(:,~badFrames) - modelVecGaze).^2 ));
-    vectorError = nanNorm(glintVecErrors',weights);
+    
+    % Valid frames are those for which we have been supplied a gaze target,
+    % and those for which the projection model is able to calculate a
+    % predicted glint location. Those frames for which we lack a gazePose
+    % are marked nan and excluded from the error calculation. 
+    % Defin
+
+    % Create variable to hold the error per frame and the modeled gaze. By
+    % default, a frame that does not have an associate gaze target will not
+    % contribute to the calculation of the poseError, so this vector is
+    % initialized as nans. 
+    vectorErrorByFrame = nan(size(sum(gazeTargets)));
+    modelVecGaze = nan(size(modelEyePose(:,1:2)))';    
+    
+    % Those frames for which the model cannot produce a predicted glint
+    % contribute to the objective function error. If the model cannot
+    % produce a predicted glint, then the scene parameters are extreme /
+    % invalid. Therefore, we assign the missedGlintPenalty to those frames
+    % for which the model cannot calculate a predicted glint.
+    noGlintFrames = ~isfinite(sum(centerDiff));
+    vectorErrorByFrame(noGlintFrames) = p.Results.missedGlintPenalty;
+    
+    % The gaze position is calculated for the valid frames, which are those
+    % frames for which we have both a gaze target and a predicted glint
+    % produced by the projection model.
+    validFrames = and(~isnan(sum(gazeTargets)),~noGlintFrames);
+
+    % Either calculate or use the supplied vectorRegParams
+    if isempty(p.Results.vectorRegParams)
+        vectorRegParams = absor(...
+            centerDiff(:,validFrames),...
+            gazeTargets(:,validFrames),...
+            'weights',weights(validFrames),...
+            'doScale',true,...
+            'doTrans',true);
+        vectorRegParams.glintSign = glintSign;
+    else
+        vectorRegParams = p.Results.vectorRegParams;
+    end
+        
+    % Calculate the vector-based gaze and error for the modeled frames
+    modelVecGaze(:,validFrames) = vectorRegParams.s * vectorRegParams.R * centerDiff(:,validFrames) + vectorRegParams.t;
+    vectorErrorByFrame(validFrames) = sqrt(sum( (gazeTargets(:,validFrames) - modelVecGaze(:,validFrames)).^2 ));
+
+    % Store the vector error
+    vectorError = nanNorm(vectorErrorByFrame',weights);
 end
 
 
