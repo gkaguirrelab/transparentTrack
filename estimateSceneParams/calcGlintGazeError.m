@@ -86,8 +86,8 @@ p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 p.addParameter('errorReg',[1 2 4 2],@isnumeric);
 p.addParameter('missedGlintPenalty',1e3,@isnumeric);
-p.addParameter('poseRegParams',[],@isnumeric);
-p.addParameter('vectorRegParams',[],@isnumeric);
+p.addParameter('poseRegParams',[],@isstruct);
+p.addParameter('vectorRegParams',[],@isstruct);
 
 
 % Parse and check the parameters
