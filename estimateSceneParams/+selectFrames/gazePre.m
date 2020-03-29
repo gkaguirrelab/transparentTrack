@@ -1,4 +1,4 @@
-function [frameSet, gazeTargets, relativeCameraPosition] = gazePre(videoStemName, varargin)
+function [frameSet, gazeTargets] = gazePre(videoStemName, varargin)
 
 
 
@@ -104,6 +104,5 @@ frameSet = startIndexFixed + find(ellipseRMSE == min(ellipseRMSE)) - 1;
 % The gaze target is presumed to be the center of the screen [0 0]
 gazeTargets = [0; 0];
 
-relativeCameraPosition = relativeCameraPosition.values(:,frameSet);
 
 end

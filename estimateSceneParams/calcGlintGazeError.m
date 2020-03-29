@@ -1,8 +1,8 @@
-function [ objError, modelEyePose, modelPupilEllipse, modelGlintCoord, modelPoseGaze, modelVecGaze, poseRegParams, vectorRegParams, rawErrors] = calcGlintGazeError( sceneGeometry, perimeter, glintData, ellipseRMSE, gazeTargets, varargin )
+function [ objError, modelEyePose, modelPupilEllipse, modelGlintCoord, modelPoseGaze, modelVecGaze, poseRegParams, vectorRegParams, rawErrors] = calcGlintGazeError( sceneGeometry, perimeter, glintData, ellipseRMSE, gazeTargets, relativeCameraPosition, varargin )
 % Error in prediction of image and gaze for a sceneGeometry
 %
 % Syntax:
-%   [ objError, modelEyePose, modelPupilEllipse, modelGlintCoord, modelPoseGaze, modelVecGaze, poseRegParams, vectorRegParams, rawErrors] = calcGlintGazeError( sceneGeometry, perimeter, glintData, ellipseRMSE, gazeTargets, varargin )
+%   [ objError, modelEyePose, modelPupilEllipse, modelGlintCoord, modelPoseGaze, modelVecGaze, poseRegParams, vectorRegParams, rawErrors] = calcGlintGazeError( sceneGeometry, perimeter, glintData, ellipseRMSE, gazeTargets, relativeCameraPosition, varargin )
 %
 % Description:
 %   The sceneGeometry defines a physical system of an eye, a camera (with a
@@ -80,6 +80,7 @@ p.addRequired('perimeter',@isstruct);
 p.addRequired('glintData',@isstruct);
 p.addRequired('ellipseRMSE',@isnumeric);
 p.addRequired('gazeTargets',@isnumeric);
+p.addRequired('relativeCameraPosition',@isstruct);
 
 % Optional
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
@@ -91,7 +92,7 @@ p.addParameter('vectorRegParams',[],@isstruct);
 
 
 % Parse and check the parameters
-p.parse(sceneGeometry, perimeter, glintData, ellipseRMSE, gazeTargets, varargin{:});
+p.parse(sceneGeometry, perimeter, glintData, ellipseRMSE, gazeTargets, relativeCameraPosition, varargin{:});
 
 
 %% Setup variables
@@ -126,11 +127,18 @@ parfor ii = 1:nFrames
     % Get the glint
     glintCoord = [glintData.X(ii) glintData.Y(ii)];
     
+    % Update the sceneGeometry camera position to account for known head
+    % translation
+    adjustedSceneGeometry = sceneGeometry;
+    cameraPosition = sceneGeometry.cameraPosition.translation;
+    cameraPosition = cameraPosition + relativeCameraPosition.values(:,ii);
+    adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
+                    
     % Get the eyePose
-    modelEyePose(ii,:) = eyePoseEllipseFit(Xp, Yp, sceneGeometry, 'glintCoord', glintCoord);
+    modelEyePose(ii,:) = eyePoseEllipseFit(Xp, Yp, adjustedSceneGeometry, 'glintCoord', glintCoord);
         
     % Get the glint coordinates
-    [modelPupilEllipse_loop, modelGlintCoord_loop] = projectModelEye(modelEyePose(ii,:), sceneGeometry);    
+    [modelPupilEllipse_loop, modelGlintCoord_loop] = projectModelEye(modelEyePose(ii,:), adjustedSceneGeometry);    
     modelPupilEllipse(ii,:) = modelPupilEllipse_loop;
     
     % Get the error in fitting the perimeter with the ellipse

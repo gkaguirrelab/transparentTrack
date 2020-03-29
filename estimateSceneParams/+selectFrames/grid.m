@@ -1,4 +1,4 @@
-function [frameSet, gazeTargets, relativeCameraPosition] = grid(videoStemName, varargin)
+function [frameSet, gazeTargets] = grid(videoStemName, varargin)
 
 
 %% input parser
@@ -102,9 +102,6 @@ frameSet = cellfun(@(x) returnTheMin(goodFitIdx(idxByBinPosition{filledBinIdx(x)
 
 % Create a set of nan gaze targets
 gazeTargets = nan(2,length(frameSet));
-
-% Return the relativeCameraPosition for these frames
-relativeCameraPosition = relativeCameraPosition.values(:,frameSet);
 
 
 end

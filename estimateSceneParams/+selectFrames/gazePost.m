@@ -1,4 +1,4 @@
-function [frameSet, gazeTargets, relativeCameraPosition] = gazePost(videoStemName, varargin)
+function [frameSet, gazeTargets] = gazePost(videoStemName, varargin)
 
 
 
@@ -25,28 +25,28 @@ load([videoStemName '_relativeCameraPosition.mat'],'relativeCameraPosition');
 [~, acqStartFrameFixed] = min(abs(timebase.values));
 
 
-        % For some acqusitions (i.e., retinotopy), the subject was asked to
-        % stare at a fixation point in the center of the screen after the
-        % start of the acquisition. This could also work for movie viewing,
-        % if we are willing to assume that the median gaze position during
-        % the first (e.g.) 10 seconds of a movie is the center of the screen.
-        % Find the period after to the start of the scan when the eye was
-        % in the most consistent position, and closest to the median
-        % position.
-        windowStart = acqStartFrameFixed;
-        windowEnd = acqStartFrameFixed+600;
-        gazeX = pupilData.initial.ellipses.values(windowStart:windowEnd,1);
-        gazeY = pupilData.initial.ellipses.values(windowStart:windowEnd,2);
-        medianX = nanmedian(gazeX);
-        medianY = nanmedian(gazeY);
-        
-        % Assuming that the eye had a central tendency of fixation upon the
-        % center of the screen, this vector expresses the deviation of
-        % fixation on any given frame from the screen center.
-        eyeMatchError = sqrt(sum([gazeX-medianX; gazeY-medianY].^2,2));
-        x0 = 0.5;
-        
-        
+% For some acqusitions (i.e., retinotopy), the subject was asked to
+% stare at a fixation point in the center of the screen after the
+% start of the acquisition. This could also work for movie viewing,
+% if we are willing to assume that the median gaze position during
+% the first (e.g.) 10 seconds of a movie is the center of the screen.
+% Find the period after to the start of the scan when the eye was
+% in the most consistent position, and closest to the median
+% position.
+windowStart = acqStartFrameFixed;
+windowEnd = acqStartFrameFixed+600;
+gazeX = pupilData.initial.ellipses.values(windowStart:windowEnd,1);
+gazeY = pupilData.initial.ellipses.values(windowStart:windowEnd,2);
+medianX = nanmedian(gazeX);
+medianY = nanmedian(gazeY);
+
+% Assuming that the eye had a central tendency of fixation upon the
+% center of the screen, this vector expresses the deviation of
+% fixation on any given frame from the screen center.
+eyeMatchError = sqrt(sum([gazeX-medianX; gazeY-medianY].^2,2));
+x0 = 0.5;
+
+
 % Find the minimum fixation error threshold that results in a run of
 % consecutive frames at fixation of the target length.
 targetLength = p.Results.eyePositionTargetLengthFrames;
@@ -108,9 +108,8 @@ frameSet = startIndexFixed + find(ellipseRMSE == min(ellipseRMSE)) - 1;
 % The gaze target is presumed to be the center of the screen [0 0]
 gazeTargets = [0; 0];
 
-relativeCameraPosition = relativeCameraPosition.values(:,frameSet);
 
-    
+
 end
-    
-    
+
+

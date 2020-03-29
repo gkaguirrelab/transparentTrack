@@ -110,20 +110,26 @@ classdef sceneObj < handle
             load([videoStemName '_correctedPerimeter.mat'],'perimeter');
             load([videoStemName '_glint.mat'],'glintData');
             load([videoStemName '_pupil.mat'],'pupilData');
-                        
+            if exist([videoStemName '_relativeCameraPosition.mat'], 'file') == 2
+                load([videoStemName '_relativeCameraPosition.mat'],'relativeCameraPosition');                
+            else
+                relativeCameraPosition.values = zeros(3,max(frameSet));
+            end
+            
             % Extract the frames we want
             perimeter.data = perimeter.data(frameSet);
             glintData.X = glintData.X(frameSet); glintData.Y = glintData.Y(frameSet);
             ellipseRMSE = pupilData.initial.ellipses.RMSE(frameSet);
+            relativeCameraPosition.values = relativeCameraPosition.values(frameSet);
             
             % Assemble these components into the args variable
-            obj.args = {perimeter, glintData, ellipseRMSE, gazeTargets};
+            obj.args = {perimeter, glintData, ellipseRMSE, gazeTargets, relativeCameraPosition};
             
             % Store the keyVals
             obj.keyVals = keyVals;            
             
             % Done with these big variables
-            clear perimeter glintData pupilData
+            clear perimeter glintData pupilData relativeCameraPosition
                                     
         end
         
