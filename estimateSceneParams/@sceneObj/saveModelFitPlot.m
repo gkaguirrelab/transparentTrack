@@ -89,6 +89,14 @@ pos(2,:) = -pos(2,:);
 % Convet the positions into an ordered list
 montageOrder = (pos(2,:)+nGrid-1).*nGrid+pos(1,:)-1;
 
+% If we have a full supply of gazeTargets, use them to define the montage
+% order. Otherwise, just go with the sortOrder
+if all(~isnan(sum(gazeTargets)))
+    montageOrder = montageOrder(sortOrder);
+else
+    montageOrder = 1:length(montageOrder);
+end
+
 % Show the frames
 for ii = 1:length(ellipseRMSE)
     Xp = perimeter.data{ii}.Xp;

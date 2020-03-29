@@ -39,9 +39,16 @@ montageOrder = (pos(2,:)+nGrid-1).*nGrid+pos(1,:)-1;
 
 % Sort the ellipse array list so that the frames appear in temporal order
 [frameSet, sortOrder] = sort(frameSet);
-montageOrder = montageOrder(sortOrder);
 modelEyePose = modelEyePose(sortOrder,:);
 perimeter.data = perimeter.data(sortOrder);
+
+% If we have a full supply of gazeTargets, use them to define the montage
+% order. Otherwise, just go with the sortOrder
+if all(~isnan(sum(gazeTargets)))
+    montageOrder = montageOrder(sortOrder);
+else
+    montageOrder = 1:length(montageOrder);
+end
 
 
 % Check that the file exists
