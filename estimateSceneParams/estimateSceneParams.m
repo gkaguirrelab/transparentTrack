@@ -300,15 +300,17 @@ switch p.Results.searchStrategy
             logical(rotationSet + cameraTorsionSet + cameraPlaneTransSet + cameraDepthTransSet), ...
             logical(corneaSet + rotationSet + primaryPosSet + cameraTorsionSet + cameraPlaneTransSet + cameraDepthTransSet) ...
             };
+        searchBoundShrink = [1,0.5];
         searchSetLabels = {'Camera position and eye rotation','All scene and eye parameters'};
 
     case 'sceneSync'
         searchSets = {...
             logical( cameraTorsionSet + cameraPlaneTransSet + cameraDepthTransSet), ...
-            logical( scannerRotationSet), ...
-            logical( scannerTimeSet + primaryPosSet) ...
+            logical( scannerTimeSet + scannerRotationSet), ...
+            logical( scannerTimeSet + scannerRotationSet + primaryPosSet + cameraTorsionSet + cameraPlaneTransSet + cameraDepthTransSet) ...
             };
-        searchSetLabels = {'Camera position','Scanner position','Scanne time and Primary eye position'};
+        searchBoundShrink = [1,0.5,0.25];
+        searchSetLabels = {'Camera position','Head motion','All scene params'};        
     otherwise
         error('Not a recognized searchStrategy');
 end
@@ -401,7 +403,7 @@ for ii = 1:nStages
     end
     
     % Bounds
-    [x,lb,ub,lbp,ubp] = setBounds(x,xBounds,searchSets{ii});
+    [x,lb,ub,lbp,ubp] = setBounds(x,xBounds .* searchBoundShrink(ii),searchSets{ii});
     
     % Search
     x = bads(myObjAll,x,lb,ub,lbp,ubp,nonbcon,options);

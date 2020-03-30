@@ -1,8 +1,5 @@
 function saveSceneGeometry(obj,fileNameSuffix)
 
-% The varargin originally used to create the sceneGeometry
-sceneGeometryVarargin = obj.sceneGeometry.meta.createSceneGeometry.varargin;
-
 % keys and values to update
 keys = {...
     'kvals',...
@@ -26,6 +23,7 @@ values = {...
     };
 
 % Loop through the keys and either update or add
+sceneGeometryVarargin = obj.setupArgs;
 for kk = 1:length(keys)
     idx = find(strcmp(sceneGeometryVarargin,keys{kk}),1);
     if isempty(idx)
