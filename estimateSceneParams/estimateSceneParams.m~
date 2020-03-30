@@ -293,14 +293,13 @@ x = x0;
 
 %% Anonymous functions for the search
 
-% Update the depth change penalty function for the model
-model.penalty = @(x) model.genericPenalty(x,x0,p.Results.depthChangePenaltyWeight);
+% A regularization function that penalizes changes in depth from the x0
+% values
+depthChangePenaltyMultiplier = @(x) (1 + p.Results.depthChangePenaltyWeight * norm( (x(logical(cameraDepthTransSet)) - x0(logical(cameraDepthTransSet))) ./ x0(logical(cameraDepthTransSet)) ))^2;
 
 % An objective function which is the norm of all objective functions
-myObjAll = @(x) multiSceneObjective(x,mySceneObjects,model,p.Results.multiSceneNorm,p.Results.verbose);
+myObjAll = @(x) multiSceneObjective(x,mySceneObjects,depthChangePenaltyMultiplier,p.Results.multiSceneNorm,p.Results.verbose);
 
-% A non-linear constraint on the corneal curvature
-nonbcon = model.nonbcon;
 
 %% Define BADS search options
 options = bads('defaults');          % Get a default OPTIONS struct

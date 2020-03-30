@@ -1,4 +1,4 @@
-function fVal = multiSceneObjective(x,mySceneObjects,nEyeParams,nRelCamPosParams,nSceneParams,depthChangePenaltyMultiplier,multiSceneNorm,verbose)
+function fVal = multiSceneObjective(x,mySceneObjects,model,multiSceneNorm,verbose)
 
 
 % Loop over the scenes. Pass the scene params appropriate to that
@@ -6,9 +6,7 @@ function fVal = multiSceneObjective(x,mySceneObjects,nEyeParams,nRelCamPosParams
 fValScene = [];
 nScenes = length(mySceneObjects);
 for ss = 1:nScenes
-    sceneIdx = (ss-1)*nSceneParams+nRelCamPosParams+nEyeParams+1;
-    subX = x([1:(nRelCamPosParams+nEyeParams),sceneIdx:sceneIdx+nSceneParams-1]);
-    fValScene(ss) = mySceneObjects{ss}.updateModel(subX);
+    fValScene(ss) = mySceneObjects{ss}.updateModel(model.subX(x,ss));
 end
 
 % Take the norm of the scene objectives
@@ -18,7 +16,7 @@ fVal = norm(fValScene,multiSceneNorm);
 fVal = min([fVal realmax]);
 
 % Apply the regularization to penalize changes in the camera depth
-fVal = fVal * depthChangePenaltyMultiplier(x);
+fVal = fVal * model.penalty(x);
 
 % Each sceneObject has a multiSceneMeta property that is used to stash
 % information about the search progress. First determine if we need to
@@ -37,7 +35,7 @@ if updateMetaFlag
     multiSceneMeta.x = x;
     multiSceneMeta.fVal = fVal;
     multiSceneMeta.fValScene = fValScene;
-    multiSceneMeta.depthChangePenaltyMultiplier = depthChangePenaltyMultiplier(x);
+    multiSceneMeta.penalty = model.penalty(x);
     for ss = 1:nScenes
         mySceneObjects{ss}.multiSceneMeta = multiSceneMeta;
         mySceneObjects{ss}.multiSceneIdx = ss;

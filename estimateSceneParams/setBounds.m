@@ -1,4 +1,15 @@
-function [x,lb,ub,lbp,ubp] = setBounds(x,bb,searchSet)
+function [x,lb,ub,lbp,ubp] = setBounds(x,bb,model,stage,searchStrategy)
+
+% Construct the param search set for this strategy and stage
+searchSet = zeros(1,model.nParams);
+sets = model.stages.(searchStrategy){stage};
+for ii = 1:length(sets)
+   fields = split(sets{ii},'.');
+   whichSet = strcmp(fields{2},model.(fields{1}).setLabels);
+   idx = model.(fields{1}).setIdx{whichSet};
+   idxMapped = model.(fields{1}).idxMap(idx);
+   searchSet(idxMapped) = 1;
+end
 
 % Apply the bounds
 lb = x - bb;
