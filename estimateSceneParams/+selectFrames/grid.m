@@ -7,7 +7,7 @@ p = inputParser; p.KeepUnmatched = true;
 % Required
 p.addRequired('videoStemName',@ischar);
 
-p.addParameter('nBinsPerDimension',5,@isnumeric);
+p.addParameter('nBinsPerDimension',6,@isnumeric);
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
 p.addParameter('minFramesPerBin',100, @isnumeric);
 
@@ -20,7 +20,6 @@ p.parse(videoStemName, varargin{:})
 % this acquisition
 load([videoStemName '_pupil.mat'],'pupilData');
 load([videoStemName '_correctedPerimeter.mat'],'perimeter');
-load([videoStemName '_relativeCameraPosition.mat'],'relativeCameraPosition');
 
 
 

@@ -229,6 +229,8 @@ p.addParameter('eyeArgs',{''},@iscell);
 p.addParameter('sceneArgs',{''},@iscell);
 p.addParameter('keyArgs',{''},@iscell);
 p.addParameter('useFixForPrimaryPos',true,@islogical);
+p.addParameter('relCamPosParamsX0',[0, 0, 0, 0],@isnumeric);
+p.addParameter('relCamPosParamsBounds',[30, 30, 30, 30],@isnumeric);
 p.addParameter('eyeParamsX0',[44.2410, 45.6302, 0, 2.5000, 0, 1, 1],@isnumeric);
 p.addParameter('eyeParamsBounds',[5, 5, 90, 5, 5, 0.25, 0.15],@isnumeric);
 p.addParameter('sceneParamsX0',{[0 0 0 0 0 120]},@iscell);
@@ -250,6 +252,10 @@ p.parse(videoStemName, frameSet, gazeTargets, varargin{:})
 % The number of scenes to be fit
 nScenes = length(videoStemName);
 
+% The relative camera position parameters to be adjusted
+relCamPosParamLabels = {'scanner_timeShift','scanner_azi','scanner_ele','scanner_torsion'};
+nRelCamPosParams = length(relCamPosParamLabels);
+
 % The eye model parameters that are to be adjusted
 eyeParamLabels = {'cornea_K1','cornea_K2','cornea_torsion','cornea_tilt','cornea_tip','rotationDepth_joint','rotationDepth_diff'};
 nEyeParams = length(eyeParamLabels);
@@ -261,7 +267,7 @@ nSceneParams = length(sceneParamLabels);
 % The eye parameters are shared by all scenes, and each scene gets its own
 % set of scene parameters, yielding this many total parameters in the
 % optimization.
-nTotalParams = nEyeParams + nSceneParams * nScenes;
+nTotalParams = nRelCamPosParams + nEyeParams + nSceneParams * nScenes;
 
 
 %% Define parameter search sets
@@ -272,14 +278,16 @@ nTotalParams = nEyeParams + nSceneParams * nScenes;
 blankSearch = uint8(zeros(1,nTotalParams));
 
 % An anonymous function that expands the input index vector [a, b, ...]
-% into a vector given k eyeParams, s sceneParams, and n scenes:
+% into a vector given k eye+relCamPosParams, s sceneParams, and n scenes:
 %	[ e+a+(s*0), e+b+(s*0), e+a+(s*1), e+b+(s*1), ... e+a+(s*(n-1)), e+b+(s*(n-1)) ]
-sceneIdxRep = @(idx) nEyeParams + repmat((0:nScenes-1)*nSceneParams,1,length(idx)) + ...
+sceneIdxRep = @(idx) nRelCamPosParams + nEyeParams + repmat((0:nScenes-1)*nSceneParams,1,length(idx)) + ...
     cell2mat(arrayfun(@(x) repmat(x,1,nScenes),idx,'UniformOutput',false));
 
 % The search vectors
-corneaSet = blankSearch; corneaSet(1:5)=1;
-rotationSet = blankSearch; rotationSet(6:7)=1;
+scannerTimeSet = blankSearch; scannerTimeSet(1)=1;
+scannerRotationSet = blankSearch; scannerRotationSet(2:4)=1;
+corneaSet = blankSearch; corneaSet(5:9)=1;
+rotationSet = blankSearch; rotationSet(10:11)=1;
 primaryPosSet = blankSearch; primaryPosSet(sceneIdxRep(1:2)) = 1;
 cameraTorsionSet = blankSearch; cameraTorsionSet(sceneIdxRep(3)) = 1;
 cameraPlaneTransSet = blankSearch; cameraPlaneTransSet(sceneIdxRep(4:5)) = 1;
@@ -294,10 +302,13 @@ switch p.Results.searchStrategy
             };
         searchSetLabels = {'Camera position and eye rotation','All scene and eye parameters'};
 
-    case 'cameraPositionOnly'
+    case 'sceneSync'
         searchSets = {...
-            logical(cameraTorsionSet + cameraPlaneTransSet + cameraDepthTransSet)};
-        searchSetLabels = {'Camera position'};
+            logical( cameraTorsionSet + cameraPlaneTransSet + cameraDepthTransSet), ...
+            logical( scannerRotationSet), ...
+            logical( scannerTimeSet + primaryPosSet) ...
+            };
+        searchSetLabels = {'Camera position','Scanner position','Scanne time and Primary eye position'};
     otherwise
         error('Not a recognized searchStrategy');
 end
@@ -309,8 +320,8 @@ nStages = length(searchSets);
 %% Set up the search options and objectives
 
 % The eye parameters are the initial entries in x0 and bounds
-x0 = p.Results.eyeParamsX0;
-xBounds = p.Results.eyeParamsBounds;
+x0 = [p.Results.relCamPosParamsX0, p.Results.eyeParamsX0];
+xBounds = [p.Results.relCamPosParamsBounds, p.Results.eyeParamsBounds];
 
 % These key values are passed to calcGlintGazeError
 keyVals = {...
@@ -351,7 +362,7 @@ x = x0;
 depthChangePenaltyMultiplier = @(x) (1 + p.Results.depthChangePenaltyWeight * norm( (x(logical(cameraDepthTransSet)) - x0(logical(cameraDepthTransSet))) ./ x0(logical(cameraDepthTransSet)) ))^2;
 
 % An objective function which is the norm of all objective functions
-myObjAll = @(x) multiSceneObjective(x,mySceneObjects,nEyeParams,nSceneParams,depthChangePenaltyMultiplier,p.Results.multiSceneNorm,p.Results.verbose);
+myObjAll = @(x) multiSceneObjective(x,mySceneObjects,nEyeParams,nRelCamPosParams,nSceneParams,depthChangePenaltyMultiplier,p.Results.multiSceneNorm,p.Results.verbose);
 
 % A non-linear constraint for the BADS search that requires first value of
 % the corneal curvature (K1) to be less than the second value (K2) Note

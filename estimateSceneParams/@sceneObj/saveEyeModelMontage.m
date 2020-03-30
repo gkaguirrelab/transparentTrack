@@ -1,20 +1,22 @@
 function saveEyeModelMontage(obj,fileNameSuffix)
+% Saves a montage with the model eye superimposed.
 
 %% Obtain variables from the object
 sceneGeometry = obj.sceneGeometry;
 modelEyePose = obj.modelEyePose;
 frameSet = obj.frameSet;
 videoStemName = obj.videoStemName;
-args = obj.args;
 
-perimeter = args{1};
-gazeTargets = args{4};
+perimeter = obj.perimeter;
+glintDataX = obj.glintDataX;
+glintDataY = obj.glintDataY;
+gazeTargets = obj.gazeTargets;
+relCamPos = obj.relCamPos(:,obj.frameSet);
+
 grayVideoName = [videoStemName '_gray.avi'];
 montageFileName = [videoStemName '_sceneGeometry_eyeModelMontage' fileNameSuffix '.png'];
 
 
-
-% Saves a montage with the model eye superimposed.
 
 % Silence some errors that can arise during the forward projection
 warningState = warning;
@@ -40,11 +42,14 @@ montageOrder = (pos(2,:)+nGrid-1).*nGrid+pos(1,:)-1;
 % Sort the ellipse array list so that the frames appear in temporal order
 [frameSet, sortOrder] = sort(frameSet);
 modelEyePose = modelEyePose(sortOrder,:);
-perimeter.data = perimeter.data(sortOrder);
+relCamPos = relCamPos(:,sortOrder);
+perimeter = perimeter(sortOrder);
+glintDataX = glintDataX(sortOrder);
+glintDataY = glintDataY(sortOrder);
 
 % If we have a full supply of gazeTargets, use them to define the montage
 % order. Otherwise, just go with the sortOrder
-if all(~isnan(sum(gazeTargets)))
+if ~any(isnan(sum(gazeTargets)))
     montageOrder = montageOrder(sortOrder);
 else
     montageOrder = 1:length(montageOrder);
@@ -83,17 +88,26 @@ if exist(grayVideoName,'file') && ~isempty(frameSet)
         hold on
         axis off;
         % Add the pupil perimeter
-        plot(perimeter.data{ii}.Xp ,perimeter.data{ii}.Yp, '.w', 'MarkerSize', 1);
+        plot(perimeter{ii}.Xp ,perimeter{ii}.Yp, '.w', 'MarkerSize', 1);
+        % Update the sceneGeometry camera position to account for known
+        % head translation
+        adjustedSceneGeometry = sceneGeometry;
+        cameraPosition = sceneGeometry.cameraPosition.translation;
+        cameraPosition = cameraPosition + relCamPos(:,ii);
+        adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
         % Add the rendered eye model
         eyePose = modelEyePose(ii,:);
         if ~any(isnan(eyePose))
-            renderEyePose(eyePose, sceneGeometry, 'newFigure', false, ...
+            renderEyePose(eyePose, adjustedSceneGeometry, 'newFigure', false, ...
                 'modelEyeLabelNames', {'retina' 'irisPerimeter' 'pupilEllipse' 'cornea' 'glint_01' 'glint_02'}, ...
                 'modelEyePlotColors', {'.w' '.b' '-g' '.y' 'xr' 'xr'}, ...
                 'modelEyeAlpha', [0.25 0.25 0.25 0.25 1 1],...
                 'modelEyeSymbolSizeScaler',1.5,...
                 'showAzimuthPlane',true);
         end
+        % Add the observed glint
+        hold on
+        plot(glintDataX(ii), glintDataY(ii),'or');
         % Get the frame
         drawnow;
         thisFrame=getframe(hFig);

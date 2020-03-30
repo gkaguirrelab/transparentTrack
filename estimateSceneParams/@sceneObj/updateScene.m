@@ -67,7 +67,4 @@ sceneGeometryOut.cameraPosition.translation = x(11:13)';
 % Store the updated sceneGeometry in the object
 obj.sceneGeometry = sceneGeometryOut;
 
-% Update the object with the new parameters
-obj.x = x;
-
 end

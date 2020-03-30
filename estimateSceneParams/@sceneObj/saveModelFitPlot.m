@@ -8,14 +8,12 @@ modelGlintCoord = obj.modelGlintCoord;
 modelPoseGaze = obj.modelPoseGaze;
 modelVecGaze = obj.modelVecGaze;
 rawErrors = obj.rawErrors;
-
-
+perimeter = obj.perimeter;
+glintDataX = obj.glintDataX;
+glintDataY = obj.glintDataY;
+ellipseRMSE = obj.ellipseRMSE;
+gazeTargets = obj.gazeTargets;
 videoStemName = obj.videoStemName;
-args = obj.args;
-perimeter = args{1};
-glintData = args{2};
-ellipseRMSE = args{3};
-gazeTargets = args{4};
 
 plotFileName = [videoStemName '_sceneGeometry_modelFitPlot' fileNameSuffix '.pdf'];
 
@@ -58,7 +56,7 @@ title(str);
 
 % 2. Glint fits
 h1 = subplot(2,nCols,2);
-plot(glintData.X,glintData.Y,'ok'); hold on;
+plot(glintDataX,glintDataY,'ok'); hold on;
 plot(modelGlintCoord.X,modelGlintCoord.Y,'xr');
 set(h1, 'Ydir', 'reverse')
 axis equal
@@ -99,10 +97,10 @@ end
 
 % Show the frames
 for ii = 1:length(ellipseRMSE)
-    Xp = perimeter.data{ii}.Xp;
+    Xp = perimeter{ii}.Xp;
     meanXp = mean(Xp);
     Xp = Xp - meanXp + dim/2;
-    Yp = perimeter.data{ii}.Yp;
+    Yp = perimeter{ii}.Yp;
     meanYp = mean(Yp);
     Yp = Yp - meanYp + dim/2;
     p1 = plot(hAxes,Xp,Yp,'.k');

@@ -1,4 +1,4 @@
-function [ objError, modelEyePose, modelPupilEllipse, modelGlintCoord, modelPoseGaze, modelVecGaze, poseRegParams, vectorRegParams, rawErrors] = calcGlintGazeError( sceneGeometry, perimeter, glintData, ellipseRMSE, gazeTargets, relativeCameraPosition, varargin )
+function updateError( obj, varargin )
 % Error in prediction of image and gaze for a sceneGeometry
 %
 % Syntax:
@@ -38,7 +38,7 @@ function [ objError, modelEyePose, modelPupilEllipse, modelGlintCoord, modelPose
 %                           camera is viewing the eye from an off-center
 %                           angle, the bounds will need to be shifted
 %                           accordingly.
-%  'errorReg'             - 1x4 vector. This vector defines a 
+%  'errorReg'             - 1x4 vector. This vector defines a
 %                           regularization that weights the four types of
 %                           error that can contribute to the overall model
 %                           error. The weights apply to errors in:
@@ -49,19 +49,19 @@ function [ objError, modelEyePose, modelPupilEllipse, modelGlintCoord, modelPose
 %
 % Outputs:
 %   objError              - Scalar. The overall model error.
-%   modelEyePose          - f x 4 matrix of modeled eyePose positions 
+%   modelEyePose          - f x 4 matrix of modeled eyePose positions
 %                           for the passed frames.
 %   modelPupilEllipse     - f x 5 matrix of ellipses fit to the pupil.
 %   modelGlintCoord       - Structure. The modeled glint locations.
-%   modelPoseGaze         - f x 2 matrix of modeled gaze locations in 
+%   modelPoseGaze         - f x 2 matrix of modeled gaze locations in
 %                           horizontal and vertical degrees of visual angle
 %                           derived from the eye rotation.
-%   modelVecGaze          - f x 2 matrix of modeled gaze locations in 
+%   modelVecGaze          - f x 2 matrix of modeled gaze locations in
 %                           horizontal and vertical degrees of visual angle
 %                           derived from the pupil center -> glint vec.
 %   poseRegParams         - Structure. The parameters that relate eyePose
 %                           to screen position.
-%   vectorRegParams       - Structure. The parameters that relate the 
+%   vectorRegParams       - Structure. The parameters that relate the
 %                           pupil center -> glint vec to screen position.
 %   rawErrors             - 1x4 matrix. The four component errors.
 %
@@ -70,17 +70,18 @@ function [ objError, modelEyePose, modelPupilEllipse, modelGlintCoord, modelPose
 %}
 
 
+%% Obtain variables from the object
+sceneGeometry = obj.sceneGeometry;
+perimeter = obj.perimeter;
+glintDataX = obj.glintDataX;
+glintDataY = obj.glintDataY;
+ellipseRMSE = obj.ellipseRMSE;
+gazeTargets = obj.gazeTargets;
+relCamPos = obj.relCamPos(:,obj.frameSet);
+
 
 %% Parse input
 p = inputParser;
-
-% Required
-p.addRequired('sceneGeometry',@isstruct);
-p.addRequired('perimeter',@isstruct);
-p.addRequired('glintData',@isstruct);
-p.addRequired('ellipseRMSE',@isnumeric);
-p.addRequired('gazeTargets',@isnumeric);
-p.addRequired('relativeCameraPosition',@isstruct);
 
 % Optional
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
@@ -90,14 +91,13 @@ p.addParameter('missedGlintPenalty',1e3,@isnumeric);
 p.addParameter('poseRegParams',[],@isstruct);
 p.addParameter('vectorRegParams',[],@isstruct);
 
-
 % Parse and check the parameters
-p.parse(sceneGeometry, perimeter, glintData, ellipseRMSE, gazeTargets, relativeCameraPosition, varargin{:});
+p.parse(varargin{:});
 
 
 %% Setup variables
 % How many frames do we have
-nFrames = length(glintData.X);
+nFrames = length(glintDataX);
 
 % The weight for the errors is given by the inverse initial ellipse fit
 % RMSE
@@ -121,24 +121,24 @@ vectorRegParams = struct();
 parfor ii = 1:nFrames
     
     % Get the perimeter
-    Xp = perimeter.data{ii}.Xp;
-    Yp = perimeter.data{ii}.Yp;
+    Xp = perimeter{ii}.Xp;
+    Yp = perimeter{ii}.Yp;
     
     % Get the glint
-    glintCoord = [glintData.X(ii) glintData.Y(ii)];
+    glintCoord = [glintDataX(ii) glintDataY(ii)];
     
     % Update the sceneGeometry camera position to account for known head
     % translation
     adjustedSceneGeometry = sceneGeometry;
     cameraPosition = sceneGeometry.cameraPosition.translation;
-    cameraPosition = cameraPosition + relativeCameraPosition.values(:,ii);
+    cameraPosition = cameraPosition + relCamPos(:,ii);
     adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
-                    
+    
     % Get the eyePose
     modelEyePose(ii,:) = eyePoseEllipseFit(Xp, Yp, adjustedSceneGeometry, 'glintCoord', glintCoord);
-        
+    
     % Get the glint coordinates
-    [modelPupilEllipse_loop, modelGlintCoord_loop] = projectModelEye(modelEyePose(ii,:), adjustedSceneGeometry);    
+    [modelPupilEllipse_loop, modelGlintCoord_loop] = projectModelEye(modelEyePose(ii,:), adjustedSceneGeometry);
     modelPupilEllipse(ii,:) = modelPupilEllipse_loop;
     
     % Get the error in fitting the perimeter with the ellipse
@@ -159,7 +159,7 @@ parfor ii = 1:nFrames
             end
         end
     end
-        
+    
     % Store the empirical pupil center
     pupilCenter(ii,:) = modelPupilEllipse_loop(1:2);
     
@@ -186,7 +186,7 @@ modelGlintCoord.Y = modelGlintY;
 perimError = nanNorm(perimFitError,weights);
 
 % glintError -- fit of the model to the glint locations
-glintDistances = sqrt(sum([modelGlintCoord.X - glintData.X, modelGlintCoord.Y - glintData.Y].^2,2));
+glintDistances = sqrt(sum([modelGlintCoord.X - glintDataX, modelGlintCoord.Y - glintDataY].^2,2));
 glintDistances(isinf(glintDistances)) = p.Results.missedGlintPenalty;
 glintError = nanNorm(glintDistances,weights);
 
@@ -250,15 +250,15 @@ else
     % Valid frames are those for which we have been supplied a gaze target,
     % and those for which the projection model is able to calculate a
     % predicted glint location. Those frames for which we lack a gazePose
-    % are marked nan and excluded from the error calculation. 
+    % are marked nan and excluded from the error calculation.
     % Defin
-
+    
     % Create variable to hold the error per frame and the modeled gaze. By
     % default, a frame that does not have an associate gaze target will not
     % contribute to the calculation of the poseError, so this vector is
-    % initialized as nans. 
+    % initialized as nans.
     vectorErrorByFrame = nan(size(sum(gazeTargets)));
-    modelVecGaze = nan(size(modelEyePose(:,1:2)))';    
+    modelVecGaze = nan(size(modelEyePose(:,1:2)))';
     
     % Those frames for which the model cannot produce a predicted glint
     % contribute to the objective function error. If the model cannot
@@ -272,7 +272,7 @@ else
     % frames for which we have both a gaze target and a predicted glint
     % produced by the projection model.
     validFrames = and(~isnan(sum(gazeTargets)),~noGlintFrames);
-
+    
     % Either calculate or use the supplied vectorRegParams
     if isempty(p.Results.vectorRegParams)
         vectorRegParams = absor(...
@@ -285,21 +285,41 @@ else
     else
         vectorRegParams = p.Results.vectorRegParams;
     end
-        
+    
     % Calculate the vector-based gaze and error for the modeled frames
     modelVecGaze(:,validFrames) = vectorRegParams.s * vectorRegParams.R * centerDiff(:,validFrames) + vectorRegParams.t;
     vectorErrorByFrame(validFrames) = sqrt(sum( (gazeTargets(:,validFrames) - modelVecGaze(:,validFrames)).^2 ));
-
+    
     % Store the vector error
     vectorError = nanNorm(vectorErrorByFrame',weights);
 end
 
 
-%% Return the error
+%% Obtain the omnibus error
 rawErrors = [perimError glintError poseError, vectorError];
-objError = nanNorm(rawErrors,p.Results.errorReg);
-objError(isinf(objError))=realmax;
+fVal = nanNorm(rawErrors,p.Results.errorReg);
+fVal(isinf(fVal))=realmax;
 
+
+%% Store the results in the object
+
+% Store the fVal
+obj.fVal = fVal;
+
+% Store all the other model components
+obj.modelEyePose = modelEyePose;
+obj.modelPupilEllipse = modelPupilEllipse;
+obj.modelGlintCoord = modelGlintCoord;
+obj.modelPoseGaze = modelPoseGaze;
+obj.modelVecGaze = modelVecGaze;
+obj.poseRegParams = poseRegParams;
+obj.vectorRegParams = vectorRegParams;
+obj.rawErrors = rawErrors;
+
+% Save the fixation
+obj.fixationEyePose = poseRegParams.t;
+obj.screenTorsion = poseRegParams.theta;
+obj.screenRotMat = poseRegParams.R;
 
 end
 

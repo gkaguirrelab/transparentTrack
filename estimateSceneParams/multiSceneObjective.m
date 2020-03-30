@@ -1,4 +1,4 @@
-function fVal = multiSceneObjective(x,mySceneObjects,nEyeParams,nSceneParams,depthChangePenaltyMultiplier,multiSceneNorm,verbose)
+function fVal = multiSceneObjective(x,mySceneObjects,nEyeParams,nRelCamPosParams,nSceneParams,depthChangePenaltyMultiplier,multiSceneNorm,verbose)
 
 
 % Loop over the scenes. Pass the scene params appropriate to that
@@ -6,9 +6,9 @@ function fVal = multiSceneObjective(x,mySceneObjects,nEyeParams,nSceneParams,dep
 fValScene = [];
 nScenes = length(mySceneObjects);
 for ss = 1:nScenes
-    sceneIdx = (ss-1)*nSceneParams+nEyeParams+1;
-    subX = x([1:nEyeParams,sceneIdx:sceneIdx+nSceneParams-1]);
-    fValScene(ss) = mySceneObjects{ss}.calcError(subX);
+    sceneIdx = (ss-1)*nSceneParams+nRelCamPosParams+nEyeParams+1;
+    subX = x([1:(nRelCamPosParams+nEyeParams),sceneIdx:sceneIdx+nSceneParams-1]);
+    fValScene(ss) = mySceneObjects{ss}.updateModel(subX);
 end
 
 % Take the norm of the scene objectives
