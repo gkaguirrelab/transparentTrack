@@ -276,6 +276,7 @@ for ss = 1:nScenes
     
     % Create the objective for this scene
     mySceneObjects{ss} = sceneObj(...
+        model, ...
         videoStemName{ss}, frameSet{ss}, gazeTargets{ss}, ...
         setupArgs, keyVals, p.Results, ...
         'verbose', p.Results.verbose);
@@ -294,13 +295,13 @@ x = x0;
 %% Anonymous functions for the search
 
 % Update the depth change penalty function for the model
-model.penalty = @(x) model.genericPenalty(x,x0,p.Results.depthChangePenaltyWeight);
+model.func.penalty = @(x) model.func.genericPenalty(x,x0,p.Results.depthChangePenaltyWeight);
 
 % An objective function which is the norm of all objective functions
 myObjAll = @(x) multiSceneObjective(x,mySceneObjects,model,p.Results.multiSceneNorm,p.Results.verbose);
 
 % A non-linear constraint on the corneal curvature
-nonbcon = model.nonbcon;
+nonbcon = model.func.nonbcon;
 
 %% Define BADS search options
 options = bads('defaults');          % Get a default OPTIONS struct

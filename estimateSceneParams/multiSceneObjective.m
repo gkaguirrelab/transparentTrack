@@ -6,7 +6,9 @@ function fVal = multiSceneObjective(x,mySceneObjects,model,multiSceneNorm,verbos
 fValScene = [];
 nScenes = length(mySceneObjects);
 for ss = 1:nScenes
-    fValScene(ss) = mySceneObjects{ss}.updateModel(model.subX(x,ss));
+    % These are the parameters from x that are appropriate for this scene
+    subX = model.func.subX(x,ss);
+    fValScene(ss) = mySceneObjects{ss}.returnError(subX);
 end
 
 % Take the norm of the scene objectives
@@ -16,7 +18,7 @@ fVal = norm(fValScene,multiSceneNorm);
 fVal = min([fVal realmax]);
 
 % Apply the regularization to penalize changes in the camera depth
-fVal = fVal * model.penalty(x);
+fVal = fVal * model.func.penalty(x);
 
 % Each sceneObject has a multiSceneMeta property that is used to stash
 % information about the search progress. First determine if we need to
@@ -35,7 +37,7 @@ if updateMetaFlag
     multiSceneMeta.x = x;
     multiSceneMeta.fVal = fVal;
     multiSceneMeta.fValScene = fValScene;
-    multiSceneMeta.penalty = model.penalty(x);
+    multiSceneMeta.penalty = model.func.penalty(x);
     for ss = 1:nScenes
         mySceneObjects{ss}.multiSceneMeta = multiSceneMeta;
         mySceneObjects{ss}.multiSceneIdx = ss;

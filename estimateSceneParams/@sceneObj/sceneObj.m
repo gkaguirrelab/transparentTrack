@@ -17,6 +17,7 @@ classdef sceneObj < handle
     properties (SetAccess=private)
 
         % Stored inputs to the object
+        model
         videoStemName
         frameSet
         gazeTargets
@@ -79,12 +80,13 @@ classdef sceneObj < handle
     methods
 
         % Constructor
-        function obj = sceneObj(videoStemName, frameSet, gazeTargets, setupArgs, keyVals, meta, varargin)
+        function obj = sceneObj(model, videoStemName, frameSet, gazeTargets, setupArgs, keyVals, meta, varargin)
                         
             % instantiate input parser
             p = inputParser; p.KeepUnmatched = false;
             
             % Required
+            p.addRequired('model',@isstruct);
             p.addRequired('videoStemName',@ischar);
             p.addRequired('frameSet',@isnumeric);
             p.addRequired('gazeTargets',@isnumeric);
@@ -95,10 +97,11 @@ classdef sceneObj < handle
             p.addParameter('verbose',false,@islogical);
         
             % parse
-            p.parse(videoStemName, frameSet, gazeTargets, setupArgs, keyVals, meta, varargin{:})
+            p.parse(model, videoStemName, frameSet, gazeTargets, setupArgs, keyVals, meta, varargin{:})
                         
             
             %% Store inputs in the object
+            obj.model = model;
             obj.videoStemName = videoStemName;
             obj.frameSet = frameSet;
             obj.gazeTargets = gazeTargets;
@@ -144,13 +147,16 @@ classdef sceneObj < handle
         end
         
         % Required methds
-        updateScene(obj, x)
-        updateRelCamPos(obj, p)
+        updateScene(obj)
+        updateHead(obj)
         updateError(obj, varargin)
-        fVal = updateModel(obj, x)
+        fVal = returnError(obj, x)
         saveEyeModelMontage(obj,fileNameSuffix)
         saveModelFitPlot(obj,fileNameSuffix)
         saveSceneGeometry(obj,fileNameSuffix)
+        
+        % Private methods
+        
     
     end
 end

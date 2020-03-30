@@ -1,11 +1,18 @@
-function updateRelCamPos(obj, p)
+function updateHead(obj)
+
+% Get the x and model
+x = obj.x;
+model = obj.model;
+
+% Obtain the head position parameters
+xHead = x(model.func.fieldSetIdx('head','all'));
 
 % Create a matrix of x'y'z' locations of the camera 
 A = obj.origRelCamPos;
 A(isnan(A))=0;
 
 % Shift and rotate the vector
-B = (censorShift(A,p(1))'*rotMat(p(2),p(3),p(4))')';
+B = (censorShift(A,xHead(1))'*rotMat(xHead(2),xHead(3),xHead(4))')';
 
 obj.relCamPos = B;
 

@@ -4,39 +4,36 @@ function model = defineModelParams(nScenes)
 %% Head
 % These parameters adjust the relative camera position vectors derived from
 % measurement of head motion during scanning
-model.head.labels = {'timeShift','azi','ele','torsion'};
-model.head.nParams = length(model.head.labels);
-model.head.setLabels = {'phaseAndRotation'};
-model.head.setIdx = {1:4};
+model.head.paramLabels = {'timeShift','azi','ele','torsion'};
+model.head.nParams = length(model.head.paramLabels);
+model.head.setLabels = {'phaseAndRotation','all'};
+model.head.setIdx = {1:4,1:4};
 model.head.idxMap = @(idx) idx;
 
 %% Eye
 % These parameters adjust biometric properties of the model eye
-model.eye.labels = {'K1','K2','torsion','tilt','tip','joint','diff'};
-model.eye.nParams = length(model.eye.labels);
-model.eye.setLabels = {'cornea','rotationCenter'};
-model.eye.setIdx = {1:5, 6:7};
+model.eye.paramLabels = {'K1','K2','torsion','tilt','tip','joint','diff'};
+model.eye.nParams = length(model.eye.paramLabels);
+model.eye.setLabels = {'kvals','rotationCenterScalers','all'};
+model.eye.setIdx = {1:5, 6:7, 1:7};
 model.eye.idxMap = @(idx) model.head.nParams+idx;
 
 %% Scene
 % These parameters adjust the position of the camera within a scene, which
 % also adjusts the primary position of the eye
-model.scene.labels = {'pp_azi','pp_ele','torsion','horiz','vert','depth'};
-model.scene.nParams = length(model.scene.labels);
+model.scene.paramLabels = {'pp_azi','pp_ele','torsion','horiz','vert','depth'};
+model.scene.nParams = length(model.scene.paramLabels);
 model.scene.nScenes = nScenes;
-model.scene.setLabels = {'primaryPosition','cameraPosition'};
-model.scene.setIdx = {1:2, 3:6};
+model.scene.setLabels = {'primaryPosition','cameraPosition', 'translation', 'all'};
+model.scene.setIdx = {1:2, 3:6, 4:6, 1:6};
+model.scene.idxMap =  @(idx) model.head.nParams+model.eye.nParams+idx;
 
-% An anonymous function that expands the input index vector [a, b, ...]
-% into a vector given k eye+relCamPosParams, s sceneParams, and n scenes:
-%	[ e+a+(s*0), e+b+(s*0), e+a+(s*1), e+b+(s*1), ... e+a+(s*(n-1)), e+b+(s*(n-1)) ]
-model.scene.idxMap = @(idx) model.head.nParams + model.eye.nParams + repmat((0:model.scene.nScenes-1)*model.scene.nParams,1,length(idx)) + ...
-    cell2mat(arrayfun(@(x) repmat(x,1,model.scene.nScenes),idx,'UniformOutput',false));
 
+%% Stages
 % Arrange the sets into search strages for different search strategies
 model.stages.gazeCal = { ...
     {'eye.rotationCenter','scene.cameraPosition'},...
-    {'eye.rotationCenter','scene.cameraPosition', 'eye.cornea', 'scene.primaryPosition'} };
+    {'eye.rotationCenter','scene.cameraPosition', 'eye.kvals', 'scene.primaryPosition'} };
 
 model.stages.sceneSync = { ...
     {'scene.cameraPosition'},...
@@ -48,18 +45,33 @@ model.stages.sceneSync = { ...
 model.nParams = model.head.nParams + model.eye.nParams + model.scene.nParams * model.scene.nScenes;
 
 
+%% Functions
+
+% Return the indices for a given field (head, eye, scene) and param label
+model.func.fieldSetIdx = @(field,setLabel) model.(field).idxMap(model.(field).setIdx{strcmp(model.(field).setLabels,setLabel)});
+model.func.fieldParamIdx = @(field,paramLabel) model.(field).idxMap(find(strcmp(model.(field).paramLabels,paramLabel)));
+
+% An anonymous function that expands the input index vector [a, b, ...]
+% into a vector given k eye+relCamPosParams, s sceneParams, and n scenes:
+%	[ e+a+(s*0), e+b+(s*0), e+a+(s*1), e+b+(s*1), ... e+a+(s*(n-1)), e+b+(s*(n-1)) ]
+% This is used to map a given choice of scene parameters to a multi-scene
+% search.
+model.func.multiSceneIdx = @(idx) model.head.nParams + model.eye.nParams + repmat((0:model.scene.nScenes-1)*model.scene.nParams,1,length(idx)) + ...
+    cell2mat(arrayfun(@(x) repmat(x,1,model.scene.nScenes),idx,'UniformOutput',false));
+
+
 %% subX
 % This function returns the indices for the full set of parameters for each
 % scene
-model.sceneParamStart = @(sceneIdx) (sceneIdx-1)*model.scene.nParams+model.head.nParams+model.eye.nParams+1;
-model.subX = @(x,sceneIdx) x([1:(model.head.nParams+model.eye.nParams),model.sceneParamStart(sceneIdx):model.sceneParamStart(sceneIdx)+model.scene.nParams-1]);
+model.func.sceneParamStart = @(sceneIdx) (sceneIdx-1)*model.scene.nParams+model.head.nParams+model.eye.nParams+1;
+model.func.subX = @(x,sceneIdx) x([1:(model.head.nParams+model.eye.nParams),model.func.sceneParamStart(sceneIdx):model.func.sceneParamStart(sceneIdx)+model.scene.nParams-1]);
 
 
 %% Depth penalty
 % A regularization function that penalizes changes in depth from the x0
 % values
-cameraDepthTransSet = model.scene.idxMap(find(strcmp('depth',model.scene.labels)));
-model.genericPenalty = @(x,x0,w) (1 + w * norm( (x(cameraDepthTransSet) - x0(cameraDepthTransSet)) ./ x0(cameraDepthTransSet) ))^2;
+cameraDepthTransSet = model.func.multiSceneIdx(find(strcmp('depth',model.scene.paramLabels)));
+model.func.genericPenalty = @(x,x0,w) (1 + w * norm( (x(cameraDepthTransSet) - x0(cameraDepthTransSet)) ./ x0(cameraDepthTransSet) ))^2;
 
 
 %% Non-linear constraint
@@ -67,7 +79,7 @@ model.genericPenalty = @(x,x0,w) (1 + w * norm( (x(cameraDepthTransSet) - x0(cam
 % the corneal curvature (K1) to be less than the second value (K2) Note
 % that NONBCON takes a matrix input, which is why we perform this
 % calculation over the first dimension.
-model.nonbcon = @(x) x(:,model.eye.idxMap(1)) > x(:,model.eye.idxMap(2));
+model.func.nonbcon = @(x) x(:,model.eye.idxMap(1)) > x(:,model.eye.idxMap(2));
 
 
 end

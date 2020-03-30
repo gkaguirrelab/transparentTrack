@@ -1,4 +1,4 @@
-function fVal = updateModel(obj, x)
+function fVal = returnError(obj, x)
 
 % If the stored x is is not empty, and passed x is the same as the current
 % state of the model, just return the current fVal
@@ -13,10 +13,10 @@ end
 obj.x = x;
 
 % Update the relative camera position
-obj.updateRelCamPos( x(1:4) );
+obj.updateHead;
 
 % Update the sceneGeometry
-obj.updateScene( x(5:17) );
+obj.updateScene;
 
 % Update the error
 obj.updateError(obj.keyVals{:});
