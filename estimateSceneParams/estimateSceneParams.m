@@ -344,7 +344,7 @@ for ii = 1:nStages
     for ss = 1:nScenes
         mySceneObjects{ss}.saveEyeModelMontage(fileNameSuffix);
         mySceneObjects{ss}.saveModelFitPlot(fileNameSuffix);
-    end
+    end        
     
     % If instructed, use the fixation results to update the primary
     % position after each stage except the last
@@ -354,7 +354,7 @@ for ii = 1:nStages
             fixationEyePose = mySceneObjects{ss}.fixationEyePose;
             poses = [poses fixationEyePose(1:2)'];
         end
-        x(find(primaryPosSet)) = poses;
+        x(model.func.fieldSetIdx('scene','primaryPosition')) = poses;
     end
     
 end

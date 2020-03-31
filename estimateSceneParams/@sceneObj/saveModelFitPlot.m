@@ -3,6 +3,7 @@ function saveModelFitPlot(obj,fileNameSuffix)
 
 %% Obtain variables from the object
 x = obj.x;
+model = obj.model;
 modelPupilEllipse = obj.modelPupilEllipse;
 modelGlintCoord = obj.modelGlintCoord;
 modelPoseGaze = obj.modelPoseGaze;
@@ -95,6 +96,8 @@ else
     montageOrder = 1:length(montageOrder);
 end
 
+framesToMontage = (ones(dim,dim,3,nGrid^2));
+
 % Show the frames
 for ii = 1:length(ellipseRMSE)
     Xp = perimeter{ii}.Xp;
@@ -126,36 +129,29 @@ montage(framesToMontage)
 str = sprintf('Perimeter [%2.2f]',rawErrors(1));
 title(str);
 
-% Text label that indicates stage
-xRange=get(gca,'XLim');
-yRange=get(gca,'YLim');
-drawnow
-
-
-% Put an annotation for the x parameters at the
-% bottom. Report params that hit a bound in red.
+% Annotate with the videoStemName
 gcf;
 axes('Position',[0 0 1 1],'Visible','off','Tag','subtitle');
 dropboxBaseDir = getpref('eyeTrackTOMEAnalysis','dropboxBaseDir');
 str = strrep(videoStemName,dropboxBaseDir,'');
-ht = text(0.5,0.3,str,'Interpreter', 'none');
+ht = text(0.5,0.4,str,'Interpreter', 'none');
 set(ht,'horizontalalignment','center','fontsize',10);
-str = sprintf('Cornea curv joint, diff, tor, tilt, tip [$color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$]; Rot center joint, diff [$color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$]; primary pos [$color-start$%2.2f$$color-end$$, $color-start$%2.2f$$color-end$$]; Camera tor: $color-start$%2.1f$$color-end$$, trans: [$color-start$%2.1f$$color-end$$, $color-start$%2.1f$$color-end$$, $color-start$%2.1f$$color-end$$]',x);
-tagIdx = strfind(str,'$color-start$');
-fitAtBound = zeros(size(x));
-for ii=1:length(fitAtBound)
-    if fitAtBound(ii)
-        str(tagIdx(ii):tagIdx(ii)+12) = '\color{red$$}';
-    else
-        str(tagIdx(ii):tagIdx(ii)+12) = '\color{black}';
+
+% Add the parameter values to the annotation
+fields = {'head','eye','scene'};
+for ii = 1:length(fields)
+    str = [fields{ii} ' -- '];
+    nParams = model.(fields{ii}).nParams;
+    for pp = 1:nParams
+        paramLabel = model.(fields{ii}).paramLabels{pp};
+        str = [str paramLabel sprintf(': %2.2f',x(model.func.fieldParamIdx(fields{ii},paramLabel)))];
+        if pp < nParams
+            str = [str ', '];
+        end
     end
+    ht=text(.5,0.4 - 0.1*ii,str,'Interpreter', 'none');
+    set(ht,'horizontalalignment','center','fontsize',10);
 end
-str = strrep(str,'$$color-end$$','\color{black}');
-str = strrep(str,'$$','');
-ht=text(.5,0.2,str);
-set(ht,'horizontalalignment','center','fontsize',8);
-str = sprintf('x = [ %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f, %2.3f ]',x);
-ht=text(.5,0.1,str);set(ht,'horizontalalignment','center','fontsize',8);
 drawnow
 
 saveas(figHandle,plotFileName)
