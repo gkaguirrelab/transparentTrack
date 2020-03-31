@@ -225,18 +225,11 @@ p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@i
 
 % Optional analysis params
 p.addParameter('searchStrategy','twoStage',@ischar);
-p.addParameter('eyeArgs',{''},@iscell);
-p.addParameter('sceneArgs',{''},@iscell);
-p.addParameter('keyArgs',{''},@iscell);
+p.addParameter('model',[],@isstruct);
+p.addParameter('eyeArgs',{},@iscell);
+p.addParameter('sceneArgs',{},@iscell);
+p.addParameter('errorArgs',{},@iscell);
 p.addParameter('useFixForPrimaryPos',true,@islogical);
-p.addParameter('relCamPosParamsX0',[0, 0, 0, 0],@isnumeric);
-p.addParameter('relCamPosParamsBounds',[30, 30, 30, 30],@isnumeric);
-p.addParameter('eyeParamsX0',[44.2410, 45.6302, 0, 2.5000, 0, 1, 1],@isnumeric);
-p.addParameter('eyeParamsBounds',[5, 5, 90, 5, 5, 0.25, 0.15],@isnumeric);
-p.addParameter('sceneParamsX0',{[0 0 0 0 0 120]},@iscell);
-p.addParameter('sceneParamsBounds',[10 10 20 20 20 20],@isnumeric);
-p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
-p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 p.addParameter('errorReg',[1 2 4 2],@isnumeric);
 p.addParameter('multiSceneNorm',1,@isscalar);
 p.addParameter('TolMesh',1e-2,@isscalar);
@@ -246,26 +239,17 @@ p.addParameter('depthChangePenaltyWeight',0.5,@isscalar);
 p.parse(videoStemName, frameSet, gazeTargets, varargin{:})
 
 
+%% Setup some basic variables
+verbose = p.Results.verbose;
+nScenes = length(videoStemName);
+
 
 %% Define model params
-% This local function has the dictionary of search paramters and stages
-nScenes = length(videoStemName);
-model = defineModelParams(nScenes);
+% This local function has the dictionary of search parametes and stages.
+% The key-value 'model' may be used to supply values that replace the
+% defaults. This is typically done for x0 and bounds.
+model = defineModelParams(nScenes, p.Results.model, verbose);
 
-
-%% Set up the search options and objectives
-
-% The eye parameters are the initial entries in x0 and bounds
-x0 = [p.Results.relCamPosParamsX0, p.Results.eyeParamsX0];
-xBounds = [p.Results.relCamPosParamsBounds, p.Results.eyeParamsBounds];
-
-% These key values are passed to calcGlintGazeError
-keyVals = {...
-    'eyePoseLB', p.Results.eyePoseLB,...
-    'eyePoseUB', p.Results.eyePoseUB,...
-    'errorReg',p.Results.errorReg, ...
-    p.Results.keyArgs{:} ...
-    };
 
 % Loop through the scenes and create scene objective functions
 for ss = 1:nScenes
@@ -278,27 +262,22 @@ for ss = 1:nScenes
     mySceneObjects{ss} = sceneObj(...
         model, ...
         videoStemName{ss}, frameSet{ss}, gazeTargets{ss}, ...
-        setupArgs, keyVals, p.Results, ...
-        'verbose', p.Results.verbose);
+        setupArgs, p.Results.errorArgs, p.Results, ...
+        'verbose', verbose);
     
-    % Assemble the x0 by concatenating the x0 scene params
-    x0 = [x0, p.Results.sceneParamsX0{ss}];
-    
-    % Assemble xBounds by concatenating the scene bounds
-    xBounds = [xBounds, p.Results.sceneParamsBounds];
 end
 
 % Set the initial value of x to x0
-x = x0;
+x = model.x0;
 
 
 %% Anonymous functions for the search
 
 % Update the depth change penalty function for the model
-model.func.penalty = @(x) model.func.genericPenalty(x,x0,p.Results.depthChangePenaltyWeight);
+model.func.penalty = @(x) model.func.genericPenalty(x,model.x0,p.Results.depthChangePenaltyWeight);
 
 % An objective function which is the norm of all objective functions
-myObjAll = @(x) multiSceneObjective(x,mySceneObjects,model,p.Results.multiSceneNorm,p.Results.verbose);
+myObjAll = @(x) multiSceneObjective(x,mySceneObjects,model,p.Results.multiSceneNorm,verbose);
 
 % A non-linear constraint on the corneal curvature
 nonbcon = model.func.nonbcon;
@@ -312,13 +291,13 @@ options.TolMesh = p.Results.TolMesh; % Typically 1e-3 is plenty precise
 
 %% Set up the parallel pool
 if p.Results.useParallel
-    startParpool( p.Results.nWorkers, p.Results.verbose );
+    startParpool( p.Results.nWorkers, verbose );
 end
 
 
 %% Announce we are starting
 ticObject = tic();
-if p.Results.verbose
+if verbose
     fprintf(['Estimating scene parameters. Started ' char(datetime('now')) '\n']);
 end
 
@@ -328,13 +307,13 @@ nStages = length(model.stages.(p.Results.searchStrategy));
 for ii = 1:nStages
     
     % Announce
-    if p.Results.verbose
+    if verbose
         str = sprintf(['Starting stage %d of %d \n'],ii,nStages);
         fprintf(str);
     end
     
     % Bounds
-    [x,lb,ub,lbp,ubp] = setBounds(x,xBounds,model,ii,p.Results.searchStrategy);
+    [x,lb,ub,lbp,ubp] = setBounds(x,model,ii,p.Results.searchStrategy);
     
     % Search
     x = bads(myObjAll,x,lb,ub,lbp,ubp,nonbcon,options);
@@ -372,7 +351,7 @@ end
 
 %% Alert the user that we are done with the routine
 executionTime = toc(ticObject);
-if p.Results.verbose
+if verbose
     fprintf([num2str(executionTime) '\n']);
 end
 

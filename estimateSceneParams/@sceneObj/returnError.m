@@ -19,7 +19,7 @@ obj.updateHead;
 obj.updateScene;
 
 % Update the error
-obj.updateError(obj.keyVals{:});
+obj.updateError(obj.errorArgs{:});
 
 % Update fValBest and xBest
 if obj.fVal < obj.fValBest

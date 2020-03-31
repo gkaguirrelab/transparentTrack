@@ -45,6 +45,7 @@ sceneGeometry = createSceneGeometry(sceneGeometryVarargin{:});
 sceneGeometry.meta.estimateSceneParams.p = obj.meta;
 sceneGeometry.meta.estimateSceneParams.x = obj.x;
 sceneGeometry.meta.estimateSceneParams.fVal = obj.fVal;
+sceneGeometry.meta.estimateSceneParams.model = obj.model;
 sceneGeometry.meta.estimateSceneParams.sceneGeometryVarargin = sceneGeometryVarargin;
 sceneGeometry.meta.estimateSceneParams.modelEyePose = obj.modelEyePose;
 sceneGeometry.meta.estimateSceneParams.modelPupilEllipse = obj.modelPupilEllipse;

@@ -24,7 +24,7 @@ classdef sceneObj < handle
         setupArgs
         meta
         verbose
-        keyVals
+        errorArgs
             
         % Fixed data used to guide the search
         perimeter
@@ -80,7 +80,7 @@ classdef sceneObj < handle
     methods
 
         % Constructor
-        function obj = sceneObj(model, videoStemName, frameSet, gazeTargets, setupArgs, keyVals, meta, varargin)
+        function obj = sceneObj(model, videoStemName, frameSet, gazeTargets, setupArgs, errorArgs, meta, varargin)
                         
             % instantiate input parser
             p = inputParser; p.KeepUnmatched = false;
@@ -91,13 +91,13 @@ classdef sceneObj < handle
             p.addRequired('frameSet',@isnumeric);
             p.addRequired('gazeTargets',@isnumeric);
             p.addRequired('setupArgs',@iscell);
-            p.addRequired('keyVals',@iscell);
+            p.addRequired('errorArgs',@iscell);
             p.addRequired('meta',@isstruct);
             
             p.addParameter('verbose',false,@islogical);
         
             % parse
-            p.parse(model, videoStemName, frameSet, gazeTargets, setupArgs, keyVals, meta, varargin{:})
+            p.parse(model, videoStemName, frameSet, gazeTargets, setupArgs, errorArgs, meta, varargin{:})
                         
             
             %% Store inputs in the object
@@ -108,7 +108,7 @@ classdef sceneObj < handle
             obj.setupArgs = setupArgs;
             obj.meta = meta;
             obj.verbose = p.Results.verbose;
-            obj.keyVals = keyVals;            
+            obj.errorArgs = errorArgs;            
 
             
             %% Initialize some properties
