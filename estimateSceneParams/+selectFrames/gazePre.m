@@ -18,30 +18,29 @@ p.parse(videoStemName, varargin{:})
 % this acquisition
 load([videoStemName '_timebase.mat'],'timebase');
 load([videoStemName '_pupil.mat'],'pupilData');
-load([videoStemName '_relativeCameraPosition.mat'],'relativeCameraPosition');
 
 % Identify the acqStartTimeFixed, which is the time point at which the
 % fMRI acquisition began
 [~, acqStartFrameFixed] = min(abs(timebase.values));
 
-        % For some acquisitions, the subject was asked to stare at a
-        % fixation point in the center of the screen prior to the start of
-        % the acquisition. Find the period prior to the start of the scan
-        % when the eye was in the most consistent position, and closest to
-        % the median position.
-        windowStart = 1;
-        windowEnd = acqStartFrameFixed;
-        gazeX = pupilData.initial.ellipses.values(windowStart:windowEnd,1);
-        gazeY = pupilData.initial.ellipses.values(windowStart:windowEnd,2);
-        medianX = nanmedian(gazeX);
-        medianY = nanmedian(gazeY);
-        
-        % Assuming that the eye had a central tendency of fixation upon the
-        % center of the screen, this vector expresses the deviation of
-        % fixation on any given frame from the screen center.
-        eyeMatchError = sqrt(sum([gazeX-medianX; gazeY-medianY].^2,2));
-        x0 = 0.5;
-        
+% For some acquisitions, the subject was asked to stare at a
+% fixation point in the center of the screen prior to the start of
+% the acquisition. Find the period prior to the start of the scan
+% when the eye was in the most consistent position, and closest to
+% the median position.
+windowStart = 1;
+windowEnd = acqStartFrameFixed;
+gazeX = pupilData.initial.ellipses.values(windowStart:windowEnd,1);
+gazeY = pupilData.initial.ellipses.values(windowStart:windowEnd,2);
+medianX = nanmedian(gazeX);
+medianY = nanmedian(gazeY);
+
+% Assuming that the eye had a central tendency of fixation upon the
+% center of the screen, this vector expresses the deviation of
+% fixation on any given frame from the screen center.
+eyeMatchError = sqrt(sum([gazeX-medianX; gazeY-medianY].^2,2));
+x0 = 0.5;
+
 % Find the minimum fixation error threshold that results in a run of
 % consecutive frames at fixation of the target length.
 targetLength = p.Results.eyePositionTargetLengthFrames;

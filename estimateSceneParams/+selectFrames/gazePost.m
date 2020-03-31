@@ -18,7 +18,6 @@ p.parse(videoStemName, varargin{:})
 % this acquisition
 load([videoStemName '_timebase.mat'],'timebase');
 load([videoStemName '_pupil.mat'],'pupilData');
-load([videoStemName '_relativeCameraPosition.mat'],'relativeCameraPosition');
 
 % Identify the acqStartTimeFixed, which is the time point at which the
 % fMRI acquisition began
