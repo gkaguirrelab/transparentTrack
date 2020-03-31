@@ -70,7 +70,7 @@ model.func.subX = @(x,sceneIdx) x([1:(model.head.nParams+model.eye.nParams),mode
 %% Depth penalty
 % A regularization function that penalizes changes in depth from the x0
 % values
-cameraDepthTransSet = model.func.multiSceneIdx(find(strcmp('depth',model.scene.paramLabels)));
+cameraDepthTransSet = model.func.multiSceneIdx(model.func.fieldParamIdx('scene','depth'));
 model.func.genericPenalty = @(x,x0,w) (1 + w * norm( (x(cameraDepthTransSet) - x0(cameraDepthTransSet)) ./ x0(cameraDepthTransSet) ))^2;
 
 
@@ -79,7 +79,7 @@ model.func.genericPenalty = @(x,x0,w) (1 + w * norm( (x(cameraDepthTransSet) - x
 % the corneal curvature (K1) to be less than the second value (K2) Note
 % that NONBCON takes a matrix input, which is why we perform this
 % calculation over the first dimension.
-model.func.nonbcon = @(x) x(:,model.eye.idxMap(1)) > x(:,model.eye.idxMap(2));
+model.func.nonbcon = @(x) x(:,model.func.fieldParamIdx('eye','K1')) > x(:,model.func.fieldParamIdx('eye','K2'));
 
 
 end
