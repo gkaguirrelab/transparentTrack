@@ -30,13 +30,15 @@ R = Rz*Ry*Rx;
 end
 
 function vecOut = censorShift(vecIn,frameShift)
+% For those points where we have shifted the data out of frame, set the
+% head position correction to zero.
 for jj = 1:size(vecIn,1)
     vecOut(jj,:) = fshift(vecIn(jj,:),frameShift);
     if frameShift<0
-        vecOut(jj,end+round(frameShift):end)=nan;
+        vecOut(jj,end+round(frameShift):end)=0;
     end
     if frameShift>0
-        vecOut(jj,1:round(frameShift))=nan;
+        vecOut(jj,1:round(frameShift))=0;
     end
 end
 end
