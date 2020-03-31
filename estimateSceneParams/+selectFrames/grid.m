@@ -7,9 +7,9 @@ p = inputParser; p.KeepUnmatched = true;
 % Required
 p.addRequired('videoStemName',@ischar);
 
-p.addParameter('nBinsPerDimension',6,@isnumeric);
+p.addParameter('nBinsPerDimension',8,@isnumeric);
 p.addParameter('badFrameErrorThreshold',2, @isnumeric);
-p.addParameter('minFramesPerBin',100, @isnumeric);
+p.addParameter('minFramesPerBin',50, @isnumeric);
 
 % parse
 p.parse(videoStemName, varargin{:})

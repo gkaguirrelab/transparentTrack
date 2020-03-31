@@ -52,11 +52,11 @@ model.func.fieldSetIdx = @(field,setLabel) model.(field).idxMap(model.(field).se
 model.func.fieldParamIdx = @(field,paramLabel) model.(field).idxMap(find(strcmp(model.(field).paramLabels,paramLabel)));
 
 % An anonymous function that expands the input index vector [a, b, ...]
-% into a vector given k eye+relCamPosParams, s sceneParams, and n scenes:
+% into a vector given k eye+head, s sceneParams, and n scenes:
 %	[ e+a+(s*0), e+b+(s*0), e+a+(s*1), e+b+(s*1), ... e+a+(s*(n-1)), e+b+(s*(n-1)) ]
 % This is used to map a given choice of scene parameters to a multi-scene
 % search.
-model.func.multiSceneIdx = @(idx) model.head.nParams + model.eye.nParams + repmat((0:model.scene.nScenes-1)*model.scene.nParams,1,length(idx)) + ...
+model.func.multiSceneIdx = @(idx) repmat((0:model.scene.nScenes-1)*model.scene.nParams,1,length(idx)) + ...
     cell2mat(arrayfun(@(x) repmat(x,1,model.scene.nScenes),idx,'UniformOutput',false));
 
 
