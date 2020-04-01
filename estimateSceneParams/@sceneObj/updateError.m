@@ -2,7 +2,7 @@ function updateError( obj, varargin )
 % Calculate the error in prediction of image and gaze for the sceneGeometry
 %
 % Syntax:
-%   obj.updateError()
+%  obj.updateError()
 %
 % Description:
 %   The sceneGeometry defines a physical system of an eye, a camera (with a
