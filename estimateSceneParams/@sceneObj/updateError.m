@@ -1,13 +1,13 @@
 function updateError( obj, varargin )
-% Error in prediction of image and gaze for a sceneGeometry
+% Calculate the error in prediction of image and gaze for the sceneGeometry
 %
 % Syntax:
-%   [ objError, modelEyePose, modelPupilEllipse, modelGlintCoord, modelPoseGaze, modelVecGaze, poseRegParams, vectorRegParams, rawErrors] = calcGlintGazeError( sceneGeometry, perimeter, glintData, ellipseRMSE, gazeTargets, relativeCameraPosition, varargin )
+%   obj.updateError()
 %
 % Description:
 %   The sceneGeometry defines a physical system of an eye, a camera (with a
-%   light source), and fixation target. This routine returns the error in
-%   the model prediction of  elements of this scene. Two of these
+%   light source), and fixation target. This routine calculates the error
+%   in the model prediction of elements of this scene. Two of these
 %   prediction elements are derived from the eye tracking image, and are
 %   the error with which the perimeter of the pupil is fit with a
 %   scene-constrained ellipse, and the error in the specification of the
@@ -19,11 +19,7 @@ function updateError( obj, varargin )
 %   these fixation targets.
 %
 % Inputs:
-%   sceneGeometry         - Structure. SEE createSceneGeometry.m
-%   perimeter             - Structure. SEE findPupilPerimeter.m
-%   glintData             - Structure. SEE findPupilGlint.m
-%   ellipseRMSE           - Vector. The error in the initial ellipse fit.
-%   gazeTargets           - Vector.
+%   None. These are obtained from the obj.
 %
 % Optional key/value pairs:
 %  'eyePoseLB/UB'         - 1x4 vector. Upper / lower bounds on the eyePose
@@ -46,9 +42,17 @@ function updateError( obj, varargin )
 %  'missedGlintPenalty'   - Scalar. If a glint is not found for one frame,
 %                           then this value is assigned as the error for
 %                           that frame.
+%  'poseRegParams', 'vectorRegParams' - Structures. These values, generated
+%                           from a previous execution of this function, can
+%                           be returned in the varargin to be used instead
+%                           of being recomputed. This is done to constrain
+%                           the model, as opposed to saving computation
+%                           time.
 %
 % Outputs:
-%   objError              - Scalar. The overall model error.
+%   None, but these elements are updated in the obj:
+%
+%   fVal                  - Scalar. The overall model error.
 %   modelEyePose          - f x 4 matrix of modeled eyePose positions
 %                           for the passed frames.
 %   modelPupilEllipse     - f x 5 matrix of ellipses fit to the pupil.
@@ -96,13 +100,13 @@ p.parse(varargin{:});
 
 
 %% Setup variables
+
 % How many frames do we have
 nFrames = length(glintDataX);
 
 % The weight for the errors is given by the inverse initial ellipse fit
 % RMSE
 weights = 1./ellipseRMSE;
-
 
 % Allocate the loop and return variables
 modelEyePose = nan(nFrames,4);
@@ -117,7 +121,7 @@ poseRegParams = struct();
 vectorRegParams = struct();
 
 
-% Loop over the frames and obtain the modeled eyePose and glint
+%% Loop over the frames and obtain the modeled eyePose and glint
 parfor ii = 1:nFrames
     
     % Get the perimeter
@@ -199,6 +203,7 @@ if isempty(gazeTargets)
     poseError = nan;
     vectorError = nan;
 else
+    
     %% poseError
     % Match eye rotation to visual angle of fixation targets
     

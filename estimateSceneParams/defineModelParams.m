@@ -163,7 +163,7 @@ model.strategy.sceneSync.stages = { ...
     {'scene.cameraPosition'},...
     {'scene.cameraPosition', 'scene.primaryPosition', 'head.phaseAndRotation' } };
 model.strategy.sceneSync.errorReg = [1 1 0 0];
-model.strategy.sceneSync.penaltyWeight = 0;
+model.strategy.sceneSync.penaltyWeight = 0.5;
 model.strategy.sceneSync.useFixForPrimaryPos = true;
 model.strategy.sceneSync.multiSceneNorm = 1;
 model.strategy.sceneSync.TolMesh = 1e-2;

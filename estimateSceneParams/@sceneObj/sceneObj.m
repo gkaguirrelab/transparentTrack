@@ -44,7 +44,8 @@
 %                           to createSceneGeometry.
 %   errorArgs             - Cell array. These are key-value pairs that are
 %                           passed to method 'updateError'.
-%   meta                  - 
+%   meta                  - Structure. Usually the p.Results output of the
+%                           parameter parser from the calling function.
 %   
 % Outputs:
 %   obj                   - Handle to the object.
@@ -146,6 +147,7 @@ classdef sceneObj < handle
             p.addRequired('errorArgs',@iscell);
             p.addRequired('meta',@isstruct);
             
+            % Optional
             p.addParameter('verbose',false,@islogical);
         
             % parse

@@ -30,6 +30,7 @@ for ss = 1:nScenes
     % Call the object to calculate the updated error function for these
     % parameters
     fValScene(ss) = mySceneObjects{ss}.returnError(subX);
+    
 end
 
 % Take the norm of the scene objectives, using the metric defined in the
@@ -40,7 +41,7 @@ fVal = norm(fValScene,model.strategy.(strategy).multiSceneNorm);
 fVal = min([fVal realmax]);
 
 % Apply the regularization to penalize changes in the camera depth
-penalty = model.func.penalty(x,model.x0,model.strategy.(strategy).penaltyWeight);
+penalty = model.func.penalty(x,model.x0,model.strategy.(strategy).penaltyWeight)
 fVal = fVal * penalty;
 
 % Each sceneObject has a multiSceneMeta property that is used to stash
