@@ -268,6 +268,7 @@ p.parse(videoStemName, frameSet, gazeTargets, varargin{:})
 
 %% Check inputs
 
+% Catch some possible input errors
 if iscell(videoStemName)
     % If the videoNameStem is a cell array, make sure that all inputs are cell
     % arrays
@@ -296,12 +297,13 @@ else
     gazeTargets = {gazeTargets};
 end
 
+% Pull these out for code legibility
 verbose = p.Results.verbose;
 nScenes = length(videoStemName);
 
 
 %% Define model params
-% This local function has the dictionary of search parametes and stages.
+% This function has the dictionary of search parameters and stages.
 % The key-value 'model' may be used to supply values that replace the
 % defaults. This is typically done for x0 and bounds.
 model = defineModelParams(nScenes, p.Results.model, p.Results.cameraDepth);
@@ -320,8 +322,7 @@ for ss = 1:nScenes
     
     % Create the objective for this scene
     mySceneObjects{ss} = sceneObj(...
-        model, ...
-        videoStemName{ss}, frameSet{ss}, gazeTargets{ss}, ...
+        model, videoStemName{ss}, frameSet{ss}, gazeTargets{ss}, ...
         setupArgs, p.Results.errorArgs, p.Results, ...
         'verbose', verbose);
     
@@ -332,15 +333,10 @@ x = model.x0;
 
 
 %% Anonymous functions for the search
-
-% Update the depth change penalty function for the model
-model.func.penalty = @(x) model.func.genericPenalty(x,model.x0,p.Results.depthChangePenaltyWeight);
-
 % An objective function which is the norm of all objective functions
+
 myObjAll = @(x) multiSceneObjective(x,mySceneObjects,model,p.Results.multiSceneNorm,verbose);
 
-% A non-linear constraint on the corneal curvature
-nonbcon = model.func.nonbcon;
 
 %% Define BADS search options
 options = bads('defaults');          % Get a default OPTIONS struct
@@ -363,6 +359,8 @@ end
 
 
 %% Search across stages
+
+% The number of sta
 nStages = length(model.stages.(p.Results.searchStrategy));
 for ii = 1:nStages
     
@@ -376,7 +374,7 @@ for ii = 1:nStages
     [x,lb,ub,lbp,ubp] = setBounds(x,model,ii,p.Results.searchStrategy);
     
     % Search
-    x = bads(myObjAll,x,lb,ub,lbp,ubp,nonbcon,options);
+    x = bads(myObjAll,x,lb,ub,lbp,ubp,model.func.nonbcon,options);
     
     % Plots
     fileNameSuffix = sprintf('_stage%02d',ii);

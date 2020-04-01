@@ -1,4 +1,4 @@
-function model = defineModelParams(nScenes, modelIn, cameraDepth)
+function model = defineModelParams(nScenes, modelIn, cameraDepth, depthChangePenaltyWeight)
 %% Define model parameters
 
 
@@ -73,35 +73,6 @@ if ~isempty(modelIn)
 end
 
 
-%% Functions
-
-% Return the indices for a given field (head, eye, scene) and param label
-model.func.fieldSetIdx = @(field,setLabel) model.(field).idxMap(model.(field).setIdx{strcmp(model.(field).setLabels,setLabel)});
-model.func.fieldParamIdx = @(field,paramLabel) model.(field).idxMap(find(strcmp(model.(field).paramLabels,paramLabel)));
-
-
-%% subX
-% This function returns the indices for the full set of parameters for each
-% scene
-model.func.sceneParamStart = @(sceneIdx) (sceneIdx-1)*model.scene.nParams+model.head.nParams+model.eye.nParams+1;
-model.func.subX = @(x,sceneIdx) x([1:(model.head.nParams+model.eye.nParams),model.func.sceneParamStart(sceneIdx):model.func.sceneParamStart(sceneIdx)+model.scene.nParams-1]);
-
-
-%% Depth penalty
-% A regularization function that penalizes changes in depth from the x0
-% values
-cameraDepthTransSet = model.scene.idxMultiScene(model.func.fieldParamIdx('scene','depth'));
-model.func.genericPenalty = @(x,x0,w) (1 + w * norm( (x(cameraDepthTransSet) - x0(cameraDepthTransSet)) ./ x0(cameraDepthTransSet) ))^2;
-
-
-%% Non-linear constraint
-% A non-linear constraint for the BADS search that requires first value of
-% the corneal curvature (K1) to be less than the second value (K2) Note
-% that NONBCON takes a matrix input, which is why we perform this
-% calculation over the first dimension.
-model.func.nonbcon = @(x) x(:,model.func.fieldParamIdx('eye','K1')) > x(:,model.func.fieldParamIdx('eye','K2'));
-
-
 %% Assemble full x0 and bounds
 
 % If model.scene.x0 is a cell array, then we have been given a different
@@ -118,6 +89,28 @@ if iscell(model.scene.x0)
 else
     model.bounds = [model.head.bounds, model.eye.bounds, repmat(model.scene.bounds, 1, nScenes)];
 end
+
+
+%% Functions
+
+% Return the indices for a given field (head, eye, scene) and param label
+model.func.fieldSetIdx = @(field,setLabel) model.(field).idxMap(model.(field).setIdx{strcmp(model.(field).setLabels,setLabel)});
+model.func.fieldParamIdx = @(field,paramLabel) model.(field).idxMap(find(strcmp(model.(field).paramLabels,paramLabel)));
+
+% subX  returns the indices for the full set of parameters for each scene
+model.func.sceneParamStart = @(sceneIdx) (sceneIdx-1)*model.scene.nParams+model.head.nParams+model.eye.nParams+1;
+model.func.subX = @(x,sceneIdx) x([1:(model.head.nParams+model.eye.nParams),model.func.sceneParamStart(sceneIdx):model.func.sceneParamStart(sceneIdx)+model.scene.nParams-1]);
+
+% penalty is a regularization that penalizes changes in depth from the x0
+% values
+cameraDepthTransSet = model.scene.idxMultiScene(model.func.fieldParamIdx('scene','depth'));
+model.func.penalty = @(x,x0,w) (1 + depthChangePenaltyWeight * norm( (x(cameraDepthTransSet) - model.x0(cameraDepthTransSet)) ./ model.x0(cameraDepthTransSet) ))^2;
+
+% A non-linear constraint for the BADS search that requires first value of
+% the corneal curvature (K1) to be less than the second value (K2) Note
+% that NONBCON takes a matrix input, which is why we perform this
+% calculation over the first dimension.
+model.func.nonbcon = @(x) x(:,model.func.fieldParamIdx('eye','K1')) > x(:,model.func.fieldParamIdx('eye','K2'));
 
 
 
