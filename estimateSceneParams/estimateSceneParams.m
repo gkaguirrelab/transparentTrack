@@ -39,12 +39,10 @@ function estimateSceneParams(videoStemName, frameSet, gazeTargets, varargin)
 %   key-value. This specifies the distance of the camera from the eye (in
 %   mm), as it is otherwise difficult for the solution to distinguish
 %   between the depth position of the camera and properties of eye biometry
-%   (rotation depth and corneal curvature). The routine includes a
+%   (rotation depth and corneal curvature). For strategies that include
+%   searching over eye biometric parameters, the search includes a
 %   regularization that penalizes the solution for departing from the x0
-%   value for camera depth. The penalty rises as the square of the distance
-%   in mm of the camera depth from the inital value, with the weight of the
-%   penalty adjusted setting 'depthChangePenaltyWeight'. A value of zero
-%   will remove the penalty.
+%   value for camera depth.
 %
 % Inputs:
 %	videoStemName         - Char vector, or cell array of n char vectors.
@@ -94,19 +92,11 @@ function estimateSceneParams(videoStemName, frameSet, gazeTargets, varargin)
 %  'hostname'             - AUTOMATIC; The host
 %
 % Optional key/value pairs (analysis)
-%  'searchStrategy'       - Char vector. See the Description section for
-%                           details, and the function defineModelParams.m
 %  'cameraDepth'          - Scalar. Estimate of the distance of the nodal
 %                           point of the camera from the corneal apex of
 %                           the eye. Used to inform the x0 values for the
 %                           search.
-%  'depthChangePenaltyWeight' - Scalar. Adjustment of camera depth away
-%                           from the x0 values is penalized. The effect of
-%                           the weight (w) is such that an x% change in
-%                           camera depth produces a [(w*x)^2]% increase in
-%                           the objective. A weight value of zero removes
-%                           the regularization.
-%  'model'                  Structure. Setting fields of this structure to
+%  'model'                  Structure. Set fields of this structure to
 %                           replace the default set of params for the
 %                           search. See defineModelParams.m for details.
 %  'eyeArgs'              - Cell array. These are key-value pairs to be 
@@ -125,40 +115,15 @@ function estimateSceneParams(videoStemName, frameSet, gazeTargets, varargin)
 %                           pairs to be used when generating the scene
 %                           model for a particular video. An example input
 %                           (for 2 scenes ) is:
-%                               { {'spectacleLens',-3} ,{'spectacleLens',-3} }
+%                               { {'spectacleLens',-3} ,{'contactLens',-3} }
 %  'errorArgs'            - Cell array. These are key-value pairs that are
 %                           passed to method 'updateError' of sceneObj.
 %                           Typically, one might pass pre-computed values
-%                           of poseRegParams or vecRegParams, or adjust the
-%                           weighting function for the types of errors.
-%  'useFixForPrimaryPos'  - Logical. The primary position of the eye is
-%                           specified as part of the eye model, and
-%                           controls the pseudo-torsion of the eye
-%                           following Listing's Law. Because eye rotations
-%                           are defined with respect to the alignment of
-%                           the optical axis of the camera with the optical
-%                           axis of the eye, the primary position of the
-%                           eye in the scene coordinate frame will vary
-%                           with camera position. The routine is able to
-%                           search across primary position values for each
-%                           scene. This flag causes the model to be updated
-%                           after each stage such that the primary position
-%                           for the eye in a given scene is set equal to
-%                           the modeled position of the eye when it is
-%                           fixating position [0 0] of a fixation array.
-%                           The use of this flag is justified when the
-%                           subject is allowed to adjust their head to most
-%                           comfortably view the center of a fixation array
-%                           prior to recording, presumably placing the
-%                           center of fixation at their primary position.
-%  'multiSceneNorm'       - Scalar. Defines the metric used to combine
-%                           errors across scenes. Defaults to a value of 1
-%                           and thus the L1 norm.
-%  'TolMesh'              - Scalar. The precision with which the parameters
-%                           are adjusted within the BADS search. A value of
-%                           1e-2 provides a good trade-off between search
-%                           time and useful precision in the eye and scene
-%                           parameters.
+%                           of poseRegParams or vecRegParams, or adjust
+%                           the eyePose bounds. Note that the errorReg
+%                           key-value should be defined as part of a search
+%                           strategy within defineModelParams.m, not
+%                           passed here.
 %
 % Outputs
 %	None. Although sceneGeometry files and diagnostic plots are saved for
@@ -207,8 +172,7 @@ function estimateSceneParams(videoStemName, frameSet, gazeTargets, varargin)
     load(sourceSceneName,'sceneGeometry');
     model.eye.x0 = sceneGeometry.meta.estimateSceneParams.x(1:7);
     eyeArgs = sceneGeometry.meta.estimateSceneParams.p.eyeArgs;
-    errorArgs = {...
-        'errorReg',[1 1 0 0], ...
+    errorArgs = { ...
         'poseRegParams',sceneGeometry.meta.estimateSceneParams.poseRegParams,...
         'vectorRegParams',sceneGeometry.meta.estimateSceneParams.vectorRegParams};
 
@@ -224,7 +188,7 @@ function estimateSceneParams(videoStemName, frameSet, gazeTargets, varargin)
     % Perform the search
     estimateSceneParams(videoStemName, frameSet, gazeTargets, ...
         'searchStrategy','sceneSync','cameraDepth',140,'model',model,...
-        'eyeArgs',eyeArgs,'sceneArgs',sceneArgs,'errorArgs',errorArgs);
+        'eyeArgs',eyeArgs,'errorArgs',errorArgs);
 %}
 
 
@@ -253,14 +217,10 @@ p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@i
 % Optional analysis params
 p.addParameter('searchStrategy','gazeCal',@ischar);
 p.addParameter('cameraDepth',120,@isnumeric);
-p.addParameter('depthChangePenaltyWeight',0.5,@isscalar);
 p.addParameter('model',[],@isstruct);
 p.addParameter('eyeArgs',{},@iscell);
 p.addParameter('sceneArgs',{},@iscell);
 p.addParameter('errorArgs',{},@iscell);
-p.addParameter('useFixForPrimaryPos',true,@islogical);
-p.addParameter('multiSceneNorm',1,@isscalar);
-p.addParameter('TolMesh',1e-2,@isscalar);
 
 % parse
 p.parse(videoStemName, frameSet, gazeTargets, varargin{:})
@@ -268,6 +228,7 @@ p.parse(videoStemName, frameSet, gazeTargets, varargin{:})
 
 %% Check inputs
 
+% Catch some possible input errors
 if iscell(videoStemName)
     % If the videoNameStem is a cell array, make sure that all inputs are cell
     % arrays
@@ -296,16 +257,23 @@ else
     gazeTargets = {gazeTargets};
 end
 
+% Pull these out for code legibility
+strategy = p.Results.searchStrategy;
 verbose = p.Results.verbose;
 nScenes = length(videoStemName);
 
 
 %% Define model params
-% This local function has the dictionary of search parametes and stages.
+% This function has the dictionary of search parameters and stages.
 % The key-value 'model' may be used to supply values that replace the
 % defaults. This is typically done for x0 and bounds.
 model = defineModelParams(nScenes, p.Results.model, p.Results.cameraDepth);
 
+% The errorArgs are passed in the creation of the scene objects. We add to
+% any passed errorArg the errorReg key-value that is specified for this
+% search strategy.
+errorArgs = [{'errorReg', model.strategy.(strategy).errorReg}, ...
+    p.Results.errorArgs];
 
 % Loop through the scenes and create scene objective functions
 for ss = 1:nScenes
@@ -320,9 +288,8 @@ for ss = 1:nScenes
     
     % Create the objective for this scene
     mySceneObjects{ss} = sceneObj(...
-        model, ...
-        videoStemName{ss}, frameSet{ss}, gazeTargets{ss}, ...
-        setupArgs, p.Results.errorArgs, p.Results, ...
+        model, videoStemName{ss}, frameSet{ss}, gazeTargets{ss}, ...
+        setupArgs, errorArgs, p.Results, ...
         'verbose', verbose);
     
 end
@@ -333,20 +300,15 @@ x = model.x0;
 
 %% Anonymous functions for the search
 
-% Update the depth change penalty function for the model
-model.func.penalty = @(x) model.func.genericPenalty(x,model.x0,p.Results.depthChangePenaltyWeight);
-
 % An objective function which is the norm of all objective functions
-myObjAll = @(x) multiSceneObjective(x,mySceneObjects,model,p.Results.multiSceneNorm,verbose);
+myObjAll = @(x) multiSceneObjective(x,mySceneObjects,model,strategy,verbose);
 
-% A non-linear constraint on the corneal curvature
-nonbcon = model.func.nonbcon;
 
 %% Define BADS search options
 options = bads('defaults');          % Get a default OPTIONS struct
 options.Display = 'off';             % Silence display output
 options.UncertaintyHandling = 0;     % The objective is deterministic
-options.TolMesh = p.Results.TolMesh; % Typically 1e-3 is plenty precise
+options.TolMesh = model.strategy.(strategy).TolMesh;
 
 
 %% Set up the parallel pool
@@ -363,7 +325,9 @@ end
 
 
 %% Search across stages
-nStages = length(model.stages.(p.Results.searchStrategy));
+
+% The number of stages 
+nStages = length(model.strategy.(strategy).stages);
 for ii = 1:nStages
     
     % Announce
@@ -373,10 +337,10 @@ for ii = 1:nStages
     end
     
     % Bounds
-    [x,lb,ub,lbp,ubp] = setBounds(x,model,ii,p.Results.searchStrategy);
+    [x,lb,ub,lbp,ubp] = setBounds(x,model,ii,strategy);
     
     % Search
-    x = bads(myObjAll,x,lb,ub,lbp,ubp,nonbcon,options);
+    x = bads(myObjAll,x,lb,ub,lbp,ubp,model.func.nonbcon,options);
     
     % Plots
     fileNameSuffix = sprintf('_stage%02d',ii);
@@ -387,7 +351,7 @@ for ii = 1:nStages
     
     % If instructed, use the fixation results to update the primary
     % position after each stage except the last
-    if p.Results.useFixForPrimaryPos && ii<nStages
+    if model.strategy.(strategy).useFixForPrimaryPos && ii<nStages
         poses = [];
         for ss = 1:nScenes
             fixationEyePose = mySceneObjects{ss}.fixationEyePose;

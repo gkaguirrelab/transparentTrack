@@ -1,8 +1,33 @@
 function saveSceneGeometry(obj,fileNameSuffix)
+% Saves the current state of the sceneGeometry in the object
+%
+% Syntax:
+%  obj.saveSceneGeometry(fileNameSuffix)
+%
+% Description:
+%   Save the sceneGeometry with the current state of the parameters to
+%   disk, using the filepath provided by the videoStemName input to the
+%   sceneObj class. The sceneGeometry to be saved is created by specifying
+%   a set of key-value arguments that are then passsed to the
+%   createSceneGeometry function.
+%
+% Inputs:
+%   fileNameSuffix        - Char vector. A suffix for the saved file name.
+%                           The calling function might pass '1', '2', etc
+%                           to label different stages of the evolution of
+%                           the scene object.
+%
+% Outputs:
+%   none
+%
 
 % Get the model parameters and model description
 x = obj.x;
 model = obj.model;
+
+% The sceneGeometry (and eye) varargin that were passed as part of the
+% instantiation of the sceneObj.
+sceneGeometryVarargin = obj.setupArgs;
 
 % keys and values to update
 keys = {...
@@ -26,8 +51,8 @@ values = {...
     obj.screenRotMat, ...
     };
 
-% Loop through the keys and either update or add
-sceneGeometryVarargin = obj.setupArgs;
+% Loop through the keys and either update or add the value to the
+% sceneGeometry arguments
 for kk = 1:length(keys)
     idx = find(strcmp(sceneGeometryVarargin,keys{kk}),1);
     if isempty(idx)
@@ -37,11 +62,10 @@ for kk = 1:length(keys)
     end
 end
 
-
-% Create a new sceneGeometry with the update key-values
+% Create a new sceneGeometry with the updated key-values
 sceneGeometry = createSceneGeometry(sceneGeometryVarargin{:});
 
-% Update the meta data
+% Add the meta data
 sceneGeometry.meta.estimateSceneParams.p = obj.meta;
 sceneGeometry.meta.estimateSceneParams.x = obj.x;
 sceneGeometry.meta.estimateSceneParams.fVal = obj.fVal;
@@ -59,7 +83,6 @@ sceneGeometry.meta.estimateSceneParams.rawErrors = obj.rawErrors;
 % Save the sceneGeometry file
 sceneGeometryFileName = [obj.videoStemName '_sceneGeometry' fileNameSuffix '.mat'];
 save(sceneGeometryFileName,'sceneGeometry');
-
 
 
 end
