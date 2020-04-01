@@ -67,7 +67,7 @@ ubp(~searchSet) = x(~searchSet);
 
 % A special case issue is that the axis of corneal torsion must be locked
 % between ±90 degrees.
-corneaTorsionIdx = find(model.scene.idxMultiScene(model.func.fieldParamIdx('eye','torsion')));
+corneaTorsionIdx = find(model.eye.idxMultiScene(model.func.fieldParamIdx('eye','torsion')));
 lb(corneaTorsionIdx) = max([lb(corneaTorsionIdx) -90]);
 ub(corneaTorsionIdx) = min([ub(corneaTorsionIdx) 90]);
 lbp(corneaTorsionIdx) = max([lbp(corneaTorsionIdx) -90]);
