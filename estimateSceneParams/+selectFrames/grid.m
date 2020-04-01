@@ -1,5 +1,43 @@
 function [frameSet, gazeTargets] = grid(videoStemName, varargin)
-
+% Identify a set of frames that can be used to sync sceneGeometry
+%
+% Syntax:
+%  [frameSet, gazeTargets] = grid(videoStemName)
+%
+% Description:
+%   Positioning an eye model in a scene requires the selection of
+%   informative frames of the acquisition to guide the alignment. This
+%   routine selects frames that have a high-quality measurement of the
+%   pupil perimeter, and are well distributed in gaze position.
+%
+% Inputs:
+%	videoStemName         - Char vector. Full path to video file from which
+%                           the scene observations have been derived. The
+%                           stem name should omit the "_gray.avi" suffix
+%                           that is usually present in the names of these
+%                           video files.
+%
+% Optional key-value pairs:
+%  'nBinsPerDimension'    - Scalar. Defines the number of divisions with
+%                           which the ellipse centers are binned.
+%  'badFrameErrorThreshold' - Scalar. Frames with RMSE values for the fit
+%                           of an ellipse to the pupil perimeter above this
+%                           threshold will not be selected to guide the
+%                           scene parameter search.
+%  'minFramesPerBin'      - Scalar. A given bin must have at least this
+%                           many good frames for the best frame in the bin
+%                           to be selected.
+%
+% Outputs:
+%   frameSet              - A 1xm vector that specifies the m frame indices
+%                           (indexed from 1) that identify the set of
+%                           frames from the acquisition to guide the search
+%   gazeTargets           - A 2xm matrix that provides the positions, in
+%                           degrees of visual angle, of fixation targets
+%                           that correspond to each of the frames. For this
+%                           function, the returned matrix will be all nan
+%                           values.
+%
 
 %% input parser
 p = inputParser; p.KeepUnmatched = true;
@@ -15,9 +53,8 @@ p.addParameter('minFramesPerBin',50, @isnumeric);
 p.parse(videoStemName, varargin{:})
 
 
+%% Load associated acquisition files
 
-% Load the timebase, pupilData, perimeter, and relative camera position for
-% this acquisition
 load([videoStemName '_pupil.mat'],'pupilData');
 load([videoStemName '_correctedPerimeter.mat'],'perimeter');
 
@@ -71,6 +108,7 @@ distVals(isinf(distVals)) = 1e20;
 
 % The likelihood SD for each frame is the RMSE multiplied by the distVal
 likelihoodPupilRadiusSDVector = distVals.*RMSE;
+
 
 %% Find the best frame in each bin
 ellipses = pupilData.initial.ellipses.values;
