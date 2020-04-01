@@ -223,8 +223,8 @@ function estimateSceneParams(videoStemName, frameSet, gazeTargets, varargin)
 
     % Perform the search
     estimateSceneParams(videoStemName, frameSet, gazeTargets, ...
-        'searchStrategy','sceneSync','model',model,'eyeArgs',eyeArgs,...
-        'sceneArgs',sceneArgs,'errorArgs',errorArgs);
+        'searchStrategy','sceneSync','cameraDepth',140,'model',model,...
+        'eyeArgs',eyeArgs,'sceneArgs',sceneArgs,'errorArgs',errorArgs);
 %}
 
 
