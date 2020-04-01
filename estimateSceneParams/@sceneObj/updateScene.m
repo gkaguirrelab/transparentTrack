@@ -1,8 +1,8 @@
-function sceneGeometryOut = updateSceneGeometry( sceneGeometryIn, x )
+function updateScene( obj )
 % Update components of the sceneGeometry that impact gaze and glint
 %
 % Syntax:
-%   sceneGeometryOut = updateSceneGeometry( sceneGeometryIn, x )
+%   obj.updateScene( x )
 %
 % Description:
 %   Components of the sceneGeometry define the appearance of the pupil and
@@ -24,16 +24,23 @@ function sceneGeometryOut = updateSceneGeometry( sceneGeometryIn, x )
 %
 
 
+% Retrieve the current sceneGeometry from the object
+sceneGeometryIn = obj.sceneGeometry;
+
 % Copy the sceneGeometry from input to output
 sceneGeometryOut = sceneGeometryIn;
+
+% Get the model parameters and model description
+x = obj.x;
+model = obj.model;
 
 % Extract the eye field
 eye = sceneGeometryIn.eye;
 
 % Update the eye meta data with the values from x
-eye.meta.kvals = x(1:5);
-eye.meta.rotationCenterScalers = x(6:7);
-eye.meta.primaryPosition = x(8:9);
+eye.meta.kvals = x(model.func.fieldSetIdx('eye','kvals'));
+eye.meta.rotationCenterScalers = x(model.func.fieldSetIdx('eye','rotationCenterScalers'));
+eye.meta.primaryPosition = x(model.func.fieldSetIdx('scene','primaryPosition'));
 
 % Update the rotation centers
 rotationCenters = human.rotationCenters( eye );
@@ -56,10 +63,12 @@ opticalSystemStopToMedium(corneaBackIdx:corneaBackIdx+2,1:10) = cornea.S;
 sceneGeometryOut.refraction.stopToMedium.opticalSystem = opticalSystemStopToMedium;
 
 % Store the camera torsion
-sceneGeometryOut.cameraPosition.torsion = x(10);
+sceneGeometryOut.cameraPosition.torsion = x(model.func.fieldParamIdx('scene','torsion'));
 
 % Store the extrinsic camera translation vector
-sceneGeometryOut.cameraPosition.translation = x(11:13)';
+sceneGeometryOut.cameraPosition.translation = x(model.func.fieldSetIdx('scene','translation'))';
 
+% Store the updated sceneGeometry in the object
+obj.sceneGeometry = sceneGeometryOut;
 
 end
