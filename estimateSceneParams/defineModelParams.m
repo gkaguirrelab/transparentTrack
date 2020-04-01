@@ -1,6 +1,7 @@
 function model = defineModelParams(nScenes, modelIn, verbose)
 %% Define model parameters
 
+
 %% Head
 % These parameters adjust the relative camera position vectors derived from
 % measurement of head motion during scanning
@@ -12,6 +13,7 @@ model.head.nParams = length(model.head.paramLabels);
 model.head.setLabels = {'phaseAndRotation','all'};
 model.head.setIdx = {1:4,1:4};
 model.head.idxMap = @(idx) idx;
+
 
 %% Eye
 % These parameters adjust biometric properties of the model eye
@@ -42,8 +44,8 @@ model.scene.idxMap =  @(idx) model.head.nParams+model.eye.nParams+idx;
 %% Stages
 % Arrange the sets into search strages for different search strategies
 model.stages.gazeCal = { ...
-    {'eye.rotationCenter','scene.cameraPosition'},...
-    {'eye.rotationCenter','scene.cameraPosition', 'eye.kvals', 'scene.primaryPosition'} };
+    {'eye.rotationCenterScalers','scene.cameraPosition'},...
+    {'eye.rotationCenterScalers','scene.cameraPosition', 'eye.kvals', 'scene.primaryPosition'} };
 
 model.stages.sceneSync = { ...
     {'scene.cameraPosition'},...

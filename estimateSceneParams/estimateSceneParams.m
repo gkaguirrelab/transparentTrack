@@ -184,20 +184,11 @@ function estimateSceneParams(videoStemName, frameSet, gazeTargets, varargin)
         [ 679, 884, 1180, 1250, 1571, 1663, 1809, 2004, 2075 ], ...
         [ 573, 710, 921, 1151, 1285, 1483, 1617, 1800, 1878 ], ...
         [ 660, 842, 904, 1077, 1230, 1328, 1477, 1614, 1670 ]};
-    sceneArgs = {'','','','',''};
-    sceneParamsX0 = {...
-        [0         0  -11.6168   -2.5423    2.4580  140], ...
-        [0         0   -4.7981   -2.2882    1.4291  140], ...
-        [0         0    0.3887   -2.1856    1.0091  140], ...
-        [0         0   10.2627   -3.3679    3.5300  140], ...
-        [0         0    7.7354   -0.8179   -2.7592  140]};
+    model.scene.x0 = [0 0 0 0 0 140];
     eyeArgs = {'axialLength',23.45,'sphericalAmetropia',-0.5};
-    eyeParamsX0 = [41.8000   42.8000         0         2.5         0    0.9357    0.9575];
     estimateSceneParams(videoStemName, frameSet, gazeTargets, ...
-        'sceneArgs',sceneArgs, ...
-        'sceneParamsX0', sceneParamsX0, ...
-        'eyeArgs',eyeArgs, ...
-        'eyeParamsX0',eyeParamsX0);
+        'searchStrategy','gazeCal',...
+        'model',model, 'eyeArgs',eyeArgs);
 %}
 
 
@@ -224,7 +215,7 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional analysis params
-p.addParameter('searchStrategy','twoStage',@ischar);
+p.addParameter('searchStrategy','gazeCal',@ischar);
 p.addParameter('model',[],@isstruct);
 p.addParameter('eyeArgs',{},@iscell);
 p.addParameter('sceneArgs',{},@iscell);
@@ -256,7 +247,11 @@ for ss = 1:nScenes
     
     % The arguments for createSceneGeometry for this video entry are a
     % combination of the eyeArgs, and the sceneArgs for this video
-    setupArgs = [p.Results.eyeArgs,p.Results.sceneArgs{ss}];
+    if isempty(p.Results.sceneArgs)
+        setupArgs = p.Results.eyeArgs;
+    else
+        setupArgs = [p.Results.eyeArgs,p.Results.sceneArgs{ss}];
+    end
     
     % Create the objective for this scene
     mySceneObjects{ss} = sceneObj(...

@@ -5,10 +5,8 @@ searchSet = zeros(1,model.nParams);
 sets = model.stages.(searchStrategy){stage};
 for ii = 1:length(sets)
    fields = split(sets{ii},'.');
-   whichSet = strcmp(fields{2},model.(fields{1}).setLabels);
-   idx = model.(fields{1}).setIdx{whichSet};
-   idxMapped = model.(fields{1}).idxMap(idx);
-   searchSet(idxMapped) = 1;
+   idx = model.func.fieldSetIdx(fields{1},fields{2});
+   searchSet(idx) = 1;
 end
 
 % Apply the bounds
