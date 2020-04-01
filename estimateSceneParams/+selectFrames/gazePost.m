@@ -1,5 +1,45 @@
 function [frameSet, gazeTargets] = gazePost(videoStemName, varargin)
-
+% Identify a fixation frame that can be used to sync sceneGeometry
+%
+% Syntax:
+%  [frameSet, gazeTargets] = grid(videoStemName)
+%
+% Description:
+%   Positioning an eye model in a scene requires the selection of
+%   informative frames of the acquisition to guide the alignment.
+%
+%   % For some acqusitions (i.e., retinotopy), the subject was asked to
+%   stare at a fixation point in the center of the screen after the start
+%   of the acquisition. This could also work for movie viewing, if we are
+%   willing to assume that the median gaze position during the first (e.g.)
+%   10 seconds of a movie is the center of the screen. This routine finds a
+%   frame from the pre-scan acquisition that likely has a gazeTarget values
+%   of [0; 0].
+%
+% Inputs:
+%	videoStemName         - Char vector. Full path to video file from which
+%                           the scene observations have been derived. The
+%                           stem name should omit the "_gray.avi" suffix
+%                           that is usually present in the names of these
+%                           video files.
+%
+% Optional key-value pairs:
+%  'eyePositionTargetLengthFrames' - Scalar. The number of sequential 
+%                           frames from the target acquisition that will be
+%                           found and used to define the position of the
+%                           eye to be fit.
+%  'gazeErrorThreshTol'   - Scalar. The run of frames must have a deviation
+%                           of less than this value. The precise meaning of
+%                           the value will differ for the different
+%                           alignment methods.
+%
+% Outputs:
+%   frameSet              - Scalar that specifies a frame index
+%                           (indexed from 1).
+%   gazeTargets           - A 2x1 matrix that provides the positions, in
+%                           degrees of visual angle, of the likely fixation
+%                           position [0;0] of the eye for this frame.
+%
 
 
 %% input parser
