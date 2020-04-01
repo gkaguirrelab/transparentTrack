@@ -239,7 +239,7 @@ nScenes = length(videoStemName);
 % This local function has the dictionary of search parametes and stages.
 % The key-value 'model' may be used to supply values that replace the
 % defaults. This is typically done for x0 and bounds.
-model = defineModelParams(nScenes, p.Results.model, verbose);
+model = defineModelParams(nScenes, p.Results.model);
 
 
 % Loop through the scenes and create scene objective functions
@@ -328,8 +328,11 @@ for ii = 1:nStages
             fixationEyePose = mySceneObjects{ss}.fixationEyePose;
             poses = [poses fixationEyePose(1:2)'];
         end
-        x(model.func.fieldSetIdx('scene','primaryPosition')) = poses;
+        idx = model.func.fieldSetIdx('scene','primaryPosition');
+        idx = model.scene.idxMultiScene(idx);
+        x(idx) = poses;
     end
+
     
 end
 

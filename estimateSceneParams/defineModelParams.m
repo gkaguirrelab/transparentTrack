@@ -1,4 +1,4 @@
-function model = defineModelParams(nScenes, modelIn, verbose)
+function model = defineModelParams(nScenes, modelIn)
 %% Define model parameters
 
 
