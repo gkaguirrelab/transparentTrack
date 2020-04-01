@@ -1,4 +1,4 @@
-function model = defineModelParams(nScenes, modelIn)
+function model = defineModelParams(nScenes, modelIn, cameraDepth)
 %% Define model parameters
 
 
@@ -31,7 +31,7 @@ model.eye.idxMultiScene = @(idx) idx;
 %% Scene
 % These parameters adjust the position of the camera within a scene, which
 % also adjusts the primary position of the eye
-model.scene.x0 = [0 0 0 0 0 120];
+model.scene.x0 = [0 0 0 0 0 cameraDepth];
 model.scene.bounds = [10 10 20 20 20 20];
 model.scene.paramLabels = {'pp_azi','pp_ele','torsion','horiz','vert','depth'};
 model.scene.units = {'deg','deg','deg','mm','mm','mm'};
