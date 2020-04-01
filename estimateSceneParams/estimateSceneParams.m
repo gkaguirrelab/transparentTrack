@@ -96,7 +96,7 @@ function estimateSceneParams(videoStemName, frameSet, gazeTargets, varargin)
 %                           point of the camera from the corneal apex of
 %                           the eye. Used to inform the x0 values for the
 %                           search.
-%  'model'                  Structure. Setting fields of this structure to
+%  'model'                  Structure. Set fields of this structure to
 %                           replace the default set of params for the
 %                           search. See defineModelParams.m for details.
 %  'eyeArgs'              - Cell array. These are key-value pairs to be 
@@ -115,7 +115,7 @@ function estimateSceneParams(videoStemName, frameSet, gazeTargets, varargin)
 %                           pairs to be used when generating the scene
 %                           model for a particular video. An example input
 %                           (for 2 scenes ) is:
-%                               { {'spectacleLens',-3} ,{'spectacleLens',-3} }
+%                               { {'spectacleLens',-3} ,{'contactLens',-3} }
 %  'errorArgs'            - Cell array. These are key-value pairs that are
 %                           passed to method 'updateError' of sceneObj.
 %                           Typically, one might pass pre-computed values

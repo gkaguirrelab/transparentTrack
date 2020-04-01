@@ -2,7 +2,7 @@ function model = defineModelParams(nScenes, modelIn, cameraDepth)
 % Specification of parameters and functions for estimateSceneGeometry
 %
 % Syntax:
-%  model = defineModelParams(nScenes, modelIn, cameraDepth, depthChangePenaltyWeight)
+%  model = defineModelParams(nScenes, modelIn, cameraDepth, penaltyWeight)
 %
 % Description:
 %   This function collects in one place the definition of the parameters of
@@ -39,7 +39,7 @@ function model = defineModelParams(nScenes, modelIn, cameraDepth)
 %       sceneObj. This vector defines a regularization that weights the
 %       four types of error that can contribute to the overall model error.
 %       The weights apply to errors in the order: [perim glint pose vector]
-%  'depthChangePenaltyWeight' -
+%  'penaltyWeight' -
 %       Scalar. Adjustment of camera depth away from the x0 values is
 %       penalized. The effect of the weight (w) is such that an x% change
 %       in camera depth produces a [(w*x)^2]% increase in the objective. A
@@ -68,14 +68,17 @@ function model = defineModelParams(nScenes, modelIn, cameraDepth)
 %       search time and useful precision in the eye and scene parameters.
 %
 % Inputs:
-%   nScenes               - Scalar. The number of scenes that are to be modeled.
-%   modelIn       - Structure. A passed structure whose fields are used to
-%                   overwrite the defaults.
-%   cameraDepth   - Scalar. The distance of the camera from the corneal apex
-%                   of the eye. Used to set the scene x0.
+%   nScenes               - Scalar. The number of scenes that are to be 
+%                           modeled.
+%   modelIn               - Structure. A passed structure whose fields are 
+%                           used to overwrite the defaults.
+%   cameraDepth           - Scalar. The distance of the camera from the 
+%                           corneal apex of the eye. Used to set the scene
+%                           x0.
 %
 % Outputs:
-%   model         - Structure. Specifies the properties for the search.
+%   model                 - Structure. Specifies the properties for the
+%                           search.
 %
 
 
@@ -149,11 +152,10 @@ model.strategy.gazeCal.stages = { ...
     {'eye.rotationCenterScalers','scene.cameraPosition'},...
     {'eye.rotationCenterScalers','scene.cameraPosition', 'eye.kvals', 'scene.primaryPosition'} };
 model.strategy.gazeCal.errorReg = [1 2 4 2];
-model.strategy.gazeCal.depthChangePenaltyWeight = 0.5;
+model.strategy.gazeCal.penaltyWeight = 0.5;
 model.strategy.gazeCal.useFixForPrimaryPos = true;
 model.strategy.gazeCal.multiSceneNorm = 1;
 model.strategy.gazeCal.TolMesh = 1e-2;
-
 
 % sceneSync -- Used to map a known set of eye biometric parameters to an
 % acquisition.
@@ -161,7 +163,7 @@ model.strategy.sceneSync.stages = { ...
     {'scene.cameraPosition'},...
     {'scene.cameraPosition', 'scene.primaryPosition', 'head.phaseAndRotation' } };
 model.strategy.sceneSync.errorReg = [1 1 0 0];
-model.strategy.sceneSync.depthChangePenaltyWeight = 0;
+model.strategy.sceneSync.penaltyWeight = 0;
 model.strategy.sceneSync.useFixForPrimaryPos = true;
 model.strategy.sceneSync.multiSceneNorm = 1;
 model.strategy.sceneSync.TolMesh = 1e-2;
@@ -217,7 +219,8 @@ model.func.penalty = @(x,x0,w) (1 + w * norm( (x(cameraDepthTransSet) - x0(camer
 % A non-linear constraint for the BADS search that requires first value of
 % the corneal curvature (K1) to be less than the second value (K2) Note
 % that NONBCON takes a matrix input, which is why we perform this
-% calculation over the first dimension.
+% calculation over the first dimension. The function returns a non-zero
+% value when the constraint is violated (i.e., when K1>K2).
 model.func.nonbcon = @(x) x(:,model.func.fieldParamIdx('eye','K1')) > x(:,model.func.fieldParamIdx('eye','K2'));
 
 
