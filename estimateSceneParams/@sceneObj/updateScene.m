@@ -2,7 +2,7 @@ function updateScene( obj )
 % Update components of the sceneGeometry that impact gaze and glint
 %
 % Syntax:
-%   obj.updateScene( x )
+%  obj.updateScene( x )
 %
 % Description:
 %   Components of the sceneGeometry define the appearance of the pupil and

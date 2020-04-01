@@ -1,7 +1,8 @@
+classdef sceneObj < handle
 % Class definition for sceneObj
 %
 % Syntax:
-%   obj = sceneObj(model, videoStemName, frameSet, gazeTargets, setupArgs, errorArgs, meta)
+%  obj = sceneObj(model, videoStemName, frameSet, gazeTargets, setupArgs, errorArgs, meta)
 %
 % Description:
 %   An object that holds information regarding a scene. A scene is a
@@ -50,8 +51,6 @@
 % Outputs:
 %   obj                   - Handle to the object.
 %
-
-classdef sceneObj < handle
     
     properties (Constant)
                 
