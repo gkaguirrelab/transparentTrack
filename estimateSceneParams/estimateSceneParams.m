@@ -224,7 +224,7 @@ function estimateSceneParams(videoStemName, frameSet, gazeTargets, varargin)
     % Perform the search
     estimateSceneParams(videoStemName, frameSet, gazeTargets, ...
         'searchStrategy','sceneSync','cameraDepth',140,'model',model,...
-        'eyeArgs',eyeArgs,'sceneArgs',sceneArgs,'errorArgs',errorArgs);
+        'eyeArgs',eyeArgs,'errorArgs',errorArgs);
 %}
 
 
@@ -306,7 +306,8 @@ nScenes = length(videoStemName);
 % This function has the dictionary of search parameters and stages.
 % The key-value 'model' may be used to supply values that replace the
 % defaults. This is typically done for x0 and bounds.
-model = defineModelParams(nScenes, p.Results.model, p.Results.cameraDepth);
+model = defineModelParams(nScenes, p.Results.model, ...
+    p.Results.cameraDepth, p.Results.depthChangePenaltyWeight);
 
 
 % Loop through the scenes and create scene objective functions
