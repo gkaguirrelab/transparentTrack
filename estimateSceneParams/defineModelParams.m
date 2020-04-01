@@ -1,14 +1,98 @@
-function model = defineModelParams(nScenes, modelIn, cameraDepth, depthChangePenaltyWeight)
-%% Define model parameters
+function model = defineModelParams(nScenes, modelIn, cameraDepth)
+% Specification of parameters and functions for estimateSceneGeometry
+%
+% Syntax:
+%  model = defineModelParams(nScenes, modelIn, cameraDepth, depthChangePenaltyWeight)
+%
+% Description:
+%   This function collects in one place the definition of the parameters of
+%   the search that is executed within estimateSceneGeometry. The output of
+%   the function is the structure 'model'. This structure contains fields
+%   that define the search for:
+%
+%      'head'     - The effect of head motion upon relative camera position
+%      'eye'      - Biometric properties of the model eye
+%      'scene'    - Position of the camera in the scene, and the primary
+%                   position of the eye, which is defined relative to
+%                   camera position
+%
+%   Each of these parameter specifications also includes an entry for a
+%   function handle `idxMap`. This function takes an index in the list of
+%   parameters for a particular field (i.e., eye or head) and returns the
+%   position of that parameter in the concatenated set of parameters:
+%       [head eye scene]
+%
+%   The function handle 'idxMultiScene' further maps an index value from
+%   the concated set [head eye scene] to the concatenated parameter set
+%   across all scenes that comprise the search:
+%       [head eye scene1 scene2 ... sceneN]
+%
+%   Additional fields provide the overall bounds and x0 for the search, as
+%   well as a field that contains functions used to constrain and guide the
+%   search.
+%
+%   The 'strategy' field specifies values for the following search
+%   parameters:
+%
+%  'errorReg' -
+%       1x4 vector. This is passed to the updateError method of the
+%       sceneObj. This vector defines a regularization that weights the
+%       four types of error that can contribute to the overall model error.
+%       The weights apply to errors in the order: [perim glint pose vector]
+%  'depthChangePenaltyWeight' -
+%       Scalar. Adjustment of camera depth away from the x0 values is
+%       penalized. The effect of the weight (w) is such that an x% change
+%       in camera depth produces a [(w*x)^2]% increase in the objective. A
+%       weight value of zero removes the regularization.
+%  'useFixForPrimaryPos' -
+%       Logical. The primary position of the eye is specified as part of
+%       the eye model, and controls the pseudo-torsion of the eye following
+%       Listing's Law. Because eye rotations are defined with respect to
+%       the alignment of the optical axis of the camera with the optical
+%       axis of the eye, the primary position of the eye in the scene
+%       coordinate frame will vary with camera position. The routine is
+%       able to search across primary position values for each scene. This
+%       flag causes the model to be updated after each stage such that the
+%       primary position for the eye in a given scene is set equal to the
+%       modeled position of the eye when it is fixating position [0 0] of a
+%       fixation array. The use of this flag is justified when the subject
+%       is allowed to adjust their head to most comfortably view the center
+%       of a fixation array prior to recording, presumably placing the
+%       center of fixation at their primary position.
+%  'multiSceneNorm' -
+%       Scalar. Defines the metric used to combine errors across scenes.
+%       Defaults to a value of 1 and thus the L1 norm.
+%  'TolMesh' - 
+%       Scalar. The precision with which the parameters are adjusted within
+%       the BADS search. A value of 1e-2 provides a good trade-off between
+%       search time and useful precision in the eye and scene parameters.
+%
+% Inputs:
+%   nScenes               - Scalar. The number of scenes that are to be modeled.
+%   modelIn       - Structure. A passed structure whose fields are used to
+%                   overwrite the defaults.
+%   cameraDepth   - Scalar. The distance of the camera from the corneal apex
+%                   of the eye. Used to set the scene x0.
+%
+% Outputs:
+%   model         - Structure. Specifies the properties for the search.
+%
+
 
 
 %% Head
-% These parameters adjust the relative camera position vectors derived from
-% measurement of head motion during scanning
+% These parameters adjust the effect of head motion over time upon relative
+% camera position. When properly constructed, the head motion vectors start
+% off by being roughly in terms of the relative position of the camera with
+% respect to the eye of the subject. These search parameters find
+% adjustments to the rotation of the coordinate frame of the measurement of
+% head motion to the coordinate frame of the camera. The first parameter
+% also adjusts the temporal offset (in units of measurement frames) between
+% the head motion vectors and the eye recording measurements.
 model.head.x0 = [0, 0, 0, 0];
 model.head.bounds = [30, 30, 30, 30];
 model.head.paramLabels = {'timeShift','azi','ele','torsion'};
-model.head.units = {'seconds','deg','deg','deg'};
+model.head.units = {'frames','deg','deg','deg'};
 model.head.nParams = length(model.head.paramLabels);
 model.head.setLabels = {'phaseAndRotation','all'};
 model.head.setIdx = {1:4,1:4};
@@ -17,7 +101,11 @@ model.head.idxMultiScene = @(idx) idx;
 
 
 %% Eye
-% These parameters adjust biometric properties of the model eye
+% These parameters adjust biometric properties of the model eye. The
+% default parameters correspond to a cornea with the default kvals, and
+% default rotation centers of the eye. The bounds on the first two k-vals
+% reflect the range of kvals that were obtained by keratometry in the 50
+% subject TOME data set.
 model.eye.x0 = [44.2410, 45.6302, 0, 2.5000, 0, 1, 1];
 model.eye.bounds = [5, 5, 90, 5, 5, 0.25, 0.15];
 model.eye.paramLabels = {'K1','K2','torsion','tilt','tip','joint','diff'};
@@ -28,9 +116,12 @@ model.eye.setIdx = {1:5, 6:7, 1:7};
 model.eye.idxMap = @(idx) model.head.nParams+idx;
 model.eye.idxMultiScene = @(idx) idx;
 
+
 %% Scene
 % These parameters adjust the position of the camera within a scene, which
-% also adjusts the primary position of the eye
+% also adjusts the primary position of the eye. The cameraDepth parameter
+% is the most important to get right, and is specified by a passed
+% variable.
 model.scene.x0 = [0 0 0 0 0 cameraDepth];
 model.scene.bounds = [10 10 20 20 20 20];
 model.scene.paramLabels = {'pp_azi','pp_ele','torsion','horiz','vert','depth'};
@@ -48,32 +139,49 @@ model.scene.idxMap =  @(idx) model.head.nParams+model.eye.nParams+idx;
 model.scene.idxMultiScene = @(idx) repmat((0:model.scene.nScenes-1)*model.scene.nParams,1,length(idx)) + ...
     cell2mat(arrayfun(@(x) repmat(x,1,model.scene.nScenes),idx,'UniformOutput',false));
 
-%% Stages
-% Arrange the sets into search strages for different search strategies
-model.stages.gazeCal = { ...
+
+%% Strategy
+% Arrange the sets into search strages for different search strategy
+
+% gazeCal -- Used to derive the biometric properties of the eye from one or
+% more gazeCal acquisitions.
+model.strategy.gazeCal.stages = { ...
     {'eye.rotationCenterScalers','scene.cameraPosition'},...
     {'eye.rotationCenterScalers','scene.cameraPosition', 'eye.kvals', 'scene.primaryPosition'} };
+model.strategy.gazeCal.errorReg = [1 2 4 2];
+model.strategy.gazeCal.depthChangePenaltyWeight = 0.5;
+model.strategy.gazeCal.useFixForPrimaryPos = true;
+model.strategy.gazeCal.multiSceneNorm = 1;
+model.strategy.gazeCal.TolMesh = 1e-2;
 
-model.stages.sceneSync = { ...
+
+% sceneSync -- Used to map a known set of eye biometric parameters to an
+% acquisition.
+model.strategy.sceneSync.stages = { ...
     {'scene.cameraPosition'},...
     {'scene.cameraPosition', 'scene.primaryPosition', 'head.phaseAndRotation' } };
-
-% The head and eye parameters are shared by all scenes, and each scene gets
-% its own set of scene parameters, yielding this many total parameters in
-% the optimization.
-model.nParams = model.head.nParams + model.eye.nParams + model.scene.nParams * model.scene.nScenes;
+model.strategy.sceneSync.errorReg = [1 1 0 0];
+model.strategy.sceneSync.depthChangePenaltyWeight = 0;
+model.strategy.sceneSync.useFixForPrimaryPos = true;
+model.strategy.sceneSync.multiSceneNorm = 1;
+model.strategy.sceneSync.TolMesh = 1e-2;
 
 
 %% Substitute passed model inputs for defaults
-% We cannot currently overload the functions with the model input as the
-% re-ordering of the fields at the time of the merge breaks the function
-% linking. Sorry.
+% The passed modelIn structure can over-write all model parameters defined
+% up to this point. Function definitions can not be replaced by this
+% approach.
 if ~isempty(modelIn)
     model = mergestruct(model, modelIn);
 end
 
 
 %% Assemble full x0 and bounds
+
+% The head and eye parameters are shared by all scenes, and each scene gets
+% its own set of scene parameters, yielding this many total parameters in
+% the optimization.
+model.nParams = model.head.nParams + model.eye.nParams + model.scene.nParams * model.scene.nScenes;
 
 % If model.scene.x0 is a cell array, then we have been given a different
 % set of x0 parameters for each scene.
@@ -104,7 +212,7 @@ model.func.subX = @(x,sceneIdx) x([1:(model.head.nParams+model.eye.nParams),mode
 % penalty is a regularization that penalizes changes in depth from the x0
 % values
 cameraDepthTransSet = model.scene.idxMultiScene(model.func.fieldParamIdx('scene','depth'));
-model.func.penalty = @(x,x0,w) (1 + depthChangePenaltyWeight * norm( (x(cameraDepthTransSet) - model.x0(cameraDepthTransSet)) ./ model.x0(cameraDepthTransSet) ))^2;
+model.func.penalty = @(x,x0,w) (1 + w * norm( (x(cameraDepthTransSet) - x0(cameraDepthTransSet)) ./ x0(cameraDepthTransSet) ))^2;
 
 % A non-linear constraint for the BADS search that requires first value of
 % the corneal curvature (K1) to be less than the second value (K2) Note
@@ -122,16 +230,18 @@ end
 %% LOCAL FUNCTIONS
 
 function into = mergestruct(into, from)
-%MERGESTRUCT merge all the fields of scalar structure from into scalar structure into
+% MERGESTRUCT merge all the fields of scalar structure from into scalar
+% structure into
 validateattributes(from, {'struct'}, {'scalar'});
 validateattributes(into, {'struct'}, {'scalar'});
 fns = fieldnames(from);
 for fn = fns.'
     if isstruct(from.(fn{1})) && isfield(into, fn{1})
-        %nested structure where the field already exist, merge again
+        % nested structure where the field already exist, merge again
         into.(fn{1}) = mergestruct(into.(fn{1}), from.(fn{1}));
     else
-        %non structure field, or nested structure field that does not already exist, simply copy
+        % non structure field, or nested structure field that does not
+        % already exist, simply copy
         into.(fn{1}) = from.(fn{1});
     end
 end

@@ -1,9 +1,9 @@
-function [x,lb,ub,lbp,ubp] = setBounds(x,model,stage,searchStrategy)
+function [x,lb,ub,lbp,ubp] = setBounds(x,model,stage,strategy)
 
 
 % Construct the param search set for this strategy and stage
 searchSet = zeros(1,model.nParams);
-sets = model.stages.(searchStrategy){stage};
+sets = model.strategy.(strategy).stages{stage};
 for ii = 1:length(sets)
    fields = split(sets{ii},'.');
    idx = model.func.fieldSetIdx(fields{1},fields{2});
