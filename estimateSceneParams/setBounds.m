@@ -6,6 +6,7 @@ sets = model.stages.(searchStrategy){stage};
 for ii = 1:length(sets)
    fields = split(sets{ii},'.');
    idx = model.func.fieldSetIdx(fields{1},fields{2});
+   idx = model.(fields{1}).idxMultiScene(idx);
    searchSet(idx) = 1;
 end
 
