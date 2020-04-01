@@ -2,7 +2,7 @@ function saveEyeModelMontage(obj,fileNameSuffix)
 % Saves a montage of video frames and the superimposed model eye
 %
 % Syntax:
-%   obj.saveEyeModelMontage(fileNameSuffix)
+%  obj.saveEyeModelMontage(fileNameSuffix)
 %
 % Description:
 %   Saves a PNG image of the posed model eye superimposed on the video
