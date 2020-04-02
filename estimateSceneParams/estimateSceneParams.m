@@ -182,6 +182,9 @@ function estimateSceneParams(videoStemName, frameSet, gazeTargets, varargin)
         'poseRegParams',sceneGeometry.meta.estimateSceneParams.poseRegParams,...
         'vectorRegParams',sceneGeometry.meta.estimateSceneParams.vectorRegParams};
 
+    % Get the cameraDepth from the source sceneGeometry file
+    cameraDepth = sceneGeometry.meta.estimateSceneParams.x(end);
+
     % This is the video for which we wish to create a sceneGeometry file. 
     % We select frames to guide the search, using a fixation period before
     % the scan and a distributed set of gaze positions after the scan start
@@ -193,7 +196,7 @@ function estimateSceneParams(videoStemName, frameSet, gazeTargets, varargin)
 
     % Perform the search
     estimateSceneParams(videoStemName, frameSet, gazeTargets, ...
-        'searchStrategy','sceneSync','cameraDepth',140,'model',model,...
+        'searchStrategy','sceneSync','cameraDepth',cameraDepth,'model',model,...
         'eyeArgs',eyeArgs,'errorArgs',errorArgs);
 %}
 
