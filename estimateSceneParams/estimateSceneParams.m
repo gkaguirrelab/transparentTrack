@@ -168,9 +168,15 @@ function estimateSceneParams(videoStemName, frameSet, gazeTargets, varargin)
     % This is a sceneGeometry file created from the analysis of gazeCal
     % acquisitions. We want to use the eye parameters from that solution,
     % including the registration of eye pose to fixation angle.
-    sourceSceneName = 'GazeCal01_sceneGeometry.mat';
+
+    % Get the DropBox base directory
+    dropboxBaseDir = getpref('eyeTrackTOMEAnalysis','dropboxBaseDir');
+
+    % Get eye biometric information from the source sceneGeometry file
+    sourceDir = fullfile(dropboxBaseDir,'TOME_processing/session2_spatialStimuli/TOME_3015/032417/EyeTracking/');
+    sourceSceneName = fullfile(sourceDir,'GazeCal01_sceneGeometry.mat');
     load(sourceSceneName,'sceneGeometry');
-    model.eye.x0 = sceneGeometry.meta.estimateSceneParams.x(1:7);
+    model.eye.x0 = sceneGeometry.meta.estimateSceneParams.x(5:11);
     eyeArgs = sceneGeometry.meta.estimateSceneParams.p.eyeArgs;
     errorArgs = { ...
         'poseRegParams',sceneGeometry.meta.estimateSceneParams.poseRegParams,...
@@ -179,7 +185,7 @@ function estimateSceneParams(videoStemName, frameSet, gazeTargets, varargin)
     % This is the video for which we wish to create a sceneGeometry file. 
     % We select frames to guide the search, using a fixation period before
     % the scan and a distributed set of gaze positions after the scan start
-    videoStemName = 'tfMRI_MOVIE_PA_run03';
+    videoStemName = fullfile(sourceDir,'tfMRI_MOVIE_PA_run03');
     [frameSet1, gazeTargets1] = selectFrames.gazePre(videoStemName);
     [frameSet2, gazeTargets2] = selectFrames.grid(videoStemName);
     frameSet = [frameSet1 frameSet2];
