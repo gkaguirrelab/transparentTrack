@@ -190,7 +190,7 @@ function estimateSceneParams(videoStemName, frameSet, gazeTargets, varargin)
     % the scan and a distributed set of gaze positions after the scan start
     videoStemName = fullfile(sourceDir,'tfMRI_MOVIE_PA_run03');
     [frameSet1, gazeTargets1] = selectFrames.gazePre(videoStemName);
-    [frameSet2, gazeTargets2] = selectFrames.grid(videoStemName);
+    [frameSet2, gazeTargets2] = selectFrames.gridSpace(videoStemName);
     frameSet = [frameSet1 frameSet2];
     gazeTargets = [gazeTargets1 gazeTargets2];
 

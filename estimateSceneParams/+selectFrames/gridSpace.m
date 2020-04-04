@@ -1,8 +1,8 @@
-function [frameSet, gazeTargets] = grid(videoStemName, varargin)
+function [frameSet, gazeTargets] = gridSpace(videoStemName, varargin)
 % Identify a set of frames that can be used to sync sceneGeometry
 %
 % Syntax:
-%  [frameSet, gazeTargets] = grid(videoStemName)
+%  [frameSet, gazeTargets] = selectFrames.gridSpace(videoStemName)
 %
 % Description:
 %   Positioning an eye model in a scene requires the selection of

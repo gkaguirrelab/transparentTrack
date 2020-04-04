@@ -207,6 +207,7 @@ classdef sceneObj < handle
         saveEyeModelMontage(obj,fileNameSuffix)
         saveModelFitPlot(obj,fileNameSuffix)
         saveSceneGeometry(obj,fileNameSuffix)
+        saveRelCameraPos(obj)
         
         % Private methods
         

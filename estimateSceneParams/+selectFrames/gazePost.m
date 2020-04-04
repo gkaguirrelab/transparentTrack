@@ -2,7 +2,7 @@ function [frameSet, gazeTargets] = gazePost(videoStemName, varargin)
 % Identify a fixation frame that can be used to sync sceneGeometry
 %
 % Syntax:
-%  [frameSet, gazeTargets] = grid(videoStemName)
+%  [frameSet, gazeTargets] = selectFrames.gazePost(videoStemName)
 %
 % Description:
 %   Positioning an eye model in a scene requires the selection of
