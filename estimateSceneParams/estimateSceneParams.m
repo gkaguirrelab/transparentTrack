@@ -226,6 +226,7 @@ p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@i
 % Optional analysis params
 p.addParameter('searchStrategy','gazeCal',@ischar);
 p.addParameter('cameraDepth',120,@isnumeric);
+p.addParameter('corneaTorsion',0,@isnumeric);
 p.addParameter('model',[],@isstruct);
 p.addParameter('eyeArgs',{},@iscell);
 p.addParameter('sceneArgs',{},@iscell);
@@ -276,7 +277,7 @@ nScenes = length(videoStemName);
 % This function has the dictionary of search parameters and stages.
 % The key-value 'model' may be used to supply values that replace the
 % defaults. This is typically done for x0 and bounds.
-model = defineModelParams(nScenes, p.Results.model, p.Results.cameraDepth);
+model = defineModelParams(nScenes, p.Results.model, p.Results.cameraDepth, p.Results.corneaTorsion);
 
 % The errorArgs are passed in the creation of the scene objects. We add to
 % any passed errorArg the errorReg key-value that is specified for this

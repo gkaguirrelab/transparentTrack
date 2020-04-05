@@ -1,4 +1,4 @@
-function model = defineModelParams(nScenes, modelIn, cameraDepth)
+function model = defineModelParams(nScenes, modelIn, cameraDepth, corneaTorsion)
 % Specification of parameters and functions for estimateSceneGeometry
 %
 % Syntax:
@@ -75,6 +75,13 @@ function model = defineModelParams(nScenes, modelIn, cameraDepth)
 %   cameraDepth           - Scalar. The distance of the camera from the 
 %                           corneal apex of the eye. Used to set the scene
 %                           x0.
+%   corneaTorsion         - Scalar. The angle of astigmatism for the cornea
+%                           that is used to set the x0 value, perhaps
+%                           obtained from keratometry measurement for the
+%                           eye to be modeled. This is particularly useful
+%                           for angles close to 90 degrees, for which the
+%                           model has trouble reaching by search on its
+%                           own.
 %
 % Outputs:
 %   model                 - Structure. Specifies the properties for the
@@ -109,8 +116,8 @@ model.head.idxMultiScene = @(idx) idx;
 % default rotation centers of the eye. The bounds on the first two k-vals
 % reflect the range of kvals that were obtained by keratometry in the 50
 % subject TOME data set.
-model.eye.x0 = [44.2410, 45.6302, 0, 2.5000, 0, 1, 1];
-model.eye.bounds = [5, 5, 90, 5, 5, 0.25, 0.15];
+model.eye.x0 = [44.2410, 45.6302, corneaTorsion, 2.5000, 0, 1, 1];
+model.eye.bounds = [5, 5, 180, 5, 5, 0.25, 0.15];
 model.eye.paramLabels = {'K1','K2','torsion','tilt','tip','joint','diff'};
 model.eye.units = {'diopters','diopters','deg','deg','deg','proportion','proportion'};
 model.eye.nParams = length(model.eye.paramLabels);
