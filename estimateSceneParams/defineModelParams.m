@@ -117,7 +117,7 @@ model.head.idxMultiScene = @(idx) idx;
 % reflect the range of kvals that were obtained by keratometry in the 50
 % subject TOME data set.
 model.eye.x0 = [44.2410, 45.6302, corneaTorsion, 2.5000, 0, 1, 1];
-model.eye.bounds = [5, 5, 180, 5, 5, 0.25, 0.15];
+model.eye.bounds = [5, 5, 180, 5, 5, 0.25, 0.25];
 model.eye.paramLabels = {'K1','K2','torsion','tilt','tip','joint','diff'};
 model.eye.units = {'diopters','diopters','deg','deg','deg','proportion','proportion'};
 model.eye.nParams = length(model.eye.paramLabels);
