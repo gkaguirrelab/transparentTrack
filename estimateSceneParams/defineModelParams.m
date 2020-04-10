@@ -180,8 +180,8 @@ model.strategy.sceneSync.TolMesh = 1e-2;
 % be used to fit the data from another gaze cal from that same subject
 model.strategy.gazeCalReg.stages = { ...
     {'scene.cameraPosition', 'scene.primaryPosition'} };
-model.strategy.gazeCalReg.errorReg = [1 2 0 0];
-model.strategy.gazeCalReg.penaltyWeight = 1;
+model.strategy.gazeCalReg.errorReg = [1 1 0 0];
+model.strategy.gazeCalReg.penaltyWeight = 2;
 model.strategy.gazeCalReg.useFixForPrimaryPos = true;
 model.strategy.gazeCalReg.multiSceneNorm = 1;
 model.strategy.gazeCalReg.TolMesh = 1e-2;
