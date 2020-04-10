@@ -179,8 +179,8 @@ model.strategy.sceneSync.TolMesh = 1e-2;
 % gazeCalReg -- Used to examine how well one gaze call from a subject can
 % be used to fit the data from another gaze cal from that same subject
 model.strategy.gazeCalReg.stages = { ...
-    {'scene.translation'} };
-model.strategy.gazeCalReg.errorReg = [1 5 0 0];
+    {'scene.cameraPosition', 'scene.primaryPosition'} };
+model.strategy.gazeCalReg.errorReg = [1 2 0 0];
 model.strategy.gazeCalReg.penaltyWeight = 0;
 model.strategy.gazeCalReg.useFixForPrimaryPos = true;
 model.strategy.gazeCalReg.multiSceneNorm = 1;
