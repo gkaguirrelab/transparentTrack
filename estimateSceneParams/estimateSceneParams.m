@@ -339,6 +339,8 @@ end
 
 % The number of stages 
 nStages = length(model.strategy.(strategy).stages);
+
+% Looping over stages
 for ii = 1:nStages
     
     % Announce
@@ -351,12 +353,10 @@ for ii = 1:nStages
     [x,lb,ub,lbp,ubp] = setBounds(x,model,ii,strategy);
     
     % Search
-    [x, fVal] = bads(myObjAll,x,lb,ub,lbp,ubp,model.func.nonbcon,options);
+    x = bads(myObjAll,x,lb,ub,lbp,ubp,model.func.nonbcon,options);
     
-    % Check if the fVal is not the best scene
-    if fVal > mySceneObjects{1}.multiSceneMeta.fVal
-        foo=1;
-    end
+    % Update the model objects with the final parameters
+    myObjAll(x);
     
     % Plots
     fileNameSuffix = sprintf([p.Results.outputFileSuffix '_stage%02d'],ii);
