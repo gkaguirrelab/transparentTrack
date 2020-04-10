@@ -351,7 +351,12 @@ for ii = 1:nStages
     [x,lb,ub,lbp,ubp] = setBounds(x,model,ii,strategy);
     
     % Search
-    x = bads(myObjAll,x,lb,ub,lbp,ubp,model.func.nonbcon,options);
+    [x, fVal] = bads(myObjAll,x,lb,ub,lbp,ubp,model.func.nonbcon,options);
+    
+    % Check if the fVal is not the best scene
+    if fVal > mySceneObjects{1}.multiSceneMeta.fVal
+        foo=1;
+    end
     
     % Plots
     fileNameSuffix = sprintf([p.Results.outputFileSuffix '_stage%02d'],ii);
