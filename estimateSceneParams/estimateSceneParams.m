@@ -224,6 +224,7 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional analysis params
+p.addParameter('outputFileSuffix','',@ischar);
 p.addParameter('searchStrategy','gazeCal',@ischar);
 p.addParameter('cameraDepth',120,@isnumeric);
 p.addParameter('corneaTorsion',0,@isnumeric);
@@ -353,7 +354,7 @@ for ii = 1:nStages
     x = bads(myObjAll,x,lb,ub,lbp,ubp,model.func.nonbcon,options);
     
     % Plots
-    fileNameSuffix = sprintf('_stage%02d',ii);
+    fileNameSuffix = sprintf([p.Results.outputFileSuffix '_stage%02d'],ii);
     for ss = 1:nScenes
         mySceneObjects{ss}.saveEyeModelMontage(fileNameSuffix);
         mySceneObjects{ss}.saveModelFitPlot(fileNameSuffix);
@@ -382,7 +383,7 @@ myObjAll(x);
 
 %% Save the sceneGeometry
 for ss = 1:nScenes
-    mySceneObjects{ss}.saveSceneGeometry('');
+    mySceneObjects{ss}.saveSceneGeometry(p.Results.outputFileSuffix);
 end
 
 
