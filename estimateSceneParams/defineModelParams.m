@@ -138,8 +138,8 @@ model.scene.paramLabels = {'pp_azi','pp_ele','torsion','horiz','vert','depth'};
 model.scene.units = {'deg','deg','deg','mm','mm','mm'};
 model.scene.nParams = length(model.scene.paramLabels);
 model.scene.nScenes = nScenes;
-model.scene.setLabels = {'primaryPosition','cameraPosition', 'translation', 'all'};
-model.scene.setIdx = {1:2, 3:6, 4:6, 1:6};
+model.scene.setLabels = {'primaryPosition','cameraPosition', 'all'};
+model.scene.setIdx = {1:2, 3:6, 1:6};
 model.scene.idxMap =  @(idx) model.head.nParams+model.eye.nParams+idx;
 % An anonymous function that expands the input index vector [a, b, ...]
 % into a vector given k eye+head, s sceneParams, and n scenes:
@@ -175,14 +175,13 @@ model.strategy.sceneSync.useFixForPrimaryPos = true;
 model.strategy.sceneSync.multiSceneNorm = 1;
 model.strategy.sceneSync.TolMesh = 1e-2;
 
-
 % gazeCalReg -- Used to examine how well one gaze call from a subject can
 % be used to fit the data from another gaze cal from that same subject
 model.strategy.gazeCalReg.stages = { ...
     {'scene.cameraPosition', 'scene.primaryPosition'} };
-model.strategy.gazeCalReg.errorReg = [1 1 0 0];
-model.strategy.gazeCalReg.penaltyWeight = 2;
-model.strategy.gazeCalReg.useFixForPrimaryPos = true;
+model.strategy.gazeCalReg.errorReg = [1 2 0 0];
+model.strategy.gazeCalReg.penaltyWeight = 1;
+model.strategy.gazeCalReg.useFixForPrimaryPos = false;
 model.strategy.gazeCalReg.multiSceneNorm = 1;
 model.strategy.gazeCalReg.TolMesh = 1e-2;
 

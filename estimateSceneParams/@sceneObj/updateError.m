@@ -226,6 +226,10 @@ else
             'weights',weights(validFrames),...
             'doScale',false,...
             'doTrans',true);
+
+        % Add a meta field to the params with the formula
+        poseRegParams.meta = 'f = R * [azi; ele] + t';
+
     else
         poseRegParams = p.Results.poseRegParams;
     end
@@ -287,6 +291,9 @@ else
             'doScale',true,...
             'doTrans',true);
         vectorRegParams.glintSign = glintSign;
+        
+        % Add a meta field to the params with the formula
+        vectorRegParams.meta = 'f = s * R * [Xp - Xg; -1*(Yp-Yg)] + t';
     else
         vectorRegParams = p.Results.vectorRegParams;
     end
