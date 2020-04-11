@@ -42,7 +42,7 @@ function updateError( obj, varargin )
 %  'missedGlintPenalty'   - Scalar. If a glint is not found for one frame,
 %                           then this value is assigned as the error for
 %                           that frame.
-%  'poseRegParams', 'vectorRegParams' - Structures. These values, generated
+%  'poseRegParams', 'vecRegParams' - Structures. These values, generated
 %                           from a previous execution of this function, can
 %                           be returned in the varargin to be used instead
 %                           of being recomputed. This is done to constrain
@@ -65,7 +65,7 @@ function updateError( obj, varargin )
 %                           derived from the pupil center -> glint vec.
 %   poseRegParams         - Structure. The parameters that relate eyePose
 %                           to screen position.
-%   vectorRegParams       - Structure. The parameters that relate the
+%   vecRegParams       - Structure. The parameters that relate the
 %                           pupil center -> glint vec to screen position.
 %   rawErrors             - 1x4 matrix. The four component errors.
 %
@@ -93,7 +93,7 @@ p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 p.addParameter('errorReg',[1 2 4 2],@isnumeric);
 p.addParameter('missedGlintPenalty',1e3,@isnumeric);
 p.addParameter('poseRegParams',[],@isstruct);
-p.addParameter('vectorRegParams',[],@isstruct);
+p.addParameter('vecRegParams',[],@isstruct);
 
 % Parse and check the parameters
 p.parse(varargin{:});
@@ -118,7 +118,7 @@ modelPupilEllipse = nan(nFrames,5);
 modelPoseGaze = nan(nFrames,2);
 modelVecGaze = nan(nFrames,2);
 poseRegParams = struct();
-vectorRegParams = struct();
+vecRegParams = struct();
 
 
 %% Loop over the frames and obtain the modeled eyePose and glint
@@ -282,24 +282,24 @@ else
     % produced by the projection model.
     validFrames = and(~isnan(sum(gazeTargets)),~noGlintFrames);
     
-    % Either calculate or use the supplied vectorRegParams
-    if isempty(p.Results.vectorRegParams)
-        vectorRegParams = absor(...
+    % Either calculate or use the supplied vecRegParams
+    if isempty(p.Results.vecRegParams)
+        vecRegParams = absor(...
             centerDiff(:,validFrames),...
             gazeTargets(:,validFrames),...
             'weights',weights(validFrames),...
             'doScale',true,...
             'doTrans',true);
-        vectorRegParams.glintSign = glintSign;
+        vecRegParams.glintSign = glintSign;
         
         % Add a meta field to the params with the formula
-        vectorRegParams.meta = 'f = s * R * [Xp - Xg; -1*(Yp-Yg)] + t';
+        vecRegParams.meta = 'f = s * R * [Xp - Xg; -1*(Yp-Yg)] + t';
     else
-        vectorRegParams = p.Results.vectorRegParams;
+        vecRegParams = p.Results.vecRegParams;
     end
     
     % Calculate the vector-based gaze and error for the modeled frames
-    modelVecGaze(:,validFrames) = vectorRegParams.s * vectorRegParams.R * centerDiff(:,validFrames) + vectorRegParams.t;
+    modelVecGaze(:,validFrames) = vecRegParams.s * vecRegParams.R * centerDiff(:,validFrames) + vecRegParams.t;
     vectorErrorByFrame(validFrames) = sqrt(sum( (gazeTargets(:,validFrames) - modelVecGaze(:,validFrames)).^2 ));
     
     % Store the vector error
@@ -325,7 +325,7 @@ obj.modelGlintCoord = modelGlintCoord;
 obj.modelPoseGaze = modelPoseGaze;
 obj.modelVecGaze = modelVecGaze;
 obj.poseRegParams = poseRegParams;
-obj.vectorRegParams = vectorRegParams;
+obj.vecRegParams = vecRegParams;
 obj.rawErrors = rawErrors;
 
 % Save the fixation

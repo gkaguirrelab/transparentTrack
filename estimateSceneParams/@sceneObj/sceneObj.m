@@ -114,7 +114,7 @@ classdef sceneObj < handle
         modelPoseGaze
         modelVecGaze
         poseRegParams
-        vectorRegParams
+        vecRegParams
         rawErrors
         
         % These three are derived from the poseRegParams

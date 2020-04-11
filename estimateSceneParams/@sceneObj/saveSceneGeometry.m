@@ -78,7 +78,7 @@ sceneGeometry.meta.estimateSceneParams.modelGlintCoord = obj.modelGlintCoord;
 sceneGeometry.meta.estimateSceneParams.modelPoseGaze = obj.modelPoseGaze;
 sceneGeometry.meta.estimateSceneParams.modelVecGaze = obj.modelVecGaze;
 sceneGeometry.meta.estimateSceneParams.poseRegParams = obj.poseRegParams;
-sceneGeometry.meta.estimateSceneParams.vectorRegParams = obj.vectorRegParams;
+sceneGeometry.meta.estimateSceneParams.vecRegParams = obj.vecRegParams;
 sceneGeometry.meta.estimateSceneParams.rawErrors = obj.rawErrors;
 
 % Save the sceneGeometry file
