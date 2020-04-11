@@ -138,8 +138,8 @@ model.scene.paramLabels = {'pp_azi','pp_ele','torsion','horiz','vert','depth'};
 model.scene.units = {'deg','deg','deg','mm','mm','mm'};
 model.scene.nParams = length(model.scene.paramLabels);
 model.scene.nScenes = nScenes;
-model.scene.setLabels = {'primaryPosition','cameraPosition', 'all'};
-model.scene.setIdx = {1:2, 3:6, 1:6};
+model.scene.setLabels = {'primaryPosition','cameraPosition', 'translation', 'all'};
+model.scene.setIdx = {1:2, 3:6, 4:6, 1:6};
 model.scene.idxMap =  @(idx) model.head.nParams+model.eye.nParams+idx;
 % An anonymous function that expands the input index vector [a, b, ...]
 % into a vector given k eye+head, s sceneParams, and n scenes:
