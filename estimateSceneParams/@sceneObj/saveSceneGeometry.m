@@ -71,14 +71,7 @@ sceneGeometry.meta.estimateSceneParams.xScene = obj.x(model.func.fieldSetIdx('sc
 sceneGeometry.meta.estimateSceneParams.fVal = obj.fVal;
 sceneGeometry.meta.estimateSceneParams.sceneGeometryVarargin = sceneGeometryVarargin;
 sceneGeometry.meta.estimateSceneParams.obj = obj;
-% sceneGeometry.meta.estimateSceneParams.modelEyePose = obj.modelEyePose;
-% sceneGeometry.meta.estimateSceneParams.modelPupilEllipse = obj.modelPupilEllipse;
-% sceneGeometry.meta.estimateSceneParams.modelGlintCoord = obj.modelGlintCoord;
-% sceneGeometry.meta.estimateSceneParams.modelPoseGaze = obj.modelPoseGaze;
-% sceneGeometry.meta.estimateSceneParams.modelVecGaze = obj.modelVecGaze;
-% sceneGeometry.meta.estimateSceneParams.poseRegParams = obj.poseRegParams;
-% sceneGeometry.meta.estimateSceneParams.vecRegParams = obj.vecRegParams;
-% sceneGeometry.meta.estimateSceneParams.rawErrors = obj.rawErrors;
+
 
 % Save the sceneGeometry file
 sceneGeometryFileName = [obj.videoStemName '_sceneGeometry' fileNameSuffix '.mat'];

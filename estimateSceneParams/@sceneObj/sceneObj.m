@@ -117,10 +117,6 @@ classdef sceneObj < handle
         vecRegParams
         rawErrors
         
-        % These three are derived from the poseRegParams
-        fixationEyePose
-        screenTorsion
-        screenRotMat
         
         % The multi-scene objective can stash values here related to the
         % search across all scene objects

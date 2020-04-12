@@ -328,10 +328,6 @@ obj.poseRegParams = poseRegParams;
 obj.vecRegParams = vecRegParams;
 obj.rawErrors = rawErrors;
 
-% Save the fixation
-obj.fixationEyePose = poseRegParams.t;
-obj.screenTorsion = poseRegParams.theta;
-obj.screenRotMat = poseRegParams.R;
 
 end
 
