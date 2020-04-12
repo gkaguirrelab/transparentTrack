@@ -70,8 +70,12 @@ sceneGeometry.meta.estimateSceneParams.xEye = obj.x(model.func.fieldSetIdx('eye'
 sceneGeometry.meta.estimateSceneParams.xScene = obj.x(model.func.fieldSetIdx('scene','all'));
 sceneGeometry.meta.estimateSceneParams.fVal = obj.fVal;
 sceneGeometry.meta.estimateSceneParams.sceneGeometryVarargin = sceneGeometryVarargin;
-sceneGeometry.meta.estimateSceneParams.obj = obj;
 
+% Copy the obj properties into the sceneGeometry
+objProperties = fieldnames(obj);
+for ii=1:length(objProperties)
+    sceneGeometry.meta.estimateSceneParams.obj.(objProperties{ii})=obj.(objProperties{ii});
+end
 
 % Save the sceneGeometry file
 sceneGeometryFileName = [obj.videoStemName '_sceneGeometry' fileNameSuffix '.mat'];
