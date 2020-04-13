@@ -509,8 +509,7 @@ if p.Results.saveDiagnosticPlot
     annotation('textbox', [0.5, .075, 0, 0], 'string', msg,'Color',msgColor,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
     
     % Save and close the figure
-    tmp = fullfile(sceneGeometryOutPath,[sceneGeometryOutStem '_sceneSync_QA.pdf']);
-    print(figHandle,tmp,'-dpdf','-bestfit');
+    print(figHandle,[videoStemNameOut '_sceneGeometry_sceneSync_QA.pdf'],'-dpdf','-bestfit');
     close(figHandle);
     
 end
