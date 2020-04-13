@@ -28,7 +28,7 @@ function syncSceneGeometry(videoStemNameIn, videoStemNameOut, varargin)
 %   pupilFileName         - Full path to the .mat file that contains the
 %                           pupil data to which the sceneGeometry should be
 %                           synced.
-%   
+%
 % Optional key/value pairs (display and I/O):
 %  'sceneGeometryFileNameToSync' - Full path to the .mat file that contains
 %                           the sceneGeometry to be used.
@@ -37,7 +37,7 @@ function syncSceneGeometry(videoStemNameIn, videoStemNameOut, varargin)
 %                           user to adjust the scene geometry parameters
 %                           by hand.
 %  'verbose'              - Logical.
-%  'saveAdjustedSceneGeometry' - Logical. Controls if the adjusted 
+%  'saveAdjustedSceneGeometry' - Logical. Controls if the adjusted
 %                           sceneGeometry file is saved. If so, the file
 %                           name will be derived from the pupilFile name.
 %  'saveDiagnosticPlot'   - Logical.
@@ -46,7 +46,7 @@ function syncSceneGeometry(videoStemNameIn, videoStemNameOut, varargin)
 %                           synced to itself. This circumstance is detected
 %                           and the routine exits unless this flag is set
 %                           to false.
-%   
+%
 % Optional key/value pairs (flow control)
 %  'useParallel'          - If set to true, use the MATLAB parallel pool
 %  'nWorkers'             - Specify the number of workers in the parallel
@@ -75,7 +75,7 @@ function syncSceneGeometry(videoStemNameIn, videoStemNameOut, varargin)
 %                           first parameter) and depth (the fourth
 %                           parameter) so these are typically set to zero
 %                           as well.
-%  'eyePositionTargetLengthFrames' - Scalar. The number of sequential 
+%  'eyePositionTargetLengthFrames' - Scalar. The number of sequential
 %                           frames from the target acquisition that will be
 %                           found and used to define the position of the
 %                           eye to be fit.
@@ -92,7 +92,7 @@ function syncSceneGeometry(videoStemNameIn, videoStemNameOut, varargin)
 %{
     sceneGeometryFileNameToSync = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3015/032417/EyeTracking/GazeCal03_sceneGeometry.mat';
     pupilFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3015/032417/EyeTracking/tfMRI_MOVIE_AP_run01_pupil.mat';
-    syncSceneGeometry(pupilFileName, 'sceneGeometryFileNameToSync', sceneGeometryFileNameToSync) 
+    syncSceneGeometry(pupilFileName, 'sceneGeometryFileNameToSync', sceneGeometryFileNameToSync)
 %}
 
 %% Parse vargin for options passed here
@@ -172,56 +172,54 @@ pupilEllipseFixationIn = sceneGeometryIn.meta.estimateSceneParams.obj.modelPupil
 rhoIn = 1-sqrt(1-pupilEllipseFixationIn(4)^2);
 thetaIn = pupilEllipseFixationIn(5)*2;
 
-% Get the scene model parameters
+% Get the scene and eye parameters from the videoStemNameIn gazeCal
 model.eye.x0 = sceneGeometryIn.meta.estimateSceneParams.xEye;
+model.scene.x0 = sceneGeometryIn.meta.estimateSceneParams.xScene;
 eyeArgs = sceneGeometryIn.meta.estimateSceneParams.obj.setupArgs;
 errorArgs = { ...
-        'poseRegParams',sceneGeometryIn.meta.estimateSceneParams.obj.poseRegParams,...
-        'vecRegParams',sceneGeometryIn.meta.estimateSceneParams.obj.vecRegParams};
+    'poseRegParams',sceneGeometryIn.meta.estimateSceneParams.obj.poseRegParams,...
+    'vecRegParams',sceneGeometryIn.meta.estimateSceneParams.obj.vecRegParams};
 
 % Get the cameraDepth from the source sceneGeometry file
 cameraDepth = sceneGeometryIn.meta.estimateSceneParams.xScene(end);
-    
+
 % Load in the video image for this frame.
 absIdx = sceneGeometryIn.meta.estimateSceneParams.obj.frameSet(idx);
 videoFrameIn = makeMedianVideoImage([videoStemNameIn '_gray.avi'],'startFrame',absIdx,'nFrames',1);
 
 
-%% Identify frames from videoStemNameOut to guide the search
-% Every search includes frames that are distributed across time and space.
-% Additionally, we wish to identify a frame in the videoStemNameOut
-% acquisition that best corresponds to the eye when it is looking at the
-% fixation point.
-
-[frameSetA, gazeTargetsA] = selectFrames.gridTime(videoStemNameOut);
-[frameSetB, gazeTargetsB] = selectFrames.gridSpace(videoStemNameOut);
+%% Select frames to guide the search
+% Identify a frame in the videoStemNameOut acquisition that best
+% corresponds to the eye when it is looking at the fixation point. This
+% could come from an explicit fixation period, or from matching the shape
+% of the pupil to that observed during the videoStemNameIn fixation period.
 
 switch p.Results.alignMethod
     case 'gazePre'
-        [frameSetC, gazeTargetsC] = selectFrames.gazePre(videoStemNameOut);
+        [frameSet, gazeTargets] = selectFrames.gazePre(videoStemNameOut);
     case 'gazePost'
-        [frameSetC, gazeTargetsC] = selectFrames.gazePost(videoStemNameOut);
+        [frameSet, gazeTargets] = selectFrames.gazePost(videoStemNameOut);
     case 'shape'
-        [frameSetC, gazeTargetsC] = selectFrames.shape(videoStemNameOut, rhoIn, thetaIn);    
+        [frameSet, gazeTargets] = selectFrames.shape(videoStemNameOut, rhoIn, thetaIn);
 end
 
-frameSet = [frameSetA frameSetB frameSetC];
-gazeTargets = [gazeTargetsA gazeTargetsB gazeTargetsC];
+% Load in the video image for this frame.
+videoFrameOut = makeMedianVideoImage([videoStemNameOut '_gray.avi'],'startFrame',frameSet(1),'nFrames',1);
+
+% Add frames that are distributed across time and space.
+[frameSetA, gazeTargetsA] = selectFrames.gridTime(videoStemNameOut);
+[frameSetB, gazeTargetsB] = selectFrames.gridSpace(videoStemNameOut);
+
+frameSet = [frameSet frameSetA frameSetB];
+gazeTargets = [gazeTargets gazeTargetsA gazeTargetsB];
 
 
-%% Perform the synchronization search
-estimateSceneParams(videoStemNameOut, frameSet, gazeTargets, ...
-    'searchStrategy','sceneSync','cameraDepth',cameraDepth,'model',model,...
-    'eyeArgs',eyeArgs,'errorArgs',errorArgs);
-
-% 
-% 
 % %% Optional display mode
 % % If we are in display mode, offer an interface for the user to manually
-% % adjust the delta variables
-% 
+% % adjust the x0 scene params
+%
 % if p.Results.displayMode
-%         
+%
 %     % Provide some instructions for the operator
 %     fprintf([sceneGeometryInPath '\n']);
 %     fprintf('Adjust horizontal and vertical camera translation with the arrow keys.\n');
@@ -231,7 +229,7 @@ estimateSceneParams(videoStemNameOut, frameSet, gazeTargets, ...
 %     fprintf('Turn on and off perimeter display with p.\n');
 %     fprintf('Turn on and off model display with m.\n');
 %     fprintf('Press esc to exit.\n\n');
-%     
+%
 %     % Create a figure
 %     figHandle = figure();
 %     imshow(videoFrameFixed,[],'Border','tight');
@@ -239,41 +237,41 @@ estimateSceneParams(videoStemNameOut, frameSet, gazeTargets, ...
 %     ax.Toolbar = [];
 %     hold on
 %     text(20,30,'FIXED', 'Color', 'g','Fontsize',16);
-%     
+%
 %     % Prepare for the loop
 %     showMoving = false;
 %     showPerimeter=false;
 %     showModel=false;
 %     stillWorking = true;
-%     
+%
 %     % Enter the while stillWorking loop
 %     while stillWorking
-%         
+%
 %         % Prepare to update the image
 %         hold off
-%         
+%
 %         if showMoving
 %             % Work with the moving frame
 %             displayImage = videoFrameMoving;
-%             
+%
 %             % Update the perimeter points
 %             XpDisplay = XpMoving; YpDisplay = YpMoving;
-%                         
+%
 %         else
 %             % Work with the fixed frame
 %             displayImage = videoFrameFixed;
-%             
+%
 %             % Update the perimeter
 %             XpDisplay = XpFixed; YpDisplay = YpFixed;
-%             
+%
 %         end
-%         
+%
 %         % Display the perimeter points
 %         if showPerimeter
 %             idx = sub2ind(size(displayImage),round(YpDisplay),round(XpDisplay));
 %             displayImage(idx)=255;
 %         end
-%         
+%
 %         % Add the eye model
 %         if showModel
 %             % Let the user know this will take a few seconds
@@ -302,17 +300,17 @@ estimateSceneParams(videoStemNameOut, frameSet, gazeTargets, ...
 %             % Remove the updating annotation
 %             delete(annotHandle);
 %         end
-% 
+%
 %         % Move the moving image
 %         if showMoving
 %             % Get the 2D registration params that brings the movingImage
 %             % into the fixedImage space
 %             regParams = calcImageTransform(sceneGeometryIn,x,cameraOffsetPoint);
-%             
-%             % Update the image            
+%
+%             % Update the image
 %             displayImage = updateFrame(displayImage,regParams,cameraOffsetPoint);
 %         end
-%             
+%
 %         % Display the image
 %         imshow(displayImage,[],'Border','tight');
 %         ax = gca;
@@ -324,10 +322,10 @@ estimateSceneParams(videoStemNameOut, frameSet, gazeTargets, ...
 %         else
 %             text(20,30,'FIXED', 'Color', 'g','Fontsize',16);
 %         end
-%         
+%
 %         % Add a marker for the camera CoP
 %         plot(cameraOffsetPoint(1),cameraOffsetPoint(2),'+c');
-%         
+%
 %         keyAction = waitforbuttonpress;
 %         if keyAction
 %             keyChoiceValue = double(get(gcf,'CurrentCharacter'));
@@ -361,63 +359,58 @@ estimateSceneParams(videoStemNameOut, frameSet, gazeTargets, ...
 %                 otherwise
 %                     % Nothing to do
 %             end
-%             
+%
 %         end
 %     end
-%     
+%
 %     close(figHandle);
 % end
-% 
-% 
+%
+%
 % %% Create the adjusted sceneGeometry
 % sceneGeometryAdjusted = updateSceneGeometry( sceneGeometryIn, x );
-% 
-% 
+%
+%
 % %% Update the fixation angles
 % [~,modeledEyePose] = calcGlintGazeError( sceneGeometryAdjusted, args{:}, keyVals{:} );
 % medianEyePoseFixed = median(modeledEyePose);
 % sceneGeometryAdjusted.screenPosition.fixationEyePose = medianEyePoseFixed(1:2)';
-% 
-% 
 
 
-%% Create and save a diagnostic figure
-if p.Results.saveDiagnosticPlot
-    
-    %% Select a video frame from videoStemNameOut
 
-    % Load the sceneGeometry variable into memory
+
+
+
+%% Perform the synchronization search
+estimateSceneParams(videoStemNameOut, frameSet, gazeTargets, ...
+    'searchStrategy','sceneSync','cameraDepth',cameraDepth,'model',model,...
+    'eyeArgs',eyeArgs,'errorArgs',errorArgs);
+
+% Load the sceneGeometryOut variable into memory
 dataLoad=load([videoStemNameOut '_sceneGeometry.mat']);
 sceneGeometryOut=dataLoad.sceneGeometry;
 clear dataLoad
 
+% Store the eyePose for the fixation frame of sceneGeometryOut
+eyePoseFixationOut = sceneGeometryOut.meta.estimateSceneParams.obj.modelEyePose(frameSet(1),:);
 
-%% Find the fixation frame for the source image
-% This is the sceneGeometry file that (typically) was derived during a
-% gazeCalibration procedure.
 
-% Which of the list of frames is the [0,0] fixation frame
-idx = find((sceneGeometryOut.meta.estimateSceneParams.obj.gazeTargets(1,:)==0).*(sceneGeometryOut.meta.estimateSceneParams.obj.gazeTargets(2,:)==0));
+%% Create and save a diagnostic figure
+if p.Results.saveDiagnosticPlot
+            
+    %% videoStemNameIn
+    % Typically the gazeCal source
 
-% Store the eyePose for this frame
-eyePoseFixationOut = sceneGeometryOut.meta.estimateSceneParams.obj.modelEyePose(idx,:);
-    
-% Load in the video image for this frame.
-absIdx = sceneGeometryOut.meta.estimateSceneParams.obj.frameSet(idx);
-videoFrameOut = makeMedianVideoImage([videoStemNameOut '_gray.avi'],'startFrame',absIdx,'nFrames',1);
-    
-    
-    % videoStemNameIn -- Typically the gazeCal source
     displayImage = videoFrameIn;
     tmpFig = figure('visible','off');
     renderEyePose(eyePoseFixationIn, sceneGeometryIn, ...
         'newFigure', false, 'visible', false, ...
         'backgroundImage',displayImage, ...
         'showAzimuthPlane', true, ...
-                'modelEyeLabelNames', {'retina' 'pupilEllipse' 'cornea' 'glint_01'}, ...
-                'modelEyePlotColors', {'.w' '-g' '.y' 'xr'}, ...
-                'modelEyeSymbolSizeScaler',1.5,...
-                'modelEyeAlpha', [0.25 0.25 0.25 1]);            
+        'modelEyeLabelNames', {'retina' 'pupilEllipse' 'cornea' 'glint_01'}, ...
+        'modelEyePlotColors', {'.w' '-g' '.y' 'xr'}, ...
+        'modelEyeSymbolSizeScaler',1.5,...
+        'modelEyeAlpha', [0.25 0.25 0.25 1]);
     text(20,30,videoStemNameIn, 'Color', 'g','Fontsize',16,'Interpreter','none');
     msg = ['frame ' num2str(absIdx)];
     addAnnotation(msg);
@@ -427,21 +420,23 @@ videoFrameOut = makeMedianVideoImage([videoStemNameOut '_gray.avi'],'startFrame'
     tmpFrame = getframe(gcf);
     imageSet(1) = {tmpFrame.cdata};
     close(tmpFig);
-
-        
-    % videoStemNameOut -- The acquisition for which we have new sceneGeometry
+    
+    
+    %% videoStemNameOut
+    % The acquisition for which we have new sceneGeometry
+    
     displayImage = videoFrameOut;
     tmpFig = figure('visible','off');
     renderEyePose(eyePoseFixationOut, sceneGeometryOut, ...
         'newFigure', false, 'visible', false, ...
         'backgroundImage',displayImage, ...
         'showAzimuthPlane', true, ...
-                'modelEyeLabelNames', {'retina' 'pupilEllipse' 'cornea' 'glint_01'}, ...
-                'modelEyePlotColors', {'.w' '-g' '.y' 'xr'}, ...
-                'modelEyeSymbolSizeScaler',1.5,...
-                'modelEyeAlpha', [0.25 0.25 0.25 1]);            
-    text(20,30,sceneGeometryOutStem, 'Color', 'r','Fontsize',16,'Interpreter','none');
-    msg = ['frame ' num2str(referenceFrameFixed)];
+        'modelEyeLabelNames', {'retina' 'pupilEllipse' 'cornea' 'glint_01'}, ...
+        'modelEyePlotColors', {'.w' '-g' '.y' 'xr'}, ...
+        'modelEyeSymbolSizeScaler',1.5,...
+        'modelEyeAlpha', [0.25 0.25 0.25 1]);
+    text(20,30,videoStemNameOut, 'Color', 'r','Fontsize',16,'Interpreter','none');
+    msg = ['frame ' num2str(frameSet(1))];
     addAnnotation(msg);
     % Add cross hairs
     hold on
@@ -452,8 +447,10 @@ videoFrameOut = makeMedianVideoImage([videoStemNameOut '_gray.avi'],'startFrame'
     close(tmpFig);
     
     
-    % Difference image
-    regParams = calcImageTransform(sceneGeometryIn,x,cameraOffsetPoint);
+    %% Difference image
+    
+    % Transform the videoFrameIn to the space of videoFrameOut
+    regParams = calcImageTransform(sceneGeometryIn,sceneGeometryOut,cameraOffsetPoint);
     videoFrameInAdj = updateFrame(videoFrameIn,regParams,cameraOffsetPoint);
     displayImage = videoFrameOut - double(videoFrameInAdj);
     tmpFig = figure('visible','off');
@@ -483,16 +480,16 @@ videoFrameOut = makeMedianVideoImage([videoStemNameOut '_gray.avi'],'startFrame'
     montage(imageSet,'Size', [1 3]);
     
     % Post the title
-    pathParts = strsplit(sceneGeometryInPath,filesep);
+    pathParts = strsplit(videoStemNameIn,filesep);
     titleString = [fullfile(pathParts{end-4:end-2})];
     title(titleString,'Interpreter','none')
     
     % Report the alignment method
-    annotation('textbox', [0.15, .125, 0, 0], 'string', alignMethod,'FontWeight','bold','FitBoxToText','on','LineStyle','none','HorizontalAlignment','left','Interpreter','none')     
+    annotation('textbox', [0.15, .125, 0, 0], 'string', alignMethod,'FontWeight','bold','FitBoxToText','on','LineStyle','none','HorizontalAlignment','left','Interpreter','none')
     
     % Report the run lengths
     msg = sprintf('runLength fixed = %2.0f',runLengthFixed);
-    annotation('textbox', [0.75, .125, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','left','Interpreter','none')     
+    annotation('textbox', [0.75, .125, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','left','Interpreter','none')
     
     % Add a text summary below. If any delta fixation angle is geater than
     % 1 deg, print the message text in red to alert that this was a large
@@ -505,7 +502,7 @@ videoFrameOut = makeMedianVideoImage([videoStemNameOut '_gray.avi'],'startFrame'
     annotation('textbox', [0.5, .125, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
     msg = sprintf('delta eye pose [azi, ele, tor, radius] = [%2.3f, %2.3f, %2.3f, %2.3f]',deltaPose);
     msgColor = 'black';
-    if any(abs(deltaPose(1:3)) > 0) 
+    if any(abs(deltaPose(1:3)) > 0)
         msgColor = 'red';
     end
     annotation('textbox', [0.5, .075, 0, 0], 'string', msg,'Color',msgColor,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
@@ -517,13 +514,13 @@ videoFrameOut = makeMedianVideoImage([videoStemNameOut '_gray.avi'],'startFrame'
     
 end
 
-% 
+%
 % % Get the execution time
 % executionTime = toc(ticObject);
-% 
+%
 % %% Save the adjusted sceneGeometry
 % if p.Results.saveAdjustedSceneGeometry
-%     
+%
 %     % If the movingFrame is from a point after the start of the
 %     % acquisition, adjust the camera translation position once more to
 %     % account for any head motion that took place between the start of the
@@ -531,20 +528,20 @@ end
 %     sceneGeometryAdjusted.cameraPosition.translation = ...
 %         sceneGeometryAdjusted.cameraPosition.translation + ...
 %         relativeCameraPosition.values(:,referenceFrameFixed);
-%     
+%
 %     % Add the meta data
 %     sceneGeometryAdjusted.meta.syncSceneGeometry = p.Results;
 %     sceneGeometryAdjusted.meta.syncSceneGeometry.x = x;
 %     sceneGeometryAdjusted.meta.executionTime = executionTime;
-%     
+%
 %     % Set the variable name
 %     sceneGeometry = sceneGeometryAdjusted;
-%     
+%
 %     % Save it
 %     tmp = fullfile(sceneGeometryOutPath,[sceneGeometryOutStem '_sceneGeometry.mat']);
 %     save(tmp,'sceneGeometry');
 % end
-% 
+%
 % % If we are in display mode, report the values to the console
 % if p.Results.displayMode
 %     tmp=strsplit(sceneGeometryInPath,filesep);
@@ -556,8 +553,8 @@ end
 %     fprintf(outline)
 %     fprintf('\n')
 % end
-% 
-% 
+%
+%
 % %% alert the user that we are done with the routine
 % if p.Results.verbose
 %     executionTime
@@ -643,32 +640,32 @@ end
 
 
 function OutPicture = HardZoom(InPicture, ZoomFactor)
-      % Si el factor de escala es 1, no se hace nada
-      if ZoomFactor == 1
-          OutPicture = InPicture;
-          return;
-      end
-      % Se obtienen las dimensiones de las imágenes
-      ySize = size(InPicture, 1);
-      xSize = size(InPicture, 2);
-      zSize = size(InPicture, 3);
-      yCrop = floor(ySize / 2 * abs(ZoomFactor - 1));
-      xCrop = floor(xSize / 2 * abs(ZoomFactor - 1));
-      % Si el factor de escala es 0 se devuelve una imagen en negro
-      if ZoomFactor == 0
-          OutPicture = uint8(zeros(ySize, xSize, zSize));
-          return;
-      end
-      % Se reescala y se reposiciona en en centro
-      zoomPicture = imresize(InPicture, ZoomFactor);
-      ySizeZ = size(zoomPicture, 1);
-      xSizeZ = size(zoomPicture, 2);      
-      if ZoomFactor > 1
-          OutPicture = zoomPicture( 1+yCrop:yCrop+ySize, 1+xCrop:xCrop+xSize, :);
-      else
-          OutPicture = uint8(zeros(ySize, xSize, zSize));
-          OutPicture( 1+yCrop:yCrop+ySizeZ, 1+xCrop:xCrop+xSizeZ, :) = zoomPicture;
-      end
+% Si el factor de escala es 1, no se hace nada
+if ZoomFactor == 1
+    OutPicture = InPicture;
+    return;
+end
+% Se obtienen las dimensiones de las imágenes
+ySize = size(InPicture, 1);
+xSize = size(InPicture, 2);
+zSize = size(InPicture, 3);
+yCrop = floor(ySize / 2 * abs(ZoomFactor - 1));
+xCrop = floor(xSize / 2 * abs(ZoomFactor - 1));
+% Si el factor de escala es 0 se devuelve una imagen en negro
+if ZoomFactor == 0
+    OutPicture = uint8(zeros(ySize, xSize, zSize));
+    return;
+end
+% Se reescala y se reposiciona en en centro
+zoomPicture = imresize(InPicture, ZoomFactor);
+ySizeZ = size(zoomPicture, 1);
+xSizeZ = size(zoomPicture, 2);
+if ZoomFactor > 1
+    OutPicture = zoomPicture( 1+yCrop:yCrop+ySize, 1+xCrop:xCrop+xSize, :);
+else
+    OutPicture = uint8(zeros(ySize, xSize, zSize));
+    OutPicture( 1+yCrop:yCrop+ySizeZ, 1+xCrop:xCrop+xSizeZ, :) = zoomPicture;
+end
 end
 
 

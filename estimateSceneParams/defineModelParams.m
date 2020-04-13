@@ -167,14 +167,14 @@ model.strategy.gazeCal.TolMesh = 1e-2;
 % sceneSync -- Used to map a known set of eye biometric parameters to an
 % acquisition that has an associated measuement of head movement over time
 model.strategy.sceneSync.stages = { ...
-    {'scene.cameraPosition', 'scene.primaryPosition', 'head.phaseAndRotation' } };
+    {'scene.translation', 'scene.primaryPosition', 'head.phaseAndRotation' } };
 model.strategy.sceneSync.errorReg = [1 2 0 0];
 model.strategy.sceneSync.penaltyWeight = 4;
 model.strategy.sceneSync.useFixForPrimaryPos = false;
 model.strategy.sceneSync.multiSceneNorm = 1;
 model.strategy.sceneSync.TolMesh = 1e-2;
 
-% gazeCalReg -- Used to examine how well one gaze call from a subject can
+% gazeCalReg -- Used to examine how well one gaze cal from a subject can
 % be used to fit the data from another gaze cal from that same subject
 model.strategy.gazeCalReg.stages = { ...
     {'scene.cameraPosition', 'scene.primaryPosition'} };
