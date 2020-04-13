@@ -231,7 +231,19 @@ else
         poseRegParams.meta = 'f = R * [azi; ele] + t';
 
     else
+        
+        % Adopt the passed poseRegParams
         poseRegParams = p.Results.poseRegParams;
+        
+        % If there is a single, non-nan gazeTarget at [0;0] then use the
+        % modelEyePose for that gaze target to update the "t" field of the
+        % poseRegParams
+        if sum(~isnan(sum(gazeTargets)))
+            if isequal(gazeTargets(:,~isnan(sum(gazeTargets))),[0;0])
+                poseRegParams.t = -1 .* modelEyePose(~isnan(sum(gazeTargets)),1:2)';
+            end
+        end
+        
     end
     
     % Calculate the eyePose gaze and error for the modeled frames
@@ -295,7 +307,19 @@ else
         % Add a meta field to the params with the formula
         vecRegParams.meta = 'f = s * R * [Xp - Xg; -1*(Yp-Yg)] + t';
     else
+        
+        % Adopt the passed vecRegParams
         vecRegParams = p.Results.vecRegParams;
+        
+        % If there is a single, non-nan gazeTarget at [0;0] then use the
+        % centerDiff for that gaze target to update the "t" field of the
+        % vecRegParams
+        if sum(~isnan(sum(gazeTargets)))
+            if isequal(gazeTargets(:,~isnan(sum(gazeTargets))),[0;0])
+                vecRegParams.t = -1 .* centerDiff(:,~isnan(sum(gazeTargets)));
+            end
+        end
+        
     end
     
     % Calculate the vector-based gaze and error for the modeled frames
