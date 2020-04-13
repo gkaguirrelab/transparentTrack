@@ -392,7 +392,7 @@ sceneGeometryOut=dataLoad.sceneGeometry;
 clear dataLoad
 
 % Store the eyePose for the fixation frame of sceneGeometryOut
-eyePoseFixationOut = sceneGeometryOut.meta.estimateSceneParams.obj.modelEyePose(frameSet(1),:);
+eyePoseFixationOut = sceneGeometryOut.meta.estimateSceneParams.obj.modelEyePose(1,:);
 
 
 %% Create and save a diagnostic figure
@@ -481,24 +481,25 @@ if p.Results.saveDiagnosticPlot
     
     % Post the title
     pathParts = strsplit(videoStemNameIn,filesep);
-    titleString = [fullfile(pathParts{end-4:end-2})];
+    if length(pathParts)>4
+        titleString = [fullfile(pathParts{end-4:end-2})];
+    else
+        titleString = videoStemNameIn;
+    end
     title(titleString,'Interpreter','none')
     
     % Report the alignment method
-    annotation('textbox', [0.15, .125, 0, 0], 'string', alignMethod,'FontWeight','bold','FitBoxToText','on','LineStyle','none','HorizontalAlignment','left','Interpreter','none')
-    
-    % Report the run lengths
-    msg = sprintf('runLength fixed = %2.0f',runLengthFixed);
-    annotation('textbox', [0.75, .125, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','left','Interpreter','none')
-    
+    annotation('textbox', [0.15, .125, 0, 0], 'string', p.Results.alignMethod,'FontWeight','bold','FitBoxToText','on','LineStyle','none','HorizontalAlignment','left','Interpreter','none')
+        
     % Add a text summary below. If any delta fixation angle is geater than
     % 1 deg, print the message text in red to alert that this was a large
     % eye rotation change.
-    deltaX = x-x0;
-    deltaPose = medianEyePoseFixed - eyePoseFixationIn;
-    msg = sprintf('delta torsion [deg] = %2.1f',deltaX(1));
+    deltaX = sceneGeometryOut.meta.estimateSceneParams.xScene - sceneGeometryIn.meta.estimateSceneParams.xScene;
+    deltaPose = eyePoseFixationOut - eyePoseFixationIn;
+    
+    msg = sprintf('delta torsion [deg] = %2.1f',deltaX(3));
     annotation('textbox', [0.5, .175, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
-    msg = sprintf('delta translation [mm] [x; y; z] = [%2.3f; %2.3f; %2.3f]',deltaX(2:4));
+    msg = sprintf('delta translation [mm] [x; y; z] = [%2.3f; %2.3f; %2.3f]',deltaX(4:6));
     annotation('textbox', [0.5, .125, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
     msg = sprintf('delta eye pose [azi, ele, tor, radius] = [%2.3f, %2.3f, %2.3f, %2.3f]',deltaPose);
     msgColor = 'black';
