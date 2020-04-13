@@ -151,7 +151,7 @@ model.scene.idxMultiScene = @(idx) repmat((0:model.scene.nScenes-1)*model.scene.
 
 
 %% Strategy
-% Arrange the sets into search strages for different search strategy
+% Arrange the sets into search stages for different search strategy
 
 % gazeCal -- Used to derive the biometric properties of the eye from one or
 % more gazeCal acquisitions.
@@ -159,30 +159,23 @@ model.strategy.gazeCal.stages = { ...
     {'eye.rotationCenterScalers','scene.cameraPosition'},...
     {'eye.rotationCenterScalers','scene.cameraPosition', 'eye.kvals', 'scene.primaryPosition'} };
 model.strategy.gazeCal.errorReg = [1 2 4 2];
-model.strategy.gazeCal.penaltyWeight = 0.5;
+model.strategy.gazeCal.penaltyWeight = [0.5 0.5];
 model.strategy.gazeCal.useFixForPrimaryPos = true;
 model.strategy.gazeCal.multiSceneNorm = 1;
 model.strategy.gazeCal.TolMesh = 1e-2;
 
-% sceneSync -- Used to map a known set of eye biometric parameters to an
-% acquisition that has an associated measuement of head movement over time
+% sceneSync -- Used to map a known set of eye biometric parameters and a
+% pretty good initial set of scene parameters to an acquisition that has an
+% associated measuement of head movement over time. The penalty weights
+% discourage large changes in camera torsion or depth.
 model.strategy.sceneSync.stages = { ...
-    {'scene.translation', 'scene.primaryPosition', 'head.phaseAndRotation' } };
+    {'scene.cameraPosition', 'scene.primaryPosition', 'head.phaseAndRotation' } };
 model.strategy.sceneSync.errorReg = [1 2 0 0];
-model.strategy.sceneSync.penaltyWeight = 4;
+model.strategy.sceneSync.penaltyWeight = [3 3];
 model.strategy.sceneSync.useFixForPrimaryPos = false;
 model.strategy.sceneSync.multiSceneNorm = 1;
 model.strategy.sceneSync.TolMesh = 1e-2;
 
-% gazeCalReg -- Used to examine how well one gaze cal from a subject can
-% be used to fit the data from another gaze cal from that same subject
-model.strategy.gazeCalReg.stages = { ...
-    {'scene.cameraPosition', 'scene.primaryPosition'} };
-model.strategy.gazeCalReg.errorReg = [1 2 0 0];
-model.strategy.gazeCalReg.penaltyWeight = 4;
-model.strategy.gazeCalReg.useFixForPrimaryPos = false;
-model.strategy.gazeCalReg.multiSceneNorm = 1;
-model.strategy.gazeCalReg.TolMesh = 1e-2;
 
 
 %% Substitute passed model inputs for defaults
@@ -230,7 +223,11 @@ model.func.subX = @(x,sceneIdx) x([1:(model.head.nParams+model.eye.nParams),mode
 % penalty is a regularization that penalizes changes in depth from the x0
 % values
 cameraDepthTransSet = model.scene.idxMultiScene(model.func.fieldParamIdx('scene','depth'));
-model.func.penalty = @(x,x0,w) (1 + w * norm( (x(cameraDepthTransSet) - x0(cameraDepthTransSet)) ./ x0(cameraDepthTransSet) ))^2;
+cameraTorsionTransSet = model.scene.idxMultiScene(model.func.fieldParamIdx('scene','torsion'));
+model.func.penalty = @(x,x0,w) (1 + ...
+    w(1) * norm( (x(cameraDepthTransSet) - x0(cameraDepthTransSet)) ./ x0(cameraDepthTransSet) ) + ...
+    w(2) * norm( (x(cameraTorsionTransSet) - x0(cameraTorsionTransSet)) ) ...
+    )^2;
 
 % A non-linear constraint for the BADS search that requires first value of
 % the corneal curvature (K1) to be less than the second value (K2) Note
