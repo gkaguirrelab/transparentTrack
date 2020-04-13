@@ -130,12 +130,6 @@ if p.Results.doNotSyncSceneToItself && strcmp(videoStemNameIn,videoStemNameOut)
 end
 
 
-%% Announce we are starting
-ticObject = tic();
-if p.Results.verbose
-    fprintf(['Syncing scene geometry. Started ' char(datetime('now')) '\n']);
-end
-
 
 %% Load sceneGeometry for the videoStemNameIn
 % This sceneGeometry provides the eye model and the parameters that
@@ -482,7 +476,7 @@ if p.Results.saveDiagnosticPlot
     % Post the title
     pathParts = strsplit(videoStemNameIn,filesep);
     if length(pathParts)>4
-        titleString = [fullfile(pathParts{end-4:end-2})];
+        titleString = fullfile(pathParts{end-4:end-2});
     else
         titleString = videoStemNameIn;
     end
@@ -503,7 +497,7 @@ if p.Results.saveDiagnosticPlot
     annotation('textbox', [0.5, .125, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
     msg = sprintf('delta eye pose [azi, ele, tor, radius] = [%2.3f, %2.3f, %2.3f, %2.3f]',deltaPose);
     msgColor = 'black';
-    if any(abs(deltaPose(1:3)) > 0)
+    if any(abs(deltaPose(1:3)) > 1.0)
         msgColor = 'red';
     end
     annotation('textbox', [0.5, .075, 0, 0], 'string', msg,'Color',msgColor,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
@@ -514,52 +508,6 @@ if p.Results.saveDiagnosticPlot
     
 end
 
-%
-% % Get the execution time
-% executionTime = toc(ticObject);
-%
-% %% Save the adjusted sceneGeometry
-% if p.Results.saveAdjustedSceneGeometry
-%
-%     % If the movingFrame is from a point after the start of the
-%     % acquisition, adjust the camera translation position once more to
-%     % account for any head motion that took place between the start of the
-%     % acquisition and the reference frame
-%     sceneGeometryAdjusted.cameraPosition.translation = ...
-%         sceneGeometryAdjusted.cameraPosition.translation + ...
-%         relativeCameraPosition.values(:,referenceFrameFixed);
-%
-%     % Add the meta data
-%     sceneGeometryAdjusted.meta.syncSceneGeometry = p.Results;
-%     sceneGeometryAdjusted.meta.syncSceneGeometry.x = x;
-%     sceneGeometryAdjusted.meta.executionTime = executionTime;
-%
-%     % Set the variable name
-%     sceneGeometry = sceneGeometryAdjusted;
-%
-%     % Save it
-%     tmp = fullfile(sceneGeometryOutPath,[sceneGeometryOutStem '_sceneGeometry.mat']);
-%     save(tmp,'sceneGeometry');
-% end
-%
-% % If we are in display mode, report the values to the console
-% if p.Results.displayMode
-%     tmp=strsplit(sceneGeometryInPath,filesep);
-%     outline = [tmp{end-3} char(9) tmp{end-2} char(9) 'fixed: ' videoStemNameIn ', moving: ' sceneGeometryOutStem '\n'] ;
-%     fprintf(outline)
-%     outline = ['alignMethod' char(9) 'x' char(9) 'eyePose\n'];
-%     fprintf(outline)
-%     outline = sprintf(['{''' alignMethod '''}' char(9) '[ %2.2f, %2.2f, %2.2f, %2.2f, %2.2f, %2.2f, %2.2f, %2.2f ]' char(9) '[ %2.2f, %2.2f, %2.2f, %2.2f ]\n'],x,medianEyePoseFixed);
-%     fprintf(outline)
-%     fprintf('\n')
-% end
-%
-%
-% %% alert the user that we are done with the routine
-% if p.Results.verbose
-%     executionTime
-%     fprintf('\n');
-% end
 
 
 end % Main function

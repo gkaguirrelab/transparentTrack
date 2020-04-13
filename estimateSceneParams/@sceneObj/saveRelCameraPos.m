@@ -1,11 +1,11 @@
-function saveRelCameraPos(obj)
+function saveRelCameraPos(obj,fileNameSuffix)
 % Saves the current state of the relative camera position in the object
 %
 % Syntax:
 %  obj.saveRelCameraPos()
 %
 % Description:
-%   Save the relativeCameraPosition with the current state of the
+%   Save the updated relativeCameraPosition with the current state of the
 %   parameters to disk, using the filepath provided by the videoStemName
 %   input to the sceneObj class.
 %
@@ -21,7 +21,7 @@ function saveRelCameraPos(obj)
 if exist([videoStemName '_relativeCameraPosition.mat'], 'file') == 2
     load([videoStemName '_relativeCameraPosition.mat'],'relativeCameraPosition');
 else
-    relativeCameraPosition.values = zeros(3,max(frameSet));
+    return
 end
 
 % Update the values
@@ -33,7 +33,7 @@ relativeCameraPosition.meta.estimateSceneParams.xHead = obj.x(model.func.fieldSe
 relativeCameraPosition.meta.estimateSceneParams.model = obj.model;
 
 % Save the  file
-fileName = [obj.videoStemName '_relativeCameraPosition.mat'];
+fileName = [obj.videoStemName '_relativeCameraPosition' fileNameSuffix '.mat'];
 save(fileName,'relativeCameraPosition');
 
 

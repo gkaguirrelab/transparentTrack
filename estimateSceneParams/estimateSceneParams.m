@@ -386,9 +386,10 @@ end
 myObjAll(x);
 
 
-%% Save the sceneGeometry
+%% Save the sceneGeometry and relative camera position
 for ss = 1:nScenes
     sceneObjects{ss}.saveSceneGeometry(p.Results.outputFileSuffix);
+    sceneObjects{ss}.saveRelCameraPos(p.Results.outputFileSuffix);    
 end
 
 
