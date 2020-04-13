@@ -370,7 +370,7 @@ for ii = 1:nStages
     if model.strategy.(strategy).useFixForPrimaryPos && ii<nStages
         poses = [];
         for ss = 1:nScenes
-            fixationEyePose = sceneObjects{ss}.fixationEyePose;
+            fixationEyePose = sceneObjects{ss}.poseRegParams.t;
             poses = [poses fixationEyePose(1:2)'];
         end
         idx = model.func.fieldSetIdx('scene','primaryPosition');
