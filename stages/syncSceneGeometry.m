@@ -142,7 +142,7 @@ end
 % transform eyePose into gaze position.
 
 % Load the sceneGeometry variable into memory
-dataLoad=load([videoStemNameIn '_sceneGeometry.mat');
+dataLoad=load([videoStemNameIn '_sceneGeometry.mat']);
 sceneGeometryIn=dataLoad.sceneGeometry;
 clear dataLoad
 
@@ -158,7 +158,8 @@ cameraOffsetPoint = [sceneGeometryIn.cameraIntrinsic.matrix(1,3), ...
 % gazeCalibration procedure.
 
 % Which of the list of frames is the [0,0] fixation frame
-idx = find((sceneGeometryIn.meta.estimateSceneParams.gazeTargets(1,:)==0).*(sceneGeometryIn.meta.estimateSceneParams.gazeTargets(2,:)==0));
+idx = find((sceneGeometryIn.meta.estimateSceneParams.obj.gazeTargets(1,:)==0).*(sceneGeometryIn.meta.estimateSceneParams.obj.gazeTargets(2,:)==0));
+idx = 5;
 
 % Store the eyePose for this frame
 eyePoseFixationIn = sceneGeometryIn.meta.estimateSceneParams.obj.modelEyePose(idx,:);
@@ -176,15 +177,14 @@ model.eye.x0 = sceneGeometryIn.meta.estimateSceneParams.xEye;
 eyeArgs = sceneGeometryIn.meta.estimateSceneParams.obj.setupArgs;
 errorArgs = { ...
         'poseRegParams',sceneGeometryIn.meta.estimateSceneParams.obj.poseRegParams,...
-        'vecRegParams',sceneGeometryIn.meta.estimateSceneParams.obj.vectorRegParams};
+        'vecRegParams',sceneGeometryIn.meta.estimateSceneParams.obj.vecRegParams};
 
 % Get the cameraDepth from the source sceneGeometry file
 cameraDepth = sceneGeometryIn.meta.estimateSceneParams.xScene(end);
     
 % Load in the video image for this frame.
-tmp = fullfile(sceneGeometryInPath,[videoStemNameIn '_gray.avi']);
-absIdx = sceneGeometryIn.meta.estimateSceneParams.frameSet(idx);
-videoFrameIn = makeMedianVideoImage(tmp,'startFrame',absIdx,'nFrames',1);
+absIdx = sceneGeometryIn.meta.estimateSceneParams.obj.frameSet(idx);
+videoFrameIn = makeMedianVideoImage([videoStemNameIn '_gray.avi'],'startFrame',absIdx,'nFrames',1);
 
 
 %% Identify frames from videoStemNameOut to guide the search
@@ -211,7 +211,7 @@ gazeTargets = [gazeTargetsA gazeTargetsB gazeTargetsC];
 
 %% Perform the synchronization search
 estimateSceneParams(videoStemNameOut, frameSet, gazeTargets, ...
-    'searchStrategy','gazeCalReg','cameraDepth',cameraDepth,'model',model,...
+    'searchStrategy','sceneSync','cameraDepth',cameraDepth,'model',model,...
     'eyeArgs',eyeArgs,'errorArgs',errorArgs);
 
 % 
@@ -379,119 +379,144 @@ estimateSceneParams(videoStemNameOut, frameSet, gazeTargets, ...
 % sceneGeometryAdjusted.screenPosition.fixationEyePose = medianEyePoseFixed(1:2)';
 % 
 % 
-% %% Create and save a diagnostic figure
-% if p.Results.saveDiagnosticPlot
-%     
-%     % Moving frame -- Typically the gazeCal source
-%     displayImage = videoFrameMoving;
-%     tmpFig = figure('visible','off');
-%     renderEyePose(eyePoseFixationIn, sceneGeometryIn, ...
-%         'newFigure', false, 'visible', false, ...
-%         'backgroundImage',displayImage, ...
-%         'showAzimuthPlane', true, ...
-%                 'modelEyeLabelNames', {'retina' 'pupilEllipse' 'cornea' 'glint_01'}, ...
-%                 'modelEyePlotColors', {'.w' '-g' '.y' 'xr'}, ...
-%                 'modelEyeSymbolSizeScaler',1.5,...
-%                 'modelEyeAlpha', [0.25 0.25 0.25 1]);            
-%     text(20,30,videoStemNameIn, 'Color', 'g','Fontsize',16,'Interpreter','none');
-%     msg = ['frame ' num2str(absIdx)];
-%     addAnnotation(msg);
-%     hold on
-%     plot([size(displayImage,2)/2, size(displayImage,2)/2],[0 size(displayImage,2)],'-b');
-%     plot([0 size(displayImage,1)],[size(displayImage,1)/2, size(displayImage,1)/2],'-b');
-%     tmpFrame = getframe(gcf);
-%     imageSet(1) = {tmpFrame.cdata};
-%     close(tmpFig);
-% 
-%         
-%     % Fixed frame -- The acquisition for which we have new sceneGeometry
-%     displayImage = videoFrameFixed;
-%     eyePoseFixed = eyePoseEllipseFit(XpFixed, YpFixed, sceneGeometryAdjusted,'glintCoord',glintCoordFixed,keyVals{:});
-%     tmpFig = figure('visible','off');
-%     renderEyePose(eyePoseFixed, sceneGeometryAdjusted, ...
-%         'newFigure', false, 'visible', false, ...
-%         'backgroundImage',displayImage, ...
-%         'showAzimuthPlane', true, ...
-%                 'modelEyeLabelNames', {'retina' 'pupilEllipse' 'cornea' 'glint_01'}, ...
-%                 'modelEyePlotColors', {'.w' '-g' '.y' 'xr'}, ...
-%                 'modelEyeSymbolSizeScaler',1.5,...
-%                 'modelEyeAlpha', [0.25 0.25 0.25 1]);            
-%     text(20,30,sceneGeometryOutStem, 'Color', 'r','Fontsize',16,'Interpreter','none');
-%     msg = ['frame ' num2str(referenceFrameFixed)];
-%     addAnnotation(msg);
-%     % Add cross hairs
-%     hold on
-%     plot([size(displayImage,2)/2, size(displayImage,2)/2],[0 size(displayImage,2)],'-b');
-%     plot([0 size(displayImage,1)],[size(displayImage,1)/2, size(displayImage,1)/2],'-b');
-%     tmpFrame = getframe(gcf);
-%     imageSet(2) = {tmpFrame.cdata};
-%     close(tmpFig);
-%     
-%     
-%     % Difference image
-%     regParams = calcImageTransform(sceneGeometryIn,x,cameraOffsetPoint);
-%     adjMovingFrame = updateFrame(videoFrameMoving,regParams,cameraOffsetPoint);
-%     displayImage = videoFrameFixed - double(adjMovingFrame);
-%     tmpFig = figure('visible','off');
-%     imshow(displayImage,[], 'Border', 'tight');
-%     text(20,30,'Difference', 'Color', 'w','Fontsize',16,'Interpreter','none');
-%     tmpFrame = getframe(gcf);
-%     imageSet(3) = {tmpFrame.cdata};
-%     close(tmpFig);
-%     
-%     % Prepare the figure
-%     figHandle=figure('visible','off');
-%     set(gcf,'PaperOrientation','portrait');
-%     
-%     set(figHandle, 'Units','inches')
-%     height = 4;
-%     width = 12;
-%     
-%     % The last two parameters of 'Position' define the figure size
-%     set(figHandle, 'Position',[25 5 width height],...
-%         'PaperSize',[width height],...
-%         'PaperPositionMode','auto',...
-%         'Color','w',...
-%         'Renderer','painters'...
-%         );
-%     
-%     % Post the montage of the imageSet
-%     montage(imageSet,'Size', [1 3]);
-%     
-%     % Post the title
-%     pathParts = strsplit(sceneGeometryInPath,filesep);
-%     titleString = [fullfile(pathParts{end-4:end-2})];
-%     title(titleString,'Interpreter','none')
-%     
-%     % Report the alignment method
-%     annotation('textbox', [0.15, .125, 0, 0], 'string', alignMethod,'FontWeight','bold','FitBoxToText','on','LineStyle','none','HorizontalAlignment','left','Interpreter','none')     
-%     
-%     % Report the run lengths
-%     msg = sprintf('runLength fixed = %2.0f',runLengthFixed);
-%     annotation('textbox', [0.75, .125, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','left','Interpreter','none')     
-%     
-%     % Add a text summary below. If any delta fixation angle is geater than
-%     % 1 deg, print the message text in red to alert that this was a large
-%     % eye rotation change.
-%     deltaX = x-x0;
-%     deltaPose = medianEyePoseFixed - eyePoseFixationIn;
-%     msg = sprintf('delta torsion [deg] = %2.1f',deltaX(1));
-%     annotation('textbox', [0.5, .175, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
-%     msg = sprintf('delta translation [mm] [x; y; z] = [%2.3f; %2.3f; %2.3f]',deltaX(2:4));
-%     annotation('textbox', [0.5, .125, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
-%     msg = sprintf('delta eye pose [azi, ele, tor, radius] = [%2.3f, %2.3f, %2.3f, %2.3f]',deltaPose);
-%     msgColor = 'black';
-%     if any(abs(deltaPose(1:3)) > 0) 
-%         msgColor = 'red';
-%     end
-%     annotation('textbox', [0.5, .075, 0, 0], 'string', msg,'Color',msgColor,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
-%     
-%     % Save and close the figure
-%     tmp = fullfile(sceneGeometryOutPath,[sceneGeometryOutStem '_sceneSync_QA.pdf']);
-%     print(figHandle,tmp,'-dpdf','-bestfit');
-%     close(figHandle);
-%     
-% end
+
+
+%% Create and save a diagnostic figure
+if p.Results.saveDiagnosticPlot
+    
+    %% Select a video frame from videoStemNameOut
+
+    % Load the sceneGeometry variable into memory
+dataLoad=load([videoStemNameOut '_sceneGeometry.mat']);
+sceneGeometryOut=dataLoad.sceneGeometry;
+clear dataLoad
+
+
+%% Find the fixation frame for the source image
+% This is the sceneGeometry file that (typically) was derived during a
+% gazeCalibration procedure.
+
+% Which of the list of frames is the [0,0] fixation frame
+idx = find((sceneGeometryOut.meta.estimateSceneParams.obj.gazeTargets(1,:)==0).*(sceneGeometryOut.meta.estimateSceneParams.obj.gazeTargets(2,:)==0));
+
+% Store the eyePose for this frame
+eyePoseFixationOut = sceneGeometryOut.meta.estimateSceneParams.obj.modelEyePose(idx,:);
+    
+% Load in the video image for this frame.
+absIdx = sceneGeometryOut.meta.estimateSceneParams.obj.frameSet(idx);
+videoFrameOut = makeMedianVideoImage([videoStemNameOut '_gray.avi'],'startFrame',absIdx,'nFrames',1);
+    
+    
+    % videoStemNameIn -- Typically the gazeCal source
+    displayImage = videoFrameIn;
+    tmpFig = figure('visible','off');
+    renderEyePose(eyePoseFixationIn, sceneGeometryIn, ...
+        'newFigure', false, 'visible', false, ...
+        'backgroundImage',displayImage, ...
+        'showAzimuthPlane', true, ...
+                'modelEyeLabelNames', {'retina' 'pupilEllipse' 'cornea' 'glint_01'}, ...
+                'modelEyePlotColors', {'.w' '-g' '.y' 'xr'}, ...
+                'modelEyeSymbolSizeScaler',1.5,...
+                'modelEyeAlpha', [0.25 0.25 0.25 1]);            
+    text(20,30,videoStemNameIn, 'Color', 'g','Fontsize',16,'Interpreter','none');
+    msg = ['frame ' num2str(absIdx)];
+    addAnnotation(msg);
+    hold on
+    plot([size(displayImage,2)/2, size(displayImage,2)/2],[0 size(displayImage,2)],'-b');
+    plot([0 size(displayImage,1)],[size(displayImage,1)/2, size(displayImage,1)/2],'-b');
+    tmpFrame = getframe(gcf);
+    imageSet(1) = {tmpFrame.cdata};
+    close(tmpFig);
+
+        
+    % videoStemNameOut -- The acquisition for which we have new sceneGeometry
+    displayImage = videoFrameOut;
+    tmpFig = figure('visible','off');
+    renderEyePose(eyePoseFixationOut, sceneGeometryOut, ...
+        'newFigure', false, 'visible', false, ...
+        'backgroundImage',displayImage, ...
+        'showAzimuthPlane', true, ...
+                'modelEyeLabelNames', {'retina' 'pupilEllipse' 'cornea' 'glint_01'}, ...
+                'modelEyePlotColors', {'.w' '-g' '.y' 'xr'}, ...
+                'modelEyeSymbolSizeScaler',1.5,...
+                'modelEyeAlpha', [0.25 0.25 0.25 1]);            
+    text(20,30,sceneGeometryOutStem, 'Color', 'r','Fontsize',16,'Interpreter','none');
+    msg = ['frame ' num2str(referenceFrameFixed)];
+    addAnnotation(msg);
+    % Add cross hairs
+    hold on
+    plot([size(displayImage,2)/2, size(displayImage,2)/2],[0 size(displayImage,2)],'-b');
+    plot([0 size(displayImage,1)],[size(displayImage,1)/2, size(displayImage,1)/2],'-b');
+    tmpFrame = getframe(gcf);
+    imageSet(2) = {tmpFrame.cdata};
+    close(tmpFig);
+    
+    
+    % Difference image
+    regParams = calcImageTransform(sceneGeometryIn,x,cameraOffsetPoint);
+    videoFrameInAdj = updateFrame(videoFrameIn,regParams,cameraOffsetPoint);
+    displayImage = videoFrameOut - double(videoFrameInAdj);
+    tmpFig = figure('visible','off');
+    imshow(displayImage,[], 'Border', 'tight');
+    text(20,30,'Difference', 'Color', 'w','Fontsize',16,'Interpreter','none');
+    tmpFrame = getframe(gcf);
+    imageSet(3) = {tmpFrame.cdata};
+    close(tmpFig);
+    
+    % Prepare the figure
+    figHandle=figure('visible','off');
+    set(gcf,'PaperOrientation','portrait');
+    
+    set(figHandle, 'Units','inches')
+    height = 4;
+    width = 12;
+    
+    % The last two parameters of 'Position' define the figure size
+    set(figHandle, 'Position',[25 5 width height],...
+        'PaperSize',[width height],...
+        'PaperPositionMode','auto',...
+        'Color','w',...
+        'Renderer','painters'...
+        );
+    
+    % Post the montage of the imageSet
+    montage(imageSet,'Size', [1 3]);
+    
+    % Post the title
+    pathParts = strsplit(sceneGeometryInPath,filesep);
+    titleString = [fullfile(pathParts{end-4:end-2})];
+    title(titleString,'Interpreter','none')
+    
+    % Report the alignment method
+    annotation('textbox', [0.15, .125, 0, 0], 'string', alignMethod,'FontWeight','bold','FitBoxToText','on','LineStyle','none','HorizontalAlignment','left','Interpreter','none')     
+    
+    % Report the run lengths
+    msg = sprintf('runLength fixed = %2.0f',runLengthFixed);
+    annotation('textbox', [0.75, .125, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','left','Interpreter','none')     
+    
+    % Add a text summary below. If any delta fixation angle is geater than
+    % 1 deg, print the message text in red to alert that this was a large
+    % eye rotation change.
+    deltaX = x-x0;
+    deltaPose = medianEyePoseFixed - eyePoseFixationIn;
+    msg = sprintf('delta torsion [deg] = %2.1f',deltaX(1));
+    annotation('textbox', [0.5, .175, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
+    msg = sprintf('delta translation [mm] [x; y; z] = [%2.3f; %2.3f; %2.3f]',deltaX(2:4));
+    annotation('textbox', [0.5, .125, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
+    msg = sprintf('delta eye pose [azi, ele, tor, radius] = [%2.3f, %2.3f, %2.3f, %2.3f]',deltaPose);
+    msgColor = 'black';
+    if any(abs(deltaPose(1:3)) > 0) 
+        msgColor = 'red';
+    end
+    annotation('textbox', [0.5, .075, 0, 0], 'string', msg,'Color',msgColor,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
+    
+    % Save and close the figure
+    tmp = fullfile(sceneGeometryOutPath,[sceneGeometryOutStem '_sceneSync_QA.pdf']);
+    print(figHandle,tmp,'-dpdf','-bestfit');
+    close(figHandle);
+    
+end
+
 % 
 % % Get the execution time
 % executionTime = toc(ticObject);
@@ -549,17 +574,17 @@ end % Main function
 %% LOCAL FUNCTIONS
 
 
-function regParams = calcImageTransform(sceneGeometry,x,cameraOffsetPoint)
+function regParams = calcImageTransform(sceneGeometryIn,sceneGeometryOut,cameraOffsetPoint)
 % Determine the rotation and translation matrices that describe the change
 % in an image induced by the updated sceneParameters
-f = updateSceneGeometry(sceneGeometry,x);
 
-pupilEllipseA1 = projectModelEye([ 0 1 0 1],sceneGeometry,'pupilRayFunc',[]);
-pupilEllipseA2 = projectModelEye([-1 0 0 1],sceneGeometry,'pupilRayFunc',[]);
-pupilEllipseA3 = projectModelEye([ 1 0 0 1],sceneGeometry,'pupilRayFunc',[]);
-pupilEllipseB1 = projectModelEye([ 0 1 0 1],f,'pupilRayFunc',[]);
-pupilEllipseB2 = projectModelEye([-1 0 0 1],f,'pupilRayFunc',[]);
-pupilEllipseB3 = projectModelEye([ 1 0 0 1],f,'pupilRayFunc',[]);
+
+pupilEllipseA1 = projectModelEye([ 0 1 0 1],sceneGeometryIn,'pupilRayFunc',[]);
+pupilEllipseA2 = projectModelEye([-1 0 0 1],sceneGeometryIn,'pupilRayFunc',[]);
+pupilEllipseA3 = projectModelEye([ 1 0 0 1],sceneGeometryIn,'pupilRayFunc',[]);
+pupilEllipseB1 = projectModelEye([ 0 1 0 1],sceneGeometryOut,'pupilRayFunc',[]);
+pupilEllipseB2 = projectModelEye([-1 0 0 1],sceneGeometryOut,'pupilRayFunc',[]);
+pupilEllipseB3 = projectModelEye([ 1 0 0 1],sceneGeometryOut,'pupilRayFunc',[]);
 
 A = [pupilEllipseA1(1:2)',pupilEllipseA2(1:2)',pupilEllipseA3(1:2)']-cameraOffsetPoint';
 B = [pupilEllipseB1(1:2)',pupilEllipseB2(1:2)',pupilEllipseB3(1:2)']-cameraOffsetPoint';
