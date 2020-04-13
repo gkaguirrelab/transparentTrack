@@ -1,4 +1,4 @@
-function estimateSceneParams(videoStemName, frameSet, gazeTargets, varargin)
+function sceneObjects = estimateSceneParams(videoStemName, frameSet, gazeTargets, varargin)
 % Estimate scene geometry and head motion parameters for one or more scenes
 %
 % Syntax:
@@ -126,8 +126,8 @@ function estimateSceneParams(videoStemName, frameSet, gazeTargets, varargin)
 %                           passed here.
 %
 % Outputs
-%	None. Although sceneGeometry files and diagnostic plots are saved for
-%	each scene at the location specified by the videoStemName paths.
+%   sceneObjects          - Cell array of handles to objects of the type
+%                           sceneObj.
 %
 % Examples:
 %{
@@ -298,7 +298,7 @@ for ss = 1:nScenes
     end
     
     % Create the objective for this scene
-    mySceneObjects{ss} = sceneObj(...
+    sceneObjects{ss} = sceneObj(...
         model, videoStemName{ss}, frameSet{ss}, gazeTargets{ss}, ...
         setupArgs, errorArgs, p.Results, ...
         'verbose', verbose);
@@ -312,7 +312,7 @@ x = model.x0;
 %% Anonymous functions for the search
 
 % An objective function which is the norm of all objective functions
-myObjAll = @(x) multiSceneObjective(x,mySceneObjects,model,strategy,verbose);
+myObjAll = @(x) multiSceneObjective(x,sceneObjects,model,strategy,verbose);
 
 
 %% Define BADS search options
@@ -361,8 +361,8 @@ for ii = 1:nStages
     % Plots
     fileNameSuffix = sprintf([p.Results.outputFileSuffix '_stage%02d'],ii);
     for ss = 1:nScenes
-        mySceneObjects{ss}.saveEyeModelMontage(fileNameSuffix);
-        mySceneObjects{ss}.saveModelFitPlot(fileNameSuffix);
+        sceneObjects{ss}.saveEyeModelMontage(fileNameSuffix);
+        sceneObjects{ss}.saveModelFitPlot(fileNameSuffix);
     end        
     
     % If instructed, use the fixation results to update the primary
@@ -370,7 +370,7 @@ for ii = 1:nStages
     if model.strategy.(strategy).useFixForPrimaryPos && ii<nStages
         poses = [];
         for ss = 1:nScenes
-            fixationEyePose = mySceneObjects{ss}.fixationEyePose;
+            fixationEyePose = sceneObjects{ss}.fixationEyePose;
             poses = [poses fixationEyePose(1:2)'];
         end
         idx = model.func.fieldSetIdx('scene','primaryPosition');
@@ -388,7 +388,7 @@ myObjAll(x);
 
 %% Save the sceneGeometry
 for ss = 1:nScenes
-    mySceneObjects{ss}.saveSceneGeometry(p.Results.outputFileSuffix);
+    sceneObjects{ss}.saveSceneGeometry(p.Results.outputFileSuffix);
 end
 
 
