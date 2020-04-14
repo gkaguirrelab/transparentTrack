@@ -5,43 +5,28 @@ function syncSceneGeometry(videoStemNameIn, videoStemNameOut, varargin)
 %  syncSceneGeometry(videoStemNameIn, videoStemNameOut, varargin)
 %
 % Description:
-%   A sceneGeometry file is created for a given acquisition. Included in
-%   the sceneGeometry is a specification of properties of the extrinsic
-%   camera matrix, including the position of the camera in space relative
-%   to the coordinates, which have as their origin the anterior surface of
-%   the cornea along the optical axis of the eye. If we wish to use this
-%   sceneGeometry file for the analysis of data from other acqusitions for
-%   a given subject, we need to deal with the possibility that the subject
-%   has moved their head between acquisitions. As the coordinate system is
-%   based upon a fixed anatomical landmark of the eye, the effect of head
-%   translation in this system is to change the camera position. This
-%   routine assists in calculating an updated camera position for a given
-%   acquisition.
+%   A sceneGeometry file specifies biometric properties of an eye, and the
+%   spatial arrangement of the eye with respect to a camera. This routine
+%   adjusts a sceneGeometry file created for one acquisition to best match
+%   the measurements made in a different acqusition.
 %
-%   Select a sceneGeometry with the UI file picker, then select the
-%   acquisitions to which you would like to align the sceneGeometry.
-%   An image derived from the sceneGeometry and the acquisition is shown,
-%   and controls are used to adjust the acquisition to match the
-%   sceneGeometry.
+%   The adjustment is guided by fitting the glint and pupil within a
+%   selection of frames that are distributed across eye positions and time.
 %
 % Inputs:
-%   pupilFileName         - Full path to the .mat file that contains the
-%                           pupil data to which the sceneGeometry should be
-%                           synced.
+%   videoStemNameIn       - Full path to the set of files that provide the
+%                           source sceneGeometry. The path should exclude
+%                           the trailing "_gray.avi" that identifies the
+%                           video.
+%   videoStemNameIn       - Full path to the set of files for which a new
+%                           sceneGeometry file is to be created. The path
+%                           should exclude the trailing "_gray.avi" that
+%                           identifies the video.
 %
 % Optional key/value pairs (display and I/O):
-%  'sceneGeometryFileNameToSync' - Full path to the .mat file that contains
-%                           the sceneGeometry to be used.
-%  'displayMode'          - Logical. Controls if a GUI interface is
-%                           provided after the search stage to allow the
-%                           user to adjust the scene geometry parameters
-%                           by hand.
 %  'verbose'              - Logical.
-%  'saveAdjustedSceneGeometry' - Logical. Controls if the adjusted
-%                           sceneGeometry file is saved. If so, the file
-%                           name will be derived from the pupilFile name.
 %  'saveDiagnosticPlot'   - Logical.
-%  'doNotSyncSceneToItself' - Logical. Strange things could happen if a the
+%  'doNotSyncSceneToItself' - Logical. Strange things could happen if the
 %                           user requests that a sceneGeometry file be
 %                           synced to itself. This circumstance is detected
 %                           and the routine exits unless this flag is set
@@ -59,41 +44,12 @@ function syncSceneGeometry(videoStemNameIn, videoStemNameOut, varargin)
 %                           as the fixed target to which the sceneGeometry
 %                           is adjusted. Valid options are:
 %                               {'gazePre','gazePost','shape'}
-%  'sceneSyncX'           - 1x8 vector. If set, these scene parameter
-%                           values will be used for the adjusted
-%                           sceneGeometry, instead of performing a search
-%                           to try and find optimal parameters.
-%  'sceneSyncBound'       - 1x8 vector. Defines the +-bounds on the scene
-%                           parameters for the search that brings the
-%                           source sceneGeometry into alignment with the
-%                           fixed, target pupilFile data. As properties of
-%                           the eye itself (rotation center, corneal
-%                           curvature) are considered fixed, the last four
-%                           values of this vector are usually set to zero.
-%                           Also, given a single eyePose as a target, the
-%                           model has difficulty adjusting torsion (the
-%                           first parameter) and depth (the fourth
-%                           parameter) so these are typically set to zero
-%                           as well.
-%  'eyePositionTargetLengthFrames' - Scalar. The number of sequential
-%                           frames from the target acquisition that will be
-%                           found and used to define the position of the
-%                           eye to be fit.
-%  'gazeErrorThreshTol'   - Scalar. The run of frames must have a deviation
-%                           of less than this value. The precise meaning of
-%                           the value will differ for the different
-%                           alignment methods.
+
 %
 % Examples:
 %{
-    % Invoke the file picker GUI
-    syncSceneGeometry('','displayMode',true,'verbose',true,'alignMethod','shape');
 %}
-%{
-    sceneGeometryFileNameToSync = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3015/032417/EyeTracking/GazeCal03_sceneGeometry.mat';
-    pupilFileName = '/Users/aguirre/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session2_spatialStimuli/TOME_3015/032417/EyeTracking/tfMRI_MOVIE_AP_run01_pupil.mat';
-    syncSceneGeometry(pupilFileName, 'sceneGeometryFileNameToSync', sceneGeometryFileNameToSync)
-%}
+
 
 %% Parse vargin for options passed here
 p = inputParser; p.KeepUnmatched = true;
@@ -103,9 +59,7 @@ p.addRequired('videoStemNameIn',@ischar);
 p.addRequired('videoStemNameOut',@ischar);
 
 % Optional display and I/O params
-p.addParameter('displayMode',false,@islogical);
 p.addParameter('verbose',true,@islogical);
-p.addParameter('saveAdjustedSceneGeometry',true,@islogical);
 p.addParameter('saveDiagnosticPlot',true,@islogical);
 p.addParameter('doNotSyncSceneToItself',true,@islogical);
 
@@ -130,7 +84,6 @@ if p.Results.doNotSyncSceneToItself && strcmp(videoStemNameIn,videoStemNameOut)
 end
 
 
-
 %% Load sceneGeometry for the videoStemNameIn
 % This sceneGeometry provides the eye model and the parameters that
 % transform eyePose into gaze position.
@@ -142,16 +95,16 @@ clear dataLoad
 
 % Get the camera offset point. This is where the center of the video image
 % lands on the camera sensor array. We will need this later when we make
-% some diagnostic images of the alignment of the source and target videos.
+% some diagnostic images of the alignment of the in and out videos.
 cameraOffsetPoint = [sceneGeometryIn.cameraIntrinsic.matrix(1,3), ...
     sceneGeometryIn.cameraIntrinsic.matrix(2,3)];
 
 
-%% Find the fixation frame for the source image
-% This is the sceneGeometry file that (typically) was derived during a
-% gazeCalibration procedure.
+%% Find the fixation frame for sceneGeometryIn
+% We assume that the sceneGeometryIn contains a frame that has been
+% assigned a gazeTarget value of [0; 0].
 
-% Which of the list of frames is the [0,0] fixation frame
+% Which of the list of frames is the [0;0] fixation frame
 idx = find((sceneGeometryIn.meta.estimateSceneParams.obj.gazeTargets(1,:)==0).*(sceneGeometryIn.meta.estimateSceneParams.obj.gazeTargets(2,:)==0));
 
 % Store the eyePose for this frame
@@ -165,7 +118,7 @@ pupilEllipseFixationIn = sceneGeometryIn.meta.estimateSceneParams.obj.modelPupil
 rhoIn = 1-sqrt(1-pupilEllipseFixationIn(4)^2);
 thetaIn = pupilEllipseFixationIn(5)*2;
 
-% Get the scene and eye parameters from the videoStemNameIn gazeCal
+% Get the scene and eye parameters from the sceneGeometryIn
 model.eye.x0 = sceneGeometryIn.meta.estimateSceneParams.xEye;
 model.scene.x0 = sceneGeometryIn.meta.estimateSceneParams.xScene;
 eyeArgs = sceneGeometryIn.meta.estimateSceneParams.obj.setupArgs;
@@ -173,7 +126,7 @@ errorArgs = { ...
     'poseRegParams',sceneGeometryIn.meta.estimateSceneParams.obj.poseRegParams,...
     'vecRegParams',sceneGeometryIn.meta.estimateSceneParams.obj.vecRegParams};
 
-% Get the cameraDepth from the source sceneGeometry file
+% Get the cameraDepth from the sceneGeometryIn
 cameraDepth = sceneGeometryIn.meta.estimateSceneParams.xScene(end);
 
 % Load in the video image for this frame.
@@ -194,6 +147,8 @@ switch p.Results.alignMethod
         [frameSet, gazeTargets] = selectFrames.gazePost(videoStemNameOut);
     case 'shape'
         [frameSet, gazeTargets] = selectFrames.shape(videoStemNameOut, rhoIn, thetaIn);
+    otherwise
+        error('This is not a defined align method')
 end
 
 % Load in the video image for this frame.
@@ -202,182 +157,17 @@ videoFrameOut = makeMedianVideoImage([videoStemNameOut '_gray.avi'],'startFrame'
 % Add frames that are distributed across time and space.
 [frameSetA, gazeTargetsA] = selectFrames.gridTime(videoStemNameOut);
 [frameSetB, gazeTargetsB] = selectFrames.gridSpace(videoStemNameOut);
-
 frameSet = [frameSet frameSetA frameSetB];
 gazeTargets = [gazeTargets gazeTargetsA gazeTargetsB];
-
-
-% %% Optional display mode
-% % If we are in display mode, offer an interface for the user to manually
-% % adjust the x0 scene params
-%
-% if p.Results.displayMode
-%
-%     % Provide some instructions for the operator
-%     fprintf([sceneGeometryInPath '\n']);
-%     fprintf('Adjust horizontal and vertical camera translation with the arrow keys.\n');
-%     fprintf('Adjust depth camera translation with + and -.\n');
-%     fprintf('Adjust camera torsion with j and k.\n');
-%     fprintf('Switch between moving and fixed image by pressing f.\n');
-%     fprintf('Turn on and off perimeter display with p.\n');
-%     fprintf('Turn on and off model display with m.\n');
-%     fprintf('Press esc to exit.\n\n');
-%
-%     % Create a figure
-%     figHandle = figure();
-%     imshow(videoFrameFixed,[],'Border','tight');
-%     ax = gca;
-%     ax.Toolbar = [];
-%     hold on
-%     text(20,30,'FIXED', 'Color', 'g','Fontsize',16);
-%
-%     % Prepare for the loop
-%     showMoving = false;
-%     showPerimeter=false;
-%     showModel=false;
-%     stillWorking = true;
-%
-%     % Enter the while stillWorking loop
-%     while stillWorking
-%
-%         % Prepare to update the image
-%         hold off
-%
-%         if showMoving
-%             % Work with the moving frame
-%             displayImage = videoFrameMoving;
-%
-%             % Update the perimeter points
-%             XpDisplay = XpMoving; YpDisplay = YpMoving;
-%
-%         else
-%             % Work with the fixed frame
-%             displayImage = videoFrameFixed;
-%
-%             % Update the perimeter
-%             XpDisplay = XpFixed; YpDisplay = YpFixed;
-%
-%         end
-%
-%         % Display the perimeter points
-%         if showPerimeter
-%             idx = sub2ind(size(displayImage),round(YpDisplay),round(XpDisplay));
-%             displayImage(idx)=255;
-%         end
-%
-%         % Add the eye model
-%         if showModel
-%             % Let the user know this will take a few seconds
-%             text_str = 'Updating model...';
-%             annotHandle = addAnnotation(text_str);
-%             % Set the eye pose, depending upon if we are looking at the
-%             % fixed or moving image
-%             if showMoving
-%                 sceneGeometryDisplay = sceneGeometryIn;
-%                 eyePoseDisplay = eyePoseFixationIn;
-%             else
-%                 sceneGeometryDisplay = updateSceneGeometry( sceneGeometryIn, x );
-%                 eyePoseDisplay = eyePoseEllipseFit(XpFixed, YpFixed, sceneGeometryDisplay,'glintCoord',glintCoordFixed,keyVals{:});
-%             end
-%             % Render the eye model
-%             [tmpHandle,~,displayImage]=renderEyePose(eyePoseDisplay, sceneGeometryDisplay, ...
-%                 'newFigure', true, 'visible', false, ...
-%                 'backgroundImage', displayImage, ...
-%                 'showAzimuthPlane', true, ...
-%                 'modelEyeLabelNames', {'retina' 'pupilEllipse' 'cornea' 'glint_01'}, ...
-%                 'modelEyePlotColors', {'.w' '-g' '.y' 'xr'}, ...
-%                 'modelEyeSymbolSizeScaler',1.5,...
-%                 'modelEyeAlpha', [0.25 0.25 0.25 1]);
-%             close(tmpHandle);
-%             displayImage = displayImage.cdata;
-%             % Remove the updating annotation
-%             delete(annotHandle);
-%         end
-%
-%         % Move the moving image
-%         if showMoving
-%             % Get the 2D registration params that brings the movingImage
-%             % into the fixedImage space
-%             regParams = calcImageTransform(sceneGeometryIn,x,cameraOffsetPoint);
-%
-%             % Update the image
-%             displayImage = updateFrame(displayImage,regParams,cameraOffsetPoint);
-%         end
-%
-%         % Display the image
-%         imshow(displayImage,[],'Border','tight');
-%         ax = gca;
-%         ax.Toolbar = [];
-%         hold on
-%         % Add a label
-%         if showMoving
-%             text(20,30,'MOVING', 'Color', 'r','Fontsize',16);
-%         else
-%             text(20,30,'FIXED', 'Color', 'g','Fontsize',16);
-%         end
-%
-%         % Add a marker for the camera CoP
-%         plot(cameraOffsetPoint(1),cameraOffsetPoint(2),'+c');
-%
-%         keyAction = waitforbuttonpress;
-%         if keyAction
-%             keyChoiceValue = double(get(gcf,'CurrentCharacter'));
-%             switch keyChoiceValue
-%                 case 28
-%                     x(2)=x(2)-0.1;
-%                 case 29
-%                     x(2)=x(2)+0.1;
-%                 case 30
-%                     x(3)=x(3)-0.1;
-%                 case 31
-%                     x(3)=x(3)+0.1;
-%                 case {45 95}
-%                     x(4)=x(4)-1;
-%                 case {61 43}
-%                     x(4)=x(4)+1;
-%                 case 102
-%                     showMoving = ~showMoving;
-%                 case 106
-%                     x(1)=x(1)+0.5;
-%                 case 107
-%                     x(1)=x(1)-0.5;
-%                 case 112
-%                     showPerimeter = ~showPerimeter;
-%                 case 109
-%                     showModel = ~showModel;
-%                 case 27
-%                     text_str = 'finishing...';
-%                     addAnnotation(text_str);
-%                     stillWorking = false;
-%                 otherwise
-%                     % Nothing to do
-%             end
-%
-%         end
-%     end
-%
-%     close(figHandle);
-% end
-%
-%
-% %% Create the adjusted sceneGeometry
-% sceneGeometryAdjusted = updateSceneGeometry( sceneGeometryIn, x );
-%
-%
-% %% Update the fixation angles
-% [~,modeledEyePose] = calcGlintGazeError( sceneGeometryAdjusted, args{:}, keyVals{:} );
-% medianEyePoseFixed = median(modeledEyePose);
-% sceneGeometryAdjusted.screenPosition.fixationEyePose = medianEyePoseFixed(1:2)';
-
-
-
-
 
 
 %% Perform the synchronization search
 estimateSceneParams(videoStemNameOut, frameSet, gazeTargets, ...
     'searchStrategy','sceneSync','cameraDepth',cameraDepth,'model',model,...
-    'eyeArgs',eyeArgs,'errorArgs',errorArgs);
+    'eyeArgs',eyeArgs,'errorArgs',errorArgs, ...
+    'verbose',p.Results.verbose,...
+    'useParallel',p.Results.useParallel,...
+    'nWorkers',p.Results.nWorkers);
 
 % Load the sceneGeometryOut variable into memory
 dataLoad=load([videoStemNameOut '_sceneGeometry.mat']);
