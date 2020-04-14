@@ -39,10 +39,10 @@ function syncSceneGeometry(videoStemNameIn, videoStemNameOut, varargin)
 %                           used.
 %
 % Optional key/value pairs (fitting params):
-%  'alignMethod'          - Char vec. Controls how the routine selects
-%                           frames from the pupilFile acquisition to use
-%                           as the fixed target to which the sceneGeometry
-%                           is adjusted. Valid options are:
+%  'alignMethod'          - Cell or char vec. Controls how the routine 
+%                           selects frames from the pupilFile acquisition
+%                           to use as the fixed target to which the
+%                           sceneGeometry is adjusted. Valid options are:
 %                               {'gazePre','gazePost','shape'}
 
 %
@@ -74,6 +74,11 @@ p.addParameter('alignMethod','gazePre',@(x)(ischar(x) | iscell(x)));
 %% Parse and check the parameters
 p.parse(videoStemNameIn, videoStemNameOut, varargin{:});
 
+
+alignMethod = p.Results.alignMethod;
+if iscell(alignMethod)
+    alignMethod = alignMethod{1};
+end
 
 %% Check if we are syncing a sceneGeometry to itself
 if p.Results.doNotSyncSceneToItself && strcmp(videoStemNameIn,videoStemNameOut)
@@ -140,7 +145,7 @@ videoFrameIn = makeMedianVideoImage([videoStemNameIn '_gray.avi'],'startFrame',a
 % could come from an explicit fixation period, or from matching the shape
 % of the pupil to that observed during the videoStemNameIn fixation period.
 
-switch p.Results.alignMethod
+switch alignMethod
     case 'gazePre'
         [frameSet, gazeTargets] = selectFrames.gazePre(videoStemNameOut);
     case 'gazePost'
@@ -272,7 +277,7 @@ if p.Results.saveDiagnosticPlot
     title(titleString,'Interpreter','none')
     
     % Report the alignment method
-    annotation('textbox', [0.15, .125, 0, 0], 'string', p.Results.alignMethod,'FontWeight','bold','FitBoxToText','on','LineStyle','none','HorizontalAlignment','left','Interpreter','none')
+    annotation('textbox', [0.15, .125, 0, 0], 'string', alignMethod,'FontWeight','bold','FitBoxToText','on','LineStyle','none','HorizontalAlignment','left','Interpreter','none')
         
     % Add a text summary below. If any delta fixation angle is geater than
     % 1 deg, print the message text in red to alert that this was a large
