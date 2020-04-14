@@ -29,7 +29,7 @@ relativeCameraPosition.values = obj.relCamPos;
 
 % Update the meta data
 relativeCameraPosition.meta.estimateSceneParams.p = obj.meta;
-relativeCameraPosition.meta.estimateSceneParams.xHead = obj.x(model.func.fieldSetIdx('head','all'));
+relativeCameraPosition.meta.estimateSceneParams.xHead = obj.x(obj.model.func.fieldSetIdx('head','all'));
 relativeCameraPosition.meta.estimateSceneParams.model = obj.model;
 
 % Save the  file
