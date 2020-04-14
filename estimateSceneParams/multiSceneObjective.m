@@ -1,4 +1,4 @@
-function fVal = multiSceneObjective(x,mySceneObjects,model,strategy,verbose)
+function fVal = multiSceneObjective(x,sceneObjects,model,strategy,verbose)
 % An objective function across multiple scenes for estimateSceneParams
 %
 % Syntax:
@@ -18,9 +18,8 @@ function fVal = multiSceneObjective(x,mySceneObjects,model,strategy,verbose)
 %
 
 
-% Loop over the scenes. Pass the scene params appropriate to that
-% scene. Store the objective values.
-nScenes = length(mySceneObjects);
+% Loop over the scenes.
+nScenes = length(sceneObjects);
 fValScene = nan(1,nScenes);
 for ss = 1:nScenes
     
@@ -29,7 +28,7 @@ for ss = 1:nScenes
     
     % Call the object to calculate the updated error function for these
     % parameters
-    fValScene(ss) = mySceneObjects{ss}.returnError(subX);
+    fValScene(ss) = sceneObjects{ss}.returnError(subX);
     
 end
 
@@ -40,7 +39,8 @@ fVal = norm(fValScene,model.strategy.(strategy).multiSceneNorm);
 % BADS can't handle Inf in the objective, so replace with real max
 fVal = min([fVal realmax]);
 
-% Apply the regularization to penalize changes in the camera depth
+% Apply the regularization to penalize changes in the camera depth and
+% torsion
 penalty = model.func.penalty(x,model.x0,model.strategy.(strategy).penaltyWeight);
 fVal = fVal * penalty;
 
@@ -49,10 +49,10 @@ fVal = fVal * penalty;
 % update the meta information, which is the case if the meta field is
 % currently empty, or if the fVal is better than the stored value.
 updateMetaFlag = false;
-if isempty(mySceneObjects{1}.multiSceneMeta)
+if isempty(sceneObjects{1}.multiSceneMeta)
     updateMetaFlag = true;
 else
-    if fVal < mySceneObjects{1}.multiSceneMeta.fVal
+    if fVal < sceneObjects{1}.multiSceneMeta.fVal
         updateMetaFlag = true;
     end
 end
@@ -68,8 +68,8 @@ if updateMetaFlag
     
     % Loop over the scene objects and store the meta data
     for ss = 1:nScenes
-        mySceneObjects{ss}.multiSceneMeta = multiSceneMeta;
-        mySceneObjects{ss}.multiSceneIdx = ss;
+        sceneObjects{ss}.multiSceneMeta = multiSceneMeta;
+        sceneObjects{ss}.multiSceneIdx = ss;
     end
     
     % If we have the verbose flag, report the new, best fVal and params

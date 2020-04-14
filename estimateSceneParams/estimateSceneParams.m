@@ -39,8 +39,7 @@ function sceneObjects = estimateSceneParams(videoStemName, frameSet, gazeTargets
 %   key-value. This specifies the distance of the camera from the eye (in
 %   mm), as it is otherwise difficult for the solution to distinguish
 %   between the depth position of the camera and properties of eye biometry
-%   (rotation depth and corneal curvature). For strategies that include
-%   searching over eye biometric parameters, the search includes a
+%   (rotation depth and corneal curvature). The search includes a
 %   regularization that penalizes the solution for departing from the x0
 %   value for camera depth.
 %
@@ -54,24 +53,24 @@ function sceneObjects = estimateSceneParams(videoStemName, frameSet, gazeTargets
 %                           used in the analysis have the suffixes:
 %                               {'_correctedPerimeter.mat','_glint.mat',...
 %                                '_pupil.mat'}
-%                           and optionally {'_headMotion.mat'}. The
-%                           sceneGeometry output files will be saved at the
-%                           same path location with the suffix:
+%                           and optionally {'_relativeCameraPosition.mat'}.
+%                           The sceneGeometry output files will be saved at
+%                           the same path location with the suffix:
 %                               '_sceneGeometry.mat'
 %   frameSet              - A 1xm vector, or a cell array of n such vectors
-%                           (although m may differ in each vector). Each
-%                           vector specifies the m frame indices (indexed
-%                           from 1) which identify the set of frames from
-%                           the scene to guide the search.
+%                           (m may differ in each vector). Each vector
+%                           specifies the m frame indices (indexed from 1)
+%                           which identify the set of frames from the scene
+%                           to guide the search.
 %   gazeTargets           - A 2xm matrix, or cell array of n such matrices,
-%                           (although m may differ in each matrix). Each
-%                           matrix provides the positions, in degrees of
-%                           visual angle, of fixation targets that
-%                           correspond to each of the frames. The visual
-%                           angle of the stimuli should be adjusted for
-%                           min/magnification produced by spectacle lenses
-%                           worn by the subject prior to being passed to
-%                           this routine.
+%                           (m may differ in each matrix). Each matrix
+%                           provides the positions, in degrees of visual
+%                           angle, of fixation targets that correspond to
+%                           each of the frames. The visual angle of the
+%                           stimuli should be adjusted for minification /
+%                           magnification produced by spectacle lenses worn
+%                           by the subject prior to being passed to this
+%                           routine.
 %
 % Optional key/value pairs (display and I/O):
 %  'verbose'              - Logical. Default false.
@@ -275,9 +274,9 @@ nScenes = length(videoStemName);
 
 
 %% Define model params
-% This function has the dictionary of search parameters and stages.
-% The key-value 'model' may be used to supply values that replace the
-% defaults. This is typically done for x0 and bounds.
+% This function has a dictionary of search parameters and stages. The
+% key-value 'model' may be used to supply values that replace the defaults.
+% This is typically done for x0 and bounds.
 model = defineModelParams(nScenes, p.Results.model, p.Results.cameraDepth, p.Results.corneaTorsion);
 
 % The errorArgs are passed in the creation of the scene objects. We add to

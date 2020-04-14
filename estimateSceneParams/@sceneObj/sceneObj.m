@@ -116,8 +116,7 @@ classdef sceneObj < handle
         poseRegParams
         vecRegParams
         rawErrors
-        
-        
+                
         % The multi-scene objective can stash values here related to the
         % search across all scene objects
         multiSceneMeta
