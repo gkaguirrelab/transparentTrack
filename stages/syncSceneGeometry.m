@@ -153,7 +153,6 @@ cameraOffsetPoint = [sceneGeometryIn.cameraIntrinsic.matrix(1,3), ...
 
 % Which of the list of frames is the [0,0] fixation frame
 idx = find((sceneGeometryIn.meta.estimateSceneParams.obj.gazeTargets(1,:)==0).*(sceneGeometryIn.meta.estimateSceneParams.obj.gazeTargets(2,:)==0));
-idx = 5;
 
 % Store the eyePose for this frame
 eyePoseFixationIn = sceneGeometryIn.meta.estimateSceneParams.obj.modelEyePose(idx,:);
