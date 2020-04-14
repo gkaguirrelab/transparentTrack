@@ -159,7 +159,7 @@ model.strategy.gazeCal.stages = { ...
     {'eye.rotationCenterScalers','scene.cameraPosition'},...
     {'eye.rotationCenterScalers','scene.cameraPosition', 'eye.kvals', 'scene.primaryPosition'} };
 model.strategy.gazeCal.errorReg = [1 2 4 2];
-model.strategy.gazeCal.penaltyWeight = [0.5 0.5];
+model.strategy.gazeCal.penaltyWeight = [0.5 0.25];
 model.strategy.gazeCal.useFixForPrimaryPos = true;
 model.strategy.gazeCal.multiSceneNorm = 1;
 model.strategy.gazeCal.TolMesh = 1e-2;
@@ -171,7 +171,7 @@ model.strategy.gazeCal.TolMesh = 1e-2;
 model.strategy.sceneSync.stages = { ...
     {'scene.cameraPosition', 'scene.primaryPosition', 'head.phaseAndRotation' } };
 model.strategy.sceneSync.errorReg = [1 2 0 0];
-model.strategy.sceneSync.penaltyWeight = [3 3];
+model.strategy.sceneSync.penaltyWeight = [2 1];
 model.strategy.sceneSync.useFixForPrimaryPos = false;
 model.strategy.sceneSync.multiSceneNorm = 1;
 model.strategy.sceneSync.TolMesh = 1e-2;
