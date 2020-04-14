@@ -38,6 +38,7 @@ p = inputParser; p.KeepUnmatched = true;
 p.addRequired('videoStemName',@ischar);
 p.addRequired('rhoTarget',@isscalar);
 p.addRequired('thetaTarget',@isscalar);
+p.addParameter('distValsThreshold',0.5, @isnumeric);
 
 % parse
 p.parse(videoStemName, rhoTarget, thetaTarget)
@@ -112,6 +113,9 @@ end
 % large.
 distVals = (1./(1-sqrt(linearNonUniformity)))./10;
 distVals(isinf(distVals)) = 1e20;
+
+% Adopt a threshold above which a partial pupil perimeter will not be used
+distVals(distVals>p.Results.distValsThreshold) = 1e20;
 
 % The likelihood SD for each frame is the RMSE multiplied by the distVal
 likelihoodPupilRadiusSDVector = (distVals.*RMSE)';
