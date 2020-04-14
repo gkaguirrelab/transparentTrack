@@ -18,8 +18,8 @@ function saveRelCameraPos(obj,fileNameSuffix)
 
 
 % Load or create a new structure
-if exist([videoStemName '_relativeCameraPosition.mat'], 'file') == 2
-    load([videoStemName '_relativeCameraPosition.mat'],'relativeCameraPosition');
+if exist([obj.videoStemName '_relativeCameraPosition.mat'], 'file') == 2
+    load([obj.videoStemName '_relativeCameraPosition.mat'],'relativeCameraPosition');
 else
     return
 end
