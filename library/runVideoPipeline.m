@@ -12,7 +12,7 @@ function runVideoPipeline( pathParams, varargin )
 %       makeControlFile
 %       applyControlFile
 %       fitPupilPerimeter -- with minimal constraints
-%       estimateSceneParams
+%       syncSceneGeometry
 %       fitPupilPerimeter -- fit again with scene geometry constraints
 %       smoothPupilRadius
 %       makeFitVideo
@@ -193,24 +193,27 @@ correctedPerimeterFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.
 pupilFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_pupil.mat']);
 relativeCameraPositionFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_relativeCameraPosition.mat']);
 
-% The sceneGeometryFileNameOutput is the name of the file created by the
-% estimateSceneParams routine.
-sceneGeometryFileNameOutput = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sceneGeometry.mat']);
+% The sceneGeometryFileName is the name of the file passed to the
+% fitPupilPerimeter, smoothPupilRadius, and makeFitVideo routines.
+sceneGeometryFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sceneGeometry.mat']);
 
-% The sceneGeometryFileNameInput is the name of the file passed to the
-% fitPupilPerimeter, smoothPupilRadius, and makeFitVideo routines. A custom
-% value can be passed. The custom value will usually identify a different
+% videoStemNameIn and videoStemNameOut are used by the syncSceneGeometry
+% routine. The code supports passing a "customSceneGeometryFile" to serve
+% as the input. The custom value will usually identify a different
 % acqusition during which the head was in the same positiion, and for which
 % sceneGeometry was well estimated.
 if ~isempty(p.Results.customSceneGeometryFile)
     if iscell(p.Results.customSceneGeometryFile)
-        sceneGeometryFileNameInput = fullfile(pathParams.dataOutputDirFull,p.Results.customSceneGeometryFile{1});
+        videoStemNameIn = fullfile(pathParams.dataOutputDirFull,p.Results.customSceneGeometryFile{1});
     else
-        sceneGeometryFileNameInput = fullfile(pathParams.dataOutputDirFull,p.Results.customSceneGeometryFile);
+        videoStemNameIn = fullfile(pathParams.dataOutputDirFull,p.Results.customSceneGeometryFile);
     end
 else
-    sceneGeometryFileNameInput = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sceneGeometry.mat']);
+    videoStemNameIn = fullfile(pathParams.dataOutputDirFull,pathParams.runName );
 end
+videoStemNameOut = fullfile(pathParams.dataOutputDirFull,pathParams.runName );
+
+% Names for the final videos
 finalFitVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_finalFit.avi']);
 eyeModelVideoName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_eyeModel.avi']);
 
@@ -242,13 +245,13 @@ switch p.Results.videoTypeChoice
             'makeControlFile(controlFileName, perimeterFileName, glintFileName, varargin{:});' ...
             'applyControlFile(perimeterFileName,controlFileName,correctedPerimeterFileName, varargin{:});' ...
             'fitPupilPerimeter(correctedPerimeterFileName, pupilFileName, varargin{:});' ...
-            'estimateSceneParams(pupilFileName, correctedPerimeterFileName, glintFileName, sceneGeometryFileNameOutput, varargin{:});'...
+            'syncSceneGeometry(videoStemNameIn, videoStemNameOut, varargin{:});'...
             ['fitPupilPerimeter(correctedPerimeterFileName, pupilFileName,' ...
-            '''sceneGeometryFileName'', sceneGeometryFileNameInput, ''glintFileName'', glintFileName, ''relativeCameraPositionFileName'', relativeCameraPositionFileName, varargin{:});']...
-            'smoothPupilRadius(correctedPerimeterFileName, pupilFileName, sceneGeometryFileNameInput, ''glintFileName'', glintFileName, ''relativeCameraPositionFileName'', relativeCameraPositionFileName, varargin{:});'...
+            '''sceneGeometryFileName'', sceneGeometryFileName, ''glintFileName'', glintFileName, ''relativeCameraPositionFileName'', relativeCameraPositionFileName, varargin{:});']...
+            'smoothPupilRadius(correctedPerimeterFileName, pupilFileName, sceneGeometryFileName, ''glintFileName'', glintFileName, ''relativeCameraPositionFileName'', relativeCameraPositionFileName, varargin{:});'...
             ['makeFitVideo(grayVideoName, finalFitVideoName,' ...
             '''glintFileName'', glintFileName, ''perimeterFileName'', correctedPerimeterFileName,'...
-            '''pupilFileName'', pupilFileName, ''sceneGeometryFileName'', sceneGeometryFileNameInput,' ...
+            '''pupilFileName'', pupilFileName, ''sceneGeometryFileName'', sceneGeometryFileName,' ...
             '''modelEyeMaxAlpha'', 1,' ...
             '''controlFileName'',controlFileName, ''relativeCameraPositionFileName'', relativeCameraPositionFileName,varargin{:});']...
             'makeTimebase(rawVideoName, timebaseFileName, ''audioTrackSync'', false, varargin{:});'...
@@ -324,7 +327,7 @@ for ff = 1:length(funCalls)
     % possible that we would make a fit video even though we skipped the
     % stage
     if any(strcmp(p.Results.makeFitVideoByName,funNames{ff})) || any(p.Results.makeFitVideoByNumber == ff)
-        makeFitVideoForThisStage(pathParams, sceneGeometryFileNameInput, funNames, ff, varargin{:});
+        makeFitVideoForThisStage(pathParams, sceneGeometryFileName, funNames, ff, varargin{:});
     end
     
     % clear all files (hopefully prevents 'too many files open' error)
@@ -366,7 +369,7 @@ system(['rm -rf "' prefFile '"'])
 end % cleanupMatlabPrefs
 
 
-function makeFitVideoForThisStage(pathParams, sceneGeometryFileNameInput, funNames, ff, varargin)
+function makeFitVideoForThisStage(pathParams, sceneGeometryFileName, funNames, ff, varargin)
 
 % Define the fitVideo output name
 fitVideoFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_fitStage' num2str(ff) '.avi']);
@@ -389,29 +392,29 @@ relativeCameraPositionFileName = fullfile(pathParams.dataOutputDirFull, [pathPar
 % pupil ellipse fit to display.
 switch funNames{ff}
     case 'deinterlaceVideo'
-        glintFileName = []; perimeterFileName=[]; controlFileName=[]; pupilFileName=[]; sceneGeometryFileNameInput=[];
+        glintFileName = []; perimeterFileName=[]; controlFileName=[]; pupilFileName=[]; sceneGeometryFileName=[];
     case 'resizeAndCropVideo'
-        glintFileName = []; perimeterFileName=[]; controlFileName=[]; pupilFileName=[]; sceneGeometryFileNameInput=[];
+        glintFileName = []; perimeterFileName=[]; controlFileName=[]; pupilFileName=[]; sceneGeometryFileName=[];
     case 'findGlint'
-        perimeterFileName=[]; controlFileName=[]; pupilFileName=[]; sceneGeometryFileNameInput=[];
+        perimeterFileName=[]; controlFileName=[]; pupilFileName=[]; sceneGeometryFileName=[];
     case 'findPupilPerimeter'
         if ~exist(glintFileName,'file')
             glintFileName = [];
         end
         perimeterFileName=initialPerimeterFileName;
-        controlFileName=[]; pupilFileName=[]; sceneGeometryFileNameInput=[];
+        controlFileName=[]; pupilFileName=[]; sceneGeometryFileName=[];
     case 'makeControlFile'
         if ~exist(glintFileName,'file')
             glintFileName = [];
         end
         perimeterFileName=initialPerimeterFileName;
-        controlFileName=[]; pupilFileName=[]; sceneGeometryFileNameInput=[];
+        controlFileName=[]; pupilFileName=[]; sceneGeometryFileName=[];
     case 'applyControlFile'
         if ~exist(glintFileName,'file')
             glintFileName = [];
         end
         perimeterFileName=correctedPerimeterFileName;
-        pupilFileName=[]; sceneGeometryFileNameInput=[];
+        pupilFileName=[]; sceneGeometryFileName=[];
     case 'fitPupilPerimeter'
         if ~exist(glintFileName,'file')
             glintFileName = [];
@@ -442,10 +445,10 @@ switch funNames{ff}
             if sceneFunCallIdx < ff
                 varargin={varargin{:}, 'fitLabel', 'sceneConstrained'};
             else
-                sceneGeometryFileNameInput=[];
+                sceneGeometryFileName=[];
             end
         else
-            sceneGeometryFileNameInput=[];
+            sceneGeometryFileName=[];
         end
     case 'estimateSceneParams'
         if ~exist(glintFileName,'file')
@@ -467,7 +470,7 @@ end
 makeFitVideo(grayVideoName, fitVideoFileName, ...
     'glintFileName', glintFileName, 'perimeterFileName', perimeterFileName,...
     'controlFileName',controlFileName, 'pupilFileName', pupilFileName, ...
-    'sceneGeometryFileName', sceneGeometryFileNameInput, ...
+    'sceneGeometryFileName', sceneGeometryFileName, ...
     'relativeCameraPositionFileName',relativeCameraPositionFileName, ...
     'modelEyeMaxAlpha', 1, ...
     varargin{:});
