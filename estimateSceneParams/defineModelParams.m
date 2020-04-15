@@ -1,4 +1,4 @@
-function model = defineModelParams(nScenes, modelIn, cameraDepth, cameraTorsion, corneaTorsion)
+function model = defineModelParams(nScenes, modelIn, cameraTorsion, cameraDepth, corneaTorsion)
 % Specification of parameters and functions for estimateSceneGeometry
 %
 % Syntax:
@@ -40,10 +40,12 @@ function model = defineModelParams(nScenes, modelIn, cameraDepth, cameraTorsion,
 %       four types of error that can contribute to the overall model error.
 %       The weights apply to errors in the order: [perim glint pose vector]
 %  'penaltyWeight' -
-%       Scalar. Adjustment of camera depth away from the x0 values is
-%       penalized. The effect of the weight (w) is such that an x% change
-%       in camera depth produces a [(w*x)^2]% increase in the objective. A
-%       weight value of zero removes the regularization.
+%       Vector. Adjustment of camera depth and torsion away from the x0 
+%       values is penalized. The effect of the weight (w(1)) is such that
+%       an x% change in camera depth produces a [(w(1)*x)^2]% increase in
+%       the objective. The w(2) value produces a w(2)*deltaT increase in
+%       the objective, where deltaT is the change in camera torsion in
+%       degrees. A weight value of zero removes the regularization.
 %  'useFixForPrimaryPos' -
 %       Logical. The primary position of the eye is specified as part of
 %       the eye model, and controls the pseudo-torsion of the eye following
@@ -72,12 +74,12 @@ function model = defineModelParams(nScenes, modelIn, cameraDepth, cameraTorsion,
 %                           modeled.
 %   modelIn               - Structure. A passed structure whose fields are 
 %                           used to overwrite the defaults.
-%   cameraDepth           - Scalar. The distance of the camera from the 
-%                           corneal apex of the eye in mm. Used to set the
-%                           scene x0.
 %   cameraTorsion         - Scalar. Rotation of the camera with respect to
 %                           the azimuthal plane of rotation of the eye, in
 %                           degrees. Used to set the scene x0.
+%   cameraDepth           - Scalar. The distance of the camera from the 
+%                           corneal apex of the eye in mm. Used to set the
+%                           scene x0.
 %   corneaTorsion         - Scalar. The angle of astigmatism for the cornea
 %                           that is used to set the x0 value, perhaps
 %                           obtained from keratometry measurement for the
@@ -91,6 +93,16 @@ function model = defineModelParams(nScenes, modelIn, cameraDepth, cameraTorsion,
 %                           search.
 %
 
+
+%% Check that cameraTorsion and cameraDepth params are compatible
+if length(cameraTorsion) ~= length(cameraDepth)
+    error('The cameraDepth and cameraTorsion variables must be the same size')
+end
+if length(cameraTorsion) > 1
+    if length(cameraDepth) ~= nScenes
+    error('cameraDepth and cameraTorsion must either be scalars, or the same length as the number of scenes')
+    end
+end
 
 
 %% Head
@@ -135,7 +147,7 @@ model.eye.idxMultiScene = @(idx) idx;
 % also adjusts the primary position of the eye. The cameraDepth parameter
 % is the most important to get right, and is specified by a passed
 % variable.
-model.scene.x0 = [0 0 cameraTorsion 0 0 cameraDepth];
+model.scene.x0 = @(cameraTorsion, cameraDepth) [0 0 cameraTorsion 0 0 cameraDepth];
 model.scene.bounds = [10 10 10 20 20 20];
 model.scene.paramLabels = {'pp_azi','pp_ele','torsion','horiz','vert','depth'};
 model.scene.units = {'deg','deg','deg','mm','mm','mm'};
@@ -197,13 +209,38 @@ end
 % the optimization.
 model.nParams = model.head.nParams + model.eye.nParams + model.scene.nParams * model.scene.nScenes;
 
+% Assemble the concatenated x0 parameters. This behavior differs depending
+% upon the form of the field model.scene.x0
+
 % If model.scene.x0 is a cell array, then we have been given a different
 % set of x0 parameters for each scene.
 if iscell(model.scene.x0)
     model.x0 = [model.head.x0, model.eye.x0, cell2mat(model.scene.x0)];
-else
+end
+
+% If model.scene.x0 is vector, then we have been given a single vector of
+% scene parameter values that we will use for all scenes.
+if isvector(model.scene.x0)
     model.x0 = [model.head.x0, model.eye.x0, repmat(model.scene.x0, 1, nScenes)];
 end
+
+% If model.scene.x0 is function handle, then we will use the passed values
+% of cameraDepth and cameraTorsion to assemble the x0.
+if isfunc(model.scene.x0)
+    % If we were given single values for cameraDepth and Torsion, use these
+    % for all scenes
+    if isscalar(cameraTorsion)
+        model.x0 = [model.head.x0, model.eye.x0, repmat(model.scene.x0(cameraTorsion, cameraDepth), 1, nScenes)];
+    else
+        % We have vectors for cameraDepth and torsion. Use a different
+        % value for each scene
+        model.x0 = [model.head.x0, model.eye.x0];
+        for ss = 1:nScenes
+            model.x0 = [model.x0, model.scene.x0(cameraTorsion(ss), cameraDepth(ss))];        
+        end
+    end
+end
+
 
 % And the bounds
 if iscell(model.scene.x0)

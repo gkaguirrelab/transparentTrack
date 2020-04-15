@@ -35,13 +35,20 @@ function sceneObjects = estimateSceneParams(videoStemName, frameSet, gazeTargets
 %               position, including adjustments of the effects of head
 %               motion upon relative camera position.
 %
-%   The accuracy of the solution is improved by setting the cameraDepth
-%   key-value. This specifies the distance of the camera from the eye (in
-%   mm), as it is otherwise difficult for the solution to distinguish
+%   The accuracy of the solution is improved by setting the cameraDepth and
+%   cameraTorsion key-values. The cameraDepth is the distance of the camera
+%   from the eye (in mm). It is difficult for the solution to distinguish
 %   between the depth position of the camera and properties of eye biometry
-%   (rotation depth and corneal curvature). The search includes a
-%   regularization that penalizes the solution for departing from the x0
-%   value for camera depth.
+%   (rotation depth and corneal curvature). The utility estimateCameraDepth
+%   may be used to supply this value by reference to the width of the iris.
+%   The cameraTorsion is the rotation of the camera with respect to the
+%   azimuthal plane of eye rotation. It is difficult for the routine to
+%   distinguish between camera rotation and rotation of the cornea about
+%   the optical axis of the eye. The utility estimateCameraTorsion may be
+%   used to supply this value by reference to the angle between the medial
+%   and lateral canthii of the eye. The search includes a regularization
+%   that penalizes the solution for departing from the x0 values for camera
+%   torsion and depth.
 %
 % Inputs:
 %	videoStemName         - Char vector, or cell array of n char vectors.
@@ -91,14 +98,15 @@ function sceneObjects = estimateSceneParams(videoStemName, frameSet, gazeTargets
 %  'hostname'             - AUTOMATIC; The host
 %
 % Optional key/value pairs (analysis)
-%  'cameraDepth'          - Scalar. Estimate of the distance of the nodal
-%                           point of the camera from the corneal apex of
-%                           the eye in mm. Used to inform the x0 values for the
-%                           search.
-%   cameraTorsion         - Scalar. Rotation of the camera with respect to
-%                           the azimuthal plane of rotation of the eye, in
-%                           degrees. Used to set the scene x0.
-%   corneaTorsion         - Scalar. The angle of astigmatism for the cornea
+%  'cameraTorsion'        - Scalar or vector of length n. Rotation of the
+%                           camera with respect to the azimuthal plane of
+%                           rotation of the eye, in degrees. Used to set
+%                           the scene x0.
+%  'cameraDepth'          - Scalar or vector of length n. Estimate of the
+%                           distance of the nodal point of the camera from
+%                           the corneal apex of the eye in mm. Used to
+%                           inform the x0 values for the search.
+%  'corneaTorsion'        - Scalar. The angle of astigmatism for the cornea
 %                           that is used to set the x0 value, perhaps
 %                           obtained from keratometry measurement for the
 %                           eye to be modeled. This is particularly useful
@@ -235,8 +243,8 @@ p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@i
 % Optional analysis params
 p.addParameter('outputFileSuffix','',@ischar);
 p.addParameter('searchStrategy','gazeCal',@ischar);
-p.addParameter('cameraDepth',120,@isscalar);
-p.addParameter('cameraTorsion',0,@isscalar);
+p.addParameter('cameraTorsion',0,@(x)(isscalar(x) || isvector(x)));
+p.addParameter('cameraDepth',120,@(x)(isscalar(x) || isvector(x)));
 p.addParameter('corneaTorsion',0,@isscalar);
 p.addParameter('model',[],@isstruct);
 p.addParameter('eyeArgs',{},@iscell);
@@ -288,7 +296,7 @@ nScenes = length(videoStemName);
 % This function has a dictionary of search parameters and stages. The
 % key-value 'model' may be used to supply values that replace the defaults.
 % This is typically done for x0 and bounds.
-model = defineModelParams(nScenes, p.Results.model, p.Results.cameraDepth, p.Results.cameraTorsion, p.Results.corneaTorsion);
+model = defineModelParams(nScenes, p.Results.model, p.Results.cameraTorsion, p.Results.cameraDepth, p.Results.corneaTorsion);
 
 % The errorArgs are passed in the creation of the scene objects. We add to
 % any passed errorArg the errorReg key-value that is specified for this

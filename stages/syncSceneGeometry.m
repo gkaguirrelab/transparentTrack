@@ -67,8 +67,10 @@ p.addParameter('doNotSyncSceneToItself',true,@islogical);
 p.addParameter('useParallel',true,@islogical);
 p.addParameter('nWorkers',[],@(x)(isempty(x) || isnumeric(x)));
 
-% Optional fitting params
+% Optional analysis params
 p.addParameter('alignMethod','gazePre',@(x)(ischar(x) | iscell(x)));
+p.addParameter('cameraTorsion',[],@(x)(isempty(x) || isscalar(x)));
+p.addParameter('cameraDepth',[],@(x)(isempty(x) || isscalar(x)));
 
 
 %% Parse and check the parameters
@@ -126,13 +128,21 @@ thetaIn = pupilEllipseFixationIn(5)*2;
 % Get the scene and eye parameters from the sceneGeometryIn
 model.eye.x0 = sceneGeometryIn.meta.estimateSceneParams.xEye;
 model.scene.x0 = sceneGeometryIn.meta.estimateSceneParams.xScene;
+
+% If a cameraTorsion or cameraDepth value has been passed, use this to
+% over-write the default value in the model parameters
+if ~isempty(p.Results.cameraTorsion)
+    model.scene.x0(model.func.fieldParamIdx('scene','torsion')) = p.Results.cameraTorsion;
+end
+if ~isempty(p.Results.cameraDepth)
+    model.scene.x0(model.func.fieldParamIdx('scene','depth')) = p.Results.cameraDepth;
+end
+
+% Obtain the eye and error args
 eyeArgs = sceneGeometryIn.meta.estimateSceneParams.obj.setupArgs;
 errorArgs = { ...
     'poseRegParams',sceneGeometryIn.meta.estimateSceneParams.obj.poseRegParams,...
     'vecRegParams',sceneGeometryIn.meta.estimateSceneParams.obj.vecRegParams};
-
-% Get the cameraDepth from the sceneGeometryIn
-cameraDepth = sceneGeometryIn.meta.estimateSceneParams.xScene(end);
 
 % Load in the video image for this frame.
 absIdx = sceneGeometryIn.meta.estimateSceneParams.obj.frameSet(idx);
@@ -168,7 +178,7 @@ gazeTargets = [gazeTargets gazeTargetsA gazeTargetsB];
 
 %% Perform the synchronization search
 estimateSceneParams(videoStemNameOut, frameSet, gazeTargets, ...
-    'searchStrategy','sceneSync','cameraDepth',cameraDepth,'model',model,...
+    'searchStrategy','sceneSync','model',model,...
     'eyeArgs',eyeArgs,'errorArgs',errorArgs, ...
     'verbose',p.Results.verbose,...
     'useParallel',p.Results.useParallel,...
