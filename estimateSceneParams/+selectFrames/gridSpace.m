@@ -48,7 +48,7 @@ p.addRequired('videoStemName',@ischar);
 p.addParameter('nBinsPerDimension',8,@isnumeric);
 p.addParameter('distValsThreshold',0.275, @isnumeric);
 p.addParameter('rmseThreshold',2, @isnumeric);
-p.addParameter('minFramesPerBin',50, @isnumeric);
+p.addParameter('minFramesPerBin',10, @isnumeric);
 
 % parse
 p.parse(videoStemName, varargin{:})
