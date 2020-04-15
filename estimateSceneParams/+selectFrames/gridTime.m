@@ -124,11 +124,14 @@ frameSet = [];
 for bb = 1:p.Results.nBinsOverTime
     a = startIdx + (bb-1)*binSize;
     b = startIdx + bb*binSize - 1;
-    goodFitIdx = find(and( (RMSE(a:b) < p.Results.rmseThreshold) , ...
-        (distVals(a:b) < p.Results.distValsThreshold) ));
+    goodFitIdx = and( (RMSE < p.Results.rmseThreshold) , ...
+        (distVals < p.Results.distValsThreshold) );
+    goodFitIdx(1:a)=0;
+    goodFitIdx(b:end)=0;
+    goodFitIdx = find(goodFitIdx);
     if length(goodFitIdx)>p.Results.minFramesPerBin
         [~, idx] = nanmin(likelihoodPupilRadiusSDVector(goodFitIdx));
-        frameSet(end+1) = a + goodFitIdx(idx);
+        frameSet(end+1) = goodFitIdx(idx);
     end
 end
 
