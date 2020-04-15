@@ -20,7 +20,7 @@ function [frameSet, gazeTargets] = gridTime(videoStemName, varargin)
 % Optional key-value pairs:
 %  'nBinsOverTime'        - Scalar. Defines the number of divisions with
 %                           which the ellipse centers are binned in time.
-%  'badFrameErrorThreshold' - Scalar. Frames with RMSE values for the fit
+%  'rmseThreshold'        - Scalar. Frames with RMSE values for the fit
 %                           of an ellipse to the pupil perimeter above this
 %                           threshold will not be selected to guide the
 %                           scene parameter search.
@@ -47,7 +47,7 @@ p.addRequired('videoStemName',@ischar);
 
 p.addParameter('nBinsOverTime',16,@isnumeric);
 p.addParameter('distValsThreshold',0.5, @isnumeric);
-p.addParameter('badFrameErrorThreshold',2, @isnumeric);
+p.addParameter('rmseThreshold',2, @isnumeric);
 p.addParameter('minFramesPerBin',50, @isnumeric);
 
 % parse
@@ -123,7 +123,8 @@ frameSet = [];
 for bb = 1:p.Results.nBinsOverTime
     a = startIdx + (bb-1)*binSize;
     b = startIdx + bb*binSize - 1;
-    goodFitIdx = find(RMSE(a:b) < p.Results.badFrameErrorThreshold);
+    goodFitIdx = find(and( (RMSE(a:b) < p.Results.rmseThreshold) , ...
+        (distVals(a:b) < p.Results.distValsThreshold) ));
     if length(goodFitIdx)>p.Results.minFramesPerBin
         [~, idx] = nanmin(likelihoodPupilRadiusSDVector(goodFitIdx));
         frameSet(end+1) = a + goodFitIdx(idx);

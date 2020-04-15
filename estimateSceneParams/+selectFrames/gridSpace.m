@@ -20,7 +20,7 @@ function [frameSet, gazeTargets] = gridSpace(videoStemName, varargin)
 % Optional key-value pairs:
 %  'nBinsPerDimension'    - Scalar. Defines the number of divisions with
 %                           which the ellipse centers are binned.
-%  'badFrameErrorThreshold' - Scalar. Frames with RMSE values for the fit
+%  'rmseThreshold'        - Scalar. Frames with RMSE values for the fit
 %                           of an ellipse to the pupil perimeter above this
 %                           threshold will not be selected to guide the
 %                           scene parameter search.
@@ -47,7 +47,7 @@ p.addRequired('videoStemName',@ischar);
 
 p.addParameter('nBinsPerDimension',8,@isnumeric);
 p.addParameter('distValsThreshold',0.5, @isnumeric);
-p.addParameter('badFrameErrorThreshold',2, @isnumeric);
+p.addParameter('rmseThreshold',2, @isnumeric);
 p.addParameter('minFramesPerBin',50, @isnumeric);
 
 % parse
@@ -116,7 +116,8 @@ likelihoodPupilRadiusSDVector = distVals.*RMSE;
 
 %% Find the best frame in each bin
 ellipses = pupilData.initial.ellipses.values;
-goodFitIdx = find(RMSE < p.Results.badFrameErrorThreshold);
+    goodFitIdx = find(and( (RMSE < p.Results.rmseThreshold) , ...
+        (distVals < p.Results.distValsThreshold) ));
 
 % First we divide the ellipse centers amongst a set of 2D bins across
 % image space.
