@@ -99,7 +99,7 @@ x = round(roi.Position);
 % Calculate the canthal angle (plus any camera torsion) for a presumed
 % right eye. A positive canthal angle corresponds to the medial canthus
 % being lower than the lateral canthus.
-canthalAngle = rad2deg(atan2(x(2,2)-x(1,2),x(1,1)-x(2,1)));
+canthalAngle = rad2deg(atan2(x(1,2)-x(2,2),x(1,1)-x(2,1)));
 
 % Subtract the expected canthalAngle to obtain the residual camera torsion.
 % The expected value can vary by ethnicity:
@@ -108,13 +108,15 @@ canthalAngle = rad2deg(atan2(x(2,2)-x(1,2),x(1,1)-x(2,1)));
 %   eyelid shape and dimensions of different races with references to
 %   beauty." Aesthetic plastic surgery 36.5 (2012): 1236-1245.
 %
+% We round to the nearest whole degree, as the uncertainty in the
+% estimation is at least this large.
 cameraTorsionStruct.grayVideoName = grayVideoName;
-cameraTorsionStruct.rightEyeAsian = -(9.77 - canthalAngle);
-cameraTorsionStruct.rightEyeCaucasian = -(4.12 - canthalAngle);
-cameraTorsionStruct.rightEyeBlack = -(5.39 - canthalAngle);
-cameraTorsionStruct.leftEyeAsian = -(canthalAngle - 9.77);
-cameraTorsionStruct.leftEyeCaucasian = -(canthalAngle - 4.12);
-cameraTorsionStruct.leftEyeBlack = -(canthalAngle - 5.39);
+cameraTorsionStruct.rightEyeAsian = round(-(9.77 - canthalAngle));
+cameraTorsionStruct.rightEyeCaucasian = round(-(4.12 - canthalAngle));
+cameraTorsionStruct.rightEyeBlack = round(-(5.39 - canthalAngle));
+cameraTorsionStruct.leftEyeAsian = round(-(canthalAngle - 9.77));
+cameraTorsionStruct.leftEyeCaucasian = round(-(canthalAngle - 4.12));
+cameraTorsionStruct.leftEyeBlack = round(-(canthalAngle - 5.39));
 
 
 % Clean up
