@@ -46,7 +46,7 @@ p = inputParser; p.KeepUnmatched = true;
 p.addRequired('videoStemName',@ischar);
 
 p.addParameter('nBinsOverTime',16,@isnumeric);
-p.addParameter('distValsThreshold',0.75, @isnumeric);
+p.addParameter('distValsThreshold',0.25, @isnumeric);
 p.addParameter('rmseThreshold',2, @isnumeric);
 p.addParameter('minFramesPerBin',50, @isnumeric);
 
@@ -105,6 +105,7 @@ end
 % large.
 distVals = (1./(1-sqrt(linearNonUniformity)))./10;
 distVals(isinf(distVals)) = 1e20;
+distVals(isnan(distVals)) = 1e20;
 
 % Adopt a threshold above which a partial pupil perimeter will not be used
 distVals(distVals>p.Results.distValsThreshold) = 1e20;
