@@ -43,6 +43,17 @@ p.addParameter('startFrame',1,@isnumeric);
 p.parse(grayVideoName, varargin{:})
 
 
+% If the grayVideoName is empty, provide a file picker GUI
+if isempty(grayVideoName)
+    [fileName, path] = uigetfile({'*.mp4;*.mov;*avi'});
+    if isempty(fileName)
+        returne
+    end
+    grayVideoName = [path, fileName];
+else
+    grayVideoName = p.Results.grayVideoName;
+end
+
 % Prepare the video object
 videoInObj = videoIOWrapper(grayVideoName,'ioAction','read');
 
@@ -88,7 +99,7 @@ x = round(roi.Position);
 % Calculate the canthal angle (plus any camera torsion) for a presumed
 % right eye. A positive canthal angle corresponds to the medial canthus
 % being lower than the lateral canthus.
-canthalAngle = rad2deg(atan2(x(2,2)-x(2,1),x(1,1)-x(1,2)));
+canthalAngle = rad2deg(atan2(x(2,2)-x(1,2),x(1,1)-x(2,1)));
 
 % Subtract the expected canthalAngle to obtain the residual camera torsion.
 % The expected value can vary by ethnicity:
@@ -97,12 +108,13 @@ canthalAngle = rad2deg(atan2(x(2,2)-x(2,1),x(1,1)-x(1,2)));
 %   eyelid shape and dimensions of different races with references to
 %   beauty." Aesthetic plastic surgery 36.5 (2012): 1236-1245.
 %
-cameraTorsionStruct.rightEyeAsian = canthalAngle - 9.77;
-cameraTorsionStruct.rightEyeCaucasian = canthalAngle - 4.12;
-cameraTorsionStruct.rightEyeBlack = canthalAngle - 5.39;
-cameraTorsionStruct.leftEyeAsian = -canthalAngle - 9.77;
-cameraTorsionStruct.leftEyeCaucasian = -canthalAngle - 4.12;
-cameraTorsionStruct.leftEyeBlack = -canthalAngle - 5.39;
+cameraTorsionStruct.grayVideoName = grayVideoName;
+cameraTorsionStruct.rightEyeAsian = -(9.77 - canthalAngle);
+cameraTorsionStruct.rightEyeCaucasian = -(4.12 - canthalAngle);
+cameraTorsionStruct.rightEyeBlack = -(5.39 - canthalAngle);
+cameraTorsionStruct.leftEyeAsian = -(canthalAngle - 9.77);
+cameraTorsionStruct.leftEyeCaucasian = -(canthalAngle - 4.12);
+cameraTorsionStruct.leftEyeBlack = -(canthalAngle - 5.39);
 
 
 % Clean up
