@@ -93,8 +93,18 @@ function sceneObjects = estimateSceneParams(videoStemName, frameSet, gazeTargets
 % Optional key/value pairs (analysis)
 %  'cameraDepth'          - Scalar. Estimate of the distance of the nodal
 %                           point of the camera from the corneal apex of
-%                           the eye. Used to inform the x0 values for the
+%                           the eye in mm. Used to inform the x0 values for the
 %                           search.
+%   cameraTorsion         - Scalar. Rotation of the camera with respect to
+%                           the azimuthal plane of rotation of the eye, in
+%                           degrees. Used to set the scene x0.
+%   corneaTorsion         - Scalar. The angle of astigmatism for the cornea
+%                           that is used to set the x0 value, perhaps
+%                           obtained from keratometry measurement for the
+%                           eye to be modeled. This is particularly useful
+%                           for angles close to 90 degrees, for which the
+%                           model has trouble reaching by search on its
+%                           own.
 %  'model'                  Structure. Set fields of this structure to
 %                           replace the default set of params for the
 %                           search. See defineModelParams.m for details.
@@ -225,8 +235,9 @@ p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@i
 % Optional analysis params
 p.addParameter('outputFileSuffix','',@ischar);
 p.addParameter('searchStrategy','gazeCal',@ischar);
-p.addParameter('cameraDepth',120,@isnumeric);
-p.addParameter('corneaTorsion',0,@isnumeric);
+p.addParameter('cameraDepth',120,@isscalar);
+p.addParameter('cameraTorsion',0,@isscalar);
+p.addParameter('corneaTorsion',0,@isscalar);
 p.addParameter('model',[],@isstruct);
 p.addParameter('eyeArgs',{},@iscell);
 p.addParameter('sceneArgs',{},@iscell);
@@ -277,7 +288,7 @@ nScenes = length(videoStemName);
 % This function has a dictionary of search parameters and stages. The
 % key-value 'model' may be used to supply values that replace the defaults.
 % This is typically done for x0 and bounds.
-model = defineModelParams(nScenes, p.Results.model, p.Results.cameraDepth, p.Results.corneaTorsion);
+model = defineModelParams(nScenes, p.Results.model, p.Results.cameraDepth, p.Results.cameraTorsion, p.Results.corneaTorsion);
 
 % The errorArgs are passed in the creation of the scene objects. We add to
 % any passed errorArg the errorReg key-value that is specified for this

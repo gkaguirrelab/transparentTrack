@@ -1,4 +1,4 @@
-function model = defineModelParams(nScenes, modelIn, cameraDepth, corneaTorsion)
+function model = defineModelParams(nScenes, modelIn, cameraDepth, cameraTorsion, corneaTorsion)
 % Specification of parameters and functions for estimateSceneGeometry
 %
 % Syntax:
@@ -73,8 +73,11 @@ function model = defineModelParams(nScenes, modelIn, cameraDepth, corneaTorsion)
 %   modelIn               - Structure. A passed structure whose fields are 
 %                           used to overwrite the defaults.
 %   cameraDepth           - Scalar. The distance of the camera from the 
-%                           corneal apex of the eye. Used to set the scene
-%                           x0.
+%                           corneal apex of the eye in mm. Used to set the
+%                           scene x0.
+%   cameraTorsion         - Scalar. Rotation of the camera with respect to
+%                           the azimuthal plane of rotation of the eye, in
+%                           degrees. Used to set the scene x0.
 %   corneaTorsion         - Scalar. The angle of astigmatism for the cornea
 %                           that is used to set the x0 value, perhaps
 %                           obtained from keratometry measurement for the
@@ -132,8 +135,8 @@ model.eye.idxMultiScene = @(idx) idx;
 % also adjusts the primary position of the eye. The cameraDepth parameter
 % is the most important to get right, and is specified by a passed
 % variable.
-model.scene.x0 = [0 0 0 0 0 cameraDepth];
-model.scene.bounds = [10 10 20 20 20 20];
+model.scene.x0 = [0 0 cameraTorsion 0 0 cameraDepth];
+model.scene.bounds = [10 10 10 20 20 20];
 model.scene.paramLabels = {'pp_azi','pp_ele','torsion','horiz','vert','depth'};
 model.scene.units = {'deg','deg','deg','mm','mm','mm'};
 model.scene.nParams = length(model.scene.paramLabels);
