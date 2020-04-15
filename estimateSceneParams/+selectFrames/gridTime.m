@@ -46,7 +46,7 @@ p = inputParser; p.KeepUnmatched = true;
 p.addRequired('videoStemName',@ischar);
 
 p.addParameter('nBinsOverTime',16,@isnumeric);
-p.addParameter('distValsThreshold',0.5, @isnumeric);
+p.addParameter('distValsThreshold',0.75, @isnumeric);
 p.addParameter('rmseThreshold',2, @isnumeric);
 p.addParameter('minFramesPerBin',50, @isnumeric);
 

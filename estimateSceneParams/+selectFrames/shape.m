@@ -38,7 +38,7 @@ p = inputParser; p.KeepUnmatched = true;
 p.addRequired('videoStemName',@ischar);
 p.addRequired('rhoTarget',@isscalar);
 p.addRequired('thetaTarget',@isscalar);
-p.addParameter('distValsThreshold',0.5, @isnumeric);
+p.addParameter('distValsThreshold',0.75, @isnumeric);
 
 % parse
 p.parse(videoStemName, rhoTarget, thetaTarget)
