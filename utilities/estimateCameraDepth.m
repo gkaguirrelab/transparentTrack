@@ -1,8 +1,8 @@
-function [cameraDepthMean, cameraDepthSD] = depthFromIrisDiameter( sceneGeometry, observedIrisDiamPixels )
+function [cameraDepthMean, cameraDepthSD] = estimateCameraDepth( grayVideoName, varargin )
 % Estimate camera depth given sceneGeometry and iris diameter in pixels
 %
 % Syntax:
-%  [cameraDepthMean, cameraDepthSD] = depthFromIrisDiameter( sceneGeometry, observedIrisDiamPixels )
+%  [cameraDepthMean, cameraDepthSD] = estimateCameraDepth( grayVideoName )
 %
 % Description:
 %   There is limited individual variation in the horizontal visible
@@ -10,16 +10,16 @@ function [cameraDepthMean, cameraDepthSD] = depthFromIrisDiameter( sceneGeometry
 %   of the iris in a set of images of the eye will correspond to the
 %   diameter of the iris when the eye is posed so a line that connects the
 %   center of rotation of the eye and the center of the iris is aligned
-%   with the optical axis of the camera. Given an observed iris diameter in
-%   pixels in the image and a candidate sceneGeometry structure, we can
-%   calculate the distance of the camera from the corneal surface of the
-%   eye.
+%   with the optical axis of the camera. This routine takes a video file
+%   and has the user adjust a line to correspond to the maximal diameter of
+%   the iris.
 %
 % Inputs:
-%   sceneGeometry         - A sceneGeometry file for which we wish to
-%                           refine the camera depth value.
-%   observedIrisDiamPixels - Scalar. The maximum observed diameter of the
-%                           iris across image frames, in units of pixels.
+% Inputs:
+%	grayVideoName         - Full path to the video in which to track the
+%
+% Optional key/value pairs (flow control)
+%  'startFrame'           - First frame from which to start the analysis.
 %
 % Outputs;
 %   cameraDepthMean       - Scalar. The distance, in mm, of the camera
@@ -31,34 +31,115 @@ function [cameraDepthMean, cameraDepthSD] = depthFromIrisDiameter( sceneGeometry
 %                           angle [0, 0, 0], given the variation in iris
 %                           diameters observed in a population.
 %
-% Examples:
-%{
-    %% Recover a veridical camera distance
-    % Calculate what the observed iris diameter should be at 100 mm
-    sceneGeometry_100depth = createSceneGeometry('cameraTranslation',[0; 0; 100]);
-    [~, imagePoints, ~, ~, ~, pointLabels] = ...
-    	projectModelEye([0 0 0 1], sceneGeometry_100depth, 'fullEyeModelFlag', true, 'nIrisPerimPoints', 20);
-    idx = find(strcmp(pointLabels,'irisPerimeter'));
-    observedIrisDiamPixels = max(imagePoints(idx,1))-min(imagePoints(idx,1));
-    % Now call the estimation function, supplied with a sceneGeometry that
-    % a different value for the camera depth (which is used for the x0).
-    sceneGeometry_65depth = createSceneGeometry('cameraTranslation',[0; 0; 65]);
-    [cameraDepthMean, cameraDepthSD] = ...
-        depthFromIrisDiameter( sceneGeometry_65depth, observedIrisDiamPixels );
-    % Report the results
-    fprintf('Veridical camera depth: %4.0f, recovered camera depth: %4.0f \n',sceneGeometry_100depth.cameraPosition.translation(3),cameraDepthMean);
-    assert( abs( sceneGeometry_100depth.cameraPosition.translation(3) - cameraDepthMean) < 1);
-%}
 
-%% input parser
+
+%% parse input and define variables
+
 p = inputParser; p.KeepUnmatched = true;
 
 % Required
-p.addRequired('sceneGeometry', @isstruct);
-p.addRequired('observedIrisDiamPixels',@isnumeric);
+p.addRequired('grayVideoName',@isstr);
+
+% Optional flow control params
+p.addParameter('startFrame',1,@isnumeric);
 
 % parse
-p.parse(sceneGeometry, observedIrisDiamPixels)
+p.parse(grayVideoName, varargin{:})
+
+
+% If the grayVideoName is empty, provide a file picker GUI
+if isempty(grayVideoName)
+    [fileName, path] = uigetfile({'*.mp4;*.mov;*avi'});
+    if isempty(fileName)
+        returne
+    end
+    grayVideoName = [path, fileName];
+else
+    grayVideoName = p.Results.grayVideoName;
+end
+
+% Prepare the video object
+videoInObj = videoIOWrapper(grayVideoName,'ioAction','read');
+
+% Grab the image dimensions
+width = videoInObj.Width;
+height = videoInObj.Height;
+
+% read the video desired frame into memory, adjust gamma
+thisFrame = read(videoInObj,p.Results.startFrame);
+
+% close the video object
+clear videoInObj
+
+% create a figure for display
+figureHandle=figure();
+
+% Show the image
+imshow(thisFrame,'Border', 'tight', 'InitialMagnification', 200);
+
+roi = images.roi.Line(gca,'Position',[round(width*0.8), round(height*0.25);round(width*0.25),round(height*0.25)]);
+
+% Enter a while loop
+notDoneFlag = true;
+
+% Wait until the user is done (presses return or hits 'q')
+while notDoneFlag
+    
+    % Wait for operator input
+    waitforbuttonpress
+    keyChoiceValue = double(get(gcf,'CurrentCharacter'));
+    if ~isempty(keyChoiceValue)
+        switch keyChoiceValue
+            case {13,27}
+                notDoneFlag = false;
+        end
+    end
+end
+
+% The roi position is given as Xpos, Ypos, width, height. [Xpos, Ypos] of
+% [0, 0] is the upper left of the displayed image.
+x = roi.Position;
+
+% Get the observed iris diameter in pixels
+observedIrisDiamPixels = norm(x(1,:)-x(2,:));
+
+% Clean up
+close(figureHandle)
+
+% These are the assume sizes of the width of the iris in mm, derived from
+% the example code below
+trueIrisSizeMean = 5.55;
+trueIrisSizeSD = 0.33;
+
+% We now identify the camera distances corresponding the mean, and then to
+% the +1SD iris sizes
+
+% Set the x0 position for the search to be the passed scene geometry
+sceneGeometry = createSceneGeometry();
+x0 = sceneGeometry.cameraPosition.translation(3);
+
+searchSDvals = [0, 1];
+for tt = 1:2
+    assumedIrisRadius = trueIrisSizeMean + trueIrisSizeSD*searchSDvals(tt);
+    cameraTranslationValues(tt) = fminsearch(@objfun, x0);
+end
+    function fVal = objfun(x)
+        candidateSceneGeometry = sceneGeometry;
+        candidateSceneGeometry.eye.iris.radius = assumedIrisRadius;
+        candidateSceneGeometry.cameraPosition.translation(3) = x;
+        [~, ~, imagePoints, ~, ~, ~, pointLabels] = ...
+            projectModelEye([0 0 0 1], candidateSceneGeometry, 'fullEyeModelFlag', true, 'nIrisPerimPoints', 20);
+        idx = find(strcmp(pointLabels,'irisPerimeter'));
+        predictedIrisDiamPixels = max(imagePoints(idx,1))-min(imagePoints(idx,1));
+        fVal = (predictedIrisDiamPixels - observedIrisDiamPixels)^2;
+    end
+
+cameraDepthMean = cameraTranslationValues(1);
+cameraDepthSD = cameraTranslationValues(2)-cameraTranslationValues(1);
+
+end
+
+
 
 
 %% Iris width values
@@ -124,33 +205,3 @@ p.parse(sceneGeometry, observedIrisDiamPixels)
     fprintf('An unrefracted iris radius of %4.2f yields a refracted HVID of %4.2f \n',r,hvidRadiusMean+hvidRadiusSD)
     
 %}
-trueIrisSizeMean = 5.55;
-trueIrisSizeSD = 0.33;
-
-% We now identify the camera distances corresponding the mean, and then to
-% the +1SD iris sizes
-
-% Set the x0 position for the search to be the passed scene geometry
-x0 = sceneGeometry.cameraPosition.translation(3);
-
-searchSDvals = [0, 1];
-for tt = 1:2
-    assumedIrisRadius = trueIrisSizeMean + trueIrisSizeSD*searchSDvals(tt);
-    cameraTranslationValues(tt) = fminsearch(@objfun, x0);
-end
-    function fVal = objfun(x)
-        candidateSceneGeometry = sceneGeometry;
-        candidateSceneGeometry.eye.iris.radius = assumedIrisRadius;
-        candidateSceneGeometry.cameraPosition.translation(3) = x;
-        [~, imagePoints, ~, ~, ~, pointLabels] = ...
-            projectModelEye([0 0 0 1], candidateSceneGeometry, 'fullEyeModelFlag', true, 'nIrisPerimPoints', 20);
-        idx = find(strcmp(pointLabels,'irisPerimeter'));
-        predictedIrisDiamPixels = max(imagePoints(idx,1))-min(imagePoints(idx,1));
-        fVal = (predictedIrisDiamPixels - observedIrisDiamPixels)^2;
-    end
-
-cameraDepthMean = cameraTranslationValues(1);
-cameraDepthSD = cameraTranslationValues(2)-cameraTranslationValues(1);
-
-end
-
