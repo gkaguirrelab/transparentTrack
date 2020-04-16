@@ -2,7 +2,7 @@ function updateScene( obj )
 % Update components of the sceneGeometry that impact gaze and glint
 %
 % Syntax:
-%  obj.updateScene( x )
+%  obj.updateScene()
 %
 % Description:
 %   Components of the sceneGeometry define the appearance of the pupil and
@@ -11,13 +11,7 @@ function updateScene( obj )
 %   setting of a search across these parameters.
 %
 % Inputs:
-%   sceneGeometryIn       - Structure. See createSceneGeometry.m
-%   x                     - 1x13 vector. The elements x are:
-%                            x(1:5) - kvals
-%                            x(6:7) - [joint, differential] eye rotation scaler
-%                            x(8:9) - primary eye position [azi ele]
-%                            x(10) - camera torsion
-%                            x(11:13) - camera translation
+%   none. All contained in the object.
 %
 % Outputs:
 %   sceneGeometryOut     - Structure. See createSceneGeometry.m
