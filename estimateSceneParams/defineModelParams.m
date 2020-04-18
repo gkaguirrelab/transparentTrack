@@ -218,15 +218,9 @@ if iscell(model.scene.x0)
     model.x0 = [model.head.x0, model.eye.x0, cell2mat(model.scene.x0)];
 end
 
-% If model.scene.x0 is vector, then we have been given a single vector of
-% scene parameter values that we will use for all scenes.
-if isvector(model.scene.x0)
-    model.x0 = [model.head.x0, model.eye.x0, repmat(model.scene.x0, 1, nScenes)];
-end
-
 % If model.scene.x0 is function handle, then we will use the passed values
 % of cameraDepth and cameraTorsion to assemble the x0.
-if isfunc(model.scene.x0)
+if isa(model.scene.x0,'function_handle')
     % If we were given single values for cameraDepth and Torsion, use these
     % for all scenes
     if isscalar(cameraTorsion)
@@ -236,9 +230,13 @@ if isfunc(model.scene.x0)
         % value for each scene
         model.x0 = [model.head.x0, model.eye.x0];
         for ss = 1:nScenes
-            model.x0 = [model.x0, model.scene.x0(cameraTorsion(ss), cameraDepth(ss))];        
+            model.x0 = [model.x0, model.scene.x0(cameraTorsion(ss), cameraDepth(ss))];
         end
     end
+else
+    % It must be a numeric vector, so we have been given a single vector of
+    % scene parameter values that we will use for all scenes.
+    model.x0 = [model.head.x0, model.eye.x0, repmat(model.scene.x0, 1, nScenes)];
 end
 
 
