@@ -61,6 +61,7 @@ p = inputParser; p.KeepUnmatched = true;
 
 % Required
 p.addRequired('pupilFileName',@ischar);
+p.addRequired('timebaseFileName',@ischar);
 p.addRequired('LTdatFileName',@ischar);
 p.addRequired('rawVidStartFileName',@ischar);
 p.addRequired('pupilCalInfoFileName',@(x)(ischar(x) || isstruct(x)));
@@ -76,7 +77,7 @@ p.addParameter('fitLabel','initial',@ischar);
 p.addParameter('targetDeg',7,@isscalar);
 
 % parse
-p.parse(pupilFileName, LTdatFileName, rawVidStartFileName, pupilCalInfoFileName,varargin{:})
+p.parse(pupilFileName, timebaseFileName, LTdatFileName, rawVidStartFileName, pupilCalInfoFileName,varargin{:})
 
 
 %% Load pupil data

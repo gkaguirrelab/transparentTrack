@@ -158,7 +158,10 @@ pupilCalInfo.rawVidStart = 0;
 [a,b,c]=fileparts(pupilFileName);
 plotFileName = fullfile(a,strrep([b c],'_pupil.mat','_fixFramesSelectPlot.pdf'));
 
+% Define the path to the timebase
+timebaseFileName = fullfile(a,strrep([b c],'_pupil.mat','_timebase.mat'));
+
 % Pass the assembled information to selectGazeCalFrames
-selectGazeCalFrames(pupilFileName, '', '', pupilCalInfo ,'showPlot',true,'verbose',true,'plotFileName',plotFileName)
+selectGazeCalFrames(pupilFileName, timebaseFileName, '', '', pupilCalInfo ,'showPlot',true,'verbose',true,'plotFileName',plotFileName)
 
 end
