@@ -138,7 +138,10 @@ load(perimeterFileName,'perimeter');
 load(pupilFileName,'pupilData');
 
 % Load the sceneGeometry file
-load(sceneGeometryFileName,'sceneGeometry');
+% Need to do the inelegant loading approach to keep parloop happy
+dataLoad = load(sceneGeometryFileName);
+sceneGeometry = dataLoad.sceneGeometry;
+clear dataLoad
 
 % Load the glint file if passed
 if ~isempty(p.Results.glintFileName)
