@@ -106,7 +106,7 @@ p.addParameter('perimeterColor', 'w', @ischar);
 p.addParameter('pupilColor', 'green', @ischar);
 p.addParameter('pupilRMSERangeAlphaScaler',[1,4],@isnumeric);
 p.addParameter('modelEyeLabelNames', {'retina' 'irisPerimeter' 'cornea' 'glint_01' 'glint_02'}, @iscell);
-p.addParameter('modelEyePlotColors', {'.w' '.b' '.y' 'or' 'or'}, @iscell);
+p.addParameter('modelEyePlotColors', {'.w' '.b' '.y' 'Or' 'Or'}, @iscell);
 p.addParameter('modelEyeMaxAlpha', 0, @isnumeric);
 p.addParameter('modelEyeRMSERangeAlphaScaler',[1,4],@isnumeric);
 p.addParameter('modelEyeSymbolSizeScaler',1,@isnumeric);
