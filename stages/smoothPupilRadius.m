@@ -115,8 +115,8 @@ p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@i
 p.addParameter('glintFileName',[],@(x)(isempty(x) || ischar(x)));
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,5],@isnumeric);
-p.addParameter('exponentialTauParam',10,@isnumeric);
-p.addParameter('likelihoodErrorMultiplier',2.0,@isnumeric);
+p.addParameter('exponentialTauParam',5,@isnumeric);
+p.addParameter('likelihoodErrorMultiplier',1.0,@isnumeric);
 p.addParameter('fitLabel','sceneConstrained',@ischar);
 p.addParameter('fixedPriorPupilRadius',[],@isnumeric);
 p.addParameter('relativeCameraPositionFileName',[],@ischar);
