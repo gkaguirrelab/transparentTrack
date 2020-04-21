@@ -101,7 +101,7 @@ p.addParameter('sceneGeometryFileName', [], @(x)(isempty(x) | ischar(x)));
 p.addParameter('controlFileName', [], @(x)(isempty(x) | ischar(x)));
 p.addParameter('adjustedCameraPositionTranslation',[],@isnumeric);
 p.addParameter('relativeCameraPositionFileName',[],@ischar);
-p.addParameter('glintColor', 'r', @ischar);
+p.addParameter('glintColor', [0.9100    0.4100    0.1700], @(x)(isvector(x) | ischar(x)));
 p.addParameter('perimeterColor', 'w', @ischar);
 p.addParameter('pupilColor', 'green', @ischar);
 p.addParameter('pupilRMSERangeAlphaScaler',[1,4],@isnumeric);
@@ -236,6 +236,8 @@ else
     cmap(4,:)=[1 1 0];
     cmap(5,:)=[0 1 1];
     cmap(6,:)=[1 0 1];
+    cmap(6,:)=[1 0 1];
+    cmap(7,:)=[0.9100    0.4100    0.1700];
     
     videoOutObj = videoIOWrapper(videoOutFileName,'ioAction','write','indexedAVI',true);
     videoOutObj.FrameRate = p.Results.videoOutFrameRate;
@@ -284,7 +286,7 @@ for ii = 1:nFrames
     % add glint
     if ~isempty(p.Results.glintFileName)
         for gg = 1:size(glintData.X,2)
-        hPlot(end+1) = plot(glintData.X(ii,gg),glintData.Y(ii,gg),['.' p.Results.glintColor]);
+        hPlot(end+1) = plot(glintData.X(ii,gg),glintData.Y(ii,gg),'Marker','.','Color',p.Results.glintColor);
         end
     end
     
