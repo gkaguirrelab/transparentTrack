@@ -194,7 +194,7 @@ model.strategy.sceneSync.TolMesh = 1e-2;
 % gazeCalTest -- Used to test the performance of gazeCal acquisitions
 % synced to one another. This is the same as the sceneSync strategy, but
 % without the search across head motion parameters.
-model.strategy.sceneSync.stages = { ...
+model.strategy.gazeCalTest.stages = { ...
     {'scene.cameraPosition', 'scene.primaryPosition'} };
 model.strategy.gazeCalTest.errorReg = [1 2 0 0];
 model.strategy.gazeCalTest.penaltyWeight = [2 1];
