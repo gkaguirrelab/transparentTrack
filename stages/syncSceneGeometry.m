@@ -199,8 +199,12 @@ estimateSceneParams(videoStemNameOut, frameSet, gazeTargets, ...
     'useParallel',p.Results.useParallel,...
     'nWorkers',p.Results.nWorkers);
 
+% The name of the saved sceneGeometry file will include the
+% outputFileSuffix
+sceneGeometryNameOut = [videoStemNameOut '_sceneGeometry' p.Results.outputFileSuffix '.mat'];
+
 % Load the sceneGeometryOut variable into memory
-dataLoad=load([videoStemNameOut '_sceneGeometry.mat']);
+dataLoad=load(sceneGeometryNameOut);
 sceneGeometryOut=dataLoad.sceneGeometry;
 clear dataLoad
 
@@ -248,7 +252,7 @@ if p.Results.saveDiagnosticPlot
         'modelEyePlotColors', {'.w' '-g' '.y' 'xr'}, ...
         'modelEyeSymbolSizeScaler',1.5,...
         'modelEyeAlpha', [0.25 0.25 0.25 1]);
-    text(20,30,videoStemNameOut, 'Color', 'r','Fontsize',16,'Interpreter','none');
+    text(20,30,sceneGeometryNameOut, 'Color', 'r','Fontsize',16,'Interpreter','none');
     msg = ['frame ' num2str(frameSet(1))];
     addAnnotation(msg);
     % Add cross hairs
@@ -322,7 +326,7 @@ if p.Results.saveDiagnosticPlot
     annotation('textbox', [0.5, .075, 0, 0], 'string', msg,'Color',msgColor,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
     
     % Save and close the figure
-    print(figHandle,[videoStemNameOut '_sceneGeometry_sceneSync_QA.pdf'],'-dpdf','-bestfit');
+    print(figHandle,[videoStemNameOut '_sceneGeometry_sceneSync_QA' p.Results.outputFileSuffix '.pdf'],'-dpdf','-bestfit');
     close(figHandle);
     
 end
