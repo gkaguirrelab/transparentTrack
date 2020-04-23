@@ -166,12 +166,16 @@ videoFrameIn = makeMedianVideoImage([videoStemNameIn '_gray.avi'],'startFrame',a
 switch alignMethod
     case 'gazePre'
         [frameSet, gazeTargets] = selectFrames.gazePre(videoStemNameOut);
+        searchStrategy = 'sceneSync';
     case 'gazePost'
         [frameSet, gazeTargets] = selectFrames.gazePost(videoStemNameOut);
+        searchStrategy = 'sceneSync';
     case 'shape'
         [frameSet, gazeTargets] = selectFrames.shape(videoStemNameOut, rhoIn, thetaIn);
+        searchStrategy = 'sceneSync';
     case 'gazeCalTest'
         [frameSet, gazeTargets] = selectFrames.gazeCalTest(videoStemNameOut);
+        searchStrategy = 'gazeCalTest';
     otherwise
         error('This is not a defined align method')
 end
@@ -189,7 +193,7 @@ gazeTargets = [gazeTargets gazeTargetsA gazeTargetsB];
 %% Perform the synchronization search
 estimateSceneParams(videoStemNameOut, frameSet, gazeTargets, ...
     'outputFileSuffix',p.Results.outputFileSuffix,...
-    'searchStrategy','sceneSync','model',model,...
+    'searchStrategy',searchStrategy,'model',model,...
     'eyeArgs',eyeArgs,'errorArgs',errorArgs, ...
     'verbose',p.Results.verbose,...
     'useParallel',p.Results.useParallel,...
