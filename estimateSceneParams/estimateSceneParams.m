@@ -98,6 +98,11 @@ function sceneObjects = estimateSceneParams(videoStemName, frameSet, gazeTargets
 %  'hostname'             - AUTOMATIC; The host
 %
 % Optional key/value pairs (analysis)
+%  'outputFileSuffix'     - Char vector. A string that is appended to the
+%                           file name of the saved sceneGeometry and
+%                           diagnostic plots.
+%  'searchStrategy'       - Char vector. Controls the search behavior. See
+%                           the Description section above.
 %  'cameraTorsion'        - Scalar or vector of length n. Rotation of the
 %                           camera with respect to the azimuthal plane of
 %                           rotation of the eye, in degrees. Used to set

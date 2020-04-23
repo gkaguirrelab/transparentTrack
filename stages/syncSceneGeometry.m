@@ -39,12 +39,18 @@ function syncSceneGeometry(videoStemNameIn, videoStemNameOut, varargin)
 %                           used.
 %
 % Optional key/value pairs (fitting params):
+%  'outputFileSuffix'     - Char vector. A string that is appended to the
+%                           file name of the saved sceneGeometry and
+%                           diagnostic plots.
 %  'alignMethod'          - Cell or char vec. Controls how the routine 
 %                           selects frames from the pupilFile acquisition
 %                           to use as the fixed target to which the
 %                           sceneGeometry is adjusted. Valid options are:
 %                               {'gazePre','gazePost','shape'}
-
+%  'cameraTorsion','cameraDepth' - Scalar. If set, these values over-ride
+%                           the x0 values that are taken from the
+%                           sceneGeometry for the videoStemNameIn
+%                           acquisition.
 %
 % Examples:
 %{
@@ -68,6 +74,7 @@ p.addParameter('useParallel',true,@islogical);
 p.addParameter('nWorkers',[],@(x)(isempty(x) || isnumeric(x)));
 
 % Optional analysis params
+p.addParameter('outputFileSuffix','',@ischar);
 p.addParameter('alignMethod','gazePre',@(x)(ischar(x) | iscell(x)));
 p.addParameter('cameraTorsion',[],@(x)(isempty(x) || isscalar(x)));
 p.addParameter('cameraDepth',[],@(x)(isempty(x) || isscalar(x)));
@@ -76,11 +83,12 @@ p.addParameter('cameraDepth',[],@(x)(isempty(x) || isscalar(x)));
 %% Parse and check the parameters
 p.parse(videoStemNameIn, videoStemNameOut, varargin{:});
 
-
+% Handle the alignMethod variable type 
 alignMethod = p.Results.alignMethod;
 if iscell(alignMethod)
     alignMethod = alignMethod{1};
 end
+
 
 %% Check if we are syncing a sceneGeometry to itself
 if p.Results.doNotSyncSceneToItself && strcmp(videoStemNameIn,videoStemNameOut)
@@ -162,6 +170,8 @@ switch alignMethod
         [frameSet, gazeTargets] = selectFrames.gazePost(videoStemNameOut);
     case 'shape'
         [frameSet, gazeTargets] = selectFrames.shape(videoStemNameOut, rhoIn, thetaIn);
+    case 'gazeCalTest'
+        [frameSet, gazeTargets] = selectFrames.gazeCalTest(videoStemNameOut);
     otherwise
         error('This is not a defined align method')
 end
@@ -178,6 +188,7 @@ gazeTargets = [gazeTargets gazeTargetsA gazeTargetsB];
 
 %% Perform the synchronization search
 estimateSceneParams(videoStemNameOut, frameSet, gazeTargets, ...
+    'outputFileSuffix',p.Results.outputFileSuffix,...
     'searchStrategy','sceneSync','model',model,...
     'eyeArgs',eyeArgs,'errorArgs',errorArgs, ...
     'verbose',p.Results.verbose,...
