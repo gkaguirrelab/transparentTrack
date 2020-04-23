@@ -10,9 +10,9 @@ function [frameSet, gazeTargets] = gazeCalTest(videoStemName, varargin)
 %
 %   This function is used for the particular circumstance in which we are
 %   testing the behavior of the sceneGeometry routines by syncing one
-%   gazeCal acquisition to another. This function identifies the frame in a
-%   the acquisition that corresponds to fixation of the [0 0] fixation
-%   target.
+%   gazeCal acquisition to another. This function identifies the frames in
+%   the acquisition that are the gaze fixation frames, and returns these
+%   sorted so that the frame with fixation at the [0;0] position is first.
 %
 % Inputs:
 %	videoStemName         - Char vector. Full path to video file from which
@@ -47,15 +47,20 @@ p.parse(videoStemName, varargin{:})
 % Load the sceneGeometry that already exists for this gazeCal acquisition
 load([videoStemName '_sceneGeometry.mat'],'sceneGeometry');
 
+% Get the frameSet and gazeTargets
+frameSet = sceneGeometry.meta.estimateSceneParams.obj.frameSet;
+gazeTargets = sceneGeometry.meta.estimateSceneParams.obj.gazeTargets;
+
 % Which of the list of frames is the [0;0] fixation frame?
-idx = find((sceneGeometry.meta.estimateSceneParams.obj.gazeTargets(1,:)==0).*(sceneGeometry.meta.estimateSceneParams.obj.gazeTargets(2,:)==0));
+idx = logical((gazeTargets(1,:)==0).*(gazeTargets(2,:)==0));
 
 % Some gazeCal runs lacked a formal measurement of the [0;0] target. Check
 % if we have one.
-if ~isempty(idx)
+if sum(idx)==1
 
-    % We do. Identify the absolute index of the frame
-    frameSet = sceneGeometry.meta.estimateSceneParams.obj.frameSet(idx);
+    % We do. Sort the return variables so that the fixation frame is first
+    frameSet = [frameSet(idx), frameSet(~idx)];
+    gazeTargets = [gazeTargets(:,idx), gazeTargets(:,~idx)];
 
 else
     % We don't. In this case, grab a frame based upon pupil
@@ -75,11 +80,12 @@ else
     theta = pupilEllipse(5);
     
     % Find the frame with this pupil shape 
-    frameSet = shape(videoStemName, rho, theta);
+    [fixFrame, fixGazeTarget] = shape(videoStemName, rho, theta);
+    
+    % Add this frame at the front of the set
+    frameSet = [fixFrame, frameSet];
+    gazeTargets = [gazeTargets, fixGazeTarget];
     
 end
-
-% The gaze target is presumed to be the center of the screen [0 0]
-gazeTargets = [0; 0];
 
 end

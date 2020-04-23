@@ -20,6 +20,9 @@ function [frameSet, gazeTargets] = gridTime(videoStemName, varargin)
 % Optional key-value pairs:
 %  'nBinsOverTime'        - Scalar. Defines the number of divisions with
 %                           which the ellipse centers are binned in time.
+%  'distValsThreshold'    - Scalar. Frames with a distribution of pupil
+%                           perimeter points worse than this will not be
+%                           used.
 %  'rmseThreshold'        - Scalar. Frames with RMSE values for the fit
 %                           of an ellipse to the pupil perimeter above this
 %                           threshold will not be selected to guide the
@@ -27,6 +30,8 @@ function [frameSet, gazeTargets] = gridTime(videoStemName, varargin)
 %  'minFramesPerBin'      - Scalar. A given bin must have at least this
 %                           many good frames for the best frame in the bin
 %                           to be selected.
+%  'maxFramesToReturn'    - Scalar. If set to less than Inf, the routine
+%                           will return the best frames up to this max.
 %
 % Outputs:
 %   frameSet              - A 1xm vector that specifies the m frame indices
@@ -49,6 +54,7 @@ p.addParameter('nBinsOverTime',16,@isnumeric);
 p.addParameter('distValsThreshold',0.275, @isnumeric);
 p.addParameter('rmseThreshold',2, @isnumeric);
 p.addParameter('minFramesPerBin',5, @isnumeric);
+p.addParameter('maxFramesToReturn',Inf, @isnumeric);
 
 % parse
 p.parse(videoStemName, varargin{:})
@@ -138,6 +144,13 @@ end
 % Create a set of nan gaze targets
 gazeTargets = nan(2,length(frameSet));
 
+% Keep only the best frames if there is a limit on the number of frames to
+% return
+if p.Results.maxFramesToReturn < length(frameSet)
+    [~,idxOrder]=sort(likelihoodPupilRadiusSDVector(frameSet));
+    frameSet = frameSet(idxOrder(1:p.Results.maxFramesToReturn));
+    gazeTargets = gazeTargets(:,idxOrder(1:p.Results.maxFramesToReturn));
+end
 
 end
 

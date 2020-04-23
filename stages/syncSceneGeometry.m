@@ -42,7 +42,7 @@ function syncSceneGeometry(videoStemNameIn, videoStemNameOut, varargin)
 %  'outputFileSuffix'     - Char vector. A string that is appended to the
 %                           file name of the saved sceneGeometry and
 %                           diagnostic plots.
-%  'alignMethod'          - Cell or char vec. Controls how the routine 
+%  'alignMethod'          - Cell or char vec. Controls how the routine
 %                           selects frames from the pupilFile acquisition
 %                           to use as the fixed target to which the
 %                           sceneGeometry is adjusted. Valid options are:
@@ -83,7 +83,7 @@ p.addParameter('cameraDepth',[],@(x)(isempty(x) || isscalar(x)));
 %% Parse and check the parameters
 p.parse(videoStemNameIn, videoStemNameOut, varargin{:});
 
-% Handle the alignMethod variable type 
+% Handle the alignMethod variable type
 alignMethod = p.Results.alignMethod;
 if iscell(alignMethod)
     alignMethod = alignMethod{1};
@@ -165,29 +165,64 @@ videoFrameIn = makeMedianVideoImage([videoStemNameIn '_gray.avi'],'startFrame',a
 
 switch alignMethod
     case 'gazePre'
+        
+        % This is our fixation frame
         [frameSet, gazeTargets] = selectFrames.gazePre(videoStemNameOut);
+        
+        % Set the searchStrategy
         searchStrategy = 'sceneSync';
+        
     case 'gazePost'
+        
+        % This is our fixation frame
         [frameSet, gazeTargets] = selectFrames.gazePost(videoStemNameOut);
+        
+        % Add frames that are distributed across time and space.
+        [frameSetA, gazeTargetsA] = selectFrames.gridTime(videoStemNameOut);
+        [frameSetB, gazeTargetsB] = selectFrames.gridSpace(videoStemNameOut);
+        frameSet = [frameSet frameSetA frameSetB];
+        gazeTargets = [gazeTargets gazeTargetsA gazeTargetsB];
+        
+        % Set the searchStrategy
         searchStrategy = 'sceneSync';
+        
     case 'shape'
+        
+        % This is our fixation frame
         [frameSet, gazeTargets] = selectFrames.shape(videoStemNameOut, rhoIn, thetaIn);
+        
+        % Add frames that are distributed across time and space.
+        [frameSetA, gazeTargetsA] = selectFrames.gridTime(videoStemNameOut);
+        [frameSetB, gazeTargetsB] = selectFrames.gridSpace(videoStemNameOut);
+        frameSet = [frameSet frameSetA frameSetB];
+        gazeTargets = [gazeTargets gazeTargetsA gazeTargetsB];
+        
+        % Set the searchStrategy
         searchStrategy = 'sceneSync';
+        
     case 'gazeCalTest'
+        
+        % Get all of the gaze target frames from the source. They will be
+        % ordered such that the fixation ([0;0]) gaze position is first.
         [frameSet, gazeTargets] = selectFrames.gazeCalTest(videoStemNameOut);
+        
+        % Now add another ten frames each across space and time
+        [frameSetA, gazeTargetsA] = ...
+            selectFrames.gridTime(videoStemNameOut,'maxFramesToReturn',10);
+        [frameSetB, gazeTargetsB] = ...
+            selectFrames.gridSpace(videoStemNameOut,'maxFramesToReturn',10);
+        frameSet = [frameSet frameSetA frameSetB];
+        gazeTargets = [gazeTargets gazeTargetsA gazeTargetsB];
+        
+        % Set the searchStrategy
         searchStrategy = 'gazeCalTest';
+
     otherwise
         error('This is not a defined align method')
 end
 
 % Load in the video image for this frame.
 videoFrameOut = makeMedianVideoImage([videoStemNameOut '_gray.avi'],'startFrame',frameSet(1),'nFrames',1);
-
-% Add frames that are distributed across time and space.
-[frameSetA, gazeTargetsA] = selectFrames.gridTime(videoStemNameOut);
-[frameSetB, gazeTargetsB] = selectFrames.gridSpace(videoStemNameOut);
-frameSet = [frameSet frameSetA frameSetB];
-gazeTargets = [gazeTargets gazeTargetsA gazeTargetsB];
 
 
 %% Perform the synchronization search
@@ -214,10 +249,10 @@ eyePoseFixationOut = sceneGeometryOut.meta.estimateSceneParams.obj.modelEyePose(
 
 %% Create and save a diagnostic figure
 if p.Results.saveDiagnosticPlot
-            
+    
     %% videoStemNameIn
     % Typically the gazeCal source
-
+    
     displayImage = videoFrameIn;
     tmpFig = figure('visible','off');
     renderEyePose(eyePoseFixationIn, sceneGeometryIn, ...
@@ -307,7 +342,7 @@ if p.Results.saveDiagnosticPlot
     
     % Report the alignment method
     annotation('textbox', [0.15, .125, 0, 0], 'string', alignMethod,'FontWeight','bold','FitBoxToText','on','LineStyle','none','HorizontalAlignment','left','Interpreter','none')
-        
+    
     % Add a text summary below. If any delta fixation angle is geater than
     % 1 deg, print the message text in red to alert that this was a large
     % eye rotation change.

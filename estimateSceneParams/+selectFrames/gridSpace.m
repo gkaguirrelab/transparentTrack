@@ -20,6 +20,9 @@ function [frameSet, gazeTargets] = gridSpace(videoStemName, varargin)
 % Optional key-value pairs:
 %  'nBinsPerDimension'    - Scalar. Defines the number of divisions with
 %                           which the ellipse centers are binned.
+%  'distValsThreshold'    - Scalar. Frames with a distribution of pupil
+%                           perimeter points worse than this will not be
+%                           used.
 %  'rmseThreshold'        - Scalar. Frames with RMSE values for the fit
 %                           of an ellipse to the pupil perimeter above this
 %                           threshold will not be selected to guide the
@@ -27,6 +30,8 @@ function [frameSet, gazeTargets] = gridSpace(videoStemName, varargin)
 %  'minFramesPerBin'      - Scalar. A given bin must have at least this
 %                           many good frames for the best frame in the bin
 %                           to be selected.
+%  'maxFramesToReturn'    - Scalar. If set to less than Inf, the routine
+%                           will return the best frames up to this max.
 %
 % Outputs:
 %   frameSet              - A 1xm vector that specifies the m frame indices
@@ -49,6 +54,7 @@ p.addParameter('nBinsPerDimension',8,@isnumeric);
 p.addParameter('distValsThreshold',0.275, @isnumeric);
 p.addParameter('rmseThreshold',2, @isnumeric);
 p.addParameter('minFramesPerBin',10, @isnumeric);
+p.addParameter('maxFramesToReturn',Inf, @isnumeric);
 
 % parse
 p.parse(videoStemName, varargin{:})
@@ -138,13 +144,21 @@ idxByBinPosition = ...
 % looking for the best one
 filledBinIdx = find(cellfun(@(x) size(x,1)>p.Results.minFramesPerBin, idxByBinPosition));
 
-% Identify the ellipse in each bin with the lowest fit RMSE
+% Identify the ellipse in each bin with the lowest likelihoodPupilRadiusSDVector
 [~, idxMinErrorEllipseWithinBin] = arrayfun(@(x) nanmin(likelihoodPupilRadiusSDVector(goodFitIdx(idxByBinPosition{x}))), filledBinIdx, 'UniformOutput', false);
 returnTheMin = @(binContents, x)  binContents(idxMinErrorEllipseWithinBin{x});
 frameSet = cellfun(@(x) returnTheMin(goodFitIdx(idxByBinPosition{filledBinIdx(x)}),x),num2cell(1:1:length(filledBinIdx)));
 
 % Create a set of nan gaze targets
 gazeTargets = nan(2,length(frameSet));
+
+% Keep only the best frames if there is a limit on the number of frames to
+% return
+if p.Results.maxFramesToReturn < length(frameSet)
+    [~,idxOrder]=sort(likelihoodPupilRadiusSDVector(frameSet));
+    frameSet = frameSet(idxOrder(1:p.Results.maxFramesToReturn));
+    gazeTargets = gazeTargets(:,idxOrder(1:p.Results.maxFramesToReturn));
+end
 
 
 end
