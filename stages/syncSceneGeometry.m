@@ -228,7 +228,7 @@ if p.Results.saveDiagnosticPlot
     msg = ['frame ' num2str(absIdx)];
     addAnnotation(msg);
     hold on
-    plot([size(displayImage,2)/2, size(displayImage,2)/2],[0 size(displayImage,2)],'-b');
+    plot([size(displayImage,2)/2, size(displayImage,2)/2],[0 size(displayImage,1)],'-b');
     plot([0 size(displayImage,1)],[size(displayImage,1)/2, size(displayImage,1)/2],'-b');
     tmpFrame = getframe(gcf);
     imageSet(1) = {tmpFrame.cdata};
@@ -253,7 +253,7 @@ if p.Results.saveDiagnosticPlot
     addAnnotation(msg);
     % Add cross hairs
     hold on
-    plot([size(displayImage,2)/2, size(displayImage,2)/2],[0 size(displayImage,2)],'-b');
+    plot([size(displayImage,2)/2, size(displayImage,2)/2],[0 size(displayImage,1)],'-b');
     plot([0 size(displayImage,1)],[size(displayImage,1)/2, size(displayImage,1)/2],'-b');
     tmpFrame = getframe(gcf);
     imageSet(2) = {tmpFrame.cdata};
