@@ -46,7 +46,7 @@ function syncSceneGeometry(videoStemNameIn, videoStemNameOut, varargin)
 %                           selects frames from the pupilFile acquisition
 %                           to use as the fixed target to which the
 %                           sceneGeometry is adjusted. Valid options are:
-%                               {'gazePre','gazePost','shape'}
+%                               {'gazePre','gazePost','shape','gazeCalTest'}
 %  'cameraTorsion','cameraDepth' - Scalar. If set, these values over-ride
 %                           the x0 values that are taken from the
 %                           sceneGeometry for the videoStemNameIn
