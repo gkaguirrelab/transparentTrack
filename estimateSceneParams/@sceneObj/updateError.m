@@ -42,7 +42,7 @@ function updateError( obj, varargin )
 %  'missedGlintPenalty'   - Scalar. If a glint is not found for one frame,
 %                           then this value is assigned as the error for
 %                           that frame.
-%  'poseRegParams'        - Structure. These values, generated from a 
+%  'poseRegParams'        - Structure. These values, generated from a
 %                           previous execution of this function, can be
 %                           returned in the varargin to be used instead
 %                           of being recomputed. This is done to constrain
@@ -82,6 +82,12 @@ glintDataY = obj.glintDataY;
 ellipseRMSE = obj.ellipseRMSE;
 gazeTargets = obj.gazeTargets;
 relCamPos = obj.relCamPos(:,obj.frameSet);
+
+% If all the gazeTargets are nan, then set the variable to empty to save
+% some coding effort below
+if all(isnan(sum(gazeTargets)))
+    gazeTargets = [];
+end
 
 
 %% Parse input
@@ -220,45 +226,37 @@ else
     
     % Either calculate or use the supplied poseRegParams
     if isempty(p.Results.poseRegParams)
+        
+        % Calculate
         poseRegParams = absor(...
             modelEyePose(validFrames,1:2)',...
             gazeTargets(:,validFrames),...
             'weights',weights(validFrames),...
             'doScale',false,...
             'doTrans',true);
-
+        
         % Add a meta field to the params with the formula
         poseRegParams.meta = 'f = R * [azi; ele] + t';
-
+        
     else
         
-        % Adopt the passed poseRegParams
+        % Adopt and update the passed poseRegParams
         poseRegParams = p.Results.poseRegParams;
         
-        % If there is a single, non-nan gazeTarget at [0;0] then use the
-        % modelEyePose for that gaze target to update the "t" field of the
-        % poseRegParams, and update the rotation of the poseReg for the
-        % change in camera torsion from x0. This situation arises when we
-        % are attempting to "sync" a sceneGeometry from a measurement that
-        % contained a set of gaze calibration targets to a new acquisition
-        % that contains only a measurement at fixation.
-        if sum(~isnan(sum(gazeTargets)))
-            if isequal(gazeTargets(:,~isnan(sum(gazeTargets))),[0;0])
-
-                % Update the translation
-                poseRegParams.t = -1 .* modelEyePose(~isnan(sum(gazeTargets)),1:2)';
-
-                % Obtain the change in camera torsion from the x0 value
-                deltaCameraTorsion = obj.model.x0(obj.model.func.fieldParamIdx('scene','torsion')) - ...
-                    obj.x(obj.model.func.fieldParamIdx('scene','torsion'));
-
-                % Calculate a new theta value and store in poseRegParams
-                newTheta = wrapTo360(poseRegParams.theta + deltaCameraTorsion);                
-                poseRegParams.theta = newTheta;
-                poseRegParams.R = [cosd(newTheta) -sind(newTheta); sind(newTheta) cosd(newTheta)];
-
-            end
-        end
+        % Which of the list of frames is the [0;0] fixation frame?
+        fixIdx = logical((gazeTargets(1,:)==0).*(gazeTargets(2,:)==0));
+        
+        % Update the "t" parameter of the poseRegParams
+        poseRegParams.t = -1 .* modelEyePose(fixIdx,1:2)';
+        
+        % Obtain the change in camera torsion from the x0 value
+        deltaCameraTorsion = obj.model.x0(obj.model.func.fieldParamIdx('scene','torsion')) - ...
+            obj.x(obj.model.func.fieldParamIdx('scene','torsion'));
+        
+        % Calculate a new theta value and store in poseRegParams
+        newTheta = wrapTo360(poseRegParams.theta + deltaCameraTorsion);
+        poseRegParams.theta = newTheta;
+        poseRegParams.R = [cosd(newTheta) -sind(newTheta); sind(newTheta) cosd(newTheta)];
         
     end
     
@@ -295,7 +293,7 @@ else
     else
         vecGazeTargets = modelPoseGaze;
     end
-        
+    
     % Valid frames are those for which we have been supplied a gaze target,
     % and those for which the projection model is able to calculate a
     % predicted glint location. Those frames for which we lack a gazePose
