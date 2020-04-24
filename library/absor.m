@@ -1,8 +1,8 @@
 function [regParams,Bfit,ErrorStats]=absor(A,B,varargin)
 %ABSOR is a tool for finding the rotation -- and optionally also the
-%scaling and translation -- that best maps one collection of point coordinates to 
+%scaling and translation -- that best maps one collection of point coordinates to
 %another in a least squares sense. It is based on Horn's quaternion-based method. The
-%function works for both 2D and 3D coordinates, and also gives the option of weighting the 
+%function works for both 2D and 3D coordinates, and also gives the option of weighting the
 %coordinates non-uniformly. The code avoids for-loops so as to maximize speed.
 %
 %DESCRIPTION:
@@ -14,21 +14,21 @@ function [regParams,Bfit,ErrorStats]=absor(A,B,varargin)
 %
 %The basic syntax
 %
-%     [regParams,Bfit,ErrorStats]=absor(A,B) 
+%     [regParams,Bfit,ErrorStats]=absor(A,B)
 %
 %solves the unweighted/unscaled registration problem
 %
-%           min. sum_i ||R*A(:,i) + t - B(:,i)||^2 
+%           min. sum_i ||R*A(:,i) + t - B(:,i)||^2
 %
-%for unknown rotation matrix R and unknown translation vector t. 
+%for unknown rotation matrix R and unknown translation vector t.
 %
 %ABSOR can also solve the more general problem
 %
-%           min. sum_i w(i)*||s*R*A(:,i) + t - B(:,i)||^2   
+%           min. sum_i w(i)*||s*R*A(:,i) + t - B(:,i)||^2
 %
 %where s>=0 is an unknown global scale factor to be estimated along with R and t
-%and w is a user-supplied N-vector of  weights. One can include/exclude any 
-%combination of s, w, and translation t in the problem formulation. Which 
+%and w is a user-supplied N-vector of  weights. One can include/exclude any
+%combination of s, w, and translation t in the problem formulation. Which
 %parameters participate is controlled using the syntax,
 %
 %  [regParams,Bfit,ErrorStats]=absor(A,B,'param1',value1,'param2',value2,...)
@@ -40,7 +40,7 @@ function [regParams,Bfit,ErrorStats]=absor(A,B,varargin)
 %
 %  'doTrans' -  Boolean flag. If TRUE, the translation, t, is included. Otherwise,
 %               zero translation is assumed. Default=TRUE.
-%               
+%
 %  'weights' - The length N-vector of weights, w. Default, no weighting.
 %
 %
@@ -65,16 +65,16 @@ function [regParams,Bfit,ErrorStats]=absor(A,B,varargin)
 %                         2D origin
 %
 %
-%  Bfit: The rotation, translation, and scaling (as applicable) of A that 
+%  Bfit: The rotation, translation, and scaling (as applicable) of A that
 %        best matches B.
 %
 %
 % ErrorStats: structure output with error statistics. In particular,
-%             defining err(i)=sqrt(w(i))*norm( Bfit(:,i)-B(:,i) ), 
+%             defining err(i)=sqrt(w(i))*norm( Bfit(:,i)-B(:,i) ),
 %             it contains
 %
-%      ErrorStats.errlsq = norm(err) 
-%      ErrorStats.errmax = max(err) 
+%      ErrorStats.errlsq = norm(err)
+%      ErrorStats.errmax = max(err)
 %
 %
 %
@@ -85,36 +85,36 @@ function [regParams,Bfit,ErrorStats]=absor(A,B,varargin)
 
 %%Input option processing and set up
 
- options.doScale = 0;
- options.doTrans = 1;
- options.weights = []; 
-    
+options.doScale = 0;
+options.doTrans = 1;
+options.weights = [];
+
 for ii=1:2:length(varargin)
     param=varargin{ii};
     val=varargin{ii+1};
-    if strcmpi(param,'doScale'), 
+    if strcmpi(param,'doScale'),
         options.doScale=val;
     elseif strcmpi(param,'weights')
         options.weights=val;
     elseif strcmpi(param,'doTrans')
         options.doTrans=val;
     else
-       error(['Option ''' param ''' not recognized']);
+        error(['Option ''' param ''' not recognized']);
     end
 end
 
- doScale = options.doScale;
- doTrans = options.doTrans;
- weights = options.weights;             
+doScale = options.doScale;
+doTrans = options.doTrans;
+weights = options.weights;
 
 
 
 if ~isempty(which('bsxfun'))
- matmvec=@(M,v) bsxfun(@minus,M,v); %matrix-minus-vector
- mattvec=@(M,v) bsxfun(@times,M,v); %matrix-minus-vector
+    matmvec=@(M,v) bsxfun(@minus,M,v); %matrix-minus-vector
+    mattvec=@(M,v) bsxfun(@times,M,v); %matrix-minus-vector
 else
- matmvec=@matmvecHandle;
- mattvec=@mattvecHandle;
+    matmvec=@matmvecHandle;
+    mattvec=@mattvecHandle;
 end
 
 
@@ -128,52 +128,52 @@ end
 %%Centering/weighting of input data
 
 if doTrans
-                    if isempty(weights)
-
-                     sumwts=1;   
-
-                     lc=mean(A,2);  rc=mean(B,2);  %Centroids
-                     left  = matmvec(A,lc); %Center coordinates at centroids
-                     right = matmvec(B,rc); 
-
-                    else
-
-                      sumwts=sum(weights);
-
-                      weights=full(weights)/sumwts;
-                         weights=weights(:);
-                      sqrtwts=sqrt(weights.');
-
-
-                      lc=A*weights;   rc=B*weights; %weighted centroids
-
-                      left  = matmvec(A,lc);  
-                         left  = mattvec(left,sqrtwts);
-                      right = matmvec(B,rc);
-                        right = mattvec(right,sqrtwts);  
-
-                    end
-                    
+    if isempty(weights)
+        
+        sumwts=1;
+        
+        lc=mean(A,2);  rc=mean(B,2);  %Centroids
+        left  = matmvec(A,lc); %Center coordinates at centroids
+        right = matmvec(B,rc);
+        
+    else
+        
+        sumwts=sum(weights);
+        
+        weights=full(weights)/sumwts;
+        weights=weights(:);
+        sqrtwts=sqrt(weights.');
+        
+        
+        lc=A*weights;   rc=B*weights; %weighted centroids
+        
+        left  = matmvec(A,lc);
+        left  = mattvec(left,sqrtwts);
+        right = matmvec(B,rc);
+        right = mattvec(right,sqrtwts);
+        
+    end
+    
 else
     
-                    if isempty(weights)
-
-                     sumwts=1;   
-                     left=A; right=B;
-
-                    else
-
-                      sumwts=sum(weights);
-
-                      weights=full(weights)/sumwts;
-                         weights=weights(:);
-                      sqrtwts=sqrt(weights.');
- 
-                       left  = mattvec(A,sqrtwts);
-                       right = mattvec(B,sqrtwts);  
-
-                     end
-                    
+    if isempty(weights)
+        
+        sumwts=1;
+        left=A; right=B;
+        
+    else
+        
+        sumwts=sum(weights);
+        
+        weights=full(weights)/sumwts;
+        weights=weights(:);
+        sqrtwts=sqrt(weights.');
+        
+        left  = mattvec(A,sqrtwts);
+        right = mattvec(B,sqrtwts);
+        
+    end
+    
 end
 
 M=left*right.';
@@ -182,103 +182,103 @@ M=left*right.';
 %%Compute rotation matrix
 
 switch dimension
-
-    case 2
     
+    case 2
+        
         
         Nxx=M(1)+M(4); Nyx=M(3)-M(2);
-
+        
         N=[Nxx   Nyx;...
-           Nyx   -Nxx];
-
+            Nyx   -Nxx];
+        
         [V,D]=eig(N);
-
-        [trash,emax]=max(real(  diag(D)  )); emax=emax(1);
-
+        
+        [~,emax]=max(real(  diag(D)  )); emax=emax(1);
+        
         q=V(:,emax); %Gets eigenvector corresponding to maximum eigenvalue
         q=real(q);   %Get rid of imaginary part caused by numerical error
-
-
+        
+        
         q=q*sign(q(2)+(q(2)>=0)); %Sign ambiguity
         q=q./norm(q);
-
+        
         R11=q(1)^2-q(2)^2;
         R21=prod(q)*2;
-
+        
         R=[R11 -R21;R21 R11]; %map to orthogonal matrix
-
-
+        
+        
         
         
     case 3
         
         [Sxx,Syx,Szx,  Sxy,Syy,Szy,   Sxz,Syz,Szz]=dealr(M(:));
-
+        
         N=[(Sxx+Syy+Szz)  (Syz-Szy)      (Szx-Sxz)      (Sxy-Syx);...
-           (Syz-Szy)      (Sxx-Syy-Szz)  (Sxy+Syx)      (Szx+Sxz);...
-           (Szx-Sxz)      (Sxy+Syx)     (-Sxx+Syy-Szz)  (Syz+Szy);...
-           (Sxy-Syx)      (Szx+Sxz)      (Syz+Szy)      (-Sxx-Syy+Szz)];
-
+            (Syz-Szy)      (Sxx-Syy-Szz)  (Sxy+Syx)      (Szx+Sxz);...
+            (Szx-Sxz)      (Sxy+Syx)     (-Sxx+Syy-Szz)  (Syz+Szy);...
+            (Sxy-Syx)      (Szx+Sxz)      (Syz+Szy)      (-Sxx-Syy+Szz)];
+        
         [V,D]=eig(N);
-
-        [trash,emax]=max(real(  diag(D)  )); emax=emax(1);
-
+        
+        [~,emax]=max(real(  diag(D)  )); emax=emax(1);
+        
         q=V(:,emax); %Gets eigenvector corresponding to maximum eigenvalue
         q=real(q);   %Get rid of imaginary part caused by numerical error
-
-        [trash,ii]=max(abs(q)); sgn=sign(q(ii(1)));
-         q=q*sgn; %Sign ambiguity
-
+        
+        [~,ii]=max(abs(q)); sgn=sign(q(ii(1)));
+        q=q*sgn; %Sign ambiguity
+        
         %map to orthogonal matrix
         
         quat=q(:);
         nrm=norm(quat);
         if ~nrm
-         disp 'Quaternion distribution is 0'    
+            disp 'Quaternion distribution is 0'
         end
-
+        
         quat=quat./norm(quat);
-
+        
         q0=quat(1);
-        qx=quat(2); 
-        qy=quat(3); 
+        qx=quat(2);
+        qy=quat(3);
         qz=quat(4);
         v =quat(2:4);
-
-
+        
+        
         Z=[q0 -qz qy;...
-           qz q0 -qx;...
-          -qy qx  q0 ];
-
+            qz q0 -qx;...
+            -qy qx  q0 ];
+        
         R=v*v.' + Z^2;
-
+        
     otherwise
         error 'Points must be either 2D or 3D'
-
+        
 end
 
 %%
 
 if doScale
-   
-     summ = @(M) sum(M(:));
-  
-     sss=summ( right.*(R*left))/summ(left.^2);
-     if doTrans
-      t=rc-R*(lc*sss);
-     else
-      t=zeros(dimension,1);   
-     end
-     
+    
+    summ = @(M) sum(M(:));
+    
+    sss=summ( right.*(R*left))/summ(left.^2);
+    if doTrans
+        t=rc-R*(lc*sss);
+    else
+        t=zeros(dimension,1);
+    end
+    
 else
     
     sss=1;
     if doTrans
-     t=rc-R*lc;
+        t=rc-R*lc;
     else
-      t=zeros(dimension,1);  
+        t=zeros(dimension,1);
     end
- 
+    
 end
 
 
@@ -304,41 +304,41 @@ if nargout>1
     Bfit=(sss*R)*A;
     
     if doTrans
-     Bfit=matmvec(Bfit,-t);
-    end   
+        Bfit=matmvec(Bfit,-t);
+    end
 end
 
 if nargout>2
     
     l2norm = @(M,dim) sqrt(sum(M.^2,dim));
-
+    
     err=l2norm(Bfit-B,1);
     
     if ~isempty(weights), err=err.*sqrtwts; end
-
+    
     ErrorStats.errlsq=norm(err)*sqrt(sumwts); %unnormalize the weights
     ErrorStats.errmax=max(err);
     
-   
-end
     
+end
+
 
 
 
 function M=matmvecHandle(M,v)
 %Matrix-minus-vector
 
-    for ii=1:size(M,1)
-     M(ii,:)=M(ii,:)-v(ii);
-    end
- 
+for ii=1:size(M,1)
+    M(ii,:)=M(ii,:)-v(ii);
+end
+
 function M=mattvecHandle(M,v)
 %Matrix-times-vector
 
-    for ii=1:size(M,1)
-     M(ii,:)=M(ii,:).*v;
-    end
-    
+for ii=1:size(M,1)
+    M(ii,:)=M(ii,:).*v;
+end
+
 function varargout=dealr(v)
 
-  varargout=num2cell(v);     
+varargout=num2cell(v);
