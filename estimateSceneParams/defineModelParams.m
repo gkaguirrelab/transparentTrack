@@ -197,7 +197,7 @@ model.strategy.sceneSync.TolMesh = 1e-2;
 model.strategy.gazeCalTest.stages = { ...
     {'scene.cameraPosition', 'scene.primaryPosition'} };
 model.strategy.gazeCalTest.errorReg = [1 2 0 0];
-model.strategy.gazeCalTest.penaltyWeight = [2 1];
+model.strategy.gazeCalTest.penaltyWeight = [0.1 0.1];
 model.strategy.gazeCalTest.useFixForPrimaryPos = false;
 model.strategy.gazeCalTest.multiSceneNorm = 1;
 model.strategy.gazeCalTest.TolMesh = 1e-2;
