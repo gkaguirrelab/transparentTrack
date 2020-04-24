@@ -149,8 +149,7 @@ end
 % Obtain the eye and error args
 eyeArgs = sceneGeometryIn.meta.estimateSceneParams.obj.setupArgs;
 errorArgs = { ...
-    'poseRegParams',sceneGeometryIn.meta.estimateSceneParams.obj.poseRegParams,...
-    'vecRegParams',sceneGeometryIn.meta.estimateSceneParams.obj.vecRegParams};
+    'poseRegParams',sceneGeometryIn.meta.estimateSceneParams.obj.poseRegParams};
 
 % Load in the video image for this frame.
 absIdx = sceneGeometryIn.meta.estimateSceneParams.obj.frameSet(idx);

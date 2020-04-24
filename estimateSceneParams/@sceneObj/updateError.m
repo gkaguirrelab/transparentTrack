@@ -42,9 +42,9 @@ function updateError( obj, varargin )
 %  'missedGlintPenalty'   - Scalar. If a glint is not found for one frame,
 %                           then this value is assigned as the error for
 %                           that frame.
-%  'poseRegParams', 'vecRegParams' - Structures. These values, generated
-%                           from a previous execution of this function, can
-%                           be returned in the varargin to be used instead
+%  'poseRegParams'        - Structure. These values, generated from a 
+%                           previous execution of this function, can be
+%                           returned in the varargin to be used instead
 %                           of being recomputed. This is done to constrain
 %                           the model, as opposed to saving computation
 %                           time.
@@ -65,7 +65,7 @@ function updateError( obj, varargin )
 %                           derived from the pupil center -> glint vec.
 %   poseRegParams         - Structure. The parameters that relate eyePose
 %                           to screen position.
-%   vecRegParams       - Structure. The parameters that relate the
+%   vecRegParams          - Structure. The parameters that relate the
 %                           pupil center -> glint vec to screen position.
 %   rawErrors             - 1x4 matrix. The four component errors.
 %
@@ -263,11 +263,23 @@ else
     % reader.
     glintSign = [1;-1];
     
-    % Obtain the x,y differences between the pupil center and glint for
-    % each frame
+    % Obtain the x,y differences between the modeled pupil center and
+    % modeled glint for each frame
     centerDiff = (pupilCenter - [modelGlintCoord.X modelGlintCoord.Y])' .* ...
         glintSign;
     
+    % We can compute the vecParams by reference to the gazeTargets
+    % themselves, or the modelPoseGaze. The latter is the case when we have
+    % been supplied a set of poseRegParams to use to synthesize
+    % gazeTargets. The applicationof this is when syncing a set of gazeCal
+    % measurements to a new acqusition which lacks explicit gaze target
+    % measurements
+    if isempty(p.Results.poseRegParams)
+        vecGazeTargets = gazeTargets;
+    else
+        vecGazeTargets = modelPoseGaze;
+    end
+        
     % Valid frames are those for which we have been supplied a gaze target,
     % and those for which the projection model is able to calculate a
     % predicted glint location. Those frames for which we lack a gazePose
@@ -278,7 +290,7 @@ else
     % default, a frame that does not have an associate gaze target will not
     % contribute to the calculation of the poseError, so this vector is
     % initialized as nans.
-    vectorErrorByFrame = nan(size(sum(gazeTargets)));
+    vectorErrorByFrame = nan(size(sum(vecGazeTargets)));
     modelVecGaze = nan(size(modelEyePose(:,1:2)))';
     
     % Those frames for which the model cannot produce a predicted glint
@@ -292,34 +304,27 @@ else
     % The gaze position is calculated for the valid frames, which are those
     % frames for which we have both a gaze target and a predicted glint
     % produced by the projection model.
-    validFrames = and(~isnan(sum(gazeTargets)),~noGlintFrames);
+    validFrames = and(~isnan(sum(vecGazeTargets)),~noGlintFrames);
     
-    % Either calculate or use the supplied vecRegParams
-    if isempty(p.Results.vecRegParams)
-        vecRegParams = absor(...
-            centerDiff(:,validFrames),...
-            gazeTargets(:,validFrames),...
-            'weights',weights(validFrames),...
-            'doScale',true,...
-            'doTrans',true);
-        vecRegParams.glintSign = glintSign;
-        
-        % Add a meta field to the params with the formula
-        vecRegParams.meta = 'f = s * R * [Xp - Xg; -1*(Yp-Yg)] + t';
-    else
-        
-        % Adopt the passed vecRegParams
-        vecRegParams = p.Results.vecRegParams;
-        
-        % If there is a single, non-nan gazeTarget at [0;0] then use the
-        % centerDiff for that gaze target to update the "t" field of the
-        % vecRegParams
-        if sum(~isnan(sum(gazeTargets)))
-            if isequal(gazeTargets(:,~isnan(sum(gazeTargets))),[0;0])
-                vecRegParams.t = -1 .* centerDiff(:,~isnan(sum(gazeTargets)));
-            end
+    % Calculate the vecRegParams
+    vecRegParams = absor(...
+        centerDiff(:,validFrames),...
+        vecGazeTargets(:,validFrames),...
+        'weights',weights(validFrames),...
+        'doScale',true,...
+        'doTrans',true);
+    vecRegParams.glintSign = glintSign;
+    
+    % Add a meta field to the params with the formula
+    vecRegParams.meta = 'f = s * R * [Xp - Xg; -1*(Yp-Yg)] + t';
+    
+    % If there is a single, non-nan gazeTarget at [0;0] then use the
+    % centerDiff for that gaze target to update the "t" field of the
+    % vecRegParams
+    if sum(~isnan(sum(gazeTargets)))
+        if isequal(gazeTargets(:,~isnan(sum(gazeTargets))),[0;0])
+            vecRegParams.t = -1 .* centerDiff(:,~isnan(sum(gazeTargets)));
         end
-        
     end
     
     % Calculate the vector-based gaze and error for the modeled frames
