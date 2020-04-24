@@ -223,7 +223,7 @@ frameSet = [frameSet frameSetA frameSetB];
 gazeTargets = [gazeTargets gazeTargetsA gazeTargetsB];
 
 % Remove duplicate frames
-[~, uniqueFrames] = unique(frameSet,'sortOrder','stable');
+[~, uniqueFrames] = unique(frameSet,'stable');
 frameSet = frameSet(uniqueFrames);
 gazeTargets = gazeTargets(:,uniqueFrames);
 
