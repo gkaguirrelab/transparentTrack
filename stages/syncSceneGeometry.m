@@ -169,6 +169,10 @@ switch alignMethod
         % This is our fixation frame
         [frameSet, gazeTargets] = selectFrames.gazePre(videoStemNameOut);
         
+        % Add frames that are distributed across time and space.
+        [frameSetA, gazeTargetsA] = selectFrames.gridTime(videoStemNameOut);
+        [frameSetB, gazeTargetsB] = selectFrames.gridSpace(videoStemNameOut);
+        
         % Set the searchStrategy
         searchStrategy = 'sceneSync';
         
@@ -180,8 +184,6 @@ switch alignMethod
         % Add frames that are distributed across time and space.
         [frameSetA, gazeTargetsA] = selectFrames.gridTime(videoStemNameOut);
         [frameSetB, gazeTargetsB] = selectFrames.gridSpace(videoStemNameOut);
-        frameSet = [frameSet frameSetA frameSetB];
-        gazeTargets = [gazeTargets gazeTargetsA gazeTargetsB];
         
         % Set the searchStrategy
         searchStrategy = 'sceneSync';
@@ -194,8 +196,6 @@ switch alignMethod
         % Add frames that are distributed across time and space.
         [frameSetA, gazeTargetsA] = selectFrames.gridTime(videoStemNameOut);
         [frameSetB, gazeTargetsB] = selectFrames.gridSpace(videoStemNameOut);
-        frameSet = [frameSet frameSetA frameSetB];
-        gazeTargets = [gazeTargets gazeTargetsA gazeTargetsB];
         
         % Set the searchStrategy
         searchStrategy = 'sceneSync';
@@ -211,15 +211,22 @@ switch alignMethod
             selectFrames.gridTime(videoStemNameOut,'maxFramesToReturn',10);
         [frameSetB, gazeTargetsB] = ...
             selectFrames.gridSpace(videoStemNameOut,'maxFramesToReturn',10);
-        frameSet = [frameSet frameSetA frameSetB];
-        gazeTargets = [gazeTargets gazeTargetsA gazeTargetsB];
         
         % Set the searchStrategy
         searchStrategy = 'gazeCalTest';
-
+        
     otherwise
         error('This is not a defined align method')
 end
+
+% Assemble the frames
+frameSet = [frameSet frameSetA frameSetB];
+gazeTargets = [gazeTargets gazeTargetsA gazeTargetsB];
+
+% Remove duplicate frames
+[~, uniqueFrames] = unique(frameSet,'sortOrder','stable');
+frameSet = frameSet(uniqueFrames);
+gazeTargets = gazeTargets(:,uniqueFrames);
 
 % Load in the video image for this frame.
 videoFrameOut = makeMedianVideoImage([videoStemNameOut '_gray.avi'],'startFrame',frameSet(1),'nFrames',1);
