@@ -237,10 +237,26 @@ else
         
         % If there is a single, non-nan gazeTarget at [0;0] then use the
         % modelEyePose for that gaze target to update the "t" field of the
-        % poseRegParams
+        % poseRegParams, and update the rotation of the poseReg for the
+        % change in camera torsion from x0. This situation arises when we
+        % are attempting to "sync" a sceneGeometry from a measurement that
+        % contained a set of gaze calibration targets to a new acquisition
+        % that contains only a measurement at fixation.
         if sum(~isnan(sum(gazeTargets)))
             if isequal(gazeTargets(:,~isnan(sum(gazeTargets))),[0;0])
+
+                % Update the translation
                 poseRegParams.t = -1 .* modelEyePose(~isnan(sum(gazeTargets)),1:2)';
+
+                % Obtain the change in camera torsion from the x0 value
+                deltaCameraTorsion = obj.model.x0(obj.model.func.fieldParamIdx('scene','torsion')) - ...
+                    obj.x(obj.model.func.fieldParamIdx('scene','torsion'));
+
+                % Calculate a new theta value and store in poseRegParams
+                newTheta = wrapTo360(poseRegParams.theta + deltaCameraTorsion);                
+                poseRegParams.theta = newTheta;
+                poseRegParams.R = [cosd(newTheta) -sind(newTheta); sind(newTheta) cosd(newTheta)];
+
             end
         end
         
