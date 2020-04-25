@@ -184,7 +184,7 @@ model.strategy.gazeCal.TolMesh = 1e-2;
 % associated measuement of head movement over time. The penalty weights
 % discourage large changes in camera torsion or depth.
 model.strategy.sceneSync.stages = { ...
-    {'scene.cameraPosition', 'scene.primaryPosition', 'head.phaseAndRotation' } };
+    {'scene.cameraPosition', 'head.phaseAndRotation' } };
 model.strategy.sceneSync.errorReg = [1 2 0 0];
 model.strategy.sceneSync.penaltyWeight = [0.5 0.05];
 model.strategy.sceneSync.useFixForPrimaryPos = false;
