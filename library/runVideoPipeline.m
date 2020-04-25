@@ -200,8 +200,8 @@ sceneGeometryFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runNa
 % videoStemNameIn and videoStemNameOut are used by the syncSceneGeometry
 % routine. The code supports passing a "customSceneGeometryFile" to serve
 % as the input. The custom value will usually identify a different
-% acqusition during which the head was in the same positiion, and for which
-% sceneGeometry was well estimated.
+% acquisition during which the head was in the same positiion, and for
+% which sceneGeometry was well estimated.
 if ~isempty(p.Results.customSceneGeometryFile)
     if iscell(p.Results.customSceneGeometryFile)
         videoStemNameIn = fullfile(pathParams.dataOutputDirFull,p.Results.customSceneGeometryFile{1});
