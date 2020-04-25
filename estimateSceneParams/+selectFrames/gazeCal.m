@@ -63,7 +63,7 @@ if sum(idx)==1
     eyePose = sceneGeometry.meta.estimateSceneParams.obj.modelPupilEllipse(idx,:);
 
     % Get the pupil ellipse
-    pupilEllipseFixationIn = sceneGeometryIn.meta.estimateSceneParams.obj.modelPupilEllipse(idx,:);
+    pupilEllipseFixationIn = sceneGeometry.meta.estimateSceneParams.obj.modelPupilEllipse(idx,:);
 
     % Find the shape of the pupil for this frame, expressed as theta and rho
     % values (SEE: csaEllipseError)
