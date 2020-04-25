@@ -88,7 +88,7 @@ else
     theta = pupilEllipse(5);
     
     % Find the frame with this pupil shape 
-    [frameSet, gazeTargets] = shape(videoStemName, rho, theta);
+    [frameSet, gazeTargets] = selectFrames.shape(videoStemName, rho, theta);
         
 end
 

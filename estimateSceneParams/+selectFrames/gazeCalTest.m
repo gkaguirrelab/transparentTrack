@@ -80,7 +80,7 @@ else
     theta = pupilEllipse(5);
     
     % Find the frame with this pupil shape 
-    [fixFrame, fixGazeTarget] = shape(videoStemName, rho, theta);
+    [fixFrame, fixGazeTarget] = selectFrames.shape(videoStemName, rho, theta);
     
     % Add this frame at the front of the set
     frameSet = [fixFrame, frameSet];
