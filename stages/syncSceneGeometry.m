@@ -83,6 +83,14 @@ p.addParameter('cameraDepth',[],@(x)(isempty(x) || isscalar(x)));
 %% Parse and check the parameters
 p.parse(videoStemNameIn, videoStemNameOut, varargin{:});
 
+% Handle early exit if either of the videoStems are empty
+if isempty(videoStemNameIn) || isempty(videoStemNameOut)
+    if p.Results.verbose
+        fprintf('One or both of the videoStemNames was empty; returning.\n');
+    end
+    return
+end
+
 % Handle the alignMethod variable type
 alignMethod = p.Results.alignMethod;
 if iscell(alignMethod)
