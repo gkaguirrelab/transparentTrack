@@ -127,19 +127,11 @@ cameraOffsetPoint = [sceneGeometryIn.cameraIntrinsic.matrix(1,3), ...
 % We assume that the sceneGeometryIn contains a frame that has been
 % assigned a gazeTarget value of [0; 0].
 
-% Which of the list of frames is the [0;0] fixation frame
-idx = find((sceneGeometryIn.meta.estimateSceneParams.obj.gazeTargets(1,:)==0).*(sceneGeometryIn.meta.estimateSceneParams.obj.gazeTargets(2,:)==0));
+% Obtain information regarding the fixation frame
+[fixIdxIn, ~, eyePoseFixationIn, rhoIn, thetaIn] = selectFrames.gazecal(videoStemNameIn);
 
-% Store the eyePose for this frame
-eyePoseFixationIn = sceneGeometryIn.meta.estimateSceneParams.obj.modelEyePose(idx,:);
-
-% Store the pupilEllipse for this frame
-pupilEllipseFixationIn = sceneGeometryIn.meta.estimateSceneParams.obj.modelPupilEllipse(idx,:);
-
-% Find the shape of the pupil for this frame, expressed as theta and rho
-% values (SEE: csaEllipseError)
-rhoIn = 1-sqrt(1-pupilEllipseFixationIn(4)^2);
-thetaIn = pupilEllipseFixationIn(5)*2;
+% Load in the video image for this frame.
+videoFrameIn = makeMedianVideoImage([videoStemNameIn '_gray.avi'],'startFrame',fixIdxIn,'nFrames',1);
 
 % Get the scene and eye parameters from the sceneGeometryIn
 model.eye.x0 = sceneGeometryIn.meta.estimateSceneParams.xEye;
@@ -159,9 +151,6 @@ eyeArgs = sceneGeometryIn.meta.estimateSceneParams.obj.setupArgs;
 errorArgs = { ...
     'poseRegParams',sceneGeometryIn.meta.estimateSceneParams.obj.poseRegParams};
 
-% Load in the video image for this frame.
-absIdx = sceneGeometryIn.meta.estimateSceneParams.obj.frameSet(idx);
-videoFrameIn = makeMedianVideoImage([videoStemNameIn '_gray.avi'],'startFrame',absIdx,'nFrames',1);
 
 
 %% Select frames to guide the search
@@ -278,7 +267,7 @@ if p.Results.saveDiagnosticPlot
         'modelEyeSymbolSizeScaler',1.5,...
         'modelEyeAlpha', [0.25 0.25 0.25 1]);
     text(20,30,videoStemNameIn, 'Color', 'g','Fontsize',16,'Interpreter','none');
-    msg = ['frame ' num2str(absIdx)];
+    msg = ['frame ' num2str(fixIdxIn)];
     addAnnotation(msg);
     hold on
     plot([size(displayImage,2)/2, size(displayImage,2)/2],[0 size(displayImage,1)],'-b');
