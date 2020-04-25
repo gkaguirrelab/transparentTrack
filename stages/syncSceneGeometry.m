@@ -128,7 +128,7 @@ cameraOffsetPoint = [sceneGeometryIn.cameraIntrinsic.matrix(1,3), ...
 % assigned a gazeTarget value of [0; 0].
 
 % Obtain information regarding the fixation frame
-[fixIdxIn, ~, eyePoseFixationIn, rhoIn, thetaIn] = selectFrames.gazecal(videoStemNameIn);
+[fixIdxIn, ~, eyePoseFixationIn, rhoIn, thetaIn] = selectFrames.gazeCal(videoStemNameIn);
 
 % Load in the video image for this frame.
 videoFrameIn = makeMedianVideoImage([videoStemNameIn '_gray.avi'],'startFrame',fixIdxIn,'nFrames',1);
