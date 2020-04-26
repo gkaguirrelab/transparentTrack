@@ -195,10 +195,12 @@ switch alignMethod
         error('This is not a defined align method')
 end
 
-% Add frames that are distributed across time and space. Start with
-% a low distValThresh and increase if needed to reach the desired frames.
+% Add frames that are distributed across time and space. Start with a low
+% distValThresh and increase as needed to reach the desired frames or until
+% the maximum suitable threshold is reached.
 stillSearching = true;
-distValsThreshold = 0.275;
+distValsThreshold = 0.2;
+maxDistValsThreshold = 0.35;
 while stillSearching
     [frameSetA, gazeTargetsA] = selectFrames.gridTime(videoStemNameOut,'nFramesToReturn',nFramesToReturn,'distValsThreshold',distValsThreshold);
     [frameSetB, gazeTargetsB] = selectFrames.gridSpace(videoStemNameOut,'nFramesToReturn',nFramesToReturn,'distValsThreshold',distValsThreshold);    
@@ -206,6 +208,9 @@ while stillSearching
         stillSearching = false;
     else
         distValsThreshold = distValsThreshold + 0.025;
+    end
+    if distValsThreshold > maxDistValsThreshold
+        stillSearching = false;
     end
 end
 
