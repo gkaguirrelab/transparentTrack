@@ -125,13 +125,14 @@ likelihoodPupilRadiusSDVector = (distVals.*RMSE)';
 %% Find the best frame
 % The best frame will have an acceptable likelihoodPupilRadiusSDVector, and
 % the lowest shapeMatchError
-[~,bestFrame] = nanmin(likelihoodPupilRadiusSDVector .* shapeMatchError);
+[~, bestFrame] = nanmin(likelihoodPupilRadiusSDVector .* shapeMatchError);
 
 % Return the best frame
 frameSet = bestFrame;
 
-% The gaze target is presumed to be the center of the screen [0 0]
-gazeTargets = [0; 0];
+% We don't really know the gazeTarget for this frame. The calling routine
+% might know, but we will set the value for now to nan.
+gazeTargets = [nan; nan];
 
 end
 

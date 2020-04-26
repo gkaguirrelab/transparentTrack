@@ -44,6 +44,9 @@ p.addRequired('videoStemName',@ischar);
 p.parse(videoStemName, varargin{:})
 
 
+% This routine identifies a fixation frame
+[frameSetFix, gazeTargetsFix] = select.gazeCal(videoStemName);
+
 % Load the sceneGeometry that already exists for this gazeCal acquisition
 load([videoStemName '_sceneGeometry.mat'],'sceneGeometry');
 
@@ -54,38 +57,9 @@ gazeTargets = sceneGeometry.meta.estimateSceneParams.obj.gazeTargets;
 % Which of the list of frames is the [0;0] fixation frame?
 idx = logical((gazeTargets(1,:)==0).*(gazeTargets(2,:)==0));
 
-% Some gazeCal runs lacked a formal measurement of the [0;0] target. Check
-% if we have one.
-if sum(idx)==1
+% Sort the return variables so that the fixation frame is first
+frameSet = [frameSetFix, frameSet(~idx)];
+gazeTargets = [gazeTargetsFix, gazeTargets(:,~idx)];
 
-    % We do. Sort the return variables so that the fixation frame is first
-    frameSet = [frameSet(idx), frameSet(~idx)];
-    gazeTargets = [gazeTargets(:,idx), gazeTargets(:,~idx)];
-
-else
-    % We don't. In this case, grab a frame based upon pupil
-    % shape predicted by the sceneGeometry for the [0;0] position
-    
-    % Calculate the eyePose that corresponds to the predicted fixation of
-    % the [0;0] screen position.
-    R = sceneGeometry.screenPosition.poseRegParams.R;
-    t = sceneGeometry.screenPosition.poseRegParams.t;
-    g = inv(R)*(-t);
-    
-    % Obtain the rho and theta values of the pupil ellipse for this gaze
-    % position
-    eyePose = [g(1) g(2) 0 2];
-    pupilEllipse = projectModelEye(eyePose,sceneGeometry);    
-    rho = pupilEllipse(4);
-    theta = pupilEllipse(5);
-    
-    % Find the frame with this pupil shape 
-    [fixFrame, fixGazeTarget] = selectFrames.shape(videoStemName, rho, theta);
-    
-    % Add this frame at the front of the set
-    frameSet = [fixFrame, frameSet];
-    gazeTargets = [gazeTargets, fixGazeTarget];
-    
-end
 
 end

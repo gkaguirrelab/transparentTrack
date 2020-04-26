@@ -71,14 +71,29 @@ if sum(idx)==1
     theta = pupilEllipseFixationIn(5)*2;
     
 else
-    % We don't. In this case, grab a frame based upon pupil
-    % shape predicted by the sceneGeometry for the [0;0] position
+    % We don't. Let's see what else we can do...
     
     % Calculate the eyePose that corresponds to the predicted fixation of
     % the [0;0] screen position.
     R = sceneGeometry.screenPosition.poseRegParams.R;
     t = sceneGeometry.screenPosition.poseRegParams.t;
     g = R\(-t);
+    
+    % See if we have eyePoses calculated for the gazeCal acquisition. If
+    % so, we can find the frame with the eyePose closest to g
+    pupilFileName = [videoStemName '_pupil.mat'];
+    if isfile(pupilFileName)
+        load(pupilFileName,'pupilData');
+        if isfield(pupilData,'sceneConstrained')
+            % Find the frame with the closest eyePose
+            [~,frameSet] = min(norm(g - pupilData.sceneConstrained.eyePoses.values(:,1:2)));
+            gazeTargets = [0;0];
+            return
+        end
+    end
+
+    % If we are still in this function, we will have to select a frame
+    % based upon the shape of the pupil ellipse.
     
     % Obtain the rho and theta values of the pupil ellipse for this gaze
     % position
@@ -89,6 +104,7 @@ else
     
     % Find the frame with this pupil shape 
     [frameSet, gazeTargets] = selectFrames.shape(videoStemName, rho, theta);
+
         
 end
 

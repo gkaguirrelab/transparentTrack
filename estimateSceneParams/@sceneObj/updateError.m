@@ -246,8 +246,11 @@ else
         % Which of the list of frames is the [0;0] fixation frame?
         fixIdx = logical((gazeTargets(1,:)==0).*(gazeTargets(2,:)==0));
         
-        % Update the "t" parameter of the poseRegParams
-        poseRegParams.t = -1 .* modelEyePose(fixIdx,1:2)';
+        % If there is a fixIdx, update the "t" parameter of the
+        % poseRegParams
+        if any(fixIdx)
+            poseRegParams.t = -1 .* modelEyePose(fixIdx,1:2)';
+        end
         
         % Obtain the change in camera torsion from the x0 value
         deltaCameraTorsion = obj.model.x0(obj.model.func.fieldParamIdx('scene','torsion')) - ...

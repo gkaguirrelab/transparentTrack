@@ -166,17 +166,17 @@ nFramesToReturn = 15;
 switch alignMethod
     case 'gazePre'
         
-        % This is our fixation frame
+        % This frame is for display and fixation
         [frameSet, gazeTargets] = selectFrames.gazePre(videoStemNameOut);
                         
     case 'gazePost'
         
-        % This is our fixation frame
+        % This frame is for display and fixation
         [frameSet, gazeTargets] = selectFrames.gazePost(videoStemNameOut);
                 
     case 'shape'
         
-        % This is our fixation frame
+        % This frame is for display only
         [frameSet, gazeTargets] = selectFrames.shape(videoStemNameOut, rhoIn, thetaIn);
                 
     case 'gazeCalTest'
@@ -260,7 +260,8 @@ if p.Results.saveDiagnosticPlot
         'modelEyePlotColors', {'.w' '-g' '.y' 'xr'}, ...
         'modelEyeSymbolSizeScaler',1.5,...
         'modelEyeAlpha', [0.25 0.25 0.25 1]);
-    text(20,30,videoStemNameIn, 'Color', 'g','Fontsize',16,'Interpreter','none');
+    str = strsplit(videoStemNameIn,filesep);
+    text(20,30,str{end}, 'Color', 'g','Fontsize',16,'Interpreter','none');
     msg = ['frame ' num2str(fixIdxIn)];
     addAnnotation(msg);
     hold on
@@ -284,7 +285,8 @@ if p.Results.saveDiagnosticPlot
         'modelEyePlotColors', {'.w' '-g' '.y' 'xr'}, ...
         'modelEyeSymbolSizeScaler',1.5,...
         'modelEyeAlpha', [0.25 0.25 0.25 1]);
-    text(20,30,sceneGeometryNameOut, 'Color', 'r','Fontsize',16,'Interpreter','none');
+    str = strsplit(videoStemNameOut,filesep);
+    text(20,30,str{end}, 'Color', 'r','Fontsize',16,'Interpreter','none');
     msg = ['frame ' num2str(frameSet(1))];
     addAnnotation(msg);
     % Add cross hairs
