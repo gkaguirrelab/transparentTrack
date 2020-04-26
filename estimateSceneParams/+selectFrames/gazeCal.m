@@ -77,8 +77,9 @@ else
     % the [0;0] screen position.
     R = sceneGeometry.screenPosition.poseRegParams.R;
     t = sceneGeometry.screenPosition.poseRegParams.t;
-    g = R\(-t);
-    
+    g = R\(-t);    
+    eyePose = [g(1) g(2) 0 2];
+
     % See if we have eyePoses calculated for the gazeCal acquisition. If
     % so, we can find the frame with the eyePose closest to g
     pupilFileName = [videoStemName '_pupil.mat'];
@@ -97,7 +98,6 @@ else
     
     % Obtain the rho and theta values of the pupil ellipse for this gaze
     % position
-    eyePose = [g(1) g(2) 0 2];
     pupilEllipse = projectModelEye(eyePose,sceneGeometry);    
     rho = pupilEllipse(4);
     theta = pupilEllipse(5);
@@ -105,6 +105,8 @@ else
     % Find the frame with this pupil shape 
     [frameSet, gazeTargets] = selectFrames.shape(videoStemName, rho, theta);
 
+    % Issue a warning that we could not find a true fixation frame
+    warning('transparentTrack:selectFrames_gazeCal','No fixation frame for this gazeCal; consider creating a sceneConstrained pupil file');
         
 end
 
