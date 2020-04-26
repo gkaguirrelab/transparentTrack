@@ -159,60 +159,54 @@ errorArgs = { ...
 % could come from an explicit fixation period, or from matching the shape
 % of the pupil to that observed during the videoStemNameIn fixation period.
 
+% Set the default values
+searchStrategy = 'sceneSync';
+nFramesToReturn = 15;
+
 switch alignMethod
     case 'gazePre'
         
         % This is our fixation frame
         [frameSet, gazeTargets] = selectFrames.gazePre(videoStemNameOut);
-        
-        % Add frames that are distributed across time and space.
-        [frameSetA, gazeTargetsA] = selectFrames.gridTime(videoStemNameOut);
-        [frameSetB, gazeTargetsB] = selectFrames.gridSpace(videoStemNameOut);
-        
-        % Set the searchStrategy
-        searchStrategy = 'sceneSync';
-        
+                        
     case 'gazePost'
         
         % This is our fixation frame
         [frameSet, gazeTargets] = selectFrames.gazePost(videoStemNameOut);
-        
-        % Add frames that are distributed across time and space.
-        [frameSetA, gazeTargetsA] = selectFrames.gridTime(videoStemNameOut);
-        [frameSetB, gazeTargetsB] = selectFrames.gridSpace(videoStemNameOut);
-        
-        % Set the searchStrategy
-        searchStrategy = 'sceneSync';
-        
+                
     case 'shape'
         
         % This is our fixation frame
         [frameSet, gazeTargets] = selectFrames.shape(videoStemNameOut, rhoIn, thetaIn);
-        
-        % Add frames that are distributed across time and space.
-        [frameSetA, gazeTargetsA] = selectFrames.gridTime(videoStemNameOut);
-        [frameSetB, gazeTargetsB] = selectFrames.gridSpace(videoStemNameOut);
-        
-        % Set the searchStrategy
-        searchStrategy = 'sceneSync';
-        
+                
     case 'gazeCalTest'
         
         % Get all of the gaze target frames from the source. They will be
         % ordered such that the fixation ([0;0]) gaze position is first.
         [frameSet, gazeTargets] = selectFrames.gazeCalTest(videoStemNameOut);
         
-        % Now add another ten frames each across space and time
-        [frameSetA, gazeTargetsA] = ...
-            selectFrames.gridTime(videoStemNameOut,'maxFramesToReturn',10);
-        [frameSetB, gazeTargetsB] = ...
-            selectFrames.gridSpace(videoStemNameOut,'maxFramesToReturn',10);
+        % We need fewer additional frames, as we already have 9
+        nFramesToReturn = 10;
         
         % Set the searchStrategy
         searchStrategy = 'gazeCalTest';
         
     otherwise
         error('This is not a defined align method')
+end
+
+% Add frames that are distributed across time and space. Start with
+% a low distValThresh and increase if needed to reach the desired frames.
+stillSearching = true;
+distValsThreshold = 0.275;
+while stillSearching
+    [frameSetA, gazeTargetsA] = selectFrames.gridTime(videoStemNameOut,'nFramesToReturn',nFramesToReturn,'distValsThreshold',distValsThreshold);
+    [frameSetB, gazeTargetsB] = selectFrames.gridSpace(videoStemNameOut,'nFramesToReturn',nFramesToReturn,'distValsThreshold',distValsThreshold);    
+    if legnth(frameSetA)>=nFramesToReturn && length(frameSetB)>=nFramesToReturn
+        stillSearching = false;
+    else
+        distValsThreshold = distValsThreshold + 0.025;
+    end
 end
 
 % Assemble the frames

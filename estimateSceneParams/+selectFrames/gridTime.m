@@ -30,7 +30,7 @@ function [frameSet, gazeTargets] = gridTime(videoStemName, varargin)
 %  'minFramesPerBin'      - Scalar. A given bin must have at least this
 %                           many good frames for the best frame in the bin
 %                           to be selected.
-%  'maxFramesToReturn'    - Scalar. If set to less than Inf, the routine
+%  'nFramesToReturn'      - Scalar. If set to less than Inf, the routine
 %                           will return the best frames up to this max.
 %
 % Outputs:
@@ -54,7 +54,7 @@ p.addParameter('nBinsOverTime',16,@isnumeric);
 p.addParameter('distValsThreshold',0.275, @isnumeric);
 p.addParameter('rmseThreshold',2, @isnumeric);
 p.addParameter('minFramesPerBin',5, @isnumeric);
-p.addParameter('maxFramesToReturn',Inf, @isnumeric);
+p.addParameter('nFramesToReturn',Inf, @isnumeric);
 
 % parse
 p.parse(videoStemName, varargin{:})
@@ -146,10 +146,10 @@ gazeTargets = nan(2,length(frameSet));
 
 % Keep only the best frames if there is a limit on the number of frames to
 % return
-if p.Results.maxFramesToReturn < length(frameSet)
+if p.Results.nFramesToReturn < length(frameSet)
     [~,idxOrder]=sort(likelihoodPupilRadiusSDVector(frameSet));
-    frameSet = frameSet(idxOrder(1:p.Results.maxFramesToReturn));
-    gazeTargets = gazeTargets(:,idxOrder(1:p.Results.maxFramesToReturn));
+    frameSet = frameSet(idxOrder(1:p.Results.nFramesToReturn));
+    gazeTargets = gazeTargets(:,idxOrder(1:p.Results.nFramesToReturn));
 end
 
 end

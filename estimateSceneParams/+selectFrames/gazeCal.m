@@ -60,7 +60,7 @@ if sum(idx)==1
     gazeTargets = gazeTargets(:,idx);
     
     % Get the modeled eyePose for this frame
-    eyePose = sceneGeometry.meta.estimateSceneParams.obj.modelPupilEllipse(idx,:);
+    eyePose = sceneGeometry.meta.estimateSceneParams.obj.modelEyePose(idx,:);
 
     % Get the pupil ellipse
     pupilEllipseFixationIn = sceneGeometry.meta.estimateSceneParams.obj.modelPupilEllipse(idx,:);
@@ -78,7 +78,7 @@ else
     % the [0;0] screen position.
     R = sceneGeometry.screenPosition.poseRegParams.R;
     t = sceneGeometry.screenPosition.poseRegParams.t;
-    g = inv(R)*(-t);
+    g = R\(-t);
     
     % Obtain the rho and theta values of the pupil ellipse for this gaze
     % position
