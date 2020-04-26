@@ -202,7 +202,7 @@ distValsThreshold = 0.275;
 while stillSearching
     [frameSetA, gazeTargetsA] = selectFrames.gridTime(videoStemNameOut,'nFramesToReturn',nFramesToReturn,'distValsThreshold',distValsThreshold);
     [frameSetB, gazeTargetsB] = selectFrames.gridSpace(videoStemNameOut,'nFramesToReturn',nFramesToReturn,'distValsThreshold',distValsThreshold);    
-    if legnth(frameSetA)>=nFramesToReturn && length(frameSetB)>=nFramesToReturn
+    if length(frameSetA)>=nFramesToReturn && length(frameSetB)>=nFramesToReturn
         stillSearching = false;
     else
         distValsThreshold = distValsThreshold + 0.025;
