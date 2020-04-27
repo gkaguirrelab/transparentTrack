@@ -17,6 +17,8 @@ function updateScene( obj )
 %   sceneGeometryOut     - Structure. See createSceneGeometry.m
 %
 
+% Get the setup args
+setupArgs = obj.setupArgs;
 
 % Retrieve the current sceneGeometry from the object
 sceneGeometryIn = obj.sceneGeometry;
@@ -44,17 +46,13 @@ sceneGeometryOut.eye.rotationCenters = rotationCenters;
 cornea = human.cornea( eye );
 sceneGeometryOut.eye.cornea = cornea;
 
-% Update the glint optical system with the new tearfilm
-tearFilmIdx = strcmp(sceneGeometryIn.refraction.glint.surfaceLabels,'cornea.tearfilm');
-opticalSystemGlint = sceneGeometryIn.refraction.glint.opticalSystem;
-opticalSystemGlint(tearFilmIdx,1:10) = cornea.tears.S;
-sceneGeometryOut.refraction.glint.opticalSystem = opticalSystemGlint;
+% Update the glint optical system with the cornea
+sceneGeometryOut.refraction.glint.opticalSystem = ...
+    assembleOpticalSystem( eye, 'surfaceSetName', 'glint', 'skipMagCalc', true, setupArgs{:});
 
-% Update the stopToMedium optical system with the new cornea
-corneaBackIdx = find(strcmp(sceneGeometryIn.refraction.stopToMedium.surfaceLabels,'cornea.back'));
-opticalSystemStopToMedium = sceneGeometryIn.refraction.stopToMedium.opticalSystem;
-opticalSystemStopToMedium(corneaBackIdx:corneaBackIdx+2,1:10) = cornea.S;
-sceneGeometryOut.refraction.stopToMedium.opticalSystem = opticalSystemStopToMedium;
+% Update the stopToMedium optical system with the cornea
+sceneGeometryOut.refraction.stopToMedium.opticalSystem = ...
+    assembleOpticalSystem( eye, 'surfaceSetName', 'stopToMedium', 'skipMagCalc', true, setupArgs{:});
 
 % Store the camera torsion
 sceneGeometryOut.cameraPosition.torsion = x(model.func.fieldParamIdx('scene','torsion'));
