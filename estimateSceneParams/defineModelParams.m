@@ -132,7 +132,7 @@ model.head.idxMultiScene = @(idx) idx;
 % reflect the range of kvals that were obtained by keratometry in the 50
 % subject TOME data set.
 model.eye.x0 = [44.2410, 45.6302, corneaTorsion, 2.5000, 0, 1, 1];
-model.eye.bounds = [5, 5, 180, 5, 5, 0.25, 0.25];
+model.eye.bounds = [1.5, 1.5, 15, 5, 2.5, 0.25, 0.25];
 model.eye.paramLabels = {'K1','K2','torsion','tilt','tip','joint','diff'};
 model.eye.units = {'diopters','diopters','deg','deg','deg','proportion','proportion'};
 model.eye.nParams = length(model.eye.paramLabels);
@@ -172,10 +172,11 @@ model.scene.idxMultiScene = @(idx) repmat((0:model.scene.nScenes-1)*model.scene.
 % one or more gazeCal acquisitions.
 model.strategy.gazeCal.stages = { ...
     {'eye.rotationCenterScalers','scene.cameraPosition'},...
-    {'eye.rotationCenterScalers','scene.cameraPosition', 'scene.primaryPosition'} };
+    {'eye.rotationCenterScalers','scene.cameraPosition', 'scene.primaryPosition'}, ...
+    {'eye.kvals'} };
 model.strategy.gazeCal.errorReg = [1 2 4 0];
 model.strategy.gazeCal.penaltyWeight = [0.5 0.1];
-model.strategy.gazeCal.useFixForPrimaryPos = true;
+model.strategy.gazeCal.useFixForPrimaryPos = false;
 model.strategy.gazeCal.multiSceneNorm = 1;
 model.strategy.gazeCal.TolMesh = 1e-2;
 
