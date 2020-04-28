@@ -48,11 +48,11 @@ sceneGeometryOut.eye.cornea = cornea;
 
 % Update the glint optical system with the cornea
 sceneGeometryOut.refraction.glint.opticalSystem = ...
-    assembleOpticalSystem( eye, 'surfaceSetName', 'glint', 'skipMagCalc', true, setupArgs{:});
+    assembleOpticalSystem( sceneGeometryOut.eye, 'surfaceSetName', 'glint', 'skipMagCalc', true, setupArgs{:});
 
 % Update the stopToMedium optical system with the cornea
 sceneGeometryOut.refraction.stopToMedium.opticalSystem = ...
-    assembleOpticalSystem( eye, 'surfaceSetName', 'stopToMedium', 'skipMagCalc', true, setupArgs{:});
+    assembleOpticalSystem( sceneGeometryOut.eye, 'surfaceSetName', 'stopToMedium', 'skipMagCalc', true, setupArgs{:});
 
 % Store the camera torsion
 sceneGeometryOut.cameraPosition.torsion = x(model.func.fieldParamIdx('scene','torsion'));
