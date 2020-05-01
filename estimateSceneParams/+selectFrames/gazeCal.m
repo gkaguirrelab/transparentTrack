@@ -93,6 +93,12 @@ else
             % Find the frame with the closest eyePose            
             [~,frameSet] = min(vecnorm(g - pupilData.sceneConstrained.eyePoses.values(:,1:2)'));
             gazeTargets = [0;0];
+
+            % Obtain the rho and theta values of the pupil ellipse for this gaze
+            % position
+            pupilEllipse = projectModelEye(pupilData.sceneConstrained.eyePoses.values(frameSet,:),sceneGeometry);
+            rho = pupilEllipse(4);
+            theta = pupilEllipse(5);
             return
         end
     end
