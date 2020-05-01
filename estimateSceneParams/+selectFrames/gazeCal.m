@@ -86,8 +86,8 @@ else
     if isfile(pupilFileName)
         load(pupilFileName,'pupilData');
         if isfield(pupilData,'sceneConstrained')
-            % Find the frame with the closest eyePose
-            [~,frameSet] = min(norm(g - pupilData.sceneConstrained.eyePoses.values(:,1:2)));
+            % Find the frame with the closest eyePose            
+            [~,frameSet] = min(vecnorm(g - pupilData.sceneConstrained.eyePoses.values(:,1:2)'));
             gazeTargets = [0;0];
             return
         end
