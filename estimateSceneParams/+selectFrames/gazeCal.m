@@ -51,6 +51,10 @@ gazeTargets = sceneGeometry.meta.estimateSceneParams.obj.gazeTargets;
 % Which of the list of frames is the [0;0] fixation frame?
 idx = logical((gazeTargets(1,:)==0).*(gazeTargets(2,:)==0));
 
+% Define these in case we return early
+rho = [];
+theta = [];
+
 % Some gazeCal runs lacked a formal measurement of the [0;0] target. Check
 % if we have one.
 if sum(idx)==1
