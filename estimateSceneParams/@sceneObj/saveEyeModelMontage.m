@@ -75,7 +75,7 @@ glintDataY = glintDataY(sortOrder);
 if ~any(isnan(sum(gazeTargets))) && ~any(isnan(sum(pos)))
     montageOrder = montageOrder(sortOrder);
 else
-    montageOrder = 1:length(nFrames);
+    montageOrder = sortOrder;
 end
 
 
