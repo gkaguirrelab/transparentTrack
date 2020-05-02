@@ -17,7 +17,7 @@ function saveRelCameraPos(obj,fileNameSuffix)
 %
 
 
-% Load or create a new structure
+% Load an existing relative camera position variable or return.
 if exist([obj.videoStemName '_relativeCameraPosition.mat'], 'file') == 2
     load([obj.videoStemName '_relativeCameraPosition.mat'],'relativeCameraPosition');
 else
@@ -25,12 +25,15 @@ else
 end
 
 % Update the values
-relativeCameraPosition.values = obj.relCamPos;
+relativeCameraPosition.estimateSceneParams.values = obj.relCamPos;
 
 % Update the meta data
-relativeCameraPosition.meta.estimateSceneParams.p = obj.meta;
-relativeCameraPosition.meta.estimateSceneParams.xHead = obj.x(obj.model.func.fieldSetIdx('head','all'));
-relativeCameraPosition.meta.estimateSceneParams.model = obj.model;
+relativeCameraPosition.estimateSceneParams.meta.p = obj.meta;
+relativeCameraPosition.estimateSceneParams.meta.xHead = obj.x(obj.model.func.fieldSetIdx('head','all'));
+relativeCameraPosition.estimateSceneParams.meta.model = obj.model;
+
+% Update the currentField field
+relativeCameraPosition.currentField = 'estimateSceneParams';
 
 % Save the  file
 fileName = [obj.videoStemName '_relativeCameraPosition' fileNameSuffix '.mat'];

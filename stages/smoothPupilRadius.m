@@ -410,7 +410,7 @@ parfor (ii = 1:nFrames, nWorkers)
         adjustedSceneGeometry = sceneGeometry;
         if ~isempty(relativeCameraPosition)
             cameraPosition = sceneGeometry.cameraPosition.translation;
-            cameraPosition = cameraPosition + relativeCameraPosition.values(:,ii);
+            cameraPosition = cameraPosition + relativeCameraPosition.(relativeCameraPosition.currentField).values(:,ii);
             adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
         end
 
