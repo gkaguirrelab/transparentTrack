@@ -121,8 +121,8 @@ modelGlintY = nan(nFrames,1);
 perimFitError = nan(nFrames,1);
 pupilCenter = nan(nFrames,2);
 modelPupilEllipse = nan(nFrames,5);
-modelPoseGaze = nan(nFrames,2);
-modelVecGaze = nan(nFrames,2);
+modelPoseGaze = nan(2,nFrames);
+modelVecGaze = nan(2,nFrames);
 poseRegParams = struct();
 vecRegParams = struct();
 
