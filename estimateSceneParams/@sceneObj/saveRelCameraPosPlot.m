@@ -19,6 +19,13 @@ function saveRelCameraPosPlot(obj,fileNameSuffix)
 %   none
 %
 
+
+%% Exit if we do not have a relative camera position
+if ~exist([obj.videoStemName '_relativeCameraPosition.mat'], 'file') == 2
+    return
+end
+
+
 %% Setup variables
 
 % Obtain variables from the object
