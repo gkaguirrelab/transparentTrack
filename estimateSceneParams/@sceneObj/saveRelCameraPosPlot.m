@@ -22,6 +22,8 @@ function saveRelCameraPosPlot(obj,fileNameSuffix)
 %% Setup variables
 
 % Obtain variables from the object
+x = obj.x;
+model = obj.model;
 videoStemName = obj.videoStemName;
 origRelCamPos = obj.origRelCamPos;
 relCamPos = obj.relCamPos;
@@ -46,7 +48,6 @@ set(figHandle, 'Position',[25 5 width height],...
     'PaperPositionMode','auto',...
     'Color','w');
 
-
 subplot(2,1,1)
 plot(origRelCamPos(1,:));
 hold on
@@ -55,8 +56,8 @@ plot(origRelCamPos(3,:));
 ylim([-5 5]);
 xlim([0 ceil(nFrames/1000)*1000]);
 legend({'+right','+up','+further'},'Location','eastoutside')
-tLine1 = ['Relative camera position (initial)' ];
-tLine2 = ['angles [deg] = ' num2str(adjustParams(2)) ', ' num2str(adjustParams(3)) ', ' num2str(adjustParams(4)) '; pixelsPerMm = ' num2str(adjustParams(5)) '; frameShift = ' num2str(adjustParams(1))];
+tLine1 = 'Relative camera position (initial)';
+[~,tLine2] = fileparts(videoStemName);
 tString = {tLine1,tLine2};
 title(tString,'Interpreter','none');
 xlabel('time [frames]');
@@ -65,29 +66,30 @@ box off
 legend boxoff
 
 subplot(2,1,2)
-plot(relCamPos.values(1,:));
+plot(relCamPos(1,:));
 hold on
-plot(relCamPos.values(2,:));
-plot(relCamPos.values(3,:));
+plot(relCamPos(2,:));
+plot(relCamPos(3,:));
 ylim([-5 5]);
 xlim([0 ceil(nFrames/1000)*1000]);
 legend({'+right','+up','+further'},'Location','eastoutside')
-tLine1 = ['Relative camera position (adjusted)'];
-tString = {tLine1};
+tLine1 = 'Relative camera position (adjusted)';
+% Add the parameter values to the title
+tLine2 = '';
+nParams = model.head.nParams;
+for pp = 1:nParams
+    paramLabel = model.head.paramLabels{pp};
+    tLine2 = [tLine2 paramLabel sprintf(': %2.2f',x(model.func.fieldParamIdx('head',paramLabel)))];
+    if pp < nParams
+        tLine2 = [tLine2 ', '];
+    end
+end
+tString = {tLine1,tLine2};
 title(tString,'Interpreter','none');
 xlabel('time [frames]');
 ylabel('translation [mm]');
 box off
 legend boxoff
-
-% Annotate with the videoStemName
-gcf;
-axes('Position',[0 0 1 1],'Visible','off','Tag','subtitle');
-dropboxBaseDir = getpref('eyeTrackTOMEAnalysis','dropboxBaseDir');
-str = strrep(videoStemName,dropboxBaseDir,'');
-ht = text(0.5,0.4,str,'Interpreter', 'none');
-set(ht,'horizontalalignment','center','fontsize',10);
-
 drawnow
 
 % Save and close the figure
