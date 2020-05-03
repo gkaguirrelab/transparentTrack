@@ -489,6 +489,9 @@ pupilData.radiusSmoothed.eyePoses.meta.fixedPriorPupilRadiusSD = fixedPriorPupil
 % add a meta field with analysis details
 pupilData.radiusSmoothed.meta = p.Results;
 
+% Store the identity of the most recently produced field of data
+pupilData.currentField = 'radiusSmoothed';
+
 % save the pupilData
 save(p.Results.pupilFileName,'pupilData')
 

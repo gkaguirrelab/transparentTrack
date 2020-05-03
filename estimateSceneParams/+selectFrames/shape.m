@@ -26,8 +26,9 @@ function [frameSet, gazeTargets] = shape(videoStemName, rhoTarget, thetaTarget)
 %   frameSet              - Scalar that specifies a frame index
 %                           (indexed from 1).
 %   gazeTargets           - A 2x1 matrix that provides the positions, in
-%                           degrees of visual angle, of the likely fixation
-%                           position [0;0] of the eye for this frame.
+%                           degrees of visual angle of fixation positions
+%                           for the frames. The "shape" selection process
+%                           returns "nan" values for this variable.
 %
 
 

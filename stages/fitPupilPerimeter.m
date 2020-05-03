@@ -363,6 +363,9 @@ if ~p.Results.displayMode
     % Clear out any old results in this fit label field
     pupilData.(fitLabel) = [];
     
+    % Store the identity of the most recently produced field of data
+    pupilData.currentField = fitLabel;
+    
     % Store the ellipse fit data in informative fields
     pupilData.(fitLabel).ellipses.values = loopVar_ellipseParamsTransparent;
     pupilData.(fitLabel).ellipses.RMSE = loopVar_objectiveError';

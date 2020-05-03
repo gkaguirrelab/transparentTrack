@@ -100,7 +100,7 @@ p.addParameter('modelEyeRMSERangeAlphaScaler',[1,4],@isnumeric);
 p.addParameter('modelEyeSymbolSizeScaler',1,@isnumeric);
 p.addParameter('suppressBlinks',true,@islogical);
 p.addParameter('uniformityThreshold',0.33,@isscalar);
-p.addParameter('fitLabel', 'radiusSmoothed', @(x)(isempty(x) | ischar(x)));
+p.addParameter('fitLabel', '', @(x)(isempty(x) | ischar(x)));
 
 % parse
 p.parse(videoInFileName, videoOutFileName, varargin{:})
@@ -135,23 +135,35 @@ if ~isempty(p.Results.pupilFileName)
     dataLoad = load(p.Results.pupilFileName);
     pupilData = dataLoad.pupilData;
     clear dataLoad
-    ellipseFitParams = pupilData.(p.Results.fitLabel).ellipses.values;
-    ellipseFitRMSE = pupilData.(p.Results.fitLabel).ellipses.RMSE;
-    if isfield(pupilData.(p.Results.fitLabel),'eyePoses')
-        eyePoses = pupilData.(p.Results.fitLabel).eyePoses.values;
+    
+    % Identify the current result field, either from the data structure
+    % itself or as passed in a key-value
+    if isempty(p.Results.fitLabel)
+        fitLabel = pupilData.currentField;
+    else
+        fitLabel = p.Results.fitLabel;
     end
+    
+    % Pull out the ellipse and eyePose data
+    ellipseFitParams = pupilData.(fitLabel).ellipses.values;
+    ellipseFitRMSE = pupilData.(fitLabel).ellipses.RMSE;
+    if isfield(pupilData.(fitLabel),'eyePoses')
+        eyePoses = pupilData.(fitLabel).eyePoses.values;
+    end
+    
     % Get the uniformity field if is available
-    if isfield(pupilData.(p.Results.fitLabel).ellipses,'uniformity')
-        linearUniformity = pupilData.(p.Results.fitLabel).ellipses.uniformity;
+    if isfield(pupilData.(fitLabel).ellipses,'uniformity')
+        linearUniformity = pupilData.(fitLabel).ellipses.uniformity;
     end
+    
     % Get the fitAtBound field. Use the eyePose vector if available
     fitAtBound = [];
-    if isfield(pupilData.(p.Results.fitLabel).ellipses,'fitAtBound')
-        fitAtBound = pupilData.(p.Results.fitLabel).ellipses.fitAtBound;
+    if isfield(pupilData.(fitLabel).ellipses,'fitAtBound')
+        fitAtBound = pupilData.(fitLabel).ellipses.fitAtBound;
     end
-    if isfield(pupilData.(p.Results.fitLabel),'eyePoses')
-        if isfield(pupilData.(p.Results.fitLabel).eyePoses,'fitAtBound')
-            fitAtBound = pupilData.(p.Results.fitLabel).eyePoses.fitAtBound;
+    if isfield(pupilData.(fitLabel),'eyePoses')
+        if isfield(pupilData.(fitLabel).eyePoses,'fitAtBound')
+            fitAtBound = pupilData.(fitLabel).eyePoses.fitAtBound;
         end
     end
 end
