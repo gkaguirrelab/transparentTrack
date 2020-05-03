@@ -25,17 +25,6 @@ function makeFitVideo(videoInFileName, videoOutFileName, varargin)
 % Optional key/value pairs (video items):
 %  'glint/perimeter/pupil/sceneGeometry/controlFileName' - Full path to a 
 %                           file to be included in the video. 
-%  'adjustedCameraPositionTranslation' - 3x1 vector that provides position
-%                           of the camera relative to the origin of the
-%                           world coordinate system (which is the anterior
-%                           surface of the cornea in primary gaze). This
-%                           value is used to update the sceneGeometry file
-%                           to account for head movement that has taken
-%                           place between the sceneGeometry acquisition and
-%                           the acquisition undergoing analysis. This
-%                           updated camera position should reflect the
-%                           camera position at the start of the current
-%                           acquisition.
 %  'relativeCameraPositionFileName' - Char. This is the full path to a
 %                           relativeCameraPosition.mat file that provides
 %                           the relative position of the camera at each
@@ -99,7 +88,6 @@ p.addParameter('perimeterFileName', [], @(x)(isempty(x) | ischar(x)));
 p.addParameter('pupilFileName', [], @(x)(isempty(x) | ischar(x)));
 p.addParameter('sceneGeometryFileName', [], @(x)(isempty(x) | ischar(x)));
 p.addParameter('controlFileName', [], @(x)(isempty(x) | ischar(x)));
-p.addParameter('adjustedCameraPositionTranslation',[],@isnumeric);
 p.addParameter('relativeCameraPositionFileName',[],@ischar);
 p.addParameter('glintColor', [0.9100    0.4100    0.1700], @(x)(isvector(x) | ischar(x)));
 p.addParameter('perimeterColor', 'w', @ischar);
@@ -112,7 +100,7 @@ p.addParameter('modelEyeRMSERangeAlphaScaler',[1,4],@isnumeric);
 p.addParameter('modelEyeSymbolSizeScaler',1,@isnumeric);
 p.addParameter('suppressBlinks',true,@islogical);
 p.addParameter('uniformityThreshold',0.33,@isscalar);
-p.addParameter('fitLabel', 'radiusSmoothed', @(x)(isempty(x) | ischar(x)));
+p.addParameter('fitLabel', '', @(x)(isempty(x) | ischar(x)));
 
 % parse
 p.parse(videoInFileName, videoOutFileName, varargin{:})
@@ -147,23 +135,35 @@ if ~isempty(p.Results.pupilFileName)
     dataLoad = load(p.Results.pupilFileName);
     pupilData = dataLoad.pupilData;
     clear dataLoad
-    ellipseFitParams = pupilData.(p.Results.fitLabel).ellipses.values;
-    ellipseFitRMSE = pupilData.(p.Results.fitLabel).ellipses.RMSE;
-    if isfield(pupilData.(p.Results.fitLabel),'eyePoses')
-        eyePoses = pupilData.(p.Results.fitLabel).eyePoses.values;
+    
+    % Identify the current result field, either from the data structure
+    % itself or as passed in a key-value
+    if isempty(p.Results.fitLabel)
+        fitLabel = pupilData.currentField;
+    else
+        fitLabel = p.Results.fitLabel;
     end
+    
+    % Pull out the ellipse and eyePose data
+    ellipseFitParams = pupilData.(fitLabel).ellipses.values;
+    ellipseFitRMSE = pupilData.(fitLabel).ellipses.RMSE;
+    if isfield(pupilData.(fitLabel),'eyePoses')
+        eyePoses = pupilData.(fitLabel).eyePoses.values;
+    end
+    
     % Get the uniformity field if is available
-    if isfield(pupilData.(p.Results.fitLabel).ellipses,'uniformity')
-        linearUniformity = pupilData.(p.Results.fitLabel).ellipses.uniformity;
+    if isfield(pupilData.(fitLabel).ellipses,'uniformity')
+        linearUniformity = pupilData.(fitLabel).ellipses.uniformity;
     end
+    
     % Get the fitAtBound field. Use the eyePose vector if available
     fitAtBound = [];
-    if isfield(pupilData.(p.Results.fitLabel).ellipses,'fitAtBound')
-        fitAtBound = pupilData.(p.Results.fitLabel).ellipses.fitAtBound;
+    if isfield(pupilData.(fitLabel).ellipses,'fitAtBound')
+        fitAtBound = pupilData.(fitLabel).ellipses.fitAtBound;
     end
-    if isfield(pupilData.(p.Results.fitLabel),'eyePoses')
-        if isfield(pupilData.(p.Results.fitLabel).eyePoses,'fitAtBound')
-            fitAtBound = pupilData.(p.Results.fitLabel).eyePoses.fitAtBound;
+    if isfield(pupilData.(fitLabel),'eyePoses')
+        if isfield(pupilData.(fitLabel).eyePoses,'fitAtBound')
+            fitAtBound = pupilData.(fitLabel).eyePoses.fitAtBound;
         end
     end
 end
@@ -183,14 +183,6 @@ if ~isempty(p.Results.sceneGeometryFileName)
     dataLoad=load(p.Results.sceneGeometryFileName);
     sceneGeometry=dataLoad.sceneGeometry;
     clear dataLoad
-    % An earlier version of the code defined a non-zero iris thickness. We
-    % force this to zero here to speed computation
-    sceneGeometry.eye.iris.thickness=0;
-    % If an adjustedCameraPositionTranslation value has been passed, update this field
-    % of the sceneGeometry
-    if ~isempty(p.Results.adjustedCameraPositionTranslation)
-        sceneGeometry.cameraPosition.translation = p.Results.adjustedCameraPositionTranslation;
-    end
 else
     sceneGeometry = [];
 end
@@ -366,7 +358,7 @@ for ii = 1:nFrames
         adjustedSceneGeometry = sceneGeometry;
         if ~isempty(relativeCameraPosition)
             cameraPosition = sceneGeometry.cameraPosition.translation;
-            cameraPosition = cameraPosition + relativeCameraPosition.values(:,ii);
+            cameraPosition = cameraPosition + relativeCameraPosition.(relativeCameraPosition.currentField).values(:,ii);
             adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
         end
         % Scale the model eye alpha by the RMSE ellipse fit value for this

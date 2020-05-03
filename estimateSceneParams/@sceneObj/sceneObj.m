@@ -186,7 +186,7 @@ classdef sceneObj < handle
             
             % We store the entire relative camera position vector, as we
             % will be shifting and interpolating this.
-            obj.origRelCamPos = relativeCameraPosition.values;
+            obj.origRelCamPos = relativeCameraPosition.initial.values;
             obj.relCamPos = obj.origRelCamPos;
             
             % Done with these big variables
@@ -203,6 +203,7 @@ classdef sceneObj < handle
         saveModelFitPlot(obj,fileNameSuffix)
         saveSceneGeometry(obj,fileNameSuffix)
         saveRelCameraPos(obj,fileNameSuffix)
+        saveRelCameraPosPlot(obj,fileNameSuffix)
         
         % Private methods
         

@@ -386,6 +386,7 @@ for ii = 1:nStages
     for ss = 1:nScenes
         sceneObjects{ss}.saveEyeModelMontage(fileNameSuffix);
         sceneObjects{ss}.saveModelFitPlot(fileNameSuffix);
+        sceneObjects{ss}.saveRelCameraPosPlot(fileNameSuffix);        
     end        
     
     % If instructed, use the fixation results to update the primary

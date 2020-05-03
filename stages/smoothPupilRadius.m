@@ -410,7 +410,7 @@ parfor (ii = 1:nFrames, nWorkers)
         adjustedSceneGeometry = sceneGeometry;
         if ~isempty(relativeCameraPosition)
             cameraPosition = sceneGeometry.cameraPosition.translation;
-            cameraPosition = cameraPosition + relativeCameraPosition.values(:,ii);
+            cameraPosition = cameraPosition + relativeCameraPosition.(relativeCameraPosition.currentField).values(:,ii);
             adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
         end
 
@@ -488,6 +488,9 @@ pupilData.radiusSmoothed.eyePoses.meta.fixedPriorPupilRadiusSD = fixedPriorPupil
 
 % add a meta field with analysis details
 pupilData.radiusSmoothed.meta = p.Results;
+
+% Store the identity of the most recently produced field of data
+pupilData.currentField = 'radiusSmoothed';
 
 % save the pupilData
 save(p.Results.pupilFileName,'pupilData')

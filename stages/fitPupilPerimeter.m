@@ -273,7 +273,7 @@ parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
             if ~isempty(relativeCameraPosition)
                 % Update the cameraPosition
                 cameraPosition = sceneGeometry.cameraPosition.translation;
-                cameraPosition = cameraPosition + relativeCameraPosition.values(:,ii);
+                cameraPosition = cameraPosition + relativeCameraPosition.(relativeCameraPosition.currentField).values(:,ii);
                 adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
             end
             % If we have glintData, extract the glintCoord
@@ -362,6 +362,9 @@ if ~p.Results.displayMode
     
     % Clear out any old results in this fit label field
     pupilData.(fitLabel) = [];
+    
+    % Store the identity of the most recently produced field of data
+    pupilData.currentField = fitLabel;
     
     % Store the ellipse fit data in informative fields
     pupilData.(fitLabel).ellipses.values = loopVar_ellipseParamsTransparent;
