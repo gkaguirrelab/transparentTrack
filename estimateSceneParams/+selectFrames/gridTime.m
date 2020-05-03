@@ -62,8 +62,8 @@ p.parse(videoStemName, varargin{:})
 
 %% Load associated acquisition files
 load([videoStemName '_pupil.mat'],'pupilData');
-load([videoStemName '_timebase.mat'],'timebase');
 load([videoStemName '_correctedPerimeter.mat'],'perimeter');
+load([videoStemName '_relativeCameraPosition.mat'],'relativeCameraPosition');
 
 
 %% Calculate likelhood SD across frames
@@ -122,8 +122,8 @@ likelihoodPupilRadiusSDVector = distVals.*RMSE;
 
 %% Find the best frame in each temporal bin
 
-[~,startIdx] = min(abs(timebase.values));
-endIdx = length(timebase.values);
+startIdx = relativeCameraPosition.initial.meta.nElementsPre+1;
+endIdx = length(linearNonUniformity) - relativeCameraPosition.initial.meta.nElementsPost;
 binSize = floor( (endIdx - startIdx)/p.Results.nBinsOverTime);
 
 frameSet = [];
