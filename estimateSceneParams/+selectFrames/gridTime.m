@@ -63,7 +63,7 @@ p.parse(videoStemName, varargin{:})
 %% Load associated acquisition files
 load([videoStemName '_pupil.mat'],'pupilData');
 load([videoStemName '_correctedPerimeter.mat'],'perimeter');
-load([videoStemName 'glint.mat'],'glintData');
+load([videoStemName '_glint.mat'],'glintData');
 load([videoStemName '_relativeCameraPosition.mat'],'relativeCameraPosition');
 
 
@@ -118,7 +118,7 @@ distVals(isnan(distVals)) = 1e20;
 distVals(distVals>p.Results.distValsThreshold) = 1e20;
 
 % Set values with no glint to an arbitrarily large number
-distVals(isnan(glintData.X)) = 1e20;
+%distVals(isnan(glintData.X)) = 1e20;
 
 % The likelihood SD for each frame is the RMSE multiplied by the distVal
 likelihoodPupilRadiusSDVector = distVals.*RMSE;
