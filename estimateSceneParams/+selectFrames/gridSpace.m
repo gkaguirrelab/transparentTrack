@@ -64,6 +64,7 @@ p.parse(videoStemName, varargin{:})
 
 load([videoStemName '_pupil.mat'],'pupilData');
 load([videoStemName '_correctedPerimeter.mat'],'perimeter');
+load([videoStemName 'glint.mat'],'glintData');
 load([videoStemName '_relativeCameraPosition.mat'],'relativeCameraPosition');
 
 
@@ -122,6 +123,9 @@ nElementsPre = relativeCameraPosition.initial.meta.nElementsPre;
 nElementsPost = relativeCameraPosition.initial.meta.nElementsPost;
 distVals(1:nElementsPre) = 1e20;
 distVals(end-nElementsPost:end) = 1e20;
+
+% Set values with no glint to an arbitrarily large number
+distVals(isnan(glintData.X)) = 1e20;
 
 % The likelihood SD for each frame is the RMSE multiplied by the distVal
 likelihoodPupilRadiusSDVector = distVals.*RMSE;
