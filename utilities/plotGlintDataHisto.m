@@ -30,10 +30,10 @@ function plotGlintDataHisto( dataRootDir, plotSaveDir, varargin )
 % Optional key/value pairs:
 %  'histMax'              - The upper bound on the last bin that is used to
 %                           construct the histogram of RMSE values.
-%  'numPlotRows'          - The number of acquisition rows that are
-%                           displayed on a plot. This should be set equal
-%                           to the maximum number of acquisitions that are
-%                           expected across all sessions.
+%  'numMaxAcqs'           - The number of acquisitions displayed on a plot.
+%                           This should be set equal to the maximum number
+%                           of acquisitions that are expected across all
+%                           sessions.
 %  'fitLabel'             - The field of glintData for which the RMSE
 %                           ellipse fit values are to be analyzed. The
 %                           default value is for the initial ellipse fit.
@@ -44,7 +44,7 @@ function plotGlintDataHisto( dataRootDir, plotSaveDir, varargin )
 % Examples:
 %{
     % ETTBSkip -- This is an interactive example.
-    plotGlintDataHisto('','glintDataQAPlots_initial')
+    plotGlintDataHisto('','glintDataQAPlots')
 %}
 
 %% input parser
@@ -54,21 +54,13 @@ p = inputParser;
 p.addRequired('dataRootDir',@ischar);
 p.addOptional('plotSaveDir',[],@(x)(isempty(x) || ischar(x)));
 
-% Optional
-p.addParameter('histMax',25,@isnumeric);
-p.addParameter('numPlotRows',20,@isnumeric);
-
 % parse
 p.parse(dataRootDir,plotSaveDir,varargin{:})
 
 
-% Define the edges of the bins to be used for the histogram. The histogram
-% is generated for X and Y values between 0 and histMax, with 50 bins.
-histEdges = 0:p.Results.histMax/50:p.Results.histMax;
-
 % Obtain the paths to all of the glint data files within the specified
 % directory, including within sub-drectories.
-fileListStruct=subdir(fullfile(dataRootDir,'*_glint.mat'));
+fileListStruct=dir(fullfile(dataRootDir,'**','*fMRI*_glint.mat'));
 
 % If we found at least one glint data file, then proceed.
 if ~isempty(fileListStruct)
@@ -76,8 +68,8 @@ if ~isempty(fileListStruct)
     % Get a list of the directories that contain a glint data file. We will
     % treat each of these as a session, and the glint data files within as
     % different acquisitions from that session.
-    fileListCell=struct2cell(fileListStruct);
-    uniqueDirNames=unique(fileListCell(2,:));
+    dirListCell=extractfield(fileListStruct,'folder');
+    uniqueDirNames=unique(dirListCell);
     
     % Create a list of name tags that are the unique character components
     % of the uniqueDirNames. We trim off all characters that are shared
@@ -110,11 +102,72 @@ if ~isempty(fileListStruct)
     % sub-plots across all plots.
     plotPos = [];
     
+    % Make a temp figure
+    tmpFig = figure('Position', [10 10 640 480],'visible','off');
+    set(gcf,'Color',[1 1 1]);
+        
     % Loop through the set of sessions
     for ii = 1:length(uniqueDirNames)
         
         % Get the list of acqusition file names
-        acqList = find(strcmp(fileListCell(2,:),uniqueDirNames{ii}));
+        acqList = find(strcmp(dirListCell,uniqueDirNames{ii}));
+        
+        % Clear the montage variable
+        clear framesToMontage
+        
+        % Loop through the acquisitions
+        for jj = 1: length(acqList)
+            
+            % Obtain the path to this glint data file and load it
+            glintFullFileName = fullfile(fileListStruct(acqList(jj)).folder,fileListStruct(acqList(jj)).name);
+            dataLoad=load(glintFullFileName);
+            glintData=dataLoad.glintData;
+            clear dataLoad
+            
+            % Obtain the modification date for this glint file
+            modificationDate = glintData.meta.timestamp;
+            
+            % Activate the temp figure
+            set(0, 'CurrentFigure', tmpFig)
+            
+            hold off
+            scatter(glintData.X,glintData.Y,0.5,'r',...
+                'filled',...
+                'MarkerEdgeColor','none',...
+                'MarkerFaceAlpha',0.1);
+            
+            set(gca,'Ydir','reverse')
+            
+            xlim([1 640]);
+            ylim([1 480]);
+            axis off
+            box off
+            set(gca,'LooseInset',get(gca,'TightInset'));
+            gFM = glintData.meta.glintFrameMask;
+            
+            % Add the glint frame mask
+            if ~isempty(gFM)
+                recDims = [gFM(4) gFM(1) 640-gFM(2)-gFM(4) 480-gFM(3)-gFM(1)];
+                hold on
+                rectangle('Position',recDims)
+            end
+            
+            % Add a blue rectangle around the entire frame
+            rectangle('Position',[2 2  639 479],'EdgeColor','b','LineWidth',2);
+            
+            % Get the frame
+            thisFrame=getframe(tmpFig);
+            
+            % Add a text label for the acquisition
+            thisFrame.cdata = insertText(thisFrame.cdata,[20 20],fileListStruct(acqList(jj)).name,'FontSize',50);
+
+            % Add a text label for the modification date
+            thisFrame.cdata = insertText(thisFrame.cdata,[20 100],modificationDate,'FontSize',40);
+            
+            framesToMontage(:,:,:,jj) = imresize(thisFrame.cdata,[480 640]);
+            
+        end % loop over acqusitiions
+        
         
         % Prepare a figure. If a plotSaveDir was not specified, then
         % display the figures. Otherwise, hide them.
@@ -125,111 +178,26 @@ if ~isempty(fileListStruct)
         end
         
         % Format the figure
-        set(gcf,'PaperOrientation','landscape');
-        set(figHandle, 'Units','inches')
-        height = 6;
-        width = 11;
+        set(gcf,'Color',[1 1 1]);
+        set(figHandle, 'Units','inches')        
+        height = 11;
+        width = 6;
         set(figHandle, 'Position',[25 5 width height],...
             'PaperSize',[width height],...
             'PaperPositionMode','auto',...
             'Color','w',...
             'Renderer','painters'...
             );
-        
-        % Loop through the acquisitions
-        for jj = 1: length(acqList)
-            
-            % Obtain the path to this glint data file and load it
-            glintFullFileName = fullfile(dataRootDir,fileListCell{1,acqList(jj)});
-            dataLoad=load(glintFullFileName);
-            glintData=dataLoad.glintData;
-            clear dataLoad
-            
-            % Grab just the filename for this glint data, omitting the
-            % path. We will use this to label the plot
-            [~, glintFileName] = fileparts(glintFullFileName);
-            
-            % Obtain the modification date for this glint file
-            modificationDate = glintData.meta.timestamp;
-            
-            % Define the subplot for this acqusition
-            sp=subplot(p.Results.numPlotRows+1,1,jj,'align');
-            
-            % Calculate the position histogram
-            posVector = [glintData.X-nanmean(glintData.X);glintData.Y-nanmean(glintData.Y)];
-            binCounts = histcounts(posVector,histEdges);
-            
-            % Plot the RMSE histogram as a filled area plot
-            h=area(histEdges(1:end-1),binCounts);
-            h.FaceColor = [0.5 0 0];
-            hold on
-            
-            % Add a line and marker to indicate the number of nans
-            h=plot([histEdges(end) histEdges(end)],[0 sum(isnan(posVector))],'LineWidth',2);
-            set(h,'Color',[0.5 0 0]);
-            plot(histEdges(end), sum(isnan(posVector)),'*',...
-                'MarkerEdgeColor',[0.5 0 0],...
-                'MarkerFaceColor',[0.5 0 0]);
-            
-            % Remove the chart junk
-            ax = gca;
-            ax.Visible = 'off';
-            
-            % Force the plots to have the same dimensions
-            outerpos = ax.OuterPosition;
-            ti = ax.TightInset;
-            left = outerpos(1) + ti(1);
-            bottom = outerpos(2) + ti(2);
-            ax_width = outerpos(3) - ti(1) - ti(3);
-            ax_height = outerpos(4) - ti(2) - ti(4);
-            ax.Position = [left bottom ax_width ax_height];
-            
-            % Add text to label the
-            text(0,0.8,[glintFileName ' (' modificationDate ')'],'Interpreter', 'none','HorizontalAlignment','left','VerticalAlignment','middle','Units','normalized');
-            acqStats=sprintf('%d frames, %.1f%% nans, %.1f%% > %.1f%,',length(posVector),100*sum(isnan(posVector))/length(posVector),100*sum(posVector>p.Results.histMax)/length(posVector),p.Results.histMax);
-            text(0.95,0.8,acqStats,'Interpreter', 'none','HorizontalAlignment','right','VerticalAlignment','middle','Units','normalized');
-            
-            % If this is our very first sub-plot on the very first
-            % plot, then plotPos will be empty and we therefore define
-            % it. Otherwise, adjust the right-hand edge of the sub-plot
-            % so that this matches across all plots.
-            if isempty(plotPos)
-                plotPos = get(sp, 'Position');
-            else
-                tmpPos = get(sp, 'Position');
-                tmpPos([1 3 4])=plotPos([1 3 4]);
-                set(sp, 'Position',tmpPos);
-            end
-            
-        end % loop over acqusitiions
-        
-        % Add a final sub-plot row that gives the x-axis for all plots
-        sp = subplot(p.Results.numPlotRows+1,1,p.Results.numPlotRows+1,'align');
-        plot([histEdges(1) histEdges(end-1)],[0 0],'.w')
-        hold on
-        plot(histEdges(end),0,'*k')
-        xlabel(['position']);
-        ax = gca;
-        outerpos = ax.OuterPosition;
-        ti = ax.TightInset;
-        left = outerpos(1) + ti(1);
-        bottom = outerpos(2) + ti(2);
-        ax_width = outerpos(3) - ti(1) - ti(3);
-        ax_height = outerpos(4) - ti(2) - ti(4);
-        ax.Position = [left bottom ax_width ax_height];
-        box off
-        set(gca,'YTickLabel',[],'ytick',[],'color','none');
-        tmpPos = get(sp, 'Position');
-        tmpPos([1 3 4])=plotPos([1 3 4]);
-        set(sp, 'Position',tmpPos);
+        figure(figHandle)
+        montage(framesToMontage);
         
         % Add a super-title to the entire plot
         suptitleTT(uniqueDirNames{ii})
         
         % Save the plot if a plotSaveDir has been defined
         if ~isempty(plotSaveDir)
-            plotFileName =fullfile(plotSaveDir,[nameTags{ii}  '.pdf']);
-            saveas(figHandle,plotFileName)
+            plotFileName =fullfile(plotSaveDir,[nameTags{ii}  '.png']);
+            print(figHandle,plotFileName,'-dpng','-r600')
             close(figHandle)
         end
         
@@ -352,158 +320,3 @@ valid = isgraphics(h);
 set(h(valid), {'Units'}, oldUnits(valid));
 end
 
-
-function varargout = subdir(varargin)
-%SUBDIR Performs a recursive file search
-%
-% subdir
-% subdir(name)
-% files = subdir(...)
-%
-% This function performs a recursive file search.  The input and output
-% format is identical to the dir function.
-%
-% Input variables:
-%
-%   name:   pathname or filename for search, can be absolute or relative
-%           and wildcards (*) are allowed.  If ommitted, the files in the
-%           current working directory and its child folders are returned
-%
-% Output variables:
-%
-%   files:  m x 1 structure with the following fields:
-%           name:   full filename
-%           date:   modification date timestamp
-%           bytes:  number of bytes allocated to the file
-%           isdir:  1 if name is a directory; 0 if no
-%
-% Example:
-%
-%   >> a = subdir(fullfile(matlabroot, 'toolbox', 'matlab', '*.mat'))
-%
-%   a =
-%
-%   67x1 struct array with fields:
-%       name
-%       date
-%       bytes
-%       isdir
-%
-%   >> a(2)
-%
-%   ans =
-%
-%        name: '/Applications/MATLAB73/toolbox/matlab/audiovideo/chirp.mat'
-%        date: '14-Mar-2004 07:31:48'
-%       bytes: 25276
-%       isdir: 0
-%
-% See also:
-%
-%   dir
-
-% Copyright 2006 Kelly Kearney
-
-
-%---------------------------
-% Get folder and filter
-%---------------------------
-
-narginchk(0,1);
-nargoutchk(0,1);
-
-if nargin == 0
-    folder = pwd;
-    filter = '*';
-else
-    [folder, name, ext] = fileparts(varargin{1});
-    if isempty(folder)
-        folder = pwd;
-    end
-    if isempty(ext)
-        if isdir(fullfile(folder, name))
-            folder = fullfile(folder, name);
-            filter = '*';
-        else
-            filter = [name ext];
-        end
-    else
-        filter = [name ext];
-    end
-    if ~isdir(folder)
-        error('Folder (%s) not found', folder);
-    end
-end
-
-%---------------------------
-% Search all folders
-%---------------------------
-
-pathstr = genpath_local(folder);
-pathfolders = regexp(pathstr, pathsep, 'split');  % Same as strsplit without the error checking
-pathfolders = pathfolders(~cellfun('isempty', pathfolders));  % Remove any empty cells
-
-Files = [];
-pathandfilt = fullfile(pathfolders, filter);
-for ifolder = 1:length(pathandfilt)
-    NewFiles = dir(pathandfilt{ifolder});
-    if ~isempty(NewFiles)
-        fullnames = cellfun(@(a) fullfile(pathfolders{ifolder}, a), {NewFiles.name}, 'UniformOutput', false);
-        [NewFiles.name] = deal(fullnames{:});
-        Files = [Files; NewFiles];
-    end
-end
-
-%---------------------------
-% Prune . and ..
-%---------------------------
-
-if ~isempty(Files)
-    [~, ~, tail] = cellfun(@fileparts, {Files(:).name}, 'UniformOutput', false);
-    dottest = cellfun(@(x) isempty(regexp(x, '\.+(\w+$)', 'once')), tail);
-    Files(dottest & [Files(:).isdir]) = [];
-end
-
-%---------------------------
-% Output
-%---------------------------
-
-if nargout == 0
-    if ~isempty(Files)
-        fprintf('\n');
-        fprintf('%s\n', Files.name);
-        fprintf('\n');
-    end
-elseif nargout == 1
-    varargout{1} = Files;
-end
-
-end % subdir
-
-function [p] = genpath_local(d)
-% Modified genpath that doesn't ignore:
-%     - Folders named 'private'
-%     - MATLAB class folders (folder name starts with '@')
-%     - MATLAB package folders (folder name starts with '+')
-
-files = dir(d);
-if isempty(files)
-    return
-end
-p = '';  % Initialize output
-
-% Add d to the path even if it is empty.
-p = [p d pathsep];
-
-% Set logical vector for subdirectory entries in d
-isdir = logical(cat(1,files.isdir));
-dirs = files(isdir);  % Select only directory entries from the current listing
-
-for i=1:length(dirs)
-    dirname = dirs(i).name;
-    if    ~strcmp( dirname,'.') && ~strcmp( dirname,'..')
-        p = [p genpath(fullfile(d,dirname))];  % Recursive calling of this function.
-    end
-end
-
-end % genpath_local
