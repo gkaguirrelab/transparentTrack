@@ -52,7 +52,7 @@ p.addRequired('videoStemName',@ischar);
 
 p.addParameter('nBinsPerDimension',8,@isnumeric);
 p.addParameter('distValsThreshold',0.275, @isnumeric);
-p.addParameter('rmseThreshold',2, @isnumeric);
+p.addParameter('rmseThreshold',1, @isnumeric);
 p.addParameter('minFramesPerBin',10, @isnumeric);
 p.addParameter('nFramesToReturn',Inf, @isnumeric);
 
@@ -79,6 +79,9 @@ load([videoStemName '_relativeCameraPosition.mat'],'relativeCameraPosition');
 % The likelihood SD is based upon the RMSE of the fit of the elipse to the
 % perimeter points for each frame
 RMSE = pupilData.initial.ellipses.RMSE';
+
+% Adopt a threshold above which lousy ellipse fits will not be used
+RMSE(RMSE>p.Results.rmseThreshold) = 1e20;
 
 % Define the bins over which the distribution of perimeter angles will be
 % evaluated. 20 bins works pretty well.
