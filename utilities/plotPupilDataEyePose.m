@@ -65,13 +65,13 @@ function plotPupilDataEyePose( dataRootDir, plotSaveDir, varargin )
     plotPupilDataEyePose(dataRootDir,plotSaveDir);
 %}
 %{
-    plotPupilDataEyePose( '', 'pupilDataQAPlots_eyePose_sceneConstrained_FLASH_Dec2019','fieldToPlot','sceneConstrained','acquisitionStem','tfMRI_FLASH','nColumns',2)
+    plotPupilDataEyePose( '', 'pupilDataQAPlots_eyePose_FLASH_May2020','acquisitionStem','tfMRI_FLASH','nColumns',2)
 %}
 %{
-    plotPupilDataEyePose( '', 'pupilDataQAPlots_eyePose_sceneConstrained_MOVIE_Dec2019','fieldToPlot','sceneConstrained','acquisitionStem','tfMRI_MOVIE','nColumns',4)
+    plotPupilDataEyePose( '', 'pupilDataQAPlots_eyePose_MOVIE_May2020','acquisitionStem','tfMRI_MOVIE','nColumns',4)
 %}
 %{
-    plotPupilDataEyePose( '', 'pupilDataQAPlots_eyePose_sceneConstrained_RETINO_Dec2019','fieldToPlot','sceneConstrained','acquisitionStem','tfMRI_RETINO','nColumns',4)
+    plotPupilDataEyePose( '', 'pupilDataQAPlots_eyePose_RETINO_May2020','acquisitionStem','tfMRI_RETINO','nColumns',4)
 %}
 
 %% input parser
@@ -82,7 +82,7 @@ p.addRequired('dataRootDir',@ischar);
 p.addOptional('plotSaveDir',[],@(x)(isempty(x) || ischar(x)));
 
 % Optional
-p.addParameter('rmseThreshold',3,@isscalar);
+p.addParameter('rmseThreshold',4,@isscalar);
 p.addParameter('eyePoseParamsToPlot',[1 2 4],@isnumeric);
 p.addParameter('yRangeIncrement',[5 5 0.25],@isnumeric);
 p.addParameter('xLim',[-0.5 5.6],@isnumeric);
@@ -113,23 +113,25 @@ if ~isempty(fileListStruct)
     % Create a list of name tags that are the unique character components
     % of the uniqueDirNames. We trim off all characters that are shared
     % across the full path of the dir names.
-    nameTags = uniqueDirNames;
-    stillTrimming = true;
-    while stillTrimming
-        thisChar=cell2mat(cellfun(@(x) double(x(1)),nameTags,'UniformOutput',false));
-        if range(thisChar)==0
-            nameTags=cellfun(@(x) x(2:end),nameTags,'UniformOutput',false);
-        else
-            stillTrimming=false;
+    if length(uniqueDirNames) > 1
+        nameTags = uniqueDirNames;
+        stillTrimming = true;
+        while stillTrimming
+            thisChar=cell2mat(cellfun(@(x) double(x(1)),nameTags,'UniformOutput',false));
+            if range(thisChar)==0
+                nameTags=cellfun(@(x) x(2:end),nameTags,'UniformOutput',false);
+            else
+                stillTrimming=false;
+            end
         end
-    end
-    stillTrimming = true;
-    while stillTrimming
-        thisChar=cell2mat(cellfun(@(x) double(x(end)),nameTags,'UniformOutput',false));
-        if range(thisChar)==0
-            nameTags=cellfun(@(x) x(1:end-1),nameTags,'UniformOutput',false);
-        else
-            stillTrimming=false;
+        stillTrimming = true;
+        while stillTrimming
+            thisChar=cell2mat(cellfun(@(x) double(x(end)),nameTags,'UniformOutput',false));
+            if range(thisChar)==0
+                nameTags=cellfun(@(x) x(1:end-1),nameTags,'UniformOutput',false);
+            else
+                stillTrimming=false;
+            end
         end
     end
     
@@ -140,7 +142,7 @@ if ~isempty(fileListStruct)
     % Loop through the set of sessions
     for ii = 1:length(uniqueDirNames)
         
-        % Get the list of acqusition file names
+        % Get the list of acquisition file names
         acqList = find(strcmp(fileListCell(2,:),uniqueDirNames{ii}));
         
         % Prepare a figure. If a plotSaveDir was not specified, then
@@ -172,21 +174,20 @@ if ~isempty(fileListStruct)
             for nn = 1:length(acqList)
                 % Obtain the path to this pupil data file and load it
                 pupilFullFileName = fullfile(fileListCell{1,acqList(nn)});
-                dataLoad=load(pupilFullFileName);
-                pupilData=dataLoad.pupilData;
-                clear dataLoad
+                load(pupilFullFileName,'pupilData');
+                glintFullFileName = strrep(fullfile(fileListCell{1,acqList(nn)}),'_pupil.mat','_glint.mat');
+                load(glintFullFileName,'glintData');
+                
+                % Find the frames that lack a glint
+                noGlint = isnan(glintData.X(1:length(pupilData.initial.ellipses.RMSE)));
                 
                 % Bounds are set for the sceneConstrained
                 if ~isfield(pupilData,'sceneConstrained')
                     continue
                 else
                     highRMSE = pupilData.sceneConstrained.ellipses.RMSE > p.Results.rmseThreshold;
-                    if isfield(pupilData.sceneConstrained.eyePoses,'fitAtBound')
-                        fitAtBound = pupilData.sceneConstrained.eyePoses.fitAtBound;
-                        goodSceneConstrained = logical(~highRMSE .* ~fitAtBound);
-                    else
-                        goodSceneConstrained = logical(~highRMSE);
-                    end
+                    fitAtBound = pupilData.sceneConstrained.eyePoses.fitAtBound;
+                    goodSceneConstrained = logical(~highRMSE .* ~fitAtBound .* ~noGlint);
                     
                     lb_byParam(nn) = floor(min(pupilData.sceneConstrained.eyePoses.values(goodSceneConstrained,p.Results.eyePoseParamsToPlot(mm))) ./ p.Results.yRangeIncrement(mm)).*p.Results.yRangeIncrement(mm);
                     ub_byParam(nn) = ceil(max(pupilData.sceneConstrained.eyePoses.values(goodSceneConstrained,p.Results.eyePoseParamsToPlot(mm))) ./ p.Results.yRangeIncrement(mm)).*p.Results.yRangeIncrement(mm);
@@ -199,23 +200,26 @@ if ~isempty(fileListStruct)
         % Loop through the acquisitions
         for jj = 1: length(acqList)
             
-            % Obtain the path to this pupil data file and load it
+            % Obtain the path to this pupil data file 
             pupilFullFileName = fullfile(fileListCell{1,acqList(jj)});
-            dataLoad=load(pupilFullFileName);
-            pupilData=dataLoad.pupilData;
-            clear dataLoad
-            
+            load(pupilFullFileName,'pupilData');
+
             % Grab just the filename for this pupil data, omitting the
             % path. We will use this to label the plot
             [pupilFilePath, pupilFileName] = fileparts(pupilFullFileName);
             fileNameStem = strsplit(pupilFileName,'_pupil');
             fileNameStem = fileNameStem{1};
+
+            % Load the glint
+            timebaseFileName = fullfile(pupilFilePath,[fileNameStem,'_glint.mat']);
+            load(timebaseFileName,'glintData');
+
+            % Find the frames that lack a glint
+            noGlint = isnan(glintData.X(1:length(pupilData.initial.ellipses.RMSE)));
             
-            % Load the associated timebase file
+            % Load the timebase file
             timebaseFileName = fullfile(pupilFilePath,[fileNameStem,'_timebase.mat']);
-            dataLoad=load(timebaseFileName);
-            timebase=dataLoad.timebase;
-            clear dataLoad
+            load(timebaseFileName,'timebase');
             
             % Check that there is at least a sceneConstrained field;
             % otherwise continue
@@ -226,21 +230,15 @@ if ~isempty(fileListStruct)
             % Obtain the vector of good and bad time points for the
             % sceneConstrained
             highRMSE = pupilData.sceneConstrained.ellipses.RMSE > p.Results.rmseThreshold;
-            fitAtBound = false(size(highRMSE));
-            if isfield(pupilData.sceneConstrained.eyePoses,'fitAtBound')
-                fitAtBound = pupilData.sceneConstrained.eyePoses.fitAtBound;
-            end
-            goodSceneConstrained = logical(~highRMSE .* ~fitAtBound);
+            fitAtBound = pupilData.sceneConstrained.eyePoses.fitAtBound;
+            goodSceneConstrained = logical(~highRMSE .* ~fitAtBound .* ~noGlint);
             
             % Obtain the vector of good and bad time points for the
             % radius smoothed, if that exists
             if isfield(pupilData,'radiusSmoothed')
                 highRMSE = pupilData.radiusSmoothed.ellipses.RMSE > p.Results.rmseThreshold;
-                fitAtBound = false(size(highRMSE));
-                if isfield(pupilData.radiusSmoothed.eyePoses,'fitAtBound')
-                    fitAtBound = pupilData.radiusSmoothed.eyePoses.fitAtBound;
-                end
-                goodRadiusSmoothed = logical(~highRMSE .* ~fitAtBound);
+                fitAtBound = pupilData.radiusSmoothed.eyePoses.fitAtBound;
+                goodRadiusSmoothed = logical(~highRMSE .* ~fitAtBound .* ~noGlint);
             end
             
             % Loop over the 3 eyePose parameters to be plotted
@@ -251,7 +249,7 @@ if ~isempty(fileListStruct)
                 
                 % Plot all values from the sceneConstrained time-series as
                 % a gray line
-                plot(timebase.values*msecToMin,pupilData.sceneConstrained.eyePoses.values(:,p.Results.eyePoseParamsToPlot(kk)),'-','Color',[0.85 0.85 0.85],'LineWidth',0.5);
+                plot(timebase.values*msecToMin,pupilData.sceneConstrained.eyePoses.values(:,p.Results.eyePoseParamsToPlot(kk)),'-','Color',[0.95 0.95 0.95],'LineWidth',0.5);
                 hold on
                 
                 % Now just the "good" sceneConstrained values, plotted as
