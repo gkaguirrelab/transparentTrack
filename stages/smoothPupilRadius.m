@@ -424,6 +424,7 @@ parfor (ii = 1:nFrames, nWorkers)
         % Turn off warnings that can arise when fitting bad frames
         warning('off','projectModelEye:rayTracingError');
         warning('off','projectModelEye:ellipseFitFailed');
+        warning('off','gkaModelEye:pupilEllipseFit');        
         
         % Perform the fit
         [posteriorEyePose, posteriorEyePoseObjectiveError, posteriorEllipseParams, fitAtBound] = ...

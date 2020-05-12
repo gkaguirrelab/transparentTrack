@@ -254,6 +254,7 @@ parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
         
         % Turn off expected warnings
         warning('off','projectModelEye:ellipseFitFailed');
+        warning('off','gkaModelEye:pupilEllipseFit');        
         warning('off','MATLAB:nearlySingularMatrix');
         warning('off','MATLAB:singularMatrix');
         
