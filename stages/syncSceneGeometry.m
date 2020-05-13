@@ -47,10 +47,24 @@ function syncSceneGeometry(videoStemNameIn, videoStemNameOut, varargin)
 %                           to use as the fixed target to which the
 %                           sceneGeometry is adjusted. Valid options are:
 %                               {'gazePre','gazePost','shape','gazeCalTest'}
+%  'searchStrategy'       - Char vec. The searchStrategy is passed to the
+%                           routine estimateSceneParams.m and defines which
+%                           parameters and constraints ae used in the
+%                           search. The default value of 'sceneSync' would
+%                           only be changed in code and method development
+%                           contexts.
 %  'cameraTorsion','cameraDepth' - Scalar. If set, these values over-ride
 %                           the x0 values that are taken from the
 %                           sceneGeometry for the videoStemNameIn
 %                           acquisition.
+%   frameSet              - A 1xm vector that specifies the m indices
+%                           (indexed from 1) that identify the set of
+%                           frames from the acquisition to guide the search
+%   gazeTargets           - A 2xm matrix that provides the positions, in
+%                           degrees of visual angle, of fixation targets
+%                           that correspond to each of the frames. Nan
+%                           values are acceptable and indicate that the
+%                           gaze position is unknown for a frame.
 %
 % Examples:
 %{
@@ -76,8 +90,11 @@ p.addParameter('nWorkers',[],@(x)(isempty(x) || isnumeric(x)));
 % Optional analysis params
 p.addParameter('outputFileSuffix','',@ischar);
 p.addParameter('alignMethod','gazePre',@(x)(ischar(x) | iscell(x)));
+p.addParameter('searchStrategy','sceneSync',@ischar);
 p.addParameter('cameraTorsion',[],@(x)(isempty(x) || isscalar(x)));
 p.addParameter('cameraDepth',[],@(x)(isempty(x) || isscalar(x)));
+p.addParameter('frameSet',[],@(x)(isempty(x) || isvec(x)));
+p.addParameter('gazeTargets',[],@(x)(isempty(x) || ismatrix(x)));
 
 
 %% Parse and check the parameters
@@ -154,74 +171,92 @@ errorArgs = { ...
 
 
 %% Select frames to guide the search
-% Identify a frame in the videoStemNameOut acquisition that best
-% corresponds to the eye when it is looking at the fixation point. This
-% could come from an explicit fixation period, or from matching the shape
-% of the pupil to that observed during the videoStemNameIn fixation period.
+% We need a set of frames that have a high-quality pupil perimeter and an
+% associated glint location. These frames should be distributed across
+% time, and capture the eye in a variety of poses. The sceneGeometry will
+% be adjusted to best fit these frames. Also, we would ideally have a frame
+% in which the eye is posed such that it is looking at the center point of
+% a fixation array (gazeTarget [0;0]). If we can find such a frame, it will
+% be the first entry in the list.
 
-% Set the default values
-searchStrategy = 'sceneSync';
-nFramesToReturn = 15;
-
-switch alignMethod
-    case 'gazePre'
-        
-        % This frame is for display and fixation
-        [frameSet, gazeTargets] = selectFrames.gazePre(videoStemNameOut);
-                        
-    case 'gazePost'
-        
-        % This frame is for display and fixation
-        [frameSet, gazeTargets] = selectFrames.gazePost(videoStemNameOut);
-                
-    case 'shape'
-        
-        % This frame is for display only
-        [frameSet, gazeTargets] = selectFrames.shape(videoStemNameOut, rhoIn, thetaIn);
-                
-    case 'gazeCalTest'
-        
-        % Get all of the gaze target frames from the source. They will be
-        % ordered such that the fixation ([0;0]) gaze position is first.
-        [frameSet, gazeTargets] = selectFrames.gazeCalTest(videoStemNameOut);
-        
-        % We need fewer additional frames, as we already have 9
-        nFramesToReturn = 10;
-        
-        % Set the searchStrategy
-        searchStrategy = 'gazeCalTest';
-        
-    otherwise
-        error('This is not a defined align method')
-end
-
-% Add frames that are distributed across time and space. Start with a low
-% distValThresh and increase as needed to reach the desired frames or until
-% the maximum suitable threshold is reached.
-stillSearching = true;
-distValsThreshold = 0.2;
-maxDistValsThreshold = 0.35;
-while stillSearching
-    [frameSetA, gazeTargetsA] = selectFrames.gridTime(videoStemNameOut,'nFramesToReturn',nFramesToReturn,'distValsThreshold',distValsThreshold);
-    [frameSetB, gazeTargetsB] = selectFrames.gridSpace(videoStemNameOut,'nFramesToReturn',nFramesToReturn,'distValsThreshold',distValsThreshold);    
-    if length(frameSetA)>=nFramesToReturn && length(frameSetB)>=nFramesToReturn
-        stillSearching = false;
+if ~isempty(p.Results.frameSet)
+    
+    % A frameSet was passed; use that
+    frameSet = p.Results.frameSet;
+    
+    % Use the gazeTargets if passed, otherwise create a matrix of nans
+    if ~isempty(p.Results.gazeTargets)
+        gazeTargets = p.Results.gazeTargets;
     else
-        distValsThreshold = distValsThreshold + 0.025;
+        gazeTargets = nan(2,length(frameSet));
     end
-    if distValsThreshold > maxDistValsThreshold
-        stillSearching = false;
+    
+    % Because the frameSet was defined, the alignMethod is not used
+    alignMethod = 'passedSet';
+
+else
+    % We will create a frameSet
+    nFramesToReturn = 15;
+    
+    switch alignMethod
+        case 'gazePre'
+            
+            % This frame is for display and fixation
+            [frameSet, gazeTargets] = selectFrames.gazePre(videoStemNameOut);
+            
+        case 'gazePost'
+            
+            % This frame is for display and fixation
+            [frameSet, gazeTargets] = selectFrames.gazePost(videoStemNameOut);
+            
+        case 'shape'
+            
+            % This frame is for display only
+            [frameSet, gazeTargets] = selectFrames.shape(videoStemNameOut, rhoIn, thetaIn);
+            
+        case 'gazeCalTest'
+            
+            % Get all of the gaze target frames from the source. They will be
+            % ordered such that the fixation ([0;0]) gaze position is first.
+            [frameSet, gazeTargets] = selectFrames.gazeCalTest(videoStemNameOut);
+            
+            % We need fewer additional frames, as we already have 9
+            nFramesToReturn = 10;
+            
+        otherwise
+            error('This is not a defined align method')
     end
+    
+    % Add frames that are distributed across time and space. Start with a low
+    % distValThresh and increase as needed to reach the desired frames or until
+    % the maximum suitable threshold is reached.
+    stillSearching = true;
+    distValsThreshold = 0.2;
+    maxDistValsThreshold = 0.35;
+    while stillSearching
+        [frameSetA, gazeTargetsA] = selectFrames.gridTime(videoStemNameOut,'nFramesToReturn',nFramesToReturn,'distValsThreshold',distValsThreshold);
+        [frameSetB, gazeTargetsB] = selectFrames.gridSpace(videoStemNameOut,'nFramesToReturn',nFramesToReturn,'distValsThreshold',distValsThreshold);
+        if length(frameSetA)>=nFramesToReturn && length(frameSetB)>=nFramesToReturn
+            stillSearching = false;
+        else
+            distValsThreshold = distValsThreshold + 0.025;
+        end
+        if distValsThreshold > maxDistValsThreshold
+            stillSearching = false;
+        end
+    end
+    
+    % Assemble the frames
+    frameSet = [frameSet frameSetA frameSetB];
+    gazeTargets = [gazeTargets gazeTargetsA gazeTargetsB];
+    
+    % Remove duplicate frames
+    [~, uniqueFrames] = unique(frameSet,'stable');
+    frameSet = frameSet(uniqueFrames);
+    gazeTargets = gazeTargets(:,uniqueFrames);
+    
 end
 
-% Assemble the frames
-frameSet = [frameSet frameSetA frameSetB];
-gazeTargets = [gazeTargets gazeTargetsA gazeTargetsB];
-
-% Remove duplicate frames
-[~, uniqueFrames] = unique(frameSet,'stable');
-frameSet = frameSet(uniqueFrames);
-gazeTargets = gazeTargets(:,uniqueFrames);
 
 % Load in the video image for this frame.
 videoFrameOut = makeMedianVideoImage([videoStemNameOut '_gray.avi'],'startFrame',frameSet(1),'nFrames',1);
@@ -230,7 +265,8 @@ videoFrameOut = makeMedianVideoImage([videoStemNameOut '_gray.avi'],'startFrame'
 %% Perform the synchronization search
 estimateSceneParams(videoStemNameOut, frameSet, gazeTargets, ...
     'outputFileSuffix',p.Results.outputFileSuffix,...
-    'searchStrategy',searchStrategy,'model',model,...
+    'searchStrategy',p.Results.searchStrategy,...
+    'model',model,...
     'eyeArgs',eyeArgs,'errorArgs',errorArgs, ...
     'verbose',p.Results.verbose,...
     'useParallel',p.Results.useParallel,...
