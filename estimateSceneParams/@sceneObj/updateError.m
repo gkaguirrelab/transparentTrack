@@ -99,7 +99,6 @@ p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 p.addParameter('errorReg',[1 2 4 2],@isnumeric);
 p.addParameter('missedGlintPenalty',1e3,@isnumeric);
 p.addParameter('poseRegParams',[],@isstruct);
-p.addParameter('vecRegParams',[],@isstruct);
 
 % Parse and check the parameters
 p.parse(varargin{:});
@@ -203,12 +202,17 @@ glintError = nanNorm(glintDistances,weights);
 
 %% Gaze error
 % These are errors in matching the position of the fixation targets on the
-% screen. The error is in degrees of visual angle. We need to have gaze
-% targets to compute this error
-if isempty(gazeTargets)
-    poseError = nan;
-    vectorError = nan;
-else
+% screen. The error is in degrees of visual angle.
+
+% We need to have non-nan gaze targets to compute this error. 
+validGazeFlag = false;
+if ~isempty(gazeTargets)
+    if ~all(isnan(sum(gazeTargets)))
+        validGazeFlag = true;
+    end
+end
+
+if validGazeFlag
     
     %% poseError
     % Match eye rotation to visual angle of fixation targets
@@ -285,17 +289,8 @@ else
     centerDiff = (pupilCenter - [modelGlintCoord.X modelGlintCoord.Y])' .* ...
         glintSign;
     
-    % We can compute the vecParams by reference to the gazeTargets
-    % themselves, or the modelPoseGaze. The latter is the case when we have
-    % been supplied a set of poseRegParams to use to synthesize
-    % gazeTargets. The applicationof this is when syncing a set of gazeCal
-    % measurements to a new acqusition which lacks explicit gaze target
-    % measurements
-    if isempty(p.Results.poseRegParams)
-        vecGazeTargets = gazeTargets;
-    else
-        vecGazeTargets = modelPoseGaze;
-    end
+    % We compute the vecParams by reference to the gazeTargets
+    vecGazeTargets = gazeTargets;
     
     % Valid frames are those for which we have been supplied a gaze target,
     % and those for which the projection model is able to calculate a
@@ -350,6 +345,18 @@ else
     
     % Store the vector error
     vectorError = nanNorm(vectorErrorByFrame',weights);
+
+else
+    
+    % No gaze targets, so set the gaze-based errors to nan
+    poseError = nan;
+    vectorError = nan;
+        
+    % If we have been given poseRegParams, copy these over
+    if ~isempty(p.Results.poseRegParams)
+        poseRegParams = p.Results.poseRegParams;
+    end
+
 end
 
 
