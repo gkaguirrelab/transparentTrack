@@ -179,7 +179,9 @@ if ~isempty(fileListStruct)
                 load(glintFullFileName,'glintData');
                 
                 % Find the frames that lack a glint
-                noGlint = isnan(glintData.X(1:length(pupilData.initial.ellipses.RMSE)));
+                noGlint = true(size(pupilData.initial.ellipses.RMSE));
+                stopFrame = min([length(glintData.X),length(pupilData.initial.ellipses.RMSE)]);
+                noGlint(1:stopFrame) = isnan(glintData.X(1:stopFrame));
                 
                 % Bounds are set for the sceneConstrained
                 if ~isfield(pupilData,'sceneConstrained')
@@ -213,9 +215,11 @@ if ~isempty(fileListStruct)
             % Load the glint
             timebaseFileName = fullfile(pupilFilePath,[fileNameStem,'_glint.mat']);
             load(timebaseFileName,'glintData');
-
+            
             % Find the frames that lack a glint
-            noGlint = isnan(glintData.X(1:length(pupilData.initial.ellipses.RMSE)));
+            noGlint = true(size(pupilData.initial.ellipses.RMSE));
+            stopFrame = min([length(glintData.X),length(pupilData.initial.ellipses.RMSE)]);
+            noGlint(1:stopFrame) = isnan(glintData.X(1:stopFrame));
             
             % Load the timebase file
             timebaseFileName = fullfile(pupilFilePath,[fileNameStem,'_timebase.mat']);
