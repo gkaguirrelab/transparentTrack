@@ -131,17 +131,11 @@ for ii = 1:length(frameSet)
     % Add the pupil perimeter points
     plot(perimeter{ii}.Xp ,perimeter{ii}.Yp, '.w', 'MarkerSize', 1);
     
-    % Update the sceneGeometry camera position to account for known
-    % head translation
-    adjustedSceneGeometry = sceneGeometry;
-    cameraPosition = sceneGeometry.cameraPosition.translation;
-    cameraPosition = cameraPosition + relCamPos(:,ii);
-    adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
-    
     % Add the rendered eye model
     eyePose = modelEyePose(ii,:);
     if ~any(isnan(eyePose))
-        renderEyePose(eyePose, adjustedSceneGeometry, 'newFigure', false, ...
+        renderEyePose(eyePose, sceneGeometry, 'newFigure', false, ...
+            'cameraTrans', relCamPos(:,ii), ...
             'modelEyeLabelNames', {'retina' 'irisPerimeter' 'pupilEllipse' 'cornea' 'glint_01' 'glint_02'}, ...
             'modelEyePlotColors', {'.w' '.b' '-g' '.y' 'xr' 'xr'}, ...
             'modelEyeAlpha', [0.25 0.25 0.25 0.25 1 1],...
