@@ -131,7 +131,7 @@ p.parse(perimeterFileName, pupilFileName, varargin{:});
 
 nEllipseParams=5; % 5 params in the transparent ellipse form
 nEyePoseParams=4; % [azimuth, elevation, torsion, radius]
-nHeadTransParams=2; % [horizonta, vertical]
+nHeadTransParams=3; % [horizonta, vertical, depth]
 
 
 %% Load data
@@ -232,8 +232,8 @@ warnState = warning();
 
 %% Loop through the frames
 
-parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
-    %for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
+%parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
+    for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
     
     % Update progress
     if verbose
