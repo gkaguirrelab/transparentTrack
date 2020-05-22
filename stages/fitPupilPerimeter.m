@@ -119,6 +119,7 @@ p.addParameter('ellipseTransparentLB',[0,0,800,0,0],@(x)(isempty(x) || isnumeric
 p.addParameter('ellipseTransparentUB',[640,480,20000,0.6,pi],@(x)(isempty(x) || isnumeric(x)));
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,5],@isnumeric);
+p.addParameter('cameraTransBounds',[5,5,0],@isnumeric);
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) || ischar(x)));
 p.addParameter('glintFileName',[],@(x)(isempty(x) || ischar(x)));
 p.addParameter('fitLabel',[],@(x)(isempty(x) | ischar(x)));
@@ -281,17 +282,17 @@ parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
             % If we have glintData, extract the glintCoord
             if ~isempty(glintData)
                 glintCoord = [glintData.X(ii,:), glintData.Y(ii,:)];
-                camTranBounds = cameraTransBounds;
+                thisFrameCameraTransBounds = cameraTransBounds;
             else
                 glintCoord = [];
-                camTranBounds = [0; 0; 0];
+                thisFrameCameraTransBounds = [0; 0; 0];
             end
             % Find the eyePose parameters that best fit the pupil
             % perimeter. This can take between 1 and 10 seconds, with
             % longer search times for partial pupil ellipses.
             [eyePose, cameraTrans, objectiveError, ellipseParamsTransparent, fitAtBound] = ...
                 eyePoseEllipseFit(Xp, Yp, glintCoord, sceneGeometry, ...
-                'cameraTransX0',cameraTransX0,'cameraTransBounds',camTranBounds,...
+                'cameraTransX0',cameraTransX0,'cameraTransBounds',thisFrameCameraTransBounds,...
                 'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB);            
         end
         
