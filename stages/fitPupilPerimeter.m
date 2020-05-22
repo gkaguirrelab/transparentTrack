@@ -176,6 +176,15 @@ else
     relativeCameraPosition=[];
 end
 
+% Select the appropriate field of relativeCameraTransition, or synthesize
+% one if not available
+if ~isempty(relativeCameraPosition)
+    cameraTransVec = ...
+        relativeCameraPosition.(relativeCameraPosition.currentField).values;
+else
+    cameraTransVec = zeros(3,length(pupilData.initial.ellipses.RMSE));
+end
+
 % determine how many frames we will process
 if p.Results.nFrames == Inf
     nFrames=size(perimeter.data,1);
@@ -232,8 +241,8 @@ warnState = warning();
 
 %% Loop through the frames
 
-parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
-    %for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
+%parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
+    for ii = 1000:p.Results.startFrame+nFrames-1
     
     % Update progress
     if verbose
@@ -271,13 +280,11 @@ parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
                 ellipseTransparentUB, ...
                 []);
         else
-            % If there is a relativeCameraPosition value, use this for the
-            % x0 guess for cameraTranslation
-            if isfield(relativeCameraPosition,'currentField')
-                cameraTrans = ...
-                    relativeCameraPosition.(relativeCameraPosition.currentField).values(:,ii);
-            end
-            % If we have glintData, extract the glintCoord
+            % Get the camera translation for this frame
+            cameraTrans = cameraTransVec(:,ii);            
+            % If we have glintData, extract the glintCoord, and allow
+            % non-zero bounds on the cameraTrans search. If no glint data,
+            % then lock the cameraTransBounds to zero.
             if ~isempty(glintData)
                 glintCoord = [glintData.X(ii,:), glintData.Y(ii,:)];
                 thisFrameCameraTransBounds = cameraTransBounds;
@@ -291,7 +298,10 @@ parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
             [eyePose, cameraTrans, objectiveError, ellipseParamsTransparent, fitAtBound] = ...
                 eyePoseEllipseFit(Xp, Yp, glintCoord, sceneGeometry, ...
                 'cameraTransX0',cameraTrans,'cameraTransBounds',thisFrameCameraTransBounds,...
-                'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB);            
+                'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB);
+        end
+        if max(abs(cameraTrans))==0
+            foo=bar;
         end
         
         % Restore the warning state
@@ -305,7 +315,7 @@ parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
     loopVar_fitAtBound(ii) = fitAtBound;
     if ~isempty(sceneGeometry)
         loopVar_eyePoses(ii,:) = eyePose';
-        loopVar_cameraTrans(ii,:) = cameraTrans;
+        loopVar_cameraTransVec(:,ii) = cameraTrans;
     end
     
     
@@ -345,7 +355,7 @@ if ~isempty(sceneGeometry)
     pupilData.(fitLabel).eyePoses.meta.coordinateSystem = 'head fixed (extrinsic)';
     
     % Update the relativeCameraPosition
-    relativeCameraPosition.(fitLabel).values = loopVar_cameraTrans;
+    relativeCameraPosition.(fitLabel).values = loopVar_cameraTransVec;
     relativeCameraPosition.(fitLabel).meta = p.Results;
     relativeCameraPosition.currentField = fitLabel;
 end
