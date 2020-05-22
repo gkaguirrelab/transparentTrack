@@ -183,7 +183,7 @@ if ~isempty(relativeCameraPosition)
         relativeCameraPosition.estimateSceneParams.values;
 %        relativeCameraPosition.(relativeCameraPosition.currentField).values;
 else
-    cameraTransVec = zeros(3,length(pupilData.initial.ellipses.RMSE));
+    cameraTransVec = zeros(nHeadTransParams,length(pupilData.initial.ellipses.RMSE));
 end
 
 % determine how many frames we will process
@@ -242,8 +242,8 @@ warnState = warning();
 
 %% Loop through the frames
 
-%parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
-    for ii = 1000:p.Results.startFrame+nFrames-1
+parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
+    %for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
     
     % Update progress
     if verbose
@@ -256,9 +256,11 @@ warnState = warning();
     ellipseParamsTransparent=NaN(1,nEllipseParams);
     objectiveError=NaN(1);
     eyePose=NaN(1,nEyePoseParams);
-    cameraTrans = zeros(1,nHeadTransParams);
     fitAtBound=false;
-    
+
+    % Get the camera translation for this frame
+    cameraTrans = cameraTransVec(:,ii);
+
     % get the boundary points
     Xp = frameCellArray{ii}.Xp;
     Yp = frameCellArray{ii}.Yp;
@@ -281,8 +283,7 @@ warnState = warning();
                 ellipseTransparentUB, ...
                 []);
         else
-            % Get the camera translation for this frame
-            cameraTrans = cameraTransVec(:,ii);            
+            
             % If we have glintData, extract the glintCoord, and allow
             % non-zero bounds on the cameraTrans search. If no glint data,
             % then lock the cameraTransBounds to zero.
@@ -293,16 +294,16 @@ warnState = warning();
                 glintCoord = [];
                 thisFrameCameraTransBounds = [0; 0; 0];
             end
+            
             % Find the eyePose parameters that best fit the pupil
             % perimeter. This can take between 1 and 10 seconds, with
             % longer search times for partial pupil ellipses.
             [eyePose, cameraTrans, objectiveError, ellipseParamsTransparent, fitAtBound] = ...
                 eyePoseEllipseFit(Xp, Yp, glintCoord, sceneGeometry, ...
-                'cameraTransX0',cameraTrans,'cameraTransBounds',thisFrameCameraTransBounds,...
+                'cameraTransX0',cameraTrans,...
+                'cameraTransBounds',thisFrameCameraTransBounds,...
                 'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB);
-        end
-        if max(abs(cameraTrans))==0
-            foo=bar;
+
         end
         
         % Restore the warning state
