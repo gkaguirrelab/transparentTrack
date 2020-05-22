@@ -232,8 +232,8 @@ warnState = warning();
 
 %% Loop through the frames
 
-%parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
-    for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
+parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
+    %for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
     
     % Update progress
     if verbose
@@ -246,7 +246,7 @@ warnState = warning();
     ellipseParamsTransparent=NaN(1,nEllipseParams);
     objectiveError=NaN(1);
     eyePose=NaN(1,nEyePoseParams);
-    cameraTrans = NaN(1,nHeadTransParams);
+    cameraTrans = zeros(1,nHeadTransParams);
     fitAtBound=false;
     
     % get the boundary points
@@ -274,10 +274,8 @@ warnState = warning();
             % If there is a relativeCameraPosition value, use this for the
             % x0 guess for cameraTranslation
             if isfield(relativeCameraPosition,'currentField')
-                cameraTransX0 = ...
+                cameraTrans = ...
                     relativeCameraPosition.(relativeCameraPosition.currentField).values(:,ii);
-            else
-                cameraTransX0 = [0; 0; 0];
             end
             % If we have glintData, extract the glintCoord
             if ~isempty(glintData)
@@ -292,7 +290,7 @@ warnState = warning();
             % longer search times for partial pupil ellipses.
             [eyePose, cameraTrans, objectiveError, ellipseParamsTransparent, fitAtBound] = ...
                 eyePoseEllipseFit(Xp, Yp, glintCoord, sceneGeometry, ...
-                'cameraTransX0',cameraTransX0,'cameraTransBounds',thisFrameCameraTransBounds,...
+                'cameraTransX0',cameraTrans,'cameraTransBounds',thisFrameCameraTransBounds,...
                 'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB);            
         end
         
