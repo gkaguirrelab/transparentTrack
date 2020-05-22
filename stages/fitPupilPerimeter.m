@@ -119,7 +119,7 @@ p.addParameter('ellipseTransparentLB',[0,0,800,0,0],@(x)(isempty(x) || isnumeric
 p.addParameter('ellipseTransparentUB',[640,480,20000,0.6,pi],@(x)(isempty(x) || isnumeric(x)));
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,5],@isnumeric);
-p.addParameter('cameraTransBounds',[5,5,0],@isnumeric);
+p.addParameter('cameraTransBounds',[5; 5; 0],@isnumeric);
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) || ischar(x)));
 p.addParameter('glintFileName',[],@(x)(isempty(x) || ischar(x)));
 p.addParameter('fitLabel',[],@(x)(isempty(x) | ischar(x)));
