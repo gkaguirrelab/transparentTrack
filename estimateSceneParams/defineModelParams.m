@@ -169,9 +169,9 @@ model.scene.idxMultiScene = @(idx) repmat((0:model.scene.nScenes-1)*model.scene.
 % gazeCal -- Used to derive the rotation center properties of the eye from
 % one or more gazeCal acquisitions.
 model.strategy.gazeCal.stages = { ...
-    {'eye.rotationCenterScalers','scene.cameraPosition'},...
-    {'eye.kvals','eye.rotationCenterScalers','scene.cameraPosition','scene.primaryPosition'} };
-model.strategy.gazeCal.errorArgs = {'cameraTransBounds',[1;1;0],'errorReg',[1 0 2 0]};
+    {'eye.rotationCenterScalers','scene.cameraPosition','scene.primaryPosition'},...
+    {'eye.kvals','scene.cameraPosition'} };
+model.strategy.gazeCal.errorArgs = {'cameraTransBounds',[0;0;0],'errorReg',[1 0 4 0]};
 model.strategy.gazeCal.penaltyWeight = [0.5 0.1];
 model.strategy.gazeCal.useFixForPrimaryPos = false;
 model.strategy.gazeCal.multiSceneNorm = 1;
