@@ -69,9 +69,6 @@ function updateError( obj, varargin )
 %                           pupil center -> glint vec to screen position.
 %   rawErrors             - 1x4 matrix. The four component errors.
 %
-% Examples:
-%{
-%}
 
 
 %% Obtain variables from the object
@@ -135,19 +132,15 @@ parfor ii = 1:nFrames
     
     % Get the glint
     glintCoord = [glintDataX(ii) glintDataY(ii)];
-    
-    % Update the sceneGeometry camera position to account for known head
-    % translation
-    adjustedSceneGeometry = sceneGeometry;
-    cameraPosition = sceneGeometry.cameraPosition.translation;
-    cameraPosition = cameraPosition + relCamPos(:,ii);
-    adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
-    
+        
     % Get the eyePose
-    modelEyePose(ii,:) = eyePoseEllipseFit(Xp, Yp, adjustedSceneGeometry, 'glintCoord', glintCoord);
+    modelEyePose(ii,:) = eyePoseEllipseFit(Xp, Yp, glintCoord, sceneGeometry, ...
+        'cameraTransX0',relCamPos(:,ii), ...
+        'cameraTransBounds',[0;0;0]);
     
     % Get the glint coordinates
-    [modelPupilEllipse_loop, modelGlintCoord_loop] = projectModelEye(modelEyePose(ii,:), adjustedSceneGeometry);
+    [modelPupilEllipse_loop, modelGlintCoord_loop] = ...
+        projectModelEye(modelEyePose(ii,:), sceneGeometry, 'cameraTrans',relCamPos(:,ii));
     modelPupilEllipse(ii,:) = modelPupilEllipse_loop;
     
     % Get the error in fitting the perimeter with the ellipse

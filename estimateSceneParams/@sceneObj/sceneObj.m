@@ -175,7 +175,8 @@ classdef sceneObj < handle
             if exist([videoStemName '_relativeCameraPosition.mat'], 'file') == 2
                 load([videoStemName '_relativeCameraPosition.mat'],'relativeCameraPosition');                
             else
-                relativeCameraPosition.values = zeros(3,max(frameSet));
+                relativeCameraPosition.zeros.values = zeros(3,max(frameSet));
+                relativeCameraPosition.currentField = 'zeros';
             end
             
             % Extract data for the frames we want and store in the object
@@ -186,7 +187,7 @@ classdef sceneObj < handle
             
             % We store the entire relative camera position vector, as we
             % will be shifting and interpolating this.
-            obj.origRelCamPos = relativeCameraPosition.initial.values;
+            obj.origRelCamPos = relativeCameraPosition.(relativeCameraPosition.currentField).values;
             obj.relCamPos = obj.origRelCamPos;
             
             % Done with these big variables
