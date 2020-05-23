@@ -180,8 +180,7 @@ end
 % one if not available
 if ~isempty(relativeCameraPosition)
     cameraTransVec = ...
-        relativeCameraPosition.estimateSceneParams.values;
-%        relativeCameraPosition.(relativeCameraPosition.currentField).values;
+        relativeCameraPosition.(relativeCameraPosition.currentField).values;
 else
     cameraTransVec = zeros(nHeadTransParams,length(pupilData.initial.ellipses.RMSE));
 end
