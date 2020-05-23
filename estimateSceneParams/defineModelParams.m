@@ -34,11 +34,9 @@ function model = defineModelParams(nScenes, modelIn, cameraTorsion, cameraDepth,
 %   The 'strategy' field specifies values for the following search
 %   parameters:
 %
-%  'errorReg' -
-%       1x4 vector. This is passed to the updateError method of the
-%       sceneObj. This vector defines a regularization that weights the
-%       four types of error that can contribute to the overall model error.
-%       The weights apply to errors in the order: [perim glint pose vector]
+%  'errorArgs' -
+%       These key-values are passed to the updateError method of the
+%       sceneObj.
 %  'penaltyWeight' -
 %       Vector. Adjustment of camera depth and torsion away from the x0 
 %       values is penalized. The effect of the weight (w(1)) is such that
