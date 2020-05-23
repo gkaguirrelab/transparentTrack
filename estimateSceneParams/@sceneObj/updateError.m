@@ -93,7 +93,8 @@ p = inputParser;
 % Optional
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
-p.addParameter('errorReg',[1 2 4 2],@isnumeric);
+p.addParameter('cameraTransBounds',[0;0;0],@isnumeric);
+p.addParameter('errorReg',[1 0 2 0],@isnumeric);
 p.addParameter('missedGlintPenalty',1e3,@isnumeric);
 p.addParameter('poseRegParams',[],@isstruct);
 
@@ -106,12 +107,19 @@ p.parse(varargin{:});
 % How many frames do we have
 nFrames = length(glintDataX);
 
+% Pull out the bounds for eyePoseEllipseFit
+eyePoseLB = p.Results.eyePoseLB;
+eyePoseUB = p.Results.eyePoseUB;
+cameraTransBounds = p.Results.cameraTransBounds;
+
+
 % The weight for the errors is given by the inverse initial ellipse fit
 % RMSE
 weights = 1./ellipseRMSE;
 
 % Allocate the loop and return variables
 modelEyePose = nan(nFrames,4);
+modelCameraTrans = nan(3,nFrames);
 modelGlintX = nan(nFrames,1);
 modelGlintY = nan(nFrames,1);
 perimFitError = nan(nFrames,1);
@@ -134,9 +142,11 @@ parfor ii = 1:nFrames
     glintCoord = [glintDataX(ii) glintDataY(ii)];
         
     % Get the eyePose
-    modelEyePose(ii,:) = eyePoseEllipseFit(Xp, Yp, glintCoord, sceneGeometry, ...
+    [modelEyePose(ii,:), modelCameraTrans(:,ii)] = eyePoseEllipseFit(Xp, Yp, glintCoord, sceneGeometry, ...
         'cameraTransX0',relCamPos(:,ii), ...
-        'cameraTransBounds',[0;0;0]);
+        'eyePoseLB',eyePoseLB,...
+        'eyePoseUB',eyePoseUB,...
+        'cameraTransBounds',cameraTransBounds);
     
     % Get the glint coordinates
     [modelPupilEllipse_loop, modelGlintCoord_loop] = ...
@@ -366,6 +376,7 @@ obj.fVal = fVal;
 
 % Store all the other model components
 obj.modelEyePose = modelEyePose;
+obj.modelCameraTrans = modelCameraTrans;
 obj.modelPupilEllipse = modelPupilEllipse;
 obj.modelGlintCoord = modelGlintCoord;
 obj.modelPoseGaze = modelPoseGaze;

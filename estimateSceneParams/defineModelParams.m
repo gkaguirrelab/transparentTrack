@@ -172,9 +172,8 @@ model.scene.idxMultiScene = @(idx) repmat((0:model.scene.nScenes-1)*model.scene.
 % one or more gazeCal acquisitions.
 model.strategy.gazeCal.stages = { ...
     {'eye.rotationCenterScalers','scene.cameraPosition'},...
-    {'eye.rotationCenterScalers','scene.cameraPosition', 'scene.primaryPosition'}, ...
-    {'eye.kvals','scene.cameraPosition'} };
-model.strategy.gazeCal.errorReg = [2 1 4 0];
+    {'eye.kvals','eye.rotationCenterScalers','scene.cameraPosition','scene.primaryPosition'} };
+model.strategy.gazeCal.errorArgs = {'cameraTransBounds',[1;1;0],'errorReg',[1 0 2 0]};
 model.strategy.gazeCal.penaltyWeight = [0.5 0.1];
 model.strategy.gazeCal.useFixForPrimaryPos = false;
 model.strategy.gazeCal.multiSceneNorm = 1;
@@ -182,26 +181,15 @@ model.strategy.gazeCal.TolMesh = 1e-2;
 
 % sceneSync -- Used to map a known set of eye biometric parameters and a
 % pretty good initial set of scene parameters to an acquisition that has an
-% associated measuement of head movement over time. The penalty weights
+% associated measurement of head movement over time. The penalty weights
 % discourage large changes in camera torsion or depth.
 model.strategy.sceneSync.stages = { ...
     {'scene.cameraPosition', 'head.phaseAndRotation' } };
-model.strategy.sceneSync.errorReg = [1 1 0 0];
+model.strategy.sceneSync.errorArgs = {'cameraTransBounds',[0;0;0],'errorReg',[1 0 0 0]};
 model.strategy.sceneSync.penaltyWeight = [0.5 0.05];
 model.strategy.sceneSync.useFixForPrimaryPos = false;
 model.strategy.sceneSync.multiSceneNorm = 1;
 model.strategy.sceneSync.TolMesh = 1e-2;
-
-% gazeCalTest -- Used to test the performance of gazeCal acquisitions
-% synced to one another. This is the same as the sceneSync strategy, but
-% without the search across head motion parameters.
-model.strategy.gazeCalTest.stages = { ...
-    {'scene.cameraPosition'} };
-model.strategy.gazeCalTest.errorReg = [1 1 0 0];
-model.strategy.gazeCalTest.penaltyWeight = [0.5 0.05];
-model.strategy.gazeCalTest.useFixForPrimaryPos = false;
-model.strategy.gazeCalTest.multiSceneNorm = 1;
-model.strategy.gazeCalTest.TolMesh = 1e-2;
 
 
 %% Substitute passed model inputs for defaults

@@ -303,11 +303,9 @@ nScenes = length(videoStemName);
 % This is typically done for x0 and bounds.
 model = defineModelParams(nScenes, p.Results.model, p.Results.cameraTorsion, p.Results.cameraDepth, p.Results.corneaTorsion);
 
-% The errorArgs are passed in the creation of the scene objects. We add to
-% any passed errorArg the errorReg key-value that is specified for this
-% search strategy.
-errorArgs = [{'errorReg', model.strategy.(strategy).errorReg}, ...
-    p.Results.errorArgs];
+% The errorArgs are passed in the creation of the scene objects. They are
+% defined by the search strategy, and modified by passed parameters.
+errorArgs = [model.strategy.(strategy).errorArgs, p.Results.errorArgs];
 
 % Loop through the scenes and create scene objective functions
 for ss = 1:nScenes
@@ -368,7 +366,7 @@ for ii = 1:nStages
     
     % Announce
     if verbose
-        str = sprintf(['Starting stage %d of %d \n'],ii,nStages);
+        str = sprintf('Starting stage %d of %d \n',ii,nStages);
         fprintf(str);
     end
     
