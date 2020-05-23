@@ -109,6 +109,7 @@ classdef sceneObj < handle
         
         % The set of model components returned by calcGlintGazeError
         modelEyePose
+        modelCameraTrans
         modelPupilEllipse
         modelGlintCoord
         modelPoseGaze
