@@ -186,7 +186,7 @@ model.strategy.gazeCal.TolMesh = 1e-2;
 % discourage large changes in camera torsion or depth.
 model.strategy.sceneSync.stages = { ...
     {'scene.cameraPosition', 'head.phaseAndRotation' } };
-model.strategy.sceneSync.errorReg = [1 2 0 0];
+model.strategy.sceneSync.errorReg = [1 1 0 0];
 model.strategy.sceneSync.penaltyWeight = [0.5 0.05];
 model.strategy.sceneSync.useFixForPrimaryPos = false;
 model.strategy.sceneSync.multiSceneNorm = 1;
@@ -197,7 +197,7 @@ model.strategy.sceneSync.TolMesh = 1e-2;
 % without the search across head motion parameters.
 model.strategy.gazeCalTest.stages = { ...
     {'scene.cameraPosition'} };
-model.strategy.gazeCalTest.errorReg = [1 2 0 0];
+model.strategy.gazeCalTest.errorReg = [1 1 0 0];
 model.strategy.gazeCalTest.penaltyWeight = [0.5 0.05];
 model.strategy.gazeCalTest.useFixForPrimaryPos = false;
 model.strategy.gazeCalTest.multiSceneNorm = 1;
