@@ -173,8 +173,8 @@ model.scene.idxMultiScene = @(idx) repmat((0:model.scene.nScenes-1)*model.scene.
 model.strategy.gazeCal.stages = { ...
     {'eye.rotationCenterScalers','scene.cameraPosition'},...
     {'eye.rotationCenterScalers','scene.cameraPosition', 'scene.primaryPosition'}, ...
-    {'eye.kvals'} };
-model.strategy.gazeCal.errorReg = [1 2 4 0];
+    {'eye.kvals','scene.cameraPosition'} };
+model.strategy.gazeCal.errorReg = [2 1 4 0];
 model.strategy.gazeCal.penaltyWeight = [0.5 0.1];
 model.strategy.gazeCal.useFixForPrimaryPos = false;
 model.strategy.gazeCal.multiSceneNorm = 1;
