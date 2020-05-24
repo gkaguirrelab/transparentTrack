@@ -76,10 +76,10 @@ m = modelCameraTrans - relCamPos;
 plot(0,0,'.b');
 hold on
 for ii = 1:size(m,2)
-    annotation('arrow',[0 m(1,ii)],[0 m(2,ii)],'Color',[0.5 0.5 0.5]);
+    plot([0 m(1,ii)],[0 m(2,ii)],'-','Color',[0.5 0.5 0.5]);
 end
 v = sum(m,2);
-annotation('arrow',[0 v(1)],[0 v(2)],'Color',[0.5 0.5 0.5]);
+plot([0 v(1)],[0 v(2)],'-r');
 ylim([-1 1])
 axis equal
 str = sprintf('cameraTrans [%2.2f]',rawErrors(5));
