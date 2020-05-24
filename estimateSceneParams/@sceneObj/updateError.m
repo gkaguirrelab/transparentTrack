@@ -34,11 +34,11 @@ function updateError( obj, varargin )
 %                           camera is viewing the eye from an off-center
 %                           angle, the bounds will need to be shifted
 %                           accordingly.
-%  'errorReg'             - 1x4 vector. This vector defines a
+%  'errorReg'             - 1x5 vector. This vector defines a
 %                           regularization that weights the four types of
 %                           error that can contribute to the overall model
 %                           error. The weights apply to errors in:
-%                               [perim glint pose vector]
+%                               [perim glint pose vector camTrans]
 %  'missedGlintPenalty'   - Scalar. If a glint is not found for one frame,
 %                           then this value is assigned as the error for
 %                           that frame.
@@ -67,7 +67,7 @@ function updateError( obj, varargin )
 %                           to screen position.
 %   vecRegParams          - Structure. The parameters that relate the
 %                           pupil center -> glint vec to screen position.
-%   rawErrors             - 1x4 matrix. The four component errors.
+%   rawErrors             - 1x5 matrix. The five component errors.
 %
 
 
@@ -94,7 +94,7 @@ p = inputParser;
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,4],@isnumeric);
 p.addParameter('cameraTransBounds',[0;0;0],@isnumeric);
-p.addParameter('errorReg',[1 0 2 0],@isnumeric);
+p.addParameter('errorReg',[1 1 1 1 1],@isnumeric);
 p.addParameter('missedGlintPenalty',1e3,@isnumeric);
 p.addParameter('poseRegParams',[],@isstruct);
 
@@ -363,8 +363,14 @@ else
 end
 
 
+%% camTransError
+% We may wish to keep the sum of the modeled camera translation (that is in
+% addition to the relCamPos) equal to zero
+camTransError = norm(sum(modelCameraTrans-relCamPos,2));
+
+
 %% Obtain the omnibus error
-rawErrors = [perimError glintError poseError, vectorError];
+rawErrors = [perimError glintError poseError, vectorError, camTransError];
 fVal = nanNorm(rawErrors,p.Results.errorReg);
 fVal(isinf(fVal))=realmax;
 

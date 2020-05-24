@@ -32,6 +32,8 @@ function saveModelFitPlot(obj,fileNameSuffix)
 x = obj.x;
 model = obj.model;
 modelPupilEllipse = obj.modelPupilEllipse;
+modelCameraTrans = obj.modelCameraTrans;
+relCamPos = obj.relCamPos(:,obj.frameSet);
 modelGlintCoord = obj.modelGlintCoord;
 modelPoseGaze = obj.modelPoseGaze;
 modelVecGaze = obj.modelVecGaze;
@@ -54,7 +56,7 @@ figHandle=figure('Visible','off');
 set(gcf,'PaperOrientation','landscape');
 set(figHandle, 'Units','inches')
 height = 3;
-width = 10;
+width = 12;
 
 % The last two parameters of 'Position' define the figure size
 set(figHandle, 'Position',[25 5 width height],...
@@ -63,7 +65,25 @@ set(figHandle, 'Position',[25 5 width height],...
     'Color','w');
 
 % We are going to have four sub-plots
-nCols = 4;
+nCols = 5;
+
+
+%% cameraTrans
+% Plot the modeled camera movement beyond the passed cameraTranslation
+% vector
+subplot(2,nCols,5)
+m = modelCameraTrans - relCamPos;
+for ii = 1:size(m,2)
+    annotation('arrow',[0 m(1,ii)],[0 m(2,ii)],'Color',[0.5 0.5 0.5]);
+    hold on
+end
+v = sum(m,2);
+annotation('arrow',[0 v(1)],[0 v(2)],'Color',[0.5 0.5 0.5]);
+xlim([-1 1])
+ylim([-1 1])
+axis equal
+str = sprintf('cameraTrans [%2.2f]',rawErrors(5));
+title(str);
 
 
 %% Glint-pupil vec matching gaze targets

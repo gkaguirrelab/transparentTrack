@@ -151,8 +151,8 @@ model.scene.paramLabels = {'pp_azi','pp_ele','torsion','horiz','vert','depth'};
 model.scene.units = {'deg','deg','deg','mm','mm','mm'};
 model.scene.nParams = length(model.scene.paramLabels);
 model.scene.nScenes = nScenes;
-model.scene.setLabels = {'primaryPosition','cameraPosition', 'translation', 'all'};
-model.scene.setIdx = {1:2, 3:6, 4:6, 1:6};
+model.scene.setLabels = {'primaryPosition','cameraPosition', 'translation', 'moveInPlane', 'all'};
+model.scene.setIdx = {1:2, 3:6, 4:6, 3:5, 1:6};
 model.scene.idxMap =  @(idx) model.head.nParams+model.eye.nParams+idx;
 % An anonymous function that expands the input index vector [a, b, ...]
 % into a vector given k eye+head, s sceneParams, and n scenes:
@@ -170,12 +170,14 @@ model.scene.idxMultiScene = @(idx) repmat((0:model.scene.nScenes-1)*model.scene.
 % one or more gazeCal acquisitions.
 model.strategy.gazeCal.stages = { ...
     {'eye.rotationCenterScalers','scene.cameraPosition'},...
-    {'eye.kvals'}, ...
-    {'scene.primaryPosition'} };
+    {'eye.rotationCenterScalers','scene.moveInPlane'},...    
+    {'eye.kvals','scene.moveInPlane'}, ...
+    {'scene.primaryPosition','scene.moveInPlane'} };
 model.strategy.gazeCal.errorArgs = { ...
-    {'cameraTransBounds',[0;0;0],'errorReg',[1 1 4 0]}
-    {'cameraTransBounds',[1;1;0],'errorReg',[1 1 4 0]}
-    {'cameraTransBounds',[1;1;0],'errorReg',[1 1 4 0]} };
+    {'cameraTransBounds',[0;0;0],'errorReg',[1 1 4 0 0]}
+    {'cameraTransBounds',[1;1;0],'errorReg',[1 1 4 0 1]}
+    {'cameraTransBounds',[1;1;0],'errorReg',[1 1 4 0 1]}
+    {'cameraTransBounds',[1;1;0],'errorReg',[1 1 4 0 1]} };
 model.strategy.gazeCal.penaltyWeight = [0.5 0.1];
 model.strategy.gazeCal.useFixForPrimaryPos = false;
 model.strategy.gazeCal.multiSceneNorm = 1;
@@ -188,7 +190,7 @@ model.strategy.gazeCal.TolMesh = 1e-2;
 model.strategy.sceneSync.stages = { ...
     {'scene.cameraPosition', 'head.phaseAndRotation' } };
 model.strategy.sceneSync.errorArgs = { ...
-    {'cameraTransBounds',[0;0;0],'errorReg',[1 0 0 0]} };
+    {'cameraTransBounds',[1;1;0],'errorReg',[1 0 0 0 1]} };
 model.strategy.sceneSync.penaltyWeight = [0.5 0.05];
 model.strategy.sceneSync.useFixForPrimaryPos = false;
 model.strategy.sceneSync.multiSceneNorm = 1;
