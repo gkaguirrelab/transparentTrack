@@ -195,15 +195,6 @@ model.strategy.sceneSync.multiSceneNorm = 1;
 model.strategy.sceneSync.TolMesh = 1e-2;
 
 
-%% Substitute passed model inputs for defaults
-% The passed modelIn structure can over-write all model parameters defined
-% up to this point. Function definitions can not be replaced by this
-% approach.
-if ~isempty(modelIn)
-    model = mergestruct(model, modelIn);
-end
-
-
 %% Assemble full x0 and bounds
 
 % The head and eye parameters are shared by all scenes, and each scene gets
@@ -241,12 +232,20 @@ else
     model.x0 = [model.head.x0, model.eye.x0, repmat(model.scene.x0, 1, nScenes)];
 end
 
-
 % And the bounds
 if iscell(model.scene.x0)
     model.bounds = [model.head.bounds, model.eye.bounds, cell2mat(model.scene.bounds)];
 else
     model.bounds = [model.head.bounds, model.eye.bounds, repmat(model.scene.bounds, 1, nScenes)];
+end
+
+
+%% Substitute passed model inputs for defaults
+% The passed modelIn structure can over-write all model parameters defined
+% up to this point. Function definitions can not be replaced by this
+% approach.
+if ~isempty(modelIn)
+    model = mergestruct(model, modelIn);
 end
 
 

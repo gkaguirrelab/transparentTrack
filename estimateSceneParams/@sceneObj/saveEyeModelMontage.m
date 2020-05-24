@@ -24,13 +24,13 @@ function saveEyeModelMontage(obj,fileNameSuffix)
 % Obtain variables from the object
 sceneGeometry = obj.sceneGeometry;
 modelEyePose = obj.modelEyePose;
+modelCameraTrans = obj.modelCameraTrans;
 frameSet = obj.frameSet;
 videoStemName = obj.videoStemName;
 perimeter = obj.perimeter;
 glintDataX = obj.glintDataX;
 glintDataY = obj.glintDataY;
 gazeTargets = obj.gazeTargets;
-relCamPos = obj.relCamPos(:,obj.frameSet);
 
 % The name of the video file source, and the name of the montage figure to
 % be saved.
@@ -65,7 +65,7 @@ montageOrder = (pos(2,:)+nGrid-1).*nGrid+pos(1,:)-1;
 % Sort the ellipse array list so that the frames appear in temporal order
 [frameSet, sortOrder] = sort(frameSet);
 modelEyePose = modelEyePose(sortOrder,:);
-relCamPos = relCamPos(:,sortOrder);
+modelCameraTrans = modelCameraTrans(:,sortOrder);
 perimeter = perimeter(sortOrder);
 glintDataX = glintDataX(sortOrder);
 glintDataY = glintDataY(sortOrder);
@@ -135,7 +135,7 @@ for ii = 1:length(frameSet)
     eyePose = modelEyePose(ii,:);
     if ~any(isnan(eyePose))
         renderEyePose(eyePose, sceneGeometry, 'newFigure', false, ...
-            'cameraTrans', relCamPos(:,ii), ...
+            'cameraTrans', modelCameraTrans(:,ii), ...
             'modelEyeLabelNames', {'retina' 'irisPerimeter' 'pupilEllipse' 'cornea' 'glint_01' 'glint_02'}, ...
             'modelEyePlotColors', {'.w' '.b' '-g' '.y' 'xr' 'xr'}, ...
             'modelEyeAlpha', [0.25 0.25 0.25 0.25 1 1],...
