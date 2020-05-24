@@ -190,7 +190,7 @@ model.strategy.gazeCal.TolMesh = 1e-2;
 model.strategy.sceneSync.stages = { ...
     {'scene.cameraPosition', 'head.phaseAndRotation' } };
 model.strategy.sceneSync.errorArgs = { ...
-    {'cameraTransBounds',[1;1;0],'errorReg',[1 0 0 0 1]} };
+    {'cameraTransBounds',[1;1;0],'errorReg',[1 1 0 0 0]} };
 model.strategy.sceneSync.penaltyWeight = [0.5 0.05];
 model.strategy.sceneSync.useFixForPrimaryPos = false;
 model.strategy.sceneSync.multiSceneNorm = 1;
