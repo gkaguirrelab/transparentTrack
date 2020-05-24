@@ -56,7 +56,7 @@ figHandle=figure('Visible','off');
 set(gcf,'PaperOrientation','landscape');
 set(figHandle, 'Units','inches')
 height = 3;
-width = 12;
+width = 10;
 
 % The last two parameters of 'Position' define the figure size
 set(figHandle, 'Position',[25 5 width height],...
@@ -73,13 +73,13 @@ nCols = 5;
 % vector
 subplot(2,nCols,5)
 m = modelCameraTrans - relCamPos;
+plot(0,0,'.b');
+hold on
 for ii = 1:size(m,2)
     annotation('arrow',[0 m(1,ii)],[0 m(2,ii)],'Color',[0.5 0.5 0.5]);
-    hold on
 end
 v = sum(m,2);
 annotation('arrow',[0 v(1)],[0 v(2)],'Color',[0.5 0.5 0.5]);
-xlim([-1 1])
 ylim([-1 1])
 axis equal
 str = sprintf('cameraTrans [%2.2f]',rawErrors(5));
