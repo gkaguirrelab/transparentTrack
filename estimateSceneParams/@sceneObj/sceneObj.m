@@ -75,8 +75,7 @@ classdef sceneObj < handle
         gazeTargets
         setupArgs
         meta
-        verbose
-        errorArgs
+        verbose        
             
         % Fixed data used to guide the search
         perimeter
@@ -95,6 +94,9 @@ classdef sceneObj < handle
                 
         % The sceneGeometry that is being modeled
         sceneGeometry
+        
+        % The aguments passed to updateError
+        errorArgs
 
         % The relCameraPos, which is updated based upon search params
         relCamPos        
@@ -128,7 +130,7 @@ classdef sceneObj < handle
     methods
 
         % Constructor
-        function obj = sceneObj(model, videoStemName, frameSet, gazeTargets, setupArgs, errorArgs, meta, varargin)
+        function obj = sceneObj(model, videoStemName, frameSet, gazeTargets, setupArgs, meta, varargin)
                         
             % instantiate input parser
             p = inputParser; p.KeepUnmatched = false;
@@ -139,14 +141,13 @@ classdef sceneObj < handle
             p.addRequired('frameSet',@isnumeric);
             p.addRequired('gazeTargets',@isnumeric);
             p.addRequired('setupArgs',@iscell);
-            p.addRequired('errorArgs',@iscell);
             p.addRequired('meta',@isstruct);
             
             % Optional
             p.addParameter('verbose',false,@islogical);
         
             % parse
-            p.parse(model, videoStemName, frameSet, gazeTargets, setupArgs, errorArgs, meta, varargin{:})
+            p.parse(model, videoStemName, frameSet, gazeTargets, setupArgs, meta, varargin{:})
                         
             
             %% Store inputs in the object
@@ -157,12 +158,12 @@ classdef sceneObj < handle
             obj.setupArgs = setupArgs;
             obj.meta = meta;
             obj.verbose = p.Results.verbose;
-            obj.errorArgs = errorArgs;            
 
             
             %% Initialize some properties
             obj.fValBest = Inf;
             obj.multiSceneMeta = [];
+            obj.errorArgs = {};
             
 
             %% Create initial sceneGeometry structure
@@ -200,7 +201,7 @@ classdef sceneObj < handle
         updateScene(obj)
         updateHead(obj)
         updateError(obj, varargin)
-        fVal = returnError(obj, x)
+        fVal = returnError(obj, x, errorArgs)
         saveEyeModelMontage(obj,fileNameSuffix)
         saveModelFitPlot(obj,fileNameSuffix)
         saveSceneGeometry(obj,fileNameSuffix)

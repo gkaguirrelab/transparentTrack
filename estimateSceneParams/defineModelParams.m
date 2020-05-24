@@ -169,9 +169,13 @@ model.scene.idxMultiScene = @(idx) repmat((0:model.scene.nScenes-1)*model.scene.
 % gazeCal -- Used to derive the rotation center properties of the eye from
 % one or more gazeCal acquisitions.
 model.strategy.gazeCal.stages = { ...
-    {'eye.rotationCenterScalers','scene.cameraPosition','scene.primaryPosition'},...
-    {'eye.kvals','scene.cameraPosition'} };
-model.strategy.gazeCal.errorArgs = {'cameraTransBounds',[0;0;0],'errorReg',[1 0 4 0]};
+    {'eye.rotationCenterScalers','scene.cameraPosition'},...
+    {'scene.primaryPosition'},...
+    {'eye.kvals'} };
+model.strategy.gazeCal.errorArgs = { ...
+    {'cameraTransBounds',[0;0;0],'errorReg',[1 1 4 0]}
+    {'cameraTransBounds',[0;0;0],'errorReg',[1 1 4 0]}
+    {'cameraTransBounds',[1;1;0],'errorReg',[1 1 4 0]} };
 model.strategy.gazeCal.penaltyWeight = [0.5 0.1];
 model.strategy.gazeCal.useFixForPrimaryPos = false;
 model.strategy.gazeCal.multiSceneNorm = 1;
@@ -183,7 +187,8 @@ model.strategy.gazeCal.TolMesh = 1e-2;
 % discourage large changes in camera torsion or depth.
 model.strategy.sceneSync.stages = { ...
     {'scene.cameraPosition', 'head.phaseAndRotation' } };
-model.strategy.sceneSync.errorArgs = {'cameraTransBounds',[0;0;0],'errorReg',[1 0 0 0]};
+model.strategy.sceneSync.errorArgs = { ...
+    {'cameraTransBounds',[0;0;0],'errorReg',[1 0 0 0]} };
 model.strategy.sceneSync.penaltyWeight = [0.5 0.05];
 model.strategy.sceneSync.useFixForPrimaryPos = false;
 model.strategy.sceneSync.multiSceneNorm = 1;

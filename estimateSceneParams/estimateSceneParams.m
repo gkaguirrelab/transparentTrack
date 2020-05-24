@@ -303,10 +303,6 @@ nScenes = length(videoStemName);
 % This is typically done for x0 and bounds.
 model = defineModelParams(nScenes, p.Results.model, p.Results.cameraTorsion, p.Results.cameraDepth, p.Results.corneaTorsion);
 
-% The errorArgs are passed in the creation of the scene objects. They are
-% defined by the search strategy, and modified by passed parameters.
-errorArgs = [model.strategy.(strategy).errorArgs, p.Results.errorArgs];
-
 % Loop through the scenes and create scene objective functions
 for ss = 1:nScenes
     
@@ -321,19 +317,12 @@ for ss = 1:nScenes
     % Create the objective for this scene
     sceneObjects{ss} = sceneObj(...
         model, videoStemName{ss}, frameSet{ss}, gazeTargets{ss}, ...
-        setupArgs, errorArgs, p.Results, ...
-        'verbose', verbose);
+        setupArgs, p.Results, 'verbose', verbose);
     
 end
 
 % Set the initial value of x to x0
 x = model.x0;
-
-
-%% Anonymous functions for the search
-
-% An objective function which is the norm of all objective functions
-myObjAll = @(x) multiSceneObjective(x,sceneObjects,model,strategy,verbose);
 
 
 %% Define BADS search options
@@ -370,6 +359,9 @@ for ii = 1:nStages
         fprintf(str);
     end
     
+    % Objective
+    myObjAll = @(x) multiSceneObjective(x,sceneObjects,model,strategy,ii,p.Results.errorArgs,verbose);
+
     % Bounds
     [x,lb,ub,lbp,ubp] = setBounds(x,model,ii,strategy);
     

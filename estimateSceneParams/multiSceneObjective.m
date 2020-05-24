@@ -1,4 +1,4 @@
-function fVal = multiSceneObjective(x,sceneObjects,model,strategy,verbose)
+function fVal = multiSceneObjective(x,sceneObjects,model,strategy,stage,errorArgsIn,verbose)
 % An objective function across multiple scenes for estimateSceneParams
 %
 % Syntax:
@@ -11,12 +11,18 @@ function fVal = multiSceneObjective(x,sceneObjects,model,strategy,verbose)
 %   model                 - Struct. Describes parameters of the search.
 %   strategy              - Char vector. Directs the function to the field
 %                              model.strategy.(strategy)
+%   stage                 - Scalar. The stage of the search
+%   errorArgsIn           - Cell array. Passed errorArgs from the calling 
+%                           function.
 %   verbose               - Logical.
 %
 % Outputs:
 %   fVal                  - Scalar. The objective function value.
 %
 
+
+% Get the errorArgs for this stage of the search
+errorArgs = [model.strategy.(strategy).errorArgs{stage}, errorArgsIn];
 
 % Loop over the scenes.
 nScenes = length(sceneObjects);
@@ -25,10 +31,10 @@ for ss = 1:nScenes
     
     % These are the parameters from x that are appropriate for this scene
     subX = model.func.subX(x,ss);
-    
+        
     % Call the object to calculate the updated error function for these
     % parameters
-    fValScene(ss) = sceneObjects{ss}.returnError(subX);
+    fValScene(ss) = sceneObjects{ss}.returnError(subX, errorArgs);
     
 end
 

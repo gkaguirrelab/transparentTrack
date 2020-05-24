@@ -1,4 +1,4 @@
-function fVal = returnError(obj, x)
+function fVal = returnError(obj, x, errorArgs)
 % Updates the scene and head motion models and then returns the objective
 %
 % Syntax:
@@ -10,6 +10,9 @@ function fVal = returnError(obj, x)
 %
 % Inputs:
 %   x
+%   errorArgs             - Cell array of key-values to be sent to
+%                           updateError to optionally over-ride the default
+%                           parameters.
 %
 % Outputs:
 %   fVal                  - Scalar. The objective function value.
@@ -33,6 +36,9 @@ obj.updateHead;
 
 % Update the sceneGeometry
 obj.updateScene;
+
+% Store the passed errorArgs
+obj.errorArgs = errorArgs;
 
 % Update the error
 obj.updateError(obj.errorArgs{:});
