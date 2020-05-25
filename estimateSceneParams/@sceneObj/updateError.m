@@ -365,8 +365,11 @@ end
 
 %% camTransError
 % Reflects the extent to which the modeled camera transition (that is in
-% addition to the relCamPos) departs from zero.
-camTransError = sum(sum(modelCameraTrans-relCamPos,2))^2;
+% addition to the relCamPos) departs from zero, and the extent to which it
+% is in a consistent direction. That is, we want to penalize both bias and
+% magnitude.
+camTransError = norm(sum(modelCameraTrans-relCamPos,2)) * ...
+    norm(vecnorm(modelCameraTrans-relCamPos));
 
 
 %% Obtain the omnibus error
