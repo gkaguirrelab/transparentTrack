@@ -366,11 +366,11 @@ end
 %% camTransError
 % Reflects the extent to which the modeled camera transition (that is in
 % addition to the relCamPos) departs from zero.
-camTransError = norm(sum(modelCameraTrans-relCamPos,2));
+camTransError = norm(modelCameraTrans-relCamPos,2);
 
 
 %% Obtain the omnibus error
-rawErrors = [perimError glintError poseError, vectorError, camTransError];
+rawErrors = [perimError, glintError, poseError, vectorError, camTransError];
 fVal = nanNorm(rawErrors,p.Results.errorReg);
 fVal(isinf(fVal))=realmax;
 
