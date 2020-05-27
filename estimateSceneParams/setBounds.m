@@ -25,6 +25,14 @@ function [x,lb,ub,lbp,ubp] = setBounds(x,model,stage,strategy)
 %                           within which BADS will concentrate its search.
 %
 
+
+%% Touch the x vector
+% We add 1e-10 to the corneal torsion x value so that the x vector has
+% changed, which will force the objective function to recompute.
+corneaTorsionIdx = find(model.eye.idxMultiScene(model.func.fieldParamIdx('eye','torsion')));
+x(corneaTorsionIdx) = x(corneaTorsionIdx)+1e-10;
+
+
 %% Construct the param search set for this strategy and stage
 
 % A blank search set
@@ -67,21 +75,10 @@ ubp(~searchSet) = x(~searchSet);
 
 % A special case issue is that the axis of corneal torsion must be locked
 % between ±90 degrees.
-corneaTorsionIdx = find(model.eye.idxMultiScene(model.func.fieldParamIdx('eye','torsion')));
 lb(corneaTorsionIdx) = max([lb(corneaTorsionIdx) -90]);
 ub(corneaTorsionIdx) = min([ub(corneaTorsionIdx) 90]);
 lbp(corneaTorsionIdx) = max([lbp(corneaTorsionIdx) -90]);
 ubp(corneaTorsionIdx) = min([ubp(corneaTorsionIdx) 90]);
-
-% Find an un-bound parameter and add 1e-10 so that the objective function
-% will be recomputed when x is first encountered
-unboundIdx = find(x < ub);
-if ~isempty(unboundIdx)
-    x(unboundIdx(1)) = x(unboundIdx(1))+1e-10;
-else
-    x(end) = x(end) + 1e-10;
-    ub(end) = ub(end) + 1e-10;
-end
 
 % Ensure that x is within bounds
 x=min([ub; x]);
