@@ -73,6 +73,16 @@ ub(corneaTorsionIdx) = min([ub(corneaTorsionIdx) 90]);
 lbp(corneaTorsionIdx) = max([lbp(corneaTorsionIdx) -90]);
 ubp(corneaTorsionIdx) = min([ubp(corneaTorsionIdx) 90]);
 
+% Find an un-bound parameter and add realMin so that the objective function
+% will be recomputed when x is first encountered
+unboundIdx = find(x < ub);
+if ~isempty(unboundIdx)
+    x(unboundIdx(1)) = x(unboundIdx(1))+realmin;
+else
+    x(end) = x(end) + realmin;
+    ub(end) = ub(end) + realmin;
+end
+
 % Ensure that x is within bounds
 x=min([ub; x]);
 x=max([lb; x]);
