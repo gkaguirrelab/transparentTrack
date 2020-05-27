@@ -275,7 +275,11 @@ end
 % Plot the data
 if isempty(p.Results.plotTitle)
     nameParts = strsplit(pupilFileName,filesep);
-    plotTitle = [nameParts{end-4} ' - ' nameParts{end-3} ' - ' nameParts{end-2} ' - ' nameParts{end}];
+    if length(nameParts)==1
+        plotTitle = nameParts{end};
+    else
+        plotTitle = [nameParts{end-4} ' - ' nameParts{end-3} ' - ' nameParts{end-2} ' - ' nameParts{end}];
+    end
 else
     plotTitle = p.Results.plotTitle;
 end
