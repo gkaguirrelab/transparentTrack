@@ -59,12 +59,9 @@ updateMetaFlag = false;
 if isempty(sceneObjects{1}.multiSceneMeta)
     updateMetaFlag = true;
 else
-    if fVal < sceneObjects{1}.multiSceneMeta.fVal
+    if fVal < sceneObjects{1}.multiSceneMeta.fVal || stage ~= sceneObjects{1}.multiSceneMeta.stage
         updateMetaFlag = true;
     end
-end
-if stage ~= sceneObjects{1}.multiSceneMeta.stage
-        updateMetaFlag = true;
 end
 
 % Update the meta value fields if appropriate
