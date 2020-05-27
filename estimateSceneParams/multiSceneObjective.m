@@ -53,7 +53,8 @@ fVal = fVal * penalty;
 % Each sceneObject has a multiSceneMeta property that is used to stash
 % information about the search progress. First determine if we need to
 % update the meta information, which is the case if the meta field is
-% currently empty, or if the fVal is better than the stored value.
+% currently empty, if the fVal is better than the stored value, or if we
+% have started a new stage
 updateMetaFlag = false;
 if isempty(sceneObjects{1}.multiSceneMeta)
     updateMetaFlag = true;
@@ -61,6 +62,9 @@ else
     if fVal < sceneObjects{1}.multiSceneMeta.fVal
         updateMetaFlag = true;
     end
+end
+if stage ~= sceneObjects{1}.multiSceneMeta.stage
+        updateMetaFlag = true;
 end
 
 % Update the meta value fields if appropriate
@@ -71,11 +75,12 @@ if updateMetaFlag
     multiSceneMeta.fValScene = fValScene;
     multiSceneMeta.fVal = fVal;
     multiSceneMeta.penalty = penalty;
+    multiSceneMeta.stage = stage;
     
     % Loop over the scene objects and store the meta data
     for ss = 1:nScenes
         sceneObjects{ss}.multiSceneMeta = multiSceneMeta;
-        sceneObjects{ss}.multiSceneIdx = ss;
+        sceneObjects{ss}.multiSceneIdx = ss;        
     end
     
     % If we have the verbose flag, report the new, best fVal and params
