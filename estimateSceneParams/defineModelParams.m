@@ -173,10 +173,10 @@ model.strategy.gazeCal.stages = { ...
     {'eye.kvals','eye.rotationCenterScalers','scene.cameraPosition'},...
     {'scene.primaryPosition','scene.moveInPlane'} };
 model.strategy.gazeCal.errorArgs = { ...
-    {'cameraTransBounds',[1;1;0],'errorReg',[2 1 10 0 1]}
-    {'cameraTransBounds',[1;1;0],'errorReg',[2 1 10 0 1]}
-    {'cameraTransBounds',[1;1;0],'errorReg',[2 1 10 0 1]} };
-model.strategy.gazeCal.penaltyWeight = [1 0.1];
+    {'cameraTransBounds',[1;1;0],'errorReg',[1 1 10 0 2]}
+    {'cameraTransBounds',[1;1;0],'errorReg',[1 1 10 0 2]}
+    {'cameraTransBounds',[1;1;0],'errorReg',[1 1 10 0 2]} };
+model.strategy.gazeCal.penaltyWeight = [0.5 0.1];
 model.strategy.gazeCal.useFixForPrimaryPos = false;
 model.strategy.gazeCal.multiSceneNorm = 1;
 model.strategy.gazeCal.TolMesh = 1e-2;
