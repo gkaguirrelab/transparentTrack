@@ -60,6 +60,11 @@ sceneGeometryOut.cameraPosition.torsion = x(model.func.fieldParamIdx('scene','to
 % Store the extrinsic camera translation vector
 sceneGeometryOut.cameraPosition.translation = x(model.func.fieldSetIdx('scene','translation'))';
 
+% Add any common depth adjustments acros scenes
+sceneGeometryOut.cameraPosition.translation(3) = ...
+    sceneGeometryOut.cameraPosition.translation(3) + ...
+    x(model.func.fieldSetIdx('eye','commonDepth'));
+
 % Store the updated sceneGeometry in the object
 obj.sceneGeometry = sceneGeometryOut;
 

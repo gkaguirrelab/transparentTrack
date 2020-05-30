@@ -129,13 +129,13 @@ model.head.idxMultiScene = @(idx) idx;
 % default rotation centers of the eye. The bounds on the first two k-vals
 % reflect the range of kvals that were obtained by keratometry in the 50
 % subject TOME data set.
-model.eye.x0 = [44.2410, 45.6302, corneaTorsion, 2.5000, 0, 1, 1];
-model.eye.bounds = [1.5, 1.5, 15, 5, 2.5, 0.25, 0.25];
-model.eye.paramLabels = {'K1','K2','torsion','tilt','tip','joint','diff'};
-model.eye.units = {'diopters','diopters','deg','deg','deg','proportion','proportion'};
+model.eye.x0 = [44.2410, 45.6302, corneaTorsion, 2.5000, 0, 1, 1, 0];
+model.eye.bounds = [1.5, 1.5, 15, 5, 2.5, 0.25, 0.25, 30];
+model.eye.paramLabels = {'K1','K2','torsion','tilt','tip','joint','diff','commonDepth'};
+model.eye.units = {'diopters','diopters','deg','deg','deg','proportion','proportion','mm'};
 model.eye.nParams = length(model.eye.paramLabels);
-model.eye.setLabels = {'kvals','rotationCenterScalers','all'};
-model.eye.setIdx = {1:5, 6:7, 1:7};
+model.eye.setLabels = {'kvals','rotationCenterScalers','commonDepth','all'};
+model.eye.setIdx = {1:5, 6:7, 8, 1:8};
 model.eye.idxMap = @(idx) model.head.nParams+idx;
 model.eye.idxMultiScene = @(idx) idx;
 
@@ -170,10 +170,12 @@ model.scene.idxMultiScene = @(idx) repmat((0:model.scene.nScenes-1)*model.scene.
 % one or more gazeCal acquisitions.
 model.strategy.gazeCal.stages = { ...
     {'scene.moveInPlane'},...
-    {'eye.rotationCenterScalers','scene.cameraPosition'},...
+    {'eye.rotationCenterScalers','eye.commonDepth'},...
+    {'eye.rotationCenterScalers','eye.cameraPosition'},...
     {'eye.kvals','scene.cameraPosition'},...
     {'scene.primaryPosition','scene.moveInPlane'} };
 model.strategy.gazeCal.errorArgs = { ...
+    {'cameraTransBounds',[1;1;0],'errorReg',[1 1 10 0 2]}
     {'cameraTransBounds',[1;1;0],'errorReg',[1 1 10 0 2]}
     {'cameraTransBounds',[1;1;0],'errorReg',[1 1 10 0 2]}
     {'cameraTransBounds',[1;1;0],'errorReg',[1 1 10 0 2]}
