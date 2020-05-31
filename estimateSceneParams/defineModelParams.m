@@ -128,7 +128,9 @@ model.head.idxMultiScene = @(idx) idx;
 % default parameters correspond to a cornea with the default kvals, and
 % default rotation centers of the eye. The bounds on the first two k-vals
 % reflect the range of kvals that were obtained by keratometry in the 50
-% subject TOME data set.
+% subject TOME data set. The commonDepth parameter allows for adjustment of
+% camera depth of all scenes in common. It is placed in the eye parameter
+% set for convenience.
 model.eye.x0 = [44.2410, 45.6302, corneaTorsion, 2.5000, 0, 1, 1, 0];
 model.eye.bounds = [1.5, 1.5, 15, 5, 2.5, 0.25, 0.25, 30];
 model.eye.paramLabels = {'K1','K2','torsion','tilt','tip','joint','diff','commonDepth'};
@@ -171,7 +173,7 @@ model.scene.idxMultiScene = @(idx) repmat((0:model.scene.nScenes-1)*model.scene.
 model.strategy.gazeCal.stages = { ...
     {'scene.moveInPlane'},...
     {'eye.rotationCenterScalers','eye.commonDepth'},...
-    {'eye.rotationCenterScalers','eye.cameraPosition'},...
+    {'eye.rotationCenterScalers','scene.cameraPosition'},...
     {'eye.kvals','scene.cameraPosition'},...
     {'scene.primaryPosition','scene.moveInPlane'} };
 model.strategy.gazeCal.errorArgs = { ...
@@ -180,7 +182,7 @@ model.strategy.gazeCal.errorArgs = { ...
     {'cameraTransBounds',[1;1;0],'errorReg',[1 1 10 0 2]}
     {'cameraTransBounds',[1;1;0],'errorReg',[1 1 10 0 2]}
     {'cameraTransBounds',[1;1;0],'errorReg',[1 1 10 0 2]} };
-model.strategy.gazeCal.penaltyWeight = [0.5 0.1];
+model.strategy.gazeCal.penaltyWeight = [0.0 0.0];
 model.strategy.gazeCal.useFixForPrimaryPos = false;
 model.strategy.gazeCal.multiSceneNorm = 1;
 model.strategy.gazeCal.TolMesh = 1e-2;

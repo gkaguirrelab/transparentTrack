@@ -109,6 +109,7 @@ axis equal
 str = sprintf('Gaze pose [%2.2f]',rawErrors(3));
 title(str);
 
+
 %% Prediction of glint location
 h1 = subplot(2,nCols,2);
 plot(glintDataX,glintDataY,'ok'); hold on;
