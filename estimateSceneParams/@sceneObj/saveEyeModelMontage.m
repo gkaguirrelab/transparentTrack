@@ -190,11 +190,14 @@ saveas(figHandle,montageFileName)
 % Close the figure
 close(figHandle)
 
-% Rotate the figure by 90 degrees clockwise, because I can't get the
-% MATLAB plotting routines to output the image how I want it.
-A = imread(montageFileName);
-A = rot90(A,3);
-imwrite(A,montageFileName);
+% If Matlab is older than 2020a, we have to rotate the figure by 90 degrees
+% clockwise, because I can't otherwise get the MATLAB plotting routines to
+% output the image how I want it.
+if verLessThan('matlab','9.8')
+    A = imread(montageFileName);
+    A = rot90(A,3);
+    imwrite(A,montageFileName);
+end
 
 % close the video object
 clear videoInObj
