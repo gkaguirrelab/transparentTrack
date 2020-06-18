@@ -39,9 +39,9 @@ grayVideoName = strrep(sceneGeometryFileName,'_sceneGeometry.mat','_gray.avi');
 
 % Identify the frames of the ellipse array
 if isempty(p.Results.frameSet)
-frameSet = sceneGeometry.meta.estimateSceneParams.obj.frameSet;
+    frameSet = sceneGeometry.meta.estimateSceneParams.obj.frameSet;
 else
-frameSet = p.Results.frameSet;    
+    frameSet = p.Results.frameSet;
 end
 
 % Get the video properties
@@ -64,14 +64,14 @@ clear videoInObj
 
 % Load the pupil perimeter data. It will be a structure variable
 % "perimeter", with the fields .data and .meta
-    perimeterFileName = strrep(sceneGeometryFileName,'_sceneGeometry.mat','_correctedPerimeter.mat');
+perimeterFileName = strrep(sceneGeometryFileName,'_sceneGeometry.mat','_correctedPerimeter.mat');
 dataLoad=load(perimeterFileName);
 perimeter=dataLoad.perimeter;
 clear dataLoad
 
 % Load the glint data. It will be a structure variable
 % "perimeter", with the fields .data and .meta
-    glintFileName = strrep(sceneGeometryFileName,'_sceneGeometry.mat','_glint.mat');
+glintFileName = strrep(sceneGeometryFileName,'_sceneGeometry.mat','_glint.mat');
 load(glintFileName,'glintData');
 
 % Load the relativeCameraPosition file if it exists.
@@ -128,10 +128,10 @@ while notDoneFlag
     
     % Obtain the eye pose from the boundary points from the perimeter
     Xp = perimeter.data{frameIdx}.Xp;
-        Yp = perimeter.data{frameIdx}.Yp;
-        glintCoord = [glintData.X(frameIdx,:), glintData.Y(frameIdx,:)];
-
-    eyePose = eyePoseEllipseFit(Xp, Yp, glintCoord, adjustedSceneGeometry);
+    Yp = perimeter.data{frameIdx}.Yp;
+    glintCoord = [glintData.X(frameIdx,:), glintData.Y(frameIdx,:)];
+    
+    eyePose = eyePoseEllipseFit(Xp, Yp, glintCoord, adjustedSceneGeometry,'cameraTransBounds',[0;0;0]);
     
     % Show this video frame
     thisFrame = sourceFrames(:,:,:,arrayIdx);
@@ -139,13 +139,19 @@ while notDoneFlag
     thisFrame = insertText(thisFrame,[20 20],frameLabel,'FontSize',30);
     imshow(squeeze(thisFrame));
     
+    % Add the pupil perimeter points
+    hold on
+    plot(Xp ,Yp, '.w', 'MarkerSize', 1);
+    plot(glintData.X(frameIdx,:), glintData.Y(frameIdx,:),'or');
+    
+
     % Add the rendered eye model
     if ~any(isnan(eyePose))
         renderEyePose(eyePose, adjustedSceneGeometry, ...
             'newFigure', false, 'visible', true, ...
             'showAzimuthPlane', true, ...
             'modelEyeLabelNames', {'retina' 'irisPerimeter' 'pupilEllipse' 'cornea' 'aziRotationCenter' 'medialCanthus' 'lateralCanthus'}, ...
-            'modelEyePlotColors', {'.w' '.b' '-g' '.y' '+c' '.w' '.w'}, ...
+            'modelEyePlotColors', {'.w' '.b' '-g' '.y' '+c' 'Ok' 'Ok'}, ...
             'modelEyeSymbolSizeScaler',1.5,...
             'modelEyeAlpha', 0.25);
     end
@@ -225,7 +231,7 @@ end
 % Clean up
 close(figHandle)
 fprintf('\n');
-fprintf('scene parameters = [%0.2f; %0.2f; %0.2f; %0.2f; %0.2f; %0.2f]\n',x(1),x(2),x(3),x(4),x(5),x(6));
+fprintf('scene parameters = [%0.2f; %0.2f; %0.2f; %0.2f]\n',x);
 
 end % Main function
 
