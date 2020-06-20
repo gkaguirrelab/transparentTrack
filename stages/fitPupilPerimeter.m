@@ -182,7 +182,7 @@ if ~isempty(relativeCameraPosition)
     cameraTransVec = ...
         relativeCameraPosition.(relativeCameraPosition.currentField).values;
 else
-    cameraTransVec = zeros(nHeadTransParams,length(pupilData.initial.ellipses.RMSE));
+    cameraTransVec = zeros(nHeadTransParams,size(perimeter.data,1));
 end
 
 % determine how many frames we will process
