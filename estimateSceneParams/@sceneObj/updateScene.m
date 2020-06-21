@@ -28,6 +28,7 @@ sceneGeometryOut = sceneGeometryIn;
 
 % Get the model parameters and model description
 x = obj.x;
+xLast = obj.xLast;
 model = obj.model;
 
 % Extract the eye field
@@ -46,13 +47,19 @@ sceneGeometryOut.eye.rotationCenters = rotationCenters;
 cornea = human.cornea( eye );
 sceneGeometryOut.eye.cornea = cornea;
 
-% Update the glint optical system with the cornea
-sceneGeometryOut.refraction.glint.opticalSystem = ...
-    assembleOpticalSystem( sceneGeometryOut.eye, 'surfaceSetName', 'glint', 'skipMagCalc', true, setupArgs{:});
-
-% Update the stopToMedium optical system with the cornea
-sceneGeometryOut.refraction.stopToMedium.opticalSystem = ...
-    assembleOpticalSystem( sceneGeometryOut.eye, 'surfaceSetName', 'stopToMedium', 'skipMagCalc', true, setupArgs{:});
+% Only re-calculate the optical systems if there has been a change in the
+% kvals
+if any( x(model.func.fieldSetIdx('eye','kvals')) ~= xLast(x(model.func.fieldSetIdx('eye','kvals'))) )
+    
+    % Update the glint optical system
+    sceneGeometryOut.refraction.glint.opticalSystem = ...
+        assembleOpticalSystem( sceneGeometryOut.eye, 'surfaceSetName', 'glint', 'skipMagCalc', true, setupArgs{:});
+    
+    % Update the stopToMedium optical system with the cornea
+    sceneGeometryOut.refraction.stopToMedium.opticalSystem = ...
+        assembleOpticalSystem( sceneGeometryOut.eye, 'surfaceSetName', 'stopToMedium', 'skipMagCalc', true, setupArgs{:});
+    
+end
 
 % Store the camera torsion
 sceneGeometryOut.cameraPosition.torsion = x(model.func.fieldParamIdx('scene','torsion'));

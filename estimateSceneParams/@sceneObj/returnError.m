@@ -26,6 +26,9 @@ if ~isempty(obj.x)
         fVal = obj.fVal;
         return
     end
+    obj.xLast = obj.x;
+else
+    obj.xLast = nan(size(x));
 end
 
 % Update the object with the new parameters

@@ -101,8 +101,9 @@ classdef sceneObj < handle
         % The relCameraPos, which is updated based upon search params
         relCamPos        
         
-        % The current model parameters, and the best parameters seen
+        % The current model parameters, the last, and best parameters seen
         x
+        xLast
         xBest
         
         % The fVal for the current model, and the model performance
