@@ -49,7 +49,7 @@ sceneGeometryOut.eye.cornea = cornea;
 
 % Only re-calculate the optical systems if there has been a change in the
 % kvals
-if any( x(model.func.fieldSetIdx('eye','kvals')) ~= xLast(x(model.func.fieldSetIdx('eye','kvals'))) )
+if any( x(model.func.fieldSetIdx('eye','kvals')) ~= xLast(model.func.fieldSetIdx('eye','kvals')) )
     
     % Update the glint optical system
     sceneGeometryOut.refraction.glint.opticalSystem = ...
