@@ -57,10 +57,10 @@ function syncSceneGeometry(videoStemNameIn, videoStemNameOut, varargin)
 %                           the x0 values that are taken from the
 %                           sceneGeometry for the videoStemNameIn
 %                           acquisition.
-%   frameSet              - A 1xm vector that specifies the m indices
+%  'frameSet'             - A 1xm vector that specifies the m indices
 %                           (indexed from 1) that identify the set of
 %                           frames from the acquisition to guide the search
-%   gazeTargets           - A 2xm matrix that provides the positions, in
+%  'gazeTargets'          - A 2xm matrix that provides the positions, in
 %                           degrees of visual angle, of fixation targets
 %                           that correspond to each of the frames. Nan
 %                           values are acceptable and indicate that the
