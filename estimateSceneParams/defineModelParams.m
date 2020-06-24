@@ -273,7 +273,7 @@ model.func.penalty = @(x,x0,w) (1 + ...
     )^2;
 
 % A non-linear constraint for the BADS search that requires first value of
-% the corneal curvature (K1) to be less than the second value (K2) Note
+% the corneal curvature (K1) to be less than the second value (K2). Note
 % that NONBCON takes a matrix input, which is why we perform this
 % calculation over the first dimension. The function returns a non-zero
 % value when the constraint is violated (i.e., when K1>K2).
