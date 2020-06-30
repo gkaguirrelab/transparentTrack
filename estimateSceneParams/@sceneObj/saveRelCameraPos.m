@@ -28,7 +28,7 @@ end
 relativeCameraPosition.estimateSceneParams.values = obj.relCamPos;
 
 % Store the specific camera position calculated for the frameSet
-relativeCameraPosition.estimateSceneParams.values(:,frameSet) = obj.modelCameraTrans;
+relativeCameraPosition.estimateSceneParams.values(:,obj.frameSet) = obj.modelCameraTrans;
 
 % Update the meta data
 relativeCameraPosition.estimateSceneParams.meta.p = obj.meta;
