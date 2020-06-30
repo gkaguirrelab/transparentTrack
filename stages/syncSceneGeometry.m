@@ -93,7 +93,7 @@ p.addParameter('alignMethod','gazePre',@(x)(ischar(x) | iscell(x)));
 p.addParameter('searchStrategy','sceneSync',@ischar);
 p.addParameter('cameraTorsion',[],@(x)(isempty(x) || isscalar(x)));
 p.addParameter('cameraDepth',[],@(x)(isempty(x) || isscalar(x)));
-p.addParameter('frameSet',[],@(x)(isempty(x) || isvec(x)));
+p.addParameter('frameSet',[],@(x)(isempty(x) || isvector(x)));
 p.addParameter('gazeTargets',[],@(x)(isempty(x) || ismatrix(x)));
 
 
