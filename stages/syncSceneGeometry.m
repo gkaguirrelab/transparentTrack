@@ -216,8 +216,9 @@ else
             
         case 'gazeCalTest'
             
-            % Get all of the gaze target frames from the source. They will be
-            % ordered such that the fixation ([0;0]) gaze position is first.
+            % Get all of the gaze target frames from the source. They will
+            % be ordered such that the fixation ([0;0]) gaze position is
+            % first.
             [frameSet, gazeTargets] = selectFrames.gazeCalTest(videoStemNameOut);
             
             % We need fewer additional frames, as we already have 9
@@ -227,9 +228,9 @@ else
             error('This is not a defined align method')
     end
     
-    % Add frames that are distributed across time and space. Start with a low
-    % distValThresh and increase as needed to reach the desired frames or until
-    % the maximum suitable threshold is reached.
+    % Add frames that are distributed across time and space. Start with a
+    % low distValThresh and increase as needed to reach the desired frames
+    % or until the maximum suitable threshold is reached.
     stillSearching = true;
     distValsThreshold = 0.2;
     maxDistValsThreshold = 0.35;
@@ -284,6 +285,8 @@ clear dataLoad
 % Store the eyePose for the fixation frame of sceneGeometryOut
 eyePoseFixationOut = sceneGeometryOut.meta.estimateSceneParams.obj.modelEyePose(1,:);
 
+% Obtain the camera translation for the fixation frame of sceneGeometryOut
+cameraTrans = sceneGeometryOut.meta.estimateSceneParams.obj.modelCameraTrans(:,1);
 
 %% Create and save a diagnostic figure
 if p.Results.saveDiagnosticPlot
@@ -319,6 +322,7 @@ if p.Results.saveDiagnosticPlot
     displayImage = videoFrameOut;
     tmpFig = figure('visible','off');
     renderEyePose(eyePoseFixationOut, sceneGeometryOut, ...
+        'cameraTrans',cameraTrans, ...
         'newFigure', false, 'visible', false, ...
         'backgroundImage',displayImage, ...
         'showAzimuthPlane', true, ...
@@ -342,7 +346,7 @@ if p.Results.saveDiagnosticPlot
     %% Difference image
     
     % Transform the videoFrameIn to the space of videoFrameOut
-    regParams = calcImageTransform(sceneGeometryIn,sceneGeometryOut,cameraOffsetPoint);
+    regParams = calcImageTransform(sceneGeometryIn,sceneGeometryOut,cameraTrans,cameraOffsetPoint);
     videoFrameInAdj = updateFrame(videoFrameIn,regParams,cameraOffsetPoint);
     displayImage = videoFrameOut - double(videoFrameInAdj);
     tmpFig = figure('visible','off');
@@ -417,10 +421,13 @@ end % Main function
 %% LOCAL FUNCTIONS
 
 
-function regParams = calcImageTransform(sceneGeometryIn,sceneGeometryOut,cameraOffsetPoint)
+function regParams = calcImageTransform(sceneGeometryIn,sceneGeometryOut,cameraTrans,cameraOffsetPoint)
 % Determine the rotation and translation matrices that describe the change
 % in an image induced by the updated sceneParameters
 
+% Adjust the sceneGeometryOut to account for the camera translation
+sceneGeometryOut.cameraPosition.translation = ...
+    sceneGeometryOut.cameraPosition.translation + cameraTrans;
 
 pupilEllipseA1 = projectModelEye([ 0 1 0 1],sceneGeometryIn,'pupilRayFunc',[]);
 pupilEllipseA2 = projectModelEye([-1 0 0 1],sceneGeometryIn,'pupilRayFunc',[]);
