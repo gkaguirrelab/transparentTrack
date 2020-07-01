@@ -141,11 +141,10 @@ function sceneObjects = estimateSceneParams(videoStemName, frameSet, gazeTargets
 %  'errorArgs'            - Cell array. These are key-value pairs that are
 %                           passed to method 'updateError' of sceneObj.
 %                           Typically, one might pass pre-computed values
-%                           of poseRegParams or vecRegParams, or adjust
-%                           the eyePose bounds. Note that the errorReg
-%                           key-value should be defined as part of a search
-%                           strategy within defineModelParams.m, not
-%                           passed here.
+%                           of poseRegParams, or adjust the eyePose bounds.
+%                           Note that the errorReg key-value should be
+%                           defined as part of a search strategy within
+%                           defineModelParams.m, not passed here.
 %
 % Outputs
 %   sceneObjects          - Cell array of handles to objects of the type
