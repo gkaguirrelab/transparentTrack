@@ -180,7 +180,7 @@ model.strategy.gazeCal.errorArgs = { ...
     {'cameraTransBounds',[1;1;0],'errorReg',[1 1 10 0 0.5]}
     {'cameraTransBounds',[1;1;0],'errorReg',[1 1 10 0 2]}
     {'cameraTransBounds',[1;1;0],'errorReg',[1 1 10 0 2]} };
-model.strategy.gazeCal.penaltyWeight = [0.1 0.1];
+model.strategy.gazeCal.penaltyWeight = [0.1 0.1]; % [depth torsion]
 model.strategy.gazeCal.useFixForPrimaryPos = false;
 model.strategy.gazeCal.multiSceneNorm = 1;
 model.strategy.gazeCal.TolMesh = 1e-2;
@@ -188,12 +188,12 @@ model.strategy.gazeCal.TolMesh = 1e-2;
 % sceneSync -- Used to map a known set of eye biometric parameters and a
 % pretty good initial set of scene parameters to an acquisition that has an
 % associated measurement of head movement over time. The penalty weights
-% discourage large changes in camera torsion or depth.
+% discourage large changes in camera depth or torsion.
 model.strategy.sceneSync.stages = { ...
     {'scene.cameraPosition', 'head.phaseAndRotation' } };
 model.strategy.sceneSync.errorArgs = { ...
     {'cameraTransBounds',[1;1;0],'errorReg',[1 1 0 0 1]} };
-model.strategy.sceneSync.penaltyWeight = [1 5];
+model.strategy.sceneSync.penaltyWeight = [10 1]; % [depth torsion]
 model.strategy.sceneSync.useFixForPrimaryPos = false;
 model.strategy.sceneSync.multiSceneNorm = 1;
 model.strategy.sceneSync.TolMesh = 1e-2;
