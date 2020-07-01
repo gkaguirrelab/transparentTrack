@@ -57,6 +57,7 @@ p.parse(videoStemName, varargin{:})
 % this acquisition
 load([videoStemName '_timebase.mat'],'timebase');
 load([videoStemName '_pupil.mat'],'pupilData');
+load([videoStemName '_glint.mat'],'glintData');
 
 % Identify the acqStartTimeFixed, which is the time point at which the
 % fMRI acquisition began
@@ -78,7 +79,9 @@ medianY = nanmedian(gazeY);
 % center of the screen, this vector expresses the deviation of
 % fixation on any given frame from the screen center.
 eyeMatchError = sqrt(sum([gazeX-medianX; gazeY-medianY].^2,2));
-x0 = 0.5;
+
+% Set any period without a glint to have an arbitrarily high error
+eyeMatchError(isnan(glintData.X)) = 1e20;
 
 % Find the minimum fixation error threshold that results in a run of
 % consecutive frames at fixation of the target length.
@@ -97,6 +100,9 @@ runStarts = @(thresh) find(diff([0,(eyeMatchError < thresh)',0]==1));
 % Set the fzero search options
 options = optimset('fzero');
 options.Display = 'off';
+
+% The starting point for the search
+x0 = 0.5;
 
 % Adjust the targetLength as needed to achieve a threshVal below threshTol.
 stillWorking = true;
@@ -122,8 +128,7 @@ end
 
 % Check if we found a solution
 if ~isfinite(threshValFixed)
-    warning('Unable to find a suitable set of frames from the acquisition')
-    return
+    error('gazePre:noGoodFrame','Unable to find a suitable set of frames from the acquisition')
 end
 
 % Find the start point of this run of frames
@@ -134,8 +139,21 @@ startIndexFixed = runIndices(runLengths == runLengthFixed);
 startIndexFixed = startIndexFixed(1);
 frameSetFixed = startIndexFixed:startIndexFixed+runLengthFixed-1;
 
+% Grab RMSE of the ellipse fit to each frame
+ellipseRMSE = pupilData.initial.ellipses.RMSE;
+
+% Set any frame without a glint to nan
+ellipseRMSE(isnan(glintData.X)) = nan;
+
+% Work with just the frameSet
+ellipseRMSE = ellipseRMSE(frameSetFixed);
+
+% Check if we found a solution
+if all(isnan(ellipseRMSE))
+    error('gazePre:noGlint','There is no glint available during the gazePre period')
+end
+
 % Find the frame with the lowest ellipse RMSE during the target window
-ellipseRMSE = pupilData.initial.ellipses.RMSE(frameSetFixed);
 frameSet = startIndexFixed + find(ellipseRMSE == min(ellipseRMSE)) - 1;
 
 % The gaze target is presumed to be the center of the screen [0 0]

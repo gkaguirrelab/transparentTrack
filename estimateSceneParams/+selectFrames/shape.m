@@ -48,6 +48,7 @@ p.parse(videoStemName, rhoTarget, thetaTarget)
 %% Load files
 load([videoStemName '_pupil.mat'],'pupilData');
 load([videoStemName '_correctedPerimeter.mat'],'perimeter');
+load([videoStemName '_glint.mat'],'glintData');
 
 
 %% Obtain the theta and rho values
@@ -118,6 +119,9 @@ distVals(isnan(distVals)) = 1e20;
 
 % Adopt a threshold above which a partial pupil perimeter will not be used
 distVals(distVals>p.Results.distValsThreshold) = 1e20;
+
+% Set values with no glint to an arbitrarily large number
+distVals(isnan(glintData.X)) = 1e20;
 
 % The likelihood SD for each frame is the RMSE multiplied by the distVal
 likelihoodPupilRadiusSDVector = (distVals.*RMSE)';
