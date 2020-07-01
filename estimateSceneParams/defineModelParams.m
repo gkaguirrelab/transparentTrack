@@ -263,8 +263,8 @@ model.func.fieldParamIdx = @(field,paramLabel) model.(field).idxMap(find(strcmp(
 model.func.sceneParamStart = @(sceneIdx) (sceneIdx-1)*model.scene.nParams+model.head.nParams+model.eye.nParams+1;
 model.func.subX = @(x,sceneIdx) x([1:(model.head.nParams+model.eye.nParams),model.func.sceneParamStart(sceneIdx):model.func.sceneParamStart(sceneIdx)+model.scene.nParams-1]);
 
-% penalty is a regularization that penalizes changes in depth from the x0
-% values
+% penalty is a regularization that penalizes changes in depth and torsion
+% from the x0 values
 cameraDepthTransSet = model.scene.idxMultiScene(model.func.fieldParamIdx('scene','depth'));
 cameraTorsionTransSet = model.scene.idxMultiScene(model.func.fieldParamIdx('scene','torsion'));
 model.func.penalty = @(x,x0,w) (1 + ...
