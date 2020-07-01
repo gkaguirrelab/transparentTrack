@@ -154,6 +154,12 @@ videoFrameIn = makeMedianVideoImage([videoStemNameIn '_gray.avi'],'startFrame',f
 model.eye.x0 = sceneGeometryIn.meta.estimateSceneParams.xEye;
 model.scene.x0 = sceneGeometryIn.meta.estimateSceneParams.xScene;
 
+% Move any commonDepth value from the eye to the scene parameter set
+depthIdx = find(strcmp(sceneGeometryIn.meta.estimateSceneParams.obj.model.scene.paramLabels,'depth'));
+commonDepthIdx = find(strcmp(sceneGeometryIn.meta.estimateSceneParams.obj.model.eye.paramLabels,'commonDepth'));
+model.scene.x0(depthIdx) = model.scene.x0(depthIdx) + model.eye.x0(commonDepthIdx);
+model.eye.x0(commonDepthIdx) = 0;
+
 % If a cameraTorsion or cameraDepth value has been passed, use this to
 % over-write the default value in the model parameters
 if ~isempty(p.Results.cameraTorsion)
