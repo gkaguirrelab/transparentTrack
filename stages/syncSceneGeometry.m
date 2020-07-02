@@ -393,9 +393,9 @@ if p.Results.saveDiagnosticPlot
     % Report the alignment method
     annotation('textbox', [0.15, .125, 0, 0], 'string', alignMethod,'FontWeight','bold','FitBoxToText','on','LineStyle','none','HorizontalAlignment','left','Interpreter','none')
     
-    % Add a text summary below. If any delta fixation angle is geater than
-    % 1 deg, print the message text in red to alert that this was a large
-    % eye rotation change.
+    % Add a text summary below. If any delta fixation angle is greater than
+    % 1 deg, and the align method was not "shape", print the message text
+    % in red to alert that this was a large eye rotation change.
     deltaX = sceneGeometryOut.meta.estimateSceneParams.xScene - model.scene.x0;
     deltaPose = eyePoseFixationOut - eyePoseFixationIn;
     
@@ -405,7 +405,7 @@ if p.Results.saveDiagnosticPlot
     annotation('textbox', [0.5, .125, 0, 0], 'string', msg,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
     msg = sprintf('delta eye pose [azi, ele, tor, radius] = [%2.3f, %2.3f, %2.3f, %2.3f]',deltaPose);
     msgColor = 'black';
-    if any(abs(deltaPose(1:3)) > 1.0)
+    if any(abs(deltaPose(1:3)) > 1.0) && ~strcmp(alignMethod,'shape')
         msgColor = 'red';
     end
     annotation('textbox', [0.5, .075, 0, 0], 'string', msg,'Color',msgColor,'FitBoxToText','on','LineStyle','none','HorizontalAlignment','center','Interpreter','none')
