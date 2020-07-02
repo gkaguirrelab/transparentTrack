@@ -193,7 +193,7 @@ model.strategy.sceneSync.stages = { ...
     {'scene.cameraPosition', 'head.phaseAndRotation' } };
 model.strategy.sceneSync.errorArgs = { ...
     {'cameraTransBounds',[1;1;0],'errorReg',[1 1 0 0 1]} };
-model.strategy.sceneSync.penaltyWeight = [100 1]; % [depth torsion]
+model.strategy.sceneSync.penaltyWeight = [25 1]; % [depth torsion]
 model.strategy.sceneSync.useFixForPrimaryPos = false;
 model.strategy.sceneSync.multiSceneNorm = 1;
 model.strategy.sceneSync.TolMesh = 1e-2;
