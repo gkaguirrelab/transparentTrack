@@ -9,7 +9,7 @@ function [ x, candidateSceneGeometry ] = estimateSceneParamsGUI(sceneGeometryFil
 % Examples:
 %{
     % ETTBSkip -- This is an idiosyncratic example.
-    sceneGeometryFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure/TOME_3045/042319/EyeTracking/GazeCal_sceneGeometry.mat';
+    sceneGeometryFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure/TOME_3046/041019/EyeTracking/GazeCal_sceneGeometry.mat';
     initialParams = estimateSceneParamsGUI(sceneGeometryFileName)
 %}
 
@@ -248,24 +248,3 @@ fprintf('scene parameters = [%0.2f; %0.2f; %0.2f; %0.2f]\n',x);
 
 end % Main function
 
-
-
-%% LOCAL FUNCTION
-
-function r = issubfield(s, f)
-if isempty(f) || isempty(s)
-    r = false;
-else
-    t = textscan(f,'%s','delimiter','.');
-    t = t{1};
-    r = true;
-    for k = 1:numel(t)
-        if isfield(s, t{k})
-            s = s.(t{k});
-        else
-            r = false;
-            return;
-        end
-    end
-end
-end % issubfield
