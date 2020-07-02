@@ -9,7 +9,7 @@ function [ x, candidateSceneGeometry ] = estimateSceneParamsGUI(sceneGeometryFil
 % Examples:
 %{
     % ETTBSkip -- This is an idiosyncratic example.
-    sceneGeometryFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure/TOME_3019/042617a/EyeTracking/GazeCal_sceneGeometry.mat';
+    sceneGeometryFileName = '~/Dropbox (Aguirre-Brainard Lab)/TOME_processing/session1_restAndStructure/TOME_3045/042319/EyeTracking/GazeCal_sceneGeometry.mat';
     initialParams = estimateSceneParamsGUI(sceneGeometryFileName)
 %}
 
@@ -89,18 +89,17 @@ end
 fprintf('Adjust horizontal /vertical camera translation with the arrow keys.\n');
 fprintf('Adjust depth camera translation with + and -.\n');
 fprintf('Adjust camera torsion with j and k.\n');
+fprintf('Adjust joint and differential rotation depth with g, b and f, h.\n');
 fprintf('Move forward and backward in the ellipse frames with a and s\n')
 fprintf('Press return to be prompted to enter scene param values as text.\n');
 fprintf('Press esc to exit.\n');
 
 % Set the current index and scene params
 arrayIdx = 1;
-if isfield(sceneGeometry.meta,'estimateSceneParams')
-    x = sceneGeometry.meta.estimateSceneParams.xScene(3:end)';
-else
-    x = [sceneGeometry.cameraPosition.torsion; ...
-        sceneGeometry.cameraPosition.translation ];
-end
+x = [sceneGeometry.cameraPosition.torsion; ...
+    sceneGeometry.cameraPosition.translation; ...
+    sceneGeometry.eye.meta.rotationCenterScalers'];
+
 % Prepare the main figure
 figHandle=figure('Visible','on');
 annotHandle=[];
@@ -114,6 +113,8 @@ while notDoneFlag
     candidateSceneGeometry = sceneGeometry;
     candidateSceneGeometry.cameraPosition.torsion = x(1);
     candidateSceneGeometry.cameraPosition.translation = x(2:4);
+    candidateSceneGeometry.eye.meta.rotationCenterScalers = x(5:6)';
+    candidateSceneGeometry.eye.rotationCenters = human.rotationCenters( candidateSceneGeometry.eye );
     
     % Identify the frame to display
     frameIdx = frameSet(arrayIdx);
@@ -144,7 +145,7 @@ while notDoneFlag
     plot(Xp ,Yp, '.w', 'MarkerSize', 1);
     plot(glintData.X(frameIdx,:), glintData.Y(frameIdx,:),'or');
     
-
+    
     % Add the rendered eye model
     if ~any(isnan(eyePose))
         renderEyePose(eyePose, adjustedSceneGeometry, ...
@@ -161,7 +162,7 @@ while notDoneFlag
     end
     
     % Wait for operator input
-    fprintf('torsion: %0.2f, translation [%0.2f; %0.2f; %0.2f]\n',x);
+    fprintf('torsion: %0.2f, translation [%0.2f; %0.2f; %0.2f], rotation centers [%0.2f; %0.2f], eyePose [%0.2f; %0.2f; %0.2f; %0.2f]\n',x,eyePose);
     waitforbuttonpress
     keyChoiceValue = double(get(gcf,'CurrentCharacter'));
     switch keyChoiceValue
@@ -183,6 +184,18 @@ while notDoneFlag
         case {61 43}
             text_str = 'translate farther away';
             x(4)=x(4)+1;
+        case 103
+            text_str = 'deeper rotation center';
+            x(5)=x(5)+0.1;
+        case 98
+            text_str = 'shallower rotation center';
+            x(5)=x(5)-0.1;
+        case 102
+            text_str = 'closer azi and ele rotation centers';
+            x(6)=x(6)-0.1;
+        case 104
+            text_str = 'farther azi and ele rotation centers';
+            x(6)=x(6)+0.1;
         case 97
             text_str = 'prior frame';
             arrayIdx = arrayIdx-1;
