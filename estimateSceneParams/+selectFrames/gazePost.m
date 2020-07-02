@@ -86,7 +86,7 @@ medianY = nanmedian(gazeY);
 eyeMatchError = sqrt(sum([gazeX-medianX; gazeY-medianY].^2,2));
 
 % Set any period without a glint to have an arbitrarily high error
-eyeMatchError(isnan(glintData.X)) = 1e20;
+eyeMatchError(isnan(glintData.X(windowStart:windowEnd))) = 1e20;
 
 % Find the minimum fixation error threshold that results in a run of
 % consecutive frames at fixation of the target length.
