@@ -1,5 +1,5 @@
 function [imageMedian, imageSD] = makeMedianVideoImage(videoInFileName, varargin)
-% Creates the median video image, masking the pupil and iris
+% Returns the median image for a specified set of video frames by index
 %
 % Syntax:
 %  makeMedianVideoImage(videoInFileName)
@@ -11,6 +11,7 @@ function [imageMedian, imageSD] = makeMedianVideoImage(videoInFileName, varargin
 %	videoInFileName       - Full path to an .avi file; typically the "gray"
 %
 % Optional key/value pairs (display and I/O):
+%   startFrame            - The first frame of the median, indexed from 1
 %
 % Outputs:
 %   None
@@ -41,34 +42,34 @@ else
 end
 
 % get start and end times
-endTime = (p.Results.startFrame+nFrames) / videoInObj.FrameRate;
-startTime = p.Results.startFrame / videoInObj.FrameRate;
+startFrame = p.Results.startFrame;
+endFrame = startFrame+nFrames-1;
 
 % get video dimensions
 videoSizeX = videoInObj.Width;
 videoSizeY = videoInObj.Height;
 
+% A variable to hold the frames as we read them
 sourceFrames = zeros(1,videoSizeY,videoSizeX);
 
-% Make sure that the start and end times are in the right order
-if startTime > endTime
-    tmp = endTime;
-    endTime = startTime;
-    startTime = tmp;    
+% Read up to the startFrame
+curFrame = 1;
+while curFrame < startFrame
+    readFrame(videoInObj);
+    curFrame = curFrame + 1;
 end
 
 %% Loop through the frames
-% Obtain the median for each second of video
-for ii = startTime:(1/videoInObj.FrameRate):endTime
+for ii = startFrame:endFrame
+    
     % read the source video frame into memory
-    videoInObj.CurrentTime=ii;
     frame = rgb2gray(readFrame(videoInObj));
-
+    
+    % store this frame
     sourceFrames(end+1,:,:)=frame;
 end
 
 % Derive the median and SD images
-sourceFrames = sourceFrames(2:end,:,:);
 imageMedian = squeeze(median(sourceFrames,1));
 imageSD = squeeze(std(sourceFrames,1));
 
