@@ -396,7 +396,7 @@ if p.Results.saveDiagnosticPlot
     % Add a text summary below. If any delta fixation angle is geater than
     % 1 deg, print the message text in red to alert that this was a large
     % eye rotation change.
-    deltaX = sceneGeometryOut.meta.estimateSceneParams.xScene - sceneGeometryIn.meta.estimateSceneParams.xScene;
+    deltaX = sceneGeometryOut.meta.estimateSceneParams.xScene - model.scene.x0;
     deltaPose = eyePoseFixationOut - eyePoseFixationIn;
     
     msg = sprintf('delta torsion [deg] = %2.1f',deltaX(3));
