@@ -328,6 +328,7 @@ x = model.x0;
 options = bads('defaults');          % Get a default OPTIONS struct
 options.Display = 'off';             % Silence display output
 options.UncertaintyHandling = 0;     % The objective is deterministic
+options.MeshOverflowsWarning = Inf;  % Silences this warning
 options.TolMesh = model.strategy.(strategy).TolMesh;
 
 
