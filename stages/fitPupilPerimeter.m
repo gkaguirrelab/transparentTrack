@@ -295,8 +295,7 @@ parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
             end
             
             % Find the eyePose parameters that best fit the pupil
-            % perimeter. This can take between 1 and 10 seconds, with
-            % longer search times for partial pupil ellipses.
+            % perimeter. This can take a few seconds.
             [eyePose, cameraTrans, objectiveError, ellipseParamsTransparent, fitAtBound] = ...
                 eyePoseEllipseFit(Xp, Yp, glintCoord, sceneGeometry, ...
                 'cameraTransX0',cameraTrans,...
