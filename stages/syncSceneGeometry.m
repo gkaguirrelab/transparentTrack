@@ -170,7 +170,7 @@ if ~isempty(p.Results.cameraDepth)
     model.scene.x0(strcmp(sceneGeometryIn.meta.estimateSceneParams.obj.model.scene.paramLabels,'depth')) = p.Results.cameraDepth;
 end
 if ~isempty(p.Results.cameraTrans)
-    model.scene.x0(strcmp(sceneGeometryIn.meta.estimateSceneParams.obj.model.scene.paramLabels,'horiz')) = p.Results.cameraTrans(2);
+    model.scene.x0(strcmp(sceneGeometryIn.meta.estimateSceneParams.obj.model.scene.paramLabels,'horiz')) = p.Results.cameraTrans(1);
     model.scene.x0(strcmp(sceneGeometryIn.meta.estimateSceneParams.obj.model.scene.paramLabels,'vert')) = p.Results.cameraTrans(2);
 end
 
