@@ -123,7 +123,7 @@ while notDoneFlag
     adjustedSceneGeometry = candidateSceneGeometry;
     if ~isempty(relativeCameraPosition)
         cameraPosition = candidateSceneGeometry.cameraPosition.translation;
-        cameraPosition = cameraPosition - relativeCameraPosition.values(:,frameIdx);
+        cameraPosition = cameraPosition - relativeCameraPosition.(relativeCameraPosition.currentField).values(:,frameIdx);
         adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
     end
     
