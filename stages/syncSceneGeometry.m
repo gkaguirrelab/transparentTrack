@@ -164,14 +164,14 @@ model.eye.x0(commonDepthIdx) = 0;
 % If cameraTorsion, cameraDepth, or cameraTrans has been passed, use this
 % to over-write the default value in the model parameters
 if ~isempty(p.Results.cameraTorsion)
-    model.scene.x0(model.func.fieldParamIdx('scene','torsion')) = p.Results.cameraTorsion;
+    model.scene.x0(strcmp(sceneGeometryIn.meta.estimateSceneParams.obj.model.scene.paramLabels,'torsion')) = p.Results.cameraTorsion;
 end
 if ~isempty(p.Results.cameraDepth)
-    model.scene.x0(model.func.fieldParamIdx('scene','depth')) = p.Results.cameraDepth;
+    model.scene.x0(strcmp(sceneGeometryIn.meta.estimateSceneParams.obj.model.scene.paramLabels,'depth')) = p.Results.cameraDepth;
 end
 if ~isempty(p.Results.cameraTrans)
-    model.scene.x0(model.func.fieldParamIdx('scene','horiz')) = p.Results.cameraTrans(1);
-    model.scene.x0(model.func.fieldParamIdx('scene','vert')) = p.Results.cameraTrans(2);
+    model.scene.x0(strcmp(sceneGeometryIn.meta.estimateSceneParams.obj.model.scene.paramLabels,'horiz')) = p.Results.cameraTrans(2);
+    model.scene.x0(strcmp(sceneGeometryIn.meta.estimateSceneParams.obj.model.scene.paramLabels,'vert')) = p.Results.cameraTrans(2);
 end
 
 % Obtain the eye and error args
