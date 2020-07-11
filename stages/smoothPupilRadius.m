@@ -145,7 +145,6 @@ clear dataLoad
 
 % Load the glint file if passed
 if ~isempty(p.Results.glintFileName)
-    % Load the sceneGeometry file
     load(p.Results.glintFileName,'glintData');
 else
     glintData = [];
@@ -296,8 +295,8 @@ end
 warnState = warning();
 
 % Loop through the frames
-parfor (ii = 1:nFrames, nWorkers)
-%for ii = 1:nFrames
+%parfor (ii = 1:nFrames, nWorkers)
+for ii = 1:nFrames
     
     % update progress
     if verbose
@@ -420,7 +419,7 @@ parfor (ii = 1:nFrames, nWorkers)
             glintCoord = [];
         end
         
-        if isempty(glintCoord)
+        if isempty(glintCoord) || any(isnan(glintCoord))
             thisFrameCameraTransBounds = [0; 0; 0];
         else
             thisFrameCameraTransBounds = cameraTransBounds;

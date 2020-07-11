@@ -292,7 +292,7 @@ parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
                 glintCoord = [];
             end
             
-            if isempty(glintCoord)
+            if isempty(glintCoord) || any(isnan(glintCoord))
                 thisFrameCameraTransBounds = [0; 0; 0];
             else
                 thisFrameCameraTransBounds = cameraTransBounds;
