@@ -59,7 +59,7 @@ function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, scene
 %  'exponentialTauParam'  - The time constant (in video frames) of the
 %                           decaying exponential weighting function for
 %                           pupil radius.
-%  'likelihoodErrorMultiplier' - The SD of the parameters estimated for 
+%  'likelihoodErrorMultiplier' - The SD of the parameters estimated for
 %                           each frame are computed as the product of the
 %                           RMSE of the ellipse fits to the pupil perimeter
 %                           points, the non-linear non-uniformity of the
@@ -115,9 +115,9 @@ p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@i
 p.addParameter('glintFileName',[],@(x)(isempty(x) || ischar(x)));
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,5],@isnumeric);
+p.addParameter('cameraTransBounds',[5; 5; 0],@isnumeric);
 p.addParameter('exponentialTauParam',5,@isnumeric);
 p.addParameter('likelihoodErrorMultiplier',1.0,@isnumeric);
-p.addParameter('fitLabel','sceneConstrained',@ischar);
 p.addParameter('fixedPriorPupilRadius',[],@isnumeric);
 p.addParameter('relativeCameraPositionFileName',[],@ischar);
 
@@ -126,7 +126,7 @@ p.addParameter('relativeCameraPositionFileName',[],@ischar);
 p.parse(perimeterFileName, pupilFileName, sceneGeometryFileName, varargin{:});
 
 nEllipseParams=5; % 5 params in the transparent ellipse form
-nEyePoseParams=4; % 4 eyePose values (azimuth, elevation, torsion, radius) 
+nEyePoseParams=4; % 4 eyePose values (azimuth, elevation, torsion, radius)
 radiusIdx = 4; % The 4th eyePose entry holds the radius value
 
 
@@ -162,19 +162,20 @@ else
     relativeCameraPosition=[];
 end
 
+% Select the appropriate field of relativeCameraTransition, or synthesize
+% one if not available
+if ~isempty(relativeCameraPosition)
+    cameraTransVec = ...
+        relativeCameraPosition.(relativeCameraPosition.currentField).values;
+else
+    cameraTransVec = zeros(nHeadTransParams,size(perimeter.data,1));
+end
+
 % determine how many frames we will process
 if p.Results.nFrames == Inf
     nFrames=size(perimeter.data,1);
 else
     nFrames = p.Results.nFrames;
-end
-
-% Check that the needed fields in the pupilData structure are present
-if ~isfield(pupilData,(p.Results.fitLabel))
-    error('The requested fit field is not available in pupilData');
-end
-if ~isfield(pupilData.(p.Results.fitLabel).ellipses,'RMSE')
-    error('This fit field does not have the required subfield: ellipse.RMSE');
 end
 
 
@@ -187,7 +188,7 @@ end
 if isempty(p.Results.fixedPriorPupilRadius)
     fixedPriorPupilRadiusMean = medianw( ...
         pupilData.sceneConstrained.eyePoses.values(:,4), ...
-        pupilData.sceneConstrained.ellipses.RMSE, 1 );    
+        pupilData.sceneConstrained.ellipses.RMSE, 1 );
     fixedPriorPupilRadiusSD = 4;
 else
     fixedPriorPupilRadiusMean = p.Results.fixedPriorPupilRadius;
@@ -218,7 +219,7 @@ exponentialWeights=[fliplr(baseExpFunc) NaN baseExpFunc];
 
 % The likelihood SD is based upon the RMSE of the fit of the elipse to the
 % perimeter points for each frame
-RMSE = pupilData.(p.Results.fitLabel).ellipses.RMSE';
+RMSE = pupilData.sceneConstrained.ellipses.RMSE';
 
 % Define the bins over which the distribution of perimeter angles will be
 % evaluated. 20 bins works pretty well.
@@ -234,9 +235,9 @@ nonUniformity = @(x) (sum(abs(x/sum(x)-mean(x/sum(x))))/2)/(1-1/length(x));
 for ii = 1:nFrames
     
     % Obtain the center of this fitted ellipse
-    centerX = pupilData.(p.Results.fitLabel).ellipses.values(ii,1);
-    centerY = pupilData.(p.Results.fitLabel).ellipses.values(ii,2);
-
+    centerX = pupilData.sceneConstrained.ellipses.values(ii,1);
+    centerY = pupilData.sceneConstrained.ellipses.values(ii,2);
+    
     % Obtain the set of perimeter points
     Xp = perimeter.data{ii}.Xp;
     Yp = perimeter.data{ii}.Yp;
@@ -278,7 +279,7 @@ clear perimeter
 verbose = p.Results.verbose;
 eyePoseLB = p.Results.eyePoseLB;
 eyePoseUB = p.Results.eyePoseUB;
-fitLabel = p.Results.fitLabel;
+cameraTransBounds = p.Results.cameraTransBounds;
 
 
 %% Perform the calculation across frames
@@ -295,9 +296,9 @@ end
 warnState = warning();
 
 % Loop through the frames
-parfor (ii = 1:nFrames, nWorkers)
-%for ii = 1:nFrames
-
+%parfor (ii = 1:nFrames, nWorkers)
+for ii = 1:10 %nFrames
+    
     % update progress
     if verbose
         if mod(ii,round(nFrames/50))==0
@@ -312,6 +313,7 @@ parfor (ii = 1:nFrames, nWorkers)
     posteriorEllipseParams = NaN(1,nEllipseParams);
     posteriorEyePoseObjectiveError = NaN;
     posteriorEyePose = NaN(1,nEyePoseParams);
+    posteriorCameraTrans = NaN(3,1);
     posteriorPupilRadiusSD = NaN;
     uniformity = NaN;
     fitAtBound = false;
@@ -320,9 +322,12 @@ parfor (ii = 1:nFrames, nWorkers)
     Xp = frameCellArray{ii}.Xp;
     Yp = frameCellArray{ii}.Yp;
     
+    % Get the camera translation for this frame
+    cameraTrans = cameraTransVec(:,ii);
+    
     % if this frame has data, and eyePose radius is not nan, then proceed
     % to calculate the posterior
-    if ~isempty(Xp) &&  ~isempty(Yp) && ~isnan(pupilData.(fitLabel).eyePoses.values(ii,radiusIdx))
+    if ~isempty(Xp) &&  ~isempty(Yp) && ~isnan(pupilData.sceneConstrained.eyePoses.values(ii,radiusIdx))
         % Calculate the pupil radius prior. The prior mean is given by the
         % surrounding radius values, weighted by a decaying exponential in
         % time and the inverse of the standard deviation of each measure.
@@ -336,7 +341,7 @@ parfor (ii = 1:nFrames, nWorkers)
         restrictHiWindow = max([(nFrames-ii-window)*-1,0]);
         
         % Get the dataVector, restricted to the window range
-        dataVector=squeeze(pupilData.(fitLabel).eyePoses.values(rangeLowSignal:rangeHiSignal,radiusIdx))';
+        dataVector=squeeze(pupilData.sceneConstrained.eyePoses.values(rangeLowSignal:rangeHiSignal,radiusIdx))';
         
         % The precisionVector is the inverse of the likelihood SD vector
         precisionVector = likelihoodPupilRadiusSDVector(rangeLowSignal:rangeHiSignal).^(-1);
@@ -345,7 +350,7 @@ parfor (ii = 1:nFrames, nWorkers)
         % Thus, the noisiest measurement will not influence the prior.
         precisionVector=precisionVector-nanmin(precisionVector);
         precisionVector=precisionVector/nanmax(precisionVector);
-                
+        
         % The temporal weight vector is simply the exponential weights,
         % restricted to the available data widow
         temporalWeightVector = ...
@@ -360,19 +365,19 @@ parfor (ii = 1:nFrames, nWorkers)
         % Obtain the standard deviation of the empirical prior, weighted
         % over time
         empiricalPriorPupilRadiusSD = nanstd(dataVector,temporalWeightVector);
-
+        
         % Obtain the combined prior, which is the posterior of the fixed
         % and empirical priors
         combinedPriorPupilRadiusMean = fixedPriorPupilRadiusSD.^2.*empiricalPriorPupilRadiusMean./(fixedPriorPupilRadiusSD.^2+empiricalPriorPupilRadiusSD.^2) + ...
             empiricalPriorPupilRadiusSD.^2.*fixedPriorPupilRadiusMean./(fixedPriorPupilRadiusSD.^2+empiricalPriorPupilRadiusSD.^2);
-
+        
         combinedPriorPupilRadiusSD = sqrt((fixedPriorPupilRadiusSD.^2.*empiricalPriorPupilRadiusSD.^2) ./ ...
             (fixedPriorPupilRadiusSD.^2+empiricalPriorPupilRadiusSD.^2));
-
+        
         % Retrieve the initialFit for this frame
-        likelihoodPupilRadiusMean = pupilData.(fitLabel).eyePoses.values(ii,radiusIdx);
+        likelihoodPupilRadiusMean = pupilData.sceneConstrained.eyePoses.values(ii,radiusIdx);
         likelihoodPupilRadiusSD = likelihoodPupilRadiusSDVector(ii);
-                        
+        
         % Check if the likelihoodPupilRadiusSD is nan, in which case set it
         % to an arbitrarily large number so that the prior dictates the
         % posterior
@@ -388,7 +393,7 @@ parfor (ii = 1:nFrames, nWorkers)
         % Calculate the SD of the posterior of the pupil radius
         posteriorPupilRadiusSD = sqrt((combinedPriorPupilRadiusSD.^2.*likelihoodPupilRadiusSD.^2) ./ ...
             (combinedPriorPupilRadiusSD.^2+likelihoodPupilRadiusSD.^2));
-
+        
         % It can be the case that the prior mean is nan, due to this frame
         % having a measurement, but all surrounding frames being bad.
         % Detect this case, and set the posterior to the likelihood.
@@ -403,34 +408,35 @@ parfor (ii = 1:nFrames, nWorkers)
         ub_pin = eyePoseUB;
         lb_pin(radiusIdx)=posteriorPupilRadius;
         ub_pin(radiusIdx)=posteriorPupilRadius;
-        x0 = pupilData.(fitLabel).eyePoses.values(ii,:);
+        x0 = pupilData.sceneConstrained.eyePoses.values(ii,:);
         x0(radiusIdx)=posteriorPupilRadius;
         
-        % If a relativeCameraPosition is defined, update the sceneGeometry
-        adjustedSceneGeometry = sceneGeometry;
-        if ~isempty(relativeCameraPosition)
-            cameraPosition = sceneGeometry.cameraPosition.translation;
-            cameraPosition = cameraPosition + relativeCameraPosition.(relativeCameraPosition.currentField).values(:,ii);
-            adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
-        end
-
-        % If we have glintData, extract the glintCoord
+        % If we have glintData, extract the glintCoord, and allow
+        % non-zero bounds on the cameraTrans search. If no glint data,
+        % then lock the cameraTransBounds to zero.
         if ~isempty(glintData)
             glintCoord = [glintData.X(ii,:), glintData.Y(ii,:)];
         else
             glintCoord = [];
         end
-            
+        
+        if isempty(glintCoord)
+            thisFrameCameraTransBounds = [0; 0; 0];
+        else
+            thisFrameCameraTransBounds = cameraTransBounds;
+        end
+        
         % Turn off warnings that can arise when fitting bad frames
         warning('off','projectModelEye:rayTracingError');
         warning('off','projectModelEye:ellipseFitFailed');
-        warning('off','gkaModelEye:pupilEllipseFit');        
+        warning('off','gkaModelEye:pupilEllipseFit');
         
         % Perform the fit
-        [posteriorEyePose, posteriorEyePoseObjectiveError, posteriorEllipseParams, fitAtBound] = ...
-            eyePoseEllipseFit(Xp, Yp, adjustedSceneGeometry, ...
-            'glintCoord',glintCoord, ...
-            'eyePoseLB', lb_pin, 'eyePoseUB', ub_pin, 'x0', x0);
+        [posteriorEyePose, posteriorCameraTrans, posteriorEyePoseObjectiveError, posteriorEllipseParams, fitAtBound] = ...
+            eyePoseEllipseFit(Xp, Yp, glintCoord, sceneGeometry, ...
+            'cameraTransX0',cameraTrans,...
+            'cameraTransBounds',thisFrameCameraTransBounds,...
+            'eyePoseLB', lb_pin, 'eyePoseUB', ub_pin, 'eyePoseX0', x0);
         
         % Calculate the uniformity of the distribution of perimeter points
         % around the center of the fitted ellipse
@@ -448,6 +454,7 @@ parfor (ii = 1:nFrames, nWorkers)
     loopVar_posteriorUniformity(ii) = uniformity;
     loopVar_posterioreyePosesObjectiveError(ii) = posteriorEyePoseObjectiveError;
     loopVar_fitAtBound(ii) = fitAtBound;
+    loopVar_posteriorCameraTrans(ii,:) = posteriorCameraTrans;
     loopVar_posteriorEyePoses(ii,:) = posteriorEyePose;
     loopVar_posteriorPupilRadiusSD(ii) = posteriorPupilRadiusSD;
     
@@ -490,10 +497,19 @@ pupilData.radiusSmoothed.eyePoses.meta.fixedPriorPupilRadiusSD = fixedPriorPupil
 % add a meta field with analysis details
 pupilData.radiusSmoothed.meta = p.Results;
 
+
+% Update the relativeCameraPosition
+relativeCameraPosition.radiusSmoothed.values = loopVar_posteriorCameraTrans';
+relativeCameraPosition.radiusSmoothed.meta = p.Results;
+relativeCameraPosition.currentField = 'radiusSmoothed';
+
 % Store the identity of the most recently produced field of data
 pupilData.currentField = 'radiusSmoothed';
 
 % save the pupilData
-save(p.Results.pupilFileName,'pupilData')
+save(pupilFileName,'pupilData')
+
+% save the relativeCameraPosition
+save(p.Results.relativeCameraPositionFileName,'relativeCameraPosition')
 
 end % function
