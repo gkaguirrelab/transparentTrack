@@ -288,10 +288,14 @@ parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
             % then lock the cameraTransBounds to zero.
             if ~isempty(glintData)
                 glintCoord = [glintData.X(ii,:), glintData.Y(ii,:)];
-                thisFrameCameraTransBounds = cameraTransBounds;
             else
                 glintCoord = [];
+            end
+            
+            if isempty(glintCoord)
                 thisFrameCameraTransBounds = [0; 0; 0];
+            else
+                thisFrameCameraTransBounds = cameraTransBounds;
             end
             
             % Find the eyePose parameters that best fit the pupil
