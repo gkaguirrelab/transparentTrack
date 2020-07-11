@@ -153,7 +153,7 @@ end
 
 % Load the relativeCameraPosition file if passed and it exists
 if ~isempty(p.Results.relativeCameraPositionFileName)
-    if exist(p.Results.relativeCameraPositionFileName, 'file')==2
+    if exist(p.Results.relativeCameraPositionFileName,'file')==2
         load(p.Results.relativeCameraPositionFileName,'relativeCameraPosition');
     else
         relativeCameraPosition=[];
@@ -166,7 +166,7 @@ end
 % one if not available
 if ~isempty(relativeCameraPosition)
     cameraTransVec = ...
-        relativeCameraPosition.(relativeCameraPosition.currentField).values;
+        relativeCameraPosition.sceneConstrained.values;
 else
     cameraTransVec = zeros(nHeadTransParams,size(perimeter.data,1));
 end
