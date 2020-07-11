@@ -296,8 +296,8 @@ end
 warnState = warning();
 
 % Loop through the frames
-%parfor (ii = 1:nFrames, nWorkers)
-for ii = 1:10 %nFrames
+parfor (ii = 1:nFrames, nWorkers)
+%for ii = 1:nFrames
     
     % update progress
     if verbose
