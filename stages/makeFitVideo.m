@@ -353,13 +353,11 @@ for ii = 1:nFrames
         sufficientlyUniform = linearUniformity(ii) > p.Results.uniformityThreshold;
     end
     if ~isempty(eyePoses) && sum(p.Results.modelEyeMaxAlpha)~=0 && notBlinkFrame && sufficientlyUniform
-        % If a relativeCameraPosition is defined, update the
-        % sceneGeometry
-        adjustedSceneGeometry = sceneGeometry;
+
         if ~isempty(relativeCameraPosition)
-            cameraPosition = sceneGeometry.cameraPosition.translation;
-            cameraPosition = cameraPosition + relativeCameraPosition.(relativeCameraPosition.currentField).values(:,ii);
-            adjustedSceneGeometry.cameraPosition.translation = cameraPosition;
+            cameraTrans = relativeCameraPosition.(relativeCameraPosition.currentField).values(:,ii);
+        else
+            cameraTrans = [0;0;0];
         end
         % Scale the model eye alpha by the RMSE ellipse fit value for this
         % frame
@@ -368,7 +366,8 @@ for ii = 1:nFrames
         alphaVal = p.Results.modelEyeMaxAlpha - p.Results.modelEyeMaxAlpha*( (RMSEVal-p.Results.modelEyeRMSERangeAlphaScaler(1))/(p.Results.modelEyeRMSERangeAlphaScaler(2)-p.Results.modelEyeRMSERangeAlphaScaler(1)));
         % If we have a defined eyePose for this frame, display the modelEye
         if ~any(isnan(eyePoses(ii,:)))
-            [~, hRender] = renderEyePose(eyePoses(ii,:), adjustedSceneGeometry, 'newFigure', false, ...
+            [~, hRender] = renderEyePose(eyePoses(ii,:), sceneGeometry, 'newFigure', false, ...
+                'cameraTrans',cameraTrans, ...
                 'modelEyeLabelNames', p.Results.modelEyeLabelNames, ...
                 'modelEyePlotColors', p.Results.modelEyePlotColors, ...
                 'modelEyeAlpha', alphaVal, ...
