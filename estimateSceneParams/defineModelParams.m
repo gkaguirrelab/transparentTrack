@@ -265,12 +265,12 @@ model.func.subX = @(x,sceneIdx) x([1:(model.head.nParams+model.eye.nParams),mode
 
 % penalty is a regularization that penalizes changes in depth and torsion
 % from the x0 values
-cameraDepthTransSet = model.scene.idxMultiScene(model.func.fieldParamIdx('scene','depth'));
-commonDepthTransSet = model.scene.idxMultiScene(model.func.fieldParamIdx('eye','commonDepth'));
 cameraTorsionTransSet = model.scene.idxMultiScene(model.func.fieldParamIdx('scene','torsion'));
+cameraDepthTransSet = model.scene.idxMultiScene(model.func.fieldParamIdx('scene','depth'));
+commonDepthIdx =model.eye.idxMap(find(strcmp(model.eye.paramLabels,'commonDepth')));
 model.func.penalty = @(x,x0,w) (1 + ...
-    w(1) * norm( (x(cameraDepthTransSet) - x0(cameraDepthTransSet)) ./ x0(cameraDepthTransSet) ) + ...
-    w(2) * norm( (x(commonDepthTransSet) + x(cameraTorsionTransSet) - x0(cameraTorsionTransSet)) ) ...
+    w(1) * norm( (x(commonDepthIdx) + x(cameraDepthTransSet) - x0(cameraDepthTransSet)) ./ x0(cameraDepthTransSet) ) + ...
+    w(2) * norm( (x(cameraTorsionTransSet) - x0(cameraTorsionTransSet)) ) ...
     )^2;
 
 % A non-linear constraint for the BADS search that requires first value of
