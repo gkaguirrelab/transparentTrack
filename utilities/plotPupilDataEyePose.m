@@ -71,7 +71,7 @@ function plotPupilDataEyePose( dataRootDir, plotSaveDir, varargin )
     plotPupilDataEyePose( '', 'pupilDataQAPlots_eyePose_MOVIE_May2020','acquisitionStem','tfMRI_MOVIE','nColumns',4)
 %}
 %{
-    plotPupilDataEyePose( '', 'pupilDataQAPlots_eyePose_RETINO_May2020','acquisitionStem','tfMRI_RETINO','nColumns',4)
+    plotPupilDataEyePose( '', 'pupilDataQAPlots_eyePose_RETINO_July2020','acquisitionStem','tfMRI_RETINO','nColumns',4)
 %}
 
 %% input parser
@@ -336,13 +336,7 @@ if ~isempty(fileListStruct)
         if ~isempty(plotSaveDir)
             plotFileName =fullfile(plotSaveDir,[nameTags{ii} '_eyePose.png']);
             print(gcf,plotFileName,'-dpng','-r600')
-            close(figHandle)
-            
-            % Rotate the figure by 90 degrees clockwise, because I can't get the
-            % MATLAB plotting routines to output the image how I want it.
-            A = imread(plotFileName);
-            A = rot90(A,3);
-            imwrite(A,plotFileName);
+            close(figHandle)           
             
         end
         
