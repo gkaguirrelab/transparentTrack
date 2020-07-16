@@ -68,7 +68,7 @@ function makeFitVideo(videoInFileName, videoOutFileName, varargin)
 %
 
 %% Parse vargin for options passed here
-p = inputParser; p.KeepUnmatched = true;
+p = inputParser; p.KeepUnmatched = true; p.PartialMatching = false;
 
 % Required
 p.addRequired('videoInFileName', @ischar);

@@ -90,7 +90,7 @@ function [pupilData] = smoothPupilRadius(perimeterFileName, pupilFileName, scene
 %
 
 %% Parse vargin for options passed here
-p = inputParser; p.KeepUnmatched = true;
+p = inputParser; p.KeepUnmatched = true; p.PartialMatching = false;
 
 % Required
 p.addRequired('perimeterFileName',@ischar);

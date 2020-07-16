@@ -115,8 +115,7 @@ function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 %
 
 %% parse input and define variables
-
-p = inputParser; p.KeepUnmatched = true;
+p = inputParser; p.KeepUnmatched = true; p.PartialMatching = false;
 
 % Required
 p.addRequired('grayVideoName',@isstr);

@@ -149,7 +149,7 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 
 
 %% Parse input and define variables
-p = inputParser; p.KeepUnmatched = true;
+p = inputParser; p.KeepUnmatched = true; p.PartialMatching = false;
 
 % required input
 p.addRequired('controlFileName',@isstr);

@@ -44,7 +44,7 @@ function makeTimebase(rawVideoInFileName, timebaseFileName, varargin)
 %}
 
 %% Parse vargin for options passed here
-p = inputParser; p.KeepUnmatched = true;
+p = inputParser; p.KeepUnmatched = true; p.PartialMatching = false;
 
 % Required
 p.addRequired('rawVideoInFileName',@isstr);

@@ -47,7 +47,7 @@ function deinterlaceVideo (videoInFileName, videoOutFileName, varargin)
 
 
 %% parse input and define variables
-p = inputParser; p.KeepUnmatched = true;
+p = inputParser; p.KeepUnmatched = true; p.PartialMatching = false;
 
 % Required
 p.addRequired('videoInFileName',@isstr);

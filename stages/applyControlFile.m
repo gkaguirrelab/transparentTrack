@@ -52,7 +52,7 @@ function perimeter = applyControlFile(perimeterFileName, controlFileName, correc
 %
 
 %% Parse input and define variables
-p = inputParser; p.KeepUnmatched = true;
+p = inputParser; p.KeepUnmatched = true; p.PartialMatching = false;
 
 % Required
 p.addRequired('perimeterFileName',@isstr);

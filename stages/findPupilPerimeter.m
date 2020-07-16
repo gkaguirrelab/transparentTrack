@@ -104,7 +104,7 @@ function perimeter = findPupilPerimeter(grayVideoName, perimeterFileName, vararg
 
 
 %% Parse input and define variables
-p = inputParser; p.KeepUnmatched = true;
+p = inputParser; p.KeepUnmatched = true; p.PartialMatching = false;
 
 % Required input
 p.addRequired('grayVideoName',@isstr);

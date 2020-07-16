@@ -224,7 +224,7 @@ function sceneObjects = estimateSceneParams(videoStemName, frameSet, gazeTargets
 
 
 %% input parser
-p = inputParser; p.KeepUnmatched = true;
+p = inputParser; p.KeepUnmatched = true; p.PartialMatching = false;
 
 % Required
 p.addRequired('videoStemName',@(x)(iscell(x) || ischar(x)));
