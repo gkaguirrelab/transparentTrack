@@ -64,7 +64,7 @@ function perimeter = findPupilPerimeter(grayVideoName, perimeterFileName, vararg
 %                           circle is found initially, the routine will
 %                           move onto the next frame. Consider setting this
 %                           to false when the routine finds circles that
-%                           don't correspond to the pupil
+%                           don't correspond to the pupil.
 %
 % Optional key/value pairs (used in the local function findPupilCircle)
 %  'pupilCircleThresh'    - The threshold used to binarize the image.
