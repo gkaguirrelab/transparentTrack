@@ -65,10 +65,10 @@ function plotPupilDataEyePose( dataRootDir, plotSaveDir, varargin )
     plotPupilDataEyePose(dataRootDir,plotSaveDir);
 %}
 %{
-    plotPupilDataEyePose( '', 'pupilDataQAPlots_eyePose_FLASH_May2020','acquisitionStem','tfMRI_FLASH','nColumns',2)
+    plotPupilDataEyePose( '', 'pupilDataQAPlots_eyePose_FLASH_July2020','acquisitionStem','tfMRI_FLASH','nColumns',2)
 %}
 %{
-    plotPupilDataEyePose( '', 'pupilDataQAPlots_eyePose_MOVIE_May2020','acquisitionStem','tfMRI_MOVIE','nColumns',4)
+    plotPupilDataEyePose( '', 'pupilDataQAPlots_eyePose_MOVIE_July2020','acquisitionStem','tfMRI_MOVIE','nColumns',4)
 %}
 %{
     plotPupilDataEyePose( '', 'pupilDataQAPlots_eyePose_RETINO_July2020','acquisitionStem','tfMRI_RETINO','nColumns',4)
