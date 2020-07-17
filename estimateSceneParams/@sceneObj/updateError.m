@@ -365,7 +365,11 @@ end
 
 %% camTransError
 % Reflects the extent to which the modeled camera transition (that is in
-% addition to the relCamPos) departs from zero.
+% addition to the relCamPos) departs from zero. There are two components.
+% The first (Mag) is the total magnitude of displacement, regardless of
+% direction. The second (Dir) reflects the degree to which the displacement
+% across different frames shares a vector direction. These values are
+% initially calculated in units of mm.
 camTransMag = norm(vecnorm(modelCameraTrans-relCamPos));
 camTransDir = norm(sum(modelCameraTrans-relCamPos,2));
 camTransError = camTransMag * (1+camTransDir);
