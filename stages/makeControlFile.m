@@ -108,7 +108,7 @@ function makeControlFile(controlFileName, perimeterFileName, glintFileName, vara
 %                           theta angles as we typically observe intrusion
 %                           on to the pupil boundary either by the upper
 %                           eyelid or by a non-uniform "shadow" of IR
-%                           illuination arising from the horizontal right
+%                           illumination arising from the horizontal right
 %                           side of the image. If more than one row of
 %                           theta values are offered, then multiple cuts
 %                           will be attempted. The candidate theta values
