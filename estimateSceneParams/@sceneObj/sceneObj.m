@@ -81,7 +81,6 @@ classdef sceneObj < handle
         perimeter
         glintDataX
         glintDataY
-        ellipseRMSE        
 
         % The origRelCamPos vector (derived from the relativeCameraPosition
         % file
@@ -174,7 +173,6 @@ classdef sceneObj < handle
             %% Load the materials
             load([videoStemName '_correctedPerimeter.mat'],'perimeter');
             load([videoStemName '_glint.mat'],'glintData');
-            load([videoStemName '_pupil.mat'],'pupilData');
             if exist([videoStemName '_relativeCameraPosition.mat'], 'file') == 2
                 load([videoStemName '_relativeCameraPosition.mat'],'relativeCameraPosition');                
             else
@@ -186,7 +184,6 @@ classdef sceneObj < handle
             obj.perimeter = perimeter.data(frameSet);
             obj.glintDataX = glintData.X(frameSet);
             obj.glintDataY = glintData.Y(frameSet);
-            obj.ellipseRMSE = pupilData.initial.ellipses.RMSE(frameSet);
             
             % We store the entire relative camera position vector, as we
             % will be shifting and interpolating this.

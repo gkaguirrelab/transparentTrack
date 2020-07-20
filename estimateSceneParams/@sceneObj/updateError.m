@@ -76,7 +76,6 @@ sceneGeometry = obj.sceneGeometry;
 perimeter = obj.perimeter;
 glintDataX = obj.glintDataX;
 glintDataY = obj.glintDataY;
-ellipseRMSE = obj.ellipseRMSE;
 gazeTargets = obj.gazeTargets;
 relCamPos = obj.relCamPos(:,obj.frameSet);
 
@@ -112,17 +111,13 @@ eyePoseLB = p.Results.eyePoseLB;
 eyePoseUB = p.Results.eyePoseUB;
 cameraTransBounds = p.Results.cameraTransBounds;
 
-
-% The weight for the errors is given by the inverse initial ellipse fit
-% RMSE
-weights = 1./ellipseRMSE;
-
 % Allocate the loop and return variables
 modelEyePose = nan(nFrames,4);
 modelCameraTrans = nan(3,nFrames);
 modelGlintX = nan(nFrames,1);
 modelGlintY = nan(nFrames,1);
 perimFitError = nan(nFrames,1);
+unconstrainedEllipseRMSE = nan(nFrames,1);
 pupilCenter = nan(nFrames,2);
 modelPupilEllipse = nan(nFrames,5);
 modelPoseGaze = nan(2,nFrames);
@@ -137,6 +132,9 @@ parfor ii = 1:nFrames
     % Get the perimeter
     Xp = perimeter{ii}.Xp;
     Yp = perimeter{ii}.Yp;
+    
+    % Get the unconstrained ellipse fit error
+    [~, unconstrainedEllipseRMSE(ii)] = pupilEllipseFit([Xp,Yp]);
     
     % Get the glint
     glintCoord = [glintDataX(ii) glintDataY(ii)];
@@ -193,6 +191,10 @@ modelGlintCoord.Y = modelGlintY;
 %% Image error
 % These are errors in matching the appearance of the eye in the image. The
 % error is in pixel units
+
+% The weight for the errors is given by the inverse of the unconstrained
+% ellipse fit.
+weights = 1./unconstrainedEllipseRMSE;
 
 % perimError -- fit to the pupil perimeters
 perimError = nanNorm(perimFitError,weights);
