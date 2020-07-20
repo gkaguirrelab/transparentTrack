@@ -200,7 +200,7 @@ perimError = nanNorm(perimFitError,weights);
 % glintError -- fit of the model to the glint locations
 glintDistances = sqrt(sum([modelGlintCoord.X - glintDataX, modelGlintCoord.Y - glintDataY].^2,2));
 glintDistances(isinf(glintDistances)) = p.Results.missedGlintPenalty;
-glintError = nanNorm(glintDistances,weights);
+glintError = nanNorm(glintDistances);
 
 
 %% Gaze error
