@@ -111,6 +111,19 @@ eyePoseLB = p.Results.eyePoseLB;
 eyePoseUB = p.Results.eyePoseUB;
 cameraTransBounds = p.Results.cameraTransBounds;
 
+% Pull out the errorReg
+errorReg = p.Results.errorReg;
+
+% If the error regularization values are zero for glint and for camera
+% translation, then set a flag to not use the glint in modeling the eye
+% pose
+useGlintFlag = true;
+if errorReg(2)==0 && errorReg(5)==0
+    cameraTransBounds = [0; 0; 0];
+    useGlintFlag = false;
+end
+
+
 % Allocate the loop and return variables
 modelEyePose = nan(nFrames,4);
 modelCameraTrans = nan(3,nFrames);
@@ -136,9 +149,13 @@ parfor ii = 1:nFrames
     % Get the unconstrained ellipse fit error
     [~, unconstrainedEllipseRMSE(ii)] = pupilEllipseFit([Xp,Yp]);
     
-    % Get the glint
-    glintCoord = [glintDataX(ii) glintDataY(ii)];
-        
+    % Get the glint if asked
+    if useGlintFlag
+        glintCoord = [glintDataX(ii) glintDataY(ii)];
+    else
+        glintCoord = [];
+    end
+
     % Get the eyePose
     [modelEyePose(ii,:), modelCameraTrans(:,ii)] = eyePoseEllipseFit(Xp, Yp, glintCoord, sceneGeometry, ...
         'eyePoseLB',eyePoseLB,...
@@ -379,7 +396,7 @@ camTransError = camTransMag * (1+camTransDir);
 
 %% Obtain the omnibus error
 rawErrors = [perimError, glintError, poseError, vectorError, camTransError];
-fVal = nanNorm(rawErrors,p.Results.errorReg);
+fVal = nanNorm(rawErrors,errorReg);
 fVal(isinf(fVal))=realmax;
 
 
