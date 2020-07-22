@@ -114,12 +114,11 @@ cameraTransBounds = p.Results.cameraTransBounds;
 % Pull out the errorReg
 errorReg = p.Results.errorReg;
 
-% If the error regularization values are zero for glint and for camera
-% translation, then set a flag to not use the glint in modeling the eye
-% pose
+% If the error regularization value for camera translation is zero and the
+% cameraTrans bounds are zero, then set a flag to not use the glint in
+% constraining the eye pose
 useGlintFlag = true;
-if errorReg(2)==0 && errorReg(5)==0
-    cameraTransBounds = [0; 0; 0];
+if errorReg(5)==0 && all(cameraTransBounds==0)
     useGlintFlag = false;
 end
 
