@@ -176,8 +176,8 @@ model.strategy.gazeCal.stages = { ...
     {'scene.primaryPosition','scene.cameraPosition'} };
 model.strategy.gazeCal.errorArgs = { ...
     {'cameraTransBounds',[0;0;0],'errorReg',[1 1 10 0 0]}
-    {'cameraTransBounds',[5;5;0],'errorReg',[1 1 10 0 2]}
-    {'cameraTransBounds',[1;1;0],'errorReg',[1 1 10 0 2]} };
+    {'cameraTransBounds',[5;5;0],'errorReg',[1 1 10 0 1]}
+    {'cameraTransBounds',[1;1;0],'errorReg',[1 1 10 0 1]} };
 model.strategy.gazeCal.penaltyWeight = [1 0.1]; % [depth torsion]
 model.strategy.gazeCal.useFixForPrimaryPos = false;
 model.strategy.gazeCal.multiSceneNorm = 1;
