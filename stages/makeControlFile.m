@@ -342,13 +342,14 @@ end
 
 % Recast perimeter.data into a sliced cell array to reduce par for
 % broadcast overhead
-frameCellArray = perimeter.data(1:nFrames);
+startFrame = p.Results.startFrame;
+frameCellArray = perimeter.data(startFrame:startFrame+nFrames-1);
 frameSize = perimeter.size;
 clear perimeter
 
 % Loop through the video frames
-parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
-%for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
+parfor (ii = startFrame:startFrame+nFrames-1, nWorkers)
+%for ii = startFrame:startFrame+nFrames-1
 
     % Update progress
     if p.Results.verbose && mod(ii,round(nFrames/50))==0
@@ -357,7 +358,7 @@ parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
     
     % get the data frame
     thisFrame = uint8(zeros(frameSize));
-    thisFrame(sub2ind(frameSize,frameCellArray{ii}.Yp,frameCellArray{ii}.Xp))=255;
+    thisFrame(sub2ind(frameSize,frameCellArray{ii-startFrame+1}.Yp,frameCellArray{ii-startFrame+1}.Xp))=255;
     
     % make glint patch
     if ~isnan(glintData_X(ii))

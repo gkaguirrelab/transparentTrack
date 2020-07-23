@@ -217,7 +217,8 @@ end
 
 % Recast perimeter into a sliced cell array to reduce parfor broadcast
 % overhead
-frameCellArray = perimeter.data(1:nFrames);
+startFrame = p.Results.startFrame;
+frameCellArray = perimeter.data(startFrame:startFrame+nFrames-1);
 
 % Set-up other variables to be non-broadcast
 verbose = p.Results.verbose;
@@ -241,8 +242,8 @@ warnState = warning();
 
 %% Loop through the frames
 
-parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
-    %for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
+parfor (ii = startFrame:startFrame+nFrames-1, nWorkers)
+    %for ii = startFrame:startFrame+nFrames-1
     
     % Update progress
     if verbose
@@ -261,8 +262,8 @@ parfor (ii = p.Results.startFrame:p.Results.startFrame+nFrames-1, nWorkers)
     cameraTrans = cameraTransVec(:,ii);
 
     % get the boundary points
-    Xp = frameCellArray{ii}.Xp;
-    Yp = frameCellArray{ii}.Yp;
+    Xp = frameCellArray{ii-startFrame+1}.Xp;
+    Yp = frameCellArray{ii-startFrame+1}.Yp;
     
     % fit an ellipse to the boundary (if any points exist)
     if length(Xp) > 1 && length(Yp) > 1

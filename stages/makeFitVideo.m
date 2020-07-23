@@ -80,7 +80,8 @@ p.addParameter('videoOutFrameRate', 60, @isnumeric);
 p.addParameter('saveCompressedVideo', true, @islogical);
 
 % Optional flow control params
-p.addParameter('nFrames', Inf, @isnumeric);
+p.addParameter('nFrames',Inf,@isnumeric);
+p.addParameter('startFrame',1,@isnumeric);
 
 % Optional video items
 p.addParameter('glintFileName', [], @(x)(isempty(x) | ischar(x)));
@@ -204,11 +205,14 @@ end
 videoInObj = videoIOWrapper(videoInFileName,'ioAction','read');
 
 % get number of frames
+startFrame = p.Results.startFrame;
+
 if p.Results.nFrames == Inf
     nFrames = floor(videoInObj.Duration*videoInObj.FrameRate);
 else
     nFrames = p.Results.nFrames;
 end
+
 
 % get video dimensions
 videoSizeX = videoInObj.Width;
@@ -253,7 +257,7 @@ end
 
 
 %% Loop through the frames
-for ii = 1:nFrames
+for ii = startFrame:startFrame+nFrames-1
     
     % Update the progress display
     if p.Results.verbose && mod(ii,round(nFrames/50))==0
@@ -265,7 +269,7 @@ for ii = 1:nFrames
     sourceFrame = rgb2gray (sourceFrame);
             
     % show the initial frame
-    if ii==1
+    if ii==startFrame
         hImage = imshow(sourceFrame,'Border', 'tight','Parent',hAxes);
     else
         hold off

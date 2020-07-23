@@ -62,6 +62,10 @@ p.addRequired('correctedPerimeterFileName',@isstr);
 % Optional display and I/O params
 p.addParameter('verbose',false,@islogical);
 
+% Optional flow control params
+p.addParameter('nFrames',Inf,@isnumeric);
+p.addParameter('startFrame',1,@isnumeric);
+
 % Optional analysis params
 p.addParameter('instructionList',{'blink','error','cut','ellipse','glintPatch'},@iscell)
 
@@ -93,6 +97,7 @@ originalPerimeter=dataLoad.perimeter;
 clear dataLoad
 
 % Set up some variables to guide the analysis and hold the result
+startFrame = p.Results.startFrame;
 nFrames=size(originalPerimeter.data,1);
 perimeter = struct();
 perimeter.size = originalPerimeter.size;
@@ -112,8 +117,8 @@ end
 
 
 % loop through video frames
-for ii = 1:nFrames
-
+for ii = startFrame:startFrame+nFrames-1
+    
     % Update progress
     if p.Results.verbose && mod(ii,round(nFrames/50))==0
         fprintf('.');
