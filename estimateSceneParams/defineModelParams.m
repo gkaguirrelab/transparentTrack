@@ -132,7 +132,7 @@ model.head.idxMultiScene = @(idx) idx;
 % camera depth of all scenes in common. It is placed in the eye parameter
 % set for convenience.
 model.eye.x0 = [44.2410, 45.6302, corneaTorsion, 2.5000, 0, 1, 1, 0];
-model.eye.bounds = [1.5, 1.5, 15, 5, 2.5, 0.25, 0.25, 30];
+model.eye.bounds = [3, 3, 180, 5, 2.5, 0.25, 0.25, 30];
 model.eye.paramLabels = {'K1','K2','torsion','tilt','tip','joint','diff','commonDepth'};
 model.eye.units = {'diopters','diopters','deg','deg','deg','proportion','proportion','mm'};
 model.eye.nParams = length(model.eye.paramLabels);
@@ -178,7 +178,7 @@ model.strategy.gazeCal.errorArgs = { ...
     {'cameraTransBounds',[0;0;0],'errorReg',[1 1 10 0 0]}
     {'cameraTransBounds',[0;0;0],'errorReg',[1 1 10 0 0]}
     {'cameraTransBounds',[5;5;0],'errorReg',[1 1 10 0 1]} };
-model.strategy.gazeCal.penaltyWeight = [10 0.1]; % [depth torsion]
+model.strategy.gazeCal.penaltyWeight = [100 1]; % [depth torsion]
 model.strategy.gazeCal.useFixForPrimaryPos = false;
 model.strategy.gazeCal.multiSceneNorm = 1;
 model.strategy.gazeCal.TolMesh = 1e-2;
