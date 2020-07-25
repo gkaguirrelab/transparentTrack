@@ -170,18 +170,32 @@ model.scene.idxMultiScene = @(idx) repmat((0:model.scene.nScenes-1)*model.scene.
 
 % gazeCal -- Used to derive the rotation center properties of the eye from
 % one or more gazeCal acquisitions.
+% model.strategy.gazeCal.stages = { ...
+%     {'eye.rotationCenterScalers','scene.moveInPlane'},...
+%     {'eye.kvals','scene.moveInPlane'},...
+%     {'scene.primaryPosition','scene.cameraPosition'} };
+% model.strategy.gazeCal.errorArgs = { ...
+%     {'cameraTransBounds',[0;0;0],'errorReg',[1 1 10 0 0]}
+%     {'cameraTransBounds',[0;0;0],'errorReg',[1 1 10 0 0]}
+%     {'cameraTransBounds',[5;5;0],'errorReg',[1 1 10 0 1]} };
+% model.strategy.gazeCal.penaltyWeight = [1000 1]; % [depth torsion]
+% model.strategy.gazeCal.useFixForPrimaryPos = false;
+% model.strategy.gazeCal.multiSceneNorm = 1;
+% model.strategy.gazeCal.TolMesh = 1e-2;
+
 model.strategy.gazeCal.stages = { ...
-    {'eye.rotationCenterScalers','scene.moveInPlane'},...
-    {'eye.kvals','scene.moveInPlane'},...
+    {'scene.moveInPlane'},...
+    {'eye.rotationCenterScalers','eye.kvals','eye.commonDepth','scene.cameraPosition'},...
     {'scene.primaryPosition','scene.cameraPosition'} };
 model.strategy.gazeCal.errorArgs = { ...
     {'cameraTransBounds',[0;0;0],'errorReg',[1 1 10 0 0]}
     {'cameraTransBounds',[0;0;0],'errorReg',[1 1 10 0 0]}
     {'cameraTransBounds',[5;5;0],'errorReg',[1 1 10 0 1]} };
-model.strategy.gazeCal.penaltyWeight = [1000 1]; % [depth torsion]
+model.strategy.gazeCal.penaltyWeight = [1 1]; % [depth torsion]
 model.strategy.gazeCal.useFixForPrimaryPos = false;
 model.strategy.gazeCal.multiSceneNorm = 1;
 model.strategy.gazeCal.TolMesh = 1e-2;
+
 
 % sceneSync -- Used to map a known set of eye biometric parameters and a
 % pretty good initial set of scene parameters to an acquisition that has an
