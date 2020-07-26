@@ -62,7 +62,7 @@ else
     if fVal < sceneObjects{1}.multiSceneMeta.stages{stage}.fVal
         updateMetaFlag = true;
     end
-    if stage ~= sceneObjects{1}.multiSceneMeta.stage
+    if stage ~= sceneObjects{1}.multiSceneMeta.currentStage
         updateMetaFlag = true;
     end
 end
