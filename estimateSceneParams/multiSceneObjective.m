@@ -59,7 +59,7 @@ updateMetaFlag = false;
 if isempty(sceneObjects{1}.multiSceneMeta)
     updateMetaFlag = true;
 else
-    if fVal < sceneObjects{1}.multiSceneMeta.fVal
+    if fVal < sceneObjects{1}.multiSceneMeta.(stage).fVal
         updateMetaFlag = true;
     end
     if stage ~= sceneObjects{1}.multiSceneMeta.stage
@@ -71,10 +71,10 @@ end
 if updateMetaFlag    
     
     % Set up the meta data
-    multiSceneMeta.x = x;
-    multiSceneMeta.fValScene = fValScene;
-    multiSceneMeta.fVal = fVal;
-    multiSceneMeta.penalty = penalty;
+    multiSceneMeta.(stage).x = x;
+    multiSceneMeta.(stage).fValScene = fValScene;
+    multiSceneMeta.(stage).fVal = fVal;
+    multiSceneMeta.(stage).penalty = penalty;
     multiSceneMeta.stage = stage;
     
     % Loop over the scene objects and store the meta data
