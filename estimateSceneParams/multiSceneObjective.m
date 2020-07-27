@@ -70,18 +70,17 @@ end
 % Update the meta value fields if appropriate
 if updateMetaFlag    
     
-    % Set up the meta data
-    multiSceneMeta.stages{stage}.x = x;
-    multiSceneMeta.stages{stage}.fValScene = fValScene;
-    multiSceneMeta.stages{stage}.fVal = fVal;
-    multiSceneMeta.stages{stage}.penalty = penalty;
-    multiSceneMeta.fVal = fVal;
-    multiSceneMeta.currentStage = stage;
-    
     % Loop over the scene objects and store the meta data
     for ss = 1:nScenes
-        sceneObjects{ss}.multiSceneMeta = multiSceneMeta;
-        sceneObjects{ss}.multiSceneIdx = ss;        
+        
+        % Add the meta data
+        sceneObjects{ss}.multiSceneMeta.stages{stage}.x = x;
+        sceneObjects{ss}.multiSceneMeta.stages{stage}.fValScene = fValScene;
+        sceneObjects{ss}.multiSceneMeta.stages{stage}.fVal = fVal;
+        sceneObjects{ss}.multiSceneMeta.stages{stage}.penalty = penalty;
+        sceneObjects{ss}.multiSceneMeta.fVal = fVal;
+        sceneObjects{ss}.multiSceneMeta.currentStage = stage;
+        
     end
     
     % If we have the verbose flag, report the new, best fVal and params
