@@ -130,13 +130,13 @@ model.head.idxMultiScene = @(idx) idx;
 % reflect 2 SDs around the values obtained in the TOME population. The
 % commonDepth parameter allows for adjustment of camera depth of all scenes
 % in common. It is placed in the eye parameter set for convenience.
-model.eye.x0 = [44.2410, 45.6302, corneaTorsion, 2.5000, 0, 1, 1, 0];
-model.eye.bounds = [3, 3, 180, 5, 2.5, 0.25, 0.25, 30];
-model.eye.paramLabels = {'K1','K2','torsion','tilt','tip','joint','diff','commonDepth'};
-model.eye.units = {'diopters','diopters','deg','deg','deg','proportion','proportion','mm'};
+model.eye.x0 = [14.104, 44.2410, 45.6302, corneaTorsion, 2.5000, 0, 1, 1, 0];
+model.eye.bounds = [3, 3, 3, 180, 5, 2.5, 0.25, 0.25, 30];
+model.eye.paramLabels = {'corneaAxialRadius','K1','K2','torsion','tilt','tip','joint','diff','commonDepth'};
+model.eye.units = {'mm','diopters','diopters','deg','deg','deg','proportion','proportion','mm'};
 model.eye.nParams = length(model.eye.paramLabels);
-model.eye.setLabels = {'kvals','rotationCenterScalers','commonDepth','all'};
-model.eye.setIdx = {1:5, 6:7, 8, 1:8};
+model.eye.setLabels = {'corneaAxialRadius','kvals','rotationCenterScalers','commonDepth','all'};
+model.eye.setIdx = {1, 2:6, 7:8, 9, 1:9};
 model.eye.idxMap = @(idx) model.head.nParams+idx;
 model.eye.idxMultiScene = @(idx) idx;
 
@@ -170,8 +170,8 @@ model.scene.idxMultiScene = @(idx) repmat((0:model.scene.nScenes-1)*model.scene.
 % gazeCal -- Used to derive the rotation center properties of the eye from
 % one or more gazeCal acquisitions.
 model.strategy.gazeCal.stages = { ...
-    {'eye.rotationCenterScalers','eye.commonDepth','scene.cameraPosition'},...
-    {'eye.kvals','eye.commonDepth','scene.cameraPosition'},...
+    {'eye.rotationCenterScalers','eye.corneaAxialRadius','eye.commonDepth','scene.cameraPosition'},...
+    {'eye,corneaAxialRadius','eye.kvals','eye.commonDepth','scene.cameraPosition'},...
     {'scene.primaryPosition','scene.cameraPosition'} };
 model.strategy.gazeCal.errorArgs = { ...
     {'cameraTransBounds',[0;0;0],'errorReg',[1 1 10 0 0]}

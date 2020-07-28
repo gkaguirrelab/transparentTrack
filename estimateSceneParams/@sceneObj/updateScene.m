@@ -35,6 +35,7 @@ model = obj.model;
 eye = sceneGeometryIn.eye;
 
 % Update the eye meta data with the values from x
+eye.meta.corneaAxialRadius = x(model.func.fieldSetIdx('eye','corneaAxialRadius'));
 eye.meta.kvals = x(model.func.fieldSetIdx('eye','kvals'));
 eye.meta.rotationCenterScalers = x(model.func.fieldSetIdx('eye','rotationCenterScalers'));
 eye.meta.primaryPosition = x(model.func.fieldSetIdx('scene','primaryPosition'));
@@ -48,8 +49,11 @@ cornea = human.cornea( eye );
 sceneGeometryOut.eye.cornea = cornea;
 
 % Only re-calculate the optical systems if there has been a change in the
-% kvals
-if any( x(model.func.fieldSetIdx('eye','kvals')) ~= xLast(model.func.fieldSetIdx('eye','kvals')) )
+% kvals or axial radius
+if or( ...
+        any( x(model.func.fieldSetIdx('eye','kvals')) ~= xLast(model.func.fieldSetIdx('eye','kvals')) ), ...
+        x(model.func.fieldSetIdx('eye','corneaAxialRadius')) ~= xLast(model.func.fieldSetIdx('eye','corneaAxialRadius'))...
+        )
     
     % Update the glint optical system
     sceneGeometryOut.refraction.glint.opticalSystem = ...
