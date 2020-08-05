@@ -180,7 +180,7 @@ end
 eyeArgs = sceneGeometryIn.meta.estimateSceneParams.obj.setupArgs;
 errorArgs = { ...
     'poseRegParams',sceneGeometryIn.meta.estimateSceneParams.obj.poseRegParams, ...
-    'eyePoseLB',eyePoseLB,'eyePoseUB',eyePoseUB};
+    'eyePoseLB',p.Results.eyePoseLB,'eyePoseUB',p.Results.eyePoseUB};
 
 
 %% Select frames to guide the search
