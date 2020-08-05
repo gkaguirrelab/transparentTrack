@@ -96,6 +96,8 @@ p.addParameter('cameraDepth',[],@(x)(isempty(x) || isscalar(x)));
 p.addParameter('cameraTrans',[],@(x)(isempty(x) || isvector(x)));
 p.addParameter('frameSet',[],@(x)(isempty(x) || isvector(x)));
 p.addParameter('gazeTargets',[],@(x)(isempty(x) || ismatrix(x)));
+p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
+p.addParameter('eyePoseUB',[89,89,0,5],@isnumeric);
 
 
 %% Parse and check the parameters
@@ -177,8 +179,8 @@ end
 % Obtain the eye and error args
 eyeArgs = sceneGeometryIn.meta.estimateSceneParams.obj.setupArgs;
 errorArgs = { ...
-    'poseRegParams',sceneGeometryIn.meta.estimateSceneParams.obj.poseRegParams};
-
+    'poseRegParams',sceneGeometryIn.meta.estimateSceneParams.obj.poseRegParams, ...
+    'eyePoseLB',eyePoseLB,'eyePoseUB',eyePoseUB};
 
 
 %% Select frames to guide the search
