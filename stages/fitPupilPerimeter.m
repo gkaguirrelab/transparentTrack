@@ -131,7 +131,7 @@ p.parse(perimeterFileName, pupilFileName, varargin{:});
 
 nEllipseParams=5; % 5 params in the transparent ellipse form
 nEyePoseParams=4; % [azimuth, elevation, torsion, radius]
-nHeadTransParams=3; % [horizonta, vertical, depth]
+nHeadTransParams=3; % [horizontal; vertical; depth]
 
 
 %% Load data
@@ -255,11 +255,12 @@ parfor (ii = startFrame:startFrame+nFrames-1, nWorkers)
     % Initialize the results variables
     ellipseParamsTransparent=NaN(1,nEllipseParams);
     objectiveError=NaN(1);
+    cameraTrans=NaN(nHeadTransParams,1);
     eyePose=NaN(1,nEyePoseParams);
     fitAtBound=false;
 
     % Get the camera translation for this frame
-    cameraTrans = cameraTransVec(:,ii);
+    cameraTransInitial = cameraTransVec(:,ii);
 
     % get the boundary points
     Xp = frameCellArray{ii-startFrame+1}.Xp;
@@ -303,7 +304,7 @@ parfor (ii = startFrame:startFrame+nFrames-1, nWorkers)
             % perimeter. This can take a few seconds.
             [eyePose, cameraTrans, objectiveError, ellipseParamsTransparent, fitAtBound] = ...
                 eyePoseEllipseFit(Xp, Yp, glintCoord, sceneGeometry, ...
-                'cameraTransX0',cameraTrans,...
+                'cameraTransX0',cameraTransInitial,...
                 'cameraTransBounds',thisFrameCameraTransBounds,...
                 'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB);
 

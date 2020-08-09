@@ -128,6 +128,7 @@ p.parse(perimeterFileName, pupilFileName, sceneGeometryFileName, varargin{:});
 nEllipseParams=5; % 5 params in the transparent ellipse form
 nEyePoseParams=4; % 4 eyePose values (azimuth, elevation, torsion, radius)
 radiusIdx = 4; % The 4th eyePose entry holds the radius value
+nHeadTransParams=3; % [horizontal; vertical; depth]
 
 
 %% Load and check data
@@ -312,7 +313,7 @@ parfor (ii = 1:nFrames, nWorkers)
     posteriorEllipseParams = NaN(1,nEllipseParams);
     posteriorEyePoseObjectiveError = NaN;
     posteriorEyePose = NaN(1,nEyePoseParams);
-    posteriorCameraTrans = NaN(3,1);
+    posteriorCameraTrans = NaN(nHeadTransParams,1);
     posteriorPupilRadiusSD = NaN;
     uniformity = NaN;
     fitAtBound = false;
