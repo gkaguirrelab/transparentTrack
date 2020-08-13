@@ -26,7 +26,7 @@ function plotPupilDataEyePose( dataRootDir, plotSaveDir, varargin )
 %     - For a given frame to be considered to have a "good" fit, the
 %       following criteria must be met:
 %         - the RMSE of the fit to the pupil perimeter points (in units of
-%           pixels) must be belowe the rmseThreshold value (default = 3)
+%           pixels) must be belowe the rmseThreshold value (default = 1.5)
 %         - the fit for the frame must not have hit the upper or lower
 %           bounds on the eyePose params
 %     - At the bottom of the plot, gray dots mark frames with high RMSE,
@@ -77,7 +77,7 @@ p.addRequired('dataRootDir',@ischar);
 p.addOptional('plotSaveDir',[],@(x)(isempty(x) || ischar(x)));
 
 % Optional
-p.addParameter('rmseThreshold',4,@isscalar);
+p.addParameter('rmseThreshold',1.5,@isscalar);
 p.addParameter('eyePoseParamsToPlot',[1 2 4],@isnumeric);
 p.addParameter('yRangeIncrement',[5 5 0.25],@isnumeric);
 p.addParameter('xLim',[-0.5 5.6],@isnumeric);
