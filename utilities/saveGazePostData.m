@@ -23,7 +23,7 @@ function saveGazePostData( dataRootDir, dataSaveDir, varargin )
     dropboxBaseDir=fullfile(getpref('eyeTrackTOMEAnalysis','dropboxBaseDir'));
     dataRootDir=fullfile(dropboxBaseDir,'TOME_processing','session2_spatialStimuli');
     dataSaveDir=fullfile(dataRootDir,'pupilDataQAPlots_eyePose_MOVIE_July2020');
-%    dataSaveDir=fullfile(userpath,'projects','movieGazeTOMEAnalysis','data');
+    dataSaveDir=fullfile(userpath,'projects','movieGazeTOMEAnalysis','data');
     saveGazePostData( dataRootDir, dataSaveDir,'acquisitionStem','tfMRI_MOVIE')
 %}
 %{
@@ -127,10 +127,18 @@ if ~isempty(fileListStruct)
             end
             load(sceneGeomFileName,'sceneGeometry');
             
+            % If the sceneGeometry lacks a pose registration, skip forward
             if ~isfield(sceneGeometry.screenPosition.poseRegParams,'R')
                 sceneGeomFileName
                 continue
             end
+            
+            % Get and store any spectacle magnification for this scene
+            spectacleMag = 1;
+            if isfield(sceneGeometry.refraction.retinaToCamera.magnification,'spectacle')
+                spectacleMag = sceneGeometry.refraction.retinaToCamera.magnification.spectacle;
+            end
+            
             
             % Find the frames that lack a glint
             noGlint = true(size(pupilData.initial.ellipses.RMSE));
@@ -141,9 +149,9 @@ if ~isempty(fileListStruct)
             timebaseFileName = fullfile(pupilFilePath,[fileNameStem,'_timebase.mat']);
             load(timebaseFileName,'timebase');
             
-            % Check that there is at least a sceneConstrained field;
-            % otherwise continue
-            if ~isfield(pupilData,'sceneConstrained')
+            % Check that there is a sceneConstrained field; otherwise
+            % continue
+            if ~isfield(pupilData,'radiusSmoothed')
                 continue
             end
             
@@ -181,10 +189,12 @@ if ~isempty(fileListStruct)
                 gazeData.timebase = 0:deltaT:dataWindowDurMsec;
                 gazeData.(fileNameStem).vq(1,:,:) = vq;
                 gazeData.(fileNameStem).RMSE(1,:) = rmse;
+                gazeData.(fileNameStem).spectacleMag(1) = spectacleMag;
                 gazeData.(fileNameStem).nameTags{1} = nameTags{ii};
             else
                 gazeData.(fileNameStem).vq(end+1,:,:) = vq;
                 gazeData.(fileNameStem).RMSE(end+1,:) = rmse;
+                gazeData.(fileNameStem).spectacleMag(end+1) = spectacleMag;
                 gazeData.(fileNameStem).nameTags{end+1} = nameTags{ii};
             end
             
