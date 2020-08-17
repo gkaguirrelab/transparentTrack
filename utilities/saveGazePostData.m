@@ -41,7 +41,7 @@ p.addRequired('dataRootDir',@ischar);
 p.addOptional('dataSaveDir',[],@(x)(isempty(x) || ischar(x)));
 
 % Optional
-p.addParameter('rmseThreshold',4,@isscalar);
+p.addParameter('rmseThreshold',3,@isscalar);
 p.addParameter('acquisitionStem','rfMRI_REST',@ischar);
 
 
