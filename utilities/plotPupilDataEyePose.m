@@ -22,11 +22,12 @@ function plotPupilDataEyePose( dataRootDir, plotSaveDir, varargin )
 %     - The red plot points are the sceneConstrained eyePose fit values,
 %       but only for those points that meet criteria for having a "good"
 %       fit.
-%     - The black line is the radiusSmoothed eyePose fit valyues.
+%     - The black line is the radiusSmoothed eyePose fit values.
 %     - For a given frame to be considered to have a "good" fit, the
 %       following criteria must be met:
+%         - the frame must have a glint
 %         - the RMSE of the fit to the pupil perimeter points (in units of
-%           pixels) must be belowe the rmseThreshold value (default = 1.5)
+%           pixels) must be below the rmseThreshold value (default = 1.5)
 %         - the fit for the frame must not have hit the upper or lower
 %           bounds on the eyePose params
 %     - At the bottom of the plot, gray dots mark frames with high RMSE,
@@ -63,13 +64,13 @@ function plotPupilDataEyePose( dataRootDir, plotSaveDir, varargin )
     dropboxBaseDir=fullfile(getpref('eyeTrackTOMEAnalysis','dropboxBaseDir'));
     dataRootDir=fullfile(dropboxBaseDir,'TOME_processing','session2_spatialStimuli');
     dataSaveDir=fullfile(dataRootDir,'pupilDataQAPlots_eyePose_MOVIE_July2020');
-    plotPupilDataEyePose( dataRootDir, dataSaveDir,'acquisitionStem','tfMRI_MOVIE','nColumns',4,'selectSubjects',{'TOME_3033'})
+    plotPupilDataEyePose( dataRootDir, dataSaveDir,'acquisitionStem','tfMRI_MOVIE','nColumns',4,'selectSubjects',{'TOME_3011'})
 %}
 %{
     dropboxBaseDir=fullfile(getpref('eyeTrackTOMEAnalysis','dropboxBaseDir'));
     dataRootDir=fullfile(dropboxBaseDir,'TOME_processing','session2_spatialStimuli');
     dataSaveDir=fullfile(dataRootDir,'pupilDataQAPlots_eyePose_RETINO_July2020');
-    plotPupilDataEyePose( dataRootDir, dataSaveDir,'acquisitionStem','tfMRI_RETINO','nColumns',4)
+    plotPupilDataEyePose( dataRootDir, dataSaveDir,'acquisitionStem','tfMRI_RETINO','nColumns',4,'selectSubjects',{'TOME_3011'})
 %}
 
 %% input parser

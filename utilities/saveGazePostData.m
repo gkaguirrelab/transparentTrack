@@ -28,9 +28,9 @@ function saveGazePostData( dataRootDir, dataSaveDir, varargin )
 %}
 %{
     dropboxBaseDir=fullfile(getpref('eyeTrackTOMEAnalysis','dropboxBaseDir'));
-    dataRootDir=fullfile(dropboxBaseDir,'TOME_processing','session1_restAndStructure');
-    dataSaveDir=fullfile(dataRootDir,'pupilDataQAPlots_eyePose_July2020');
-    saveGazePostData( dataRootDir, dataSaveDir,'acquisitionStem','rfMRI_REST')
+    dataRootDir=fullfile(dropboxBaseDir,'TOME_processing','session2_spatialStimuli');
+    dataSaveDir=fullfile(dataRootDir,'pupilDataQAPlots_eyePose_RETINO_July2020');
+    saveGazePostData( dataRootDir, dataSaveDir,'acquisitionStem','tfMRI_RETINO')
 %}
 
 %% input parser
@@ -149,7 +149,7 @@ if ~isempty(fileListStruct)
             timebaseFileName = fullfile(pupilFilePath,[fileNameStem,'_timebase.mat']);
             load(timebaseFileName,'timebase');
             
-            % Check that there is a sceneConstrained field; otherwise
+            % Check that there is a radiusSmoothed field; otherwise
             % continue
             if ~isfield(pupilData,'radiusSmoothed')
                 continue
@@ -160,6 +160,12 @@ if ~isempty(fileListStruct)
             highRMSE = pupilData.radiusSmoothed.ellipses.RMSE > p.Results.rmseThreshold;
             fitAtBound = pupilData.radiusSmoothed.eyePoses.fitAtBound;
             goodRadiusSmoothed = logical(~highRMSE .* ~fitAtBound .* ~noGlint);
+            
+            % If there are fewer than 50% good points, skip this
+            % acquisition
+            if sum(goodRadiusSmoothed)<(length(goodRadiusSmoothed)/2)
+                continue
+            end
             
             % Convert the eyePose to gaze position
             f = sceneGeometry.screenPosition.poseRegParams.R * [pupilData.radiusSmoothed.eyePoses.values(:,1), pupilData.radiusSmoothed.eyePoses.values(:,2)]' + sceneGeometry.screenPosition.poseRegParams.t;
