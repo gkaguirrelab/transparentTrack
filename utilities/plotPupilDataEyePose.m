@@ -63,10 +63,13 @@ function plotPupilDataEyePose( dataRootDir, plotSaveDir, varargin )
     dropboxBaseDir=fullfile(getpref('eyeTrackTOMEAnalysis','dropboxBaseDir'));
     dataRootDir=fullfile(dropboxBaseDir,'TOME_processing','session2_spatialStimuli');
     dataSaveDir=fullfile(dataRootDir,'pupilDataQAPlots_eyePose_MOVIE_July2020');
-    plotPupilDataEyePose( dataRootDir, dataSaveDir,'acquisitionStem','tfMRI_MOVIE','nColumns',4)
+    plotPupilDataEyePose( dataRootDir, dataSaveDir,'acquisitionStem','tfMRI_MOVIE','nColumns',4,'selectSubjects',{'TOME_3033'})
 %}
 %{
-    plotPupilDataEyePose( '', 'pupilDataQAPlots_eyePose_RETINO_July2020','acquisitionStem','tfMRI_RETINO','nColumns',4)
+    dropboxBaseDir=fullfile(getpref('eyeTrackTOMEAnalysis','dropboxBaseDir'));
+    dataRootDir=fullfile(dropboxBaseDir,'TOME_processing','session2_spatialStimuli');
+    dataSaveDir=fullfile(dataRootDir,'pupilDataQAPlots_eyePose_RETINO_July2020');
+    plotPupilDataEyePose( dataRootDir, dataSaveDir,'acquisitionStem','tfMRI_RETINO','nColumns',4)
 %}
 
 %% input parser
@@ -84,6 +87,7 @@ p.addParameter('xLim',[-0.5 5.6],@isnumeric);
 p.addParameter('yAxisLabels',{'azimuth [deg]','elevation [deg]','radius [mm]'},@iscell);
 p.addParameter('nColumns',4,@isscalar);
 p.addParameter('acquisitionStem','rfMRI_REST',@ischar);
+p.addParameter('selectSubjects',{},@iscell);
 
 
 % parse
@@ -136,6 +140,13 @@ if ~isempty(fileListStruct)
     
     % Loop through the set of sessions
     for ii = 1:length(uniqueDirNames)
+        
+        % If selectSubjects is defined, check if this name is on the list
+        if ~isempty(p.Results.selectSubjects)
+            if ~contains(uniqueDirNames{ii},p.Results.selectSubjects)
+                continue
+            end
+        end
         
         % Get the list of acquisition file names
         acqList = find(strcmp(fileListCell(2,:),uniqueDirNames{ii}));
