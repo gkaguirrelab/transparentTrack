@@ -183,7 +183,7 @@ sceneGeometryNameOut = [videoStemNameOut '_sceneGeometry' p.Results.outputFileSu
 % If usePriorResultAsX0 is set to true, and there is a prior result, load
 % the prior sceneGeometry result and set the model x0 values with the prior
 % results
-if usePriorResultAsX0 && exist(sceneGeometryNameOut, 'file') == 2
+if p.Results.usePriorResultAsX0 && exist(sceneGeometryNameOut, 'file') == 2
     % Load the sceneGeometryOut variable into memory
     dataLoad=load(sceneGeometryNameOut);
     sceneGeometryOut=dataLoad.sceneGeometry;
