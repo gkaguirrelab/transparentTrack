@@ -91,6 +91,7 @@ p.addParameter('nWorkers',[],@(x)(isempty(x) || isnumeric(x)));
 p.addParameter('outputFileSuffix','',@ischar);
 p.addParameter('alignMethod','gazePre',@(x)(ischar(x) | iscell(x)));
 p.addParameter('searchStrategy','sceneSync',@ischar);
+p.addParameter('usePriorResultAsX0',true,@islogical);
 p.addParameter('cameraTorsion',[],@(x)(isempty(x) || isscalar(x)));
 p.addParameter('cameraDepth',[],@(x)(isempty(x) || isscalar(x)));
 p.addParameter('cameraTrans',[],@(x)(isempty(x) || isvector(x)));
@@ -175,6 +176,26 @@ if ~isempty(p.Results.cameraTrans)
     model.scene.x0(strcmp(sceneGeometryIn.meta.estimateSceneParams.obj.model.scene.paramLabels,'horiz')) = p.Results.cameraTrans(1);
     model.scene.x0(strcmp(sceneGeometryIn.meta.estimateSceneParams.obj.model.scene.paramLabels,'vert')) = p.Results.cameraTrans(2);
 end
+
+% Define the filename for the sceneGeometry output
+sceneGeometryNameOut = [videoStemNameOut '_sceneGeometry' p.Results.outputFileSuffix '.mat'];
+
+% If usePriorResultAsX0 is set to true, and there is a prior result, load
+% the prior sceneGeometry result and set the model x0 values with the prior
+% results
+if usePriorResultAsX0 && exist(sceneGeometryNameOut, 'file') == 2
+    % Load the sceneGeometryOut variable into memory
+    dataLoad=load(sceneGeometryNameOut);
+    sceneGeometryOut=dataLoad.sceneGeometry;
+    clear dataLoad
+    % Check that there is a prior estimateSceneParams field
+    if isfield(sceneGeometry.meta,'estimateSceneParams')
+        model.scene.x0 = sceneGeometryOut.meta.estimateSceneParams.xScene;
+        model.head.x0 = sceneGeometryOut.meta.estimateSceneParams.xHead;
+    end
+    clear sceneGeometryOut
+end
+
 
 % Obtain the eye and error args
 eyeArgs = sceneGeometryIn.meta.estimateSceneParams.obj.setupArgs;
@@ -285,10 +306,6 @@ estimateSceneParams(videoStemNameOut, frameSet, gazeTargets, ...
     'verbose',p.Results.verbose,...
     'useParallel',p.Results.useParallel,...
     'nWorkers',p.Results.nWorkers);
-
-% The name of the saved sceneGeometry file will include the
-% outputFileSuffix
-sceneGeometryNameOut = [videoStemNameOut '_sceneGeometry' p.Results.outputFileSuffix '.mat'];
 
 % Load the sceneGeometryOut variable into memory
 dataLoad=load(sceneGeometryNameOut);
