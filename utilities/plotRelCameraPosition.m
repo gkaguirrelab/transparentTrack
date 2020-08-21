@@ -45,7 +45,7 @@ function plotRelCameraPosition( dataRootDir, plotSaveDir, varargin )
     dropboxBaseDir=fullfile(getpref('eyeTrackTOMEAnalysis','dropboxBaseDir'));
     dataRootDir=fullfile(dropboxBaseDir,'TOME_processing','session2_spatialStimuli');
     dataSaveDir=fullfile(dataRootDir,'pupilDataQAPlots_cameraTrans_MOVIE_July2020');
-    plotRelCameraPosition( dataRootDir, dataSaveDir,'acquisitionStem','tfMRI_MOVIE','nColumns',4,'selectSubjects','3022')
+    plotRelCameraPosition( dataRootDir, dataSaveDir,'acquisitionStem','tfMRI_MOVIE','nColumns',4,'selectSubjects',{'3022'})
 %}
 
 %% input parser
@@ -165,7 +165,7 @@ if ~isempty(fileListStruct)
             % Load the camera position
             relCamPosFullFileName = strrep(fullfile(fileListCell{2,acqList(jj)},fileListCell{1,acqList(jj)}),'_pupil.mat','_relativeCameraPosition.mat');
             load(relCamPosFullFileName,'relativeCameraPosition');
-            
+                        
             % Load the glint
             timebaseFileName = fullfile(pupilFilePath,[fileNameStem,'_glint.mat']);
             load(timebaseFileName,'glintData');
@@ -185,7 +185,13 @@ if ~isempty(fileListStruct)
             if ~isfield(relativeCameraPosition,lastField)
                 continue
             end
-            
+
+            % Report the time-stamp of the estimateSceneParams field,
+            % because I need to go back and re-run those that were created
+            % prior to Aug 9, 6:18 PM EDT
+            str = sprintf([nameTags{ii} '_%02d_' relativeCameraPosition.estimateSceneParams.meta.p.timestamp ,'\n'],jj);
+            fprintf(str);
+
             % Obtain the vector of good and bad time points for last field
             highRMSE = pupilData.(lastField).ellipses.RMSE > p.Results.rmseThreshold;
             fitAtBound = pupilData.(lastField).eyePoses.fitAtBound;
