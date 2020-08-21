@@ -189,7 +189,7 @@ if p.Results.usePriorResultAsX0 && exist(sceneGeometryNameOut, 'file') == 2
     sceneGeometryOut=dataLoad.sceneGeometry;
     clear dataLoad
     % Check that there is a prior estimateSceneParams field
-    if isfield(sceneGeometry.meta,'estimateSceneParams')
+    if isfield(sceneGeometryOut.meta,'estimateSceneParams')
         model.scene.x0 = sceneGeometryOut.meta.estimateSceneParams.xScene;
         model.head.x0 = sceneGeometryOut.meta.estimateSceneParams.xHead;
     end
