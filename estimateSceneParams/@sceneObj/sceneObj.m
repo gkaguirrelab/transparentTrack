@@ -176,8 +176,8 @@ classdef sceneObj < handle
             if exist([videoStemName '_relativeCameraPosition.mat'], 'file') == 2
                 load([videoStemName '_relativeCameraPosition.mat'],'relativeCameraPosition');                
             else
-                relativeCameraPosition.zeros.values = zeros(3,max(frameSet));
-                relativeCameraPosition.currentField = 'zeros';
+                relativeCameraPosition.initial.values = zeros(3,max(frameSet));
+                relativeCameraPosition.currentField = 'initial';
             end
             
             % Extract data for the frames we want and store in the object
