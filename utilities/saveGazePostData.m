@@ -197,11 +197,13 @@ if ~isempty(fileListStruct)
                 gazeData.(fileNameStem).RMSE(1,:) = rmse;
                 gazeData.(fileNameStem).spectacleMag(1) = spectacleMag;
                 gazeData.(fileNameStem).nameTags{1} = nameTags{ii};
+                gazeData.(fileNameStem).filePathStem{1} = fullfile(pupilFilePath,fileNameStem);
             else
                 gazeData.(fileNameStem).vq(end+1,:,:) = vq;
                 gazeData.(fileNameStem).RMSE(end+1,:) = rmse;
                 gazeData.(fileNameStem).spectacleMag(end+1) = spectacleMag;
                 gazeData.(fileNameStem).nameTags{end+1} = nameTags{ii};
+                gazeData.(fileNameStem).filePathStem{end+1} = fullfile(pupilFilePath,fileNameStem);
             end
             
         end % loop over acquisitions       
