@@ -118,9 +118,28 @@ cameraTorsionStruct.leftEyeAsian = round(-(canthalAngle - 9.77));
 cameraTorsionStruct.leftEyeCaucasian = round(-(canthalAngle - 4.12));
 cameraTorsionStruct.leftEyeBlack = round(-(canthalAngle - 5.39));
 
-
 % Clean up
 close(figureHandle)
 
+% Estimate the camera depth
+sceneGeometry = createSceneGeometry();
+d = sqrt(diff(x(:,1)).^2+diff(x(:,2)).^2);
+myObj = @(depth) abs(d - canthalDistance(sceneGeometry, depth));
+depth = fminsearch(myObj,120);
+cameraTorsionStruct.depth = depth;
+
 
 end % main function
+
+function d = canthalDistance(sceneGeometry, depth)
+
+sceneGeometry.cameraPosition.translation(3)= depth;
+
+[~, ~, imagePoints, ~, ~, ~, pointLabels] = projectModelEye([0 0 0 1], sceneGeometry, 'fullEyeModelFlag', true);
+canthalPoints = find(contains(pointLabels,'Canthus'));
+d = sqrt( ...
+    (imagePoints(canthalPoints(1),1) - imagePoints(canthalPoints(2),1)).^2 + ...
+    (imagePoints(canthalPoints(1),2) - imagePoints(canthalPoints(2),2)).^2  ...
+    );
+
+end
