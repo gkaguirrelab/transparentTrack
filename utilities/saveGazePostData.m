@@ -137,8 +137,7 @@ if ~isempty(fileListStruct)
             spectacleMag = 1;
             if isfield(sceneGeometry.refraction.retinaToCamera.magnification,'spectacle')
                 spectacleMag = sceneGeometry.refraction.retinaToCamera.magnification.spectacle;
-            end
-            
+            end            
             
             % Find the frames that lack a glint
             noGlint = true(size(pupilData.initial.ellipses.RMSE));
@@ -161,14 +160,17 @@ if ~isempty(fileListStruct)
             fitAtBound = pupilData.radiusSmoothed.eyePoses.fitAtBound;
             goodRadiusSmoothed = logical(~highRMSE .* ~fitAtBound .* ~noGlint);
             
-            % If there are fewer than 50% good points, skip this
+            % If there are fewer than 66% good points, skip this
             % acquisition
-            if sum(goodRadiusSmoothed)<(length(goodRadiusSmoothed)/2)
+            if sum(goodRadiusSmoothed)<(length(goodRadiusSmoothed)/1.5)
                 continue
             end
             
             % Convert the eyePose to gaze position
             f = sceneGeometry.screenPosition.poseRegParams.R * [pupilData.radiusSmoothed.eyePoses.values(:,1), pupilData.radiusSmoothed.eyePoses.values(:,2)]' + sceneGeometry.screenPosition.poseRegParams.t;
+            
+            % Account for the effect of spectacle magnification
+            f = f./spectacleMag;
             
             % Add the pupil
             f(3,:) = pupilData.radiusSmoothed.eyePoses.values(:,4);
