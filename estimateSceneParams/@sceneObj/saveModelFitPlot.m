@@ -149,7 +149,7 @@ montageOrder = (pos(2,:)+nGrid-1).*nGrid+pos(1,:)-1;
 
 % If we don't have a full supply of gazeTargets, use the sortOrder to
 % define the montage order.
-if any(isnan(sum(gazeTargets))) || any(isnan(sum(pos)))
+if any(isnan(sum(gazeTargets))) || any(isnan(sum(pos))) || any(floor(montageOrder)~=montageOrder)
     [~, montageOrder] = sort(frameSet);
 end
 

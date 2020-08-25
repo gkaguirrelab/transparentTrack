@@ -72,7 +72,7 @@ glintDataY = glintDataY(sortOrder);
 
 % If we have a full supply of gazeTargets, use them to define the montage
 % order. Otherwise, just go with the sortOrder
-if ~any(isnan(sum(gazeTargets))) && ~any(isnan(sum(pos)))
+if ~any(isnan(sum(gazeTargets))) && ~any(isnan(sum(pos))) && ~any(floor(montageOrder)~=montageOrder)
     montageOrder = montageOrder(sortOrder);
 else
     montageOrder = sortOrder;
