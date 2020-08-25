@@ -91,7 +91,7 @@ p.addParameter('nWorkers',[],@(x)(isempty(x) || isnumeric(x)));
 p.addParameter('outputFileSuffix','',@ischar);
 p.addParameter('alignMethod','gazePre',@(x)(ischar(x) | iscell(x)));
 p.addParameter('searchStrategy','sceneSync',@ischar);
-p.addParameter('usePriorResultAsX0',true,@islogical);
+p.addParameter('usePriorResultAsX0',false,@islogical);
 p.addParameter('cameraTorsion',[],@(x)(isempty(x) || isscalar(x)));
 p.addParameter('cameraDepth',[],@(x)(isempty(x) || isscalar(x)));
 p.addParameter('cameraTrans',[],@(x)(isempty(x) || isvector(x)));
