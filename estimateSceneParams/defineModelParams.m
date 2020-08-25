@@ -197,6 +197,24 @@ model.strategy.sceneSync.multiSceneNorm = 1;
 model.strategy.sceneSync.TolMesh = 1e-2;
 
 
+% synthFix -- Similar to gazeCal, but the source frames were acquired
+% during a length fMRI scan. Therefore, we want to handle head translation
+% during this time.
+model.strategy.synthFix.stages = { ...
+    {'eye.rotationCenterScalers','eye.corneaAxialRadius','eye.commonDepth','scene.cameraPosition'},...
+    {'eye.corneaAxialRadius','eye.kvals','eye.commonDepth','scene.cameraPosition'},...
+    {'scene.primaryPosition','scene.cameraPosition','head.phaseAndRotation'} };
+model.strategy.synthFix.errorArgs = { ...
+    {'cameraTransBounds',[0;0;0],'errorReg',[1 1 10 0 0]}
+    {'cameraTransBounds',[0;0;0],'errorReg',[1 1 10 0 0]}
+    {'cameraTransBounds',[5;5;0],'errorReg',[1 1 10 0 1]} };
+model.strategy.synthFix.penaltyWeight = [1 1]; % [depth torsion]
+model.strategy.synthFix.useFixForPrimaryPos = false;
+model.strategy.synthFix.multiSceneNorm = 1;
+model.strategy.synthFix.TolMesh = 1e-2;
+
+
+
 %% Substitute passed model inputs for defaults
 % The passed modelIn structure can over-write all model parameters defined
 % up to this point. Function definitions can not be replaced by this
