@@ -23,7 +23,7 @@ function saveGazePostData( dataRootDir, dataSaveDir, varargin )
     dropboxBaseDir=fullfile(getpref('eyeTrackTOMEAnalysis','dropboxBaseDir'));
     dataRootDir=fullfile(dropboxBaseDir,'TOME_processing','session2_spatialStimuli');
     dataSaveDir=fullfile(dataRootDir,'pupilDataQAPlots_eyePose_MOVIE_July2020');
-    dataSaveDir=fullfile(userpath,'projects','movieGazeTOMEAnalysis','data');
+%    dataSaveDir=fullfile(userpath,'projects','movieGazeTOMEAnalysis','data');
     saveGazePostData( dataRootDir, dataSaveDir,'acquisitionStem','tfMRI_MOVIE')
 %}
 %{
