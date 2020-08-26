@@ -121,7 +121,7 @@ function sceneObjects = estimateSceneParams(videoStemName, frameSet, gazeTargets
 %  'model'                  Structure. Set fields of this structure to
 %                           replace the default set of params for the
 %                           search. See defineModelParams.m for details.
-%  'eyeArgs'              - Cell array. These are key-value pairs to be 
+%  'eyeArgs'              - Cell array. These are key-value pairs to be
 %                           used when generating the eye model for this
 %                           subject. An example input is:
 %                               {'axialLength',23.45,'sphericalAmetropia',-0.5}
@@ -206,7 +206,7 @@ function sceneObjects = estimateSceneParams(videoStemName, frameSet, gazeTargets
     % Get the cameraDepth from the source sceneGeometry file
     cameraDepth = sceneGeometry.meta.estimateSceneParams.x(end);
 
-    % This is the video for which we wish to create a sceneGeometry file. 
+    % This is the video for which we wish to create a sceneGeometry file.
     % We select frames to guide the search, using a fixation period before
     % the scan and a distributed set of gaze positions after the scan start
     videoStemName = fullfile(sourceDir,'tfMRI_MOVIE_PA_run03');
@@ -233,6 +233,8 @@ p.addRequired('gazeTargets',@(x)(iscell(x) || isnumeric(x)));
 
 % Optional display and I/O params
 p.addParameter('verbose',true,@islogical);
+p.addParameter('savePlots',true,@islogical);
+p.addParameter('saveFiles',true,@islogical);
 
 % Optional flow control params
 p.addParameter('useParallel',true,@islogical);
@@ -347,7 +349,7 @@ end
 
 %% Search across stages
 
-% The number of stages 
+% The number of stages
 nStages = length(model.strategy.(strategy).stages);
 
 % Looping over stages
@@ -361,23 +363,27 @@ for ii = 1:nStages
     
     % Objective
     myObjAll = @(x) multiSceneObjective(x,sceneObjects,model,strategy,ii,p.Results.errorArgs,verbose);
-
+    
     % Bounds
     [x,lb,ub,lbp,ubp] = setBounds(x,model,ii,strategy);
     
     % Search
-    x = bads(myObjAll,x,lb,ub,lbp,ubp,model.func.nonbcon,options);
+    if any(lb~=ub)
+        x = bads(myObjAll,x,lb,ub,lbp,ubp,model.func.nonbcon,options);
+    end
     
     % Update the model objects with the final parameters
     myObjAll(x);
     
     % Plots
-    fileNameSuffix = sprintf([p.Results.outputFileSuffix '_stage%02d'],ii);
-    for ss = 1:nScenes
-        sceneObjects{ss}.saveEyeModelMontage(fileNameSuffix);
-        sceneObjects{ss}.saveModelFitPlot(fileNameSuffix);
-        sceneObjects{ss}.saveRelCameraPosPlot(fileNameSuffix);        
-    end        
+    if p.Results.savePlots
+        fileNameSuffix = sprintf([p.Results.outputFileSuffix '_stage%02d'],ii);
+        for ss = 1:nScenes
+            sceneObjects{ss}.saveEyeModelMontage(fileNameSuffix);
+            sceneObjects{ss}.saveModelFitPlot(fileNameSuffix);
+            sceneObjects{ss}.saveRelCameraPosPlot(fileNameSuffix);
+        end
+    end
     
     % If instructed, use the fixation results to update the primary
     % position after each stage except the last
@@ -391,7 +397,7 @@ for ii = 1:nStages
         idx = model.scene.idxMultiScene(idx);
         x(idx) = poses;
     end
-
+    
     
 end
 
@@ -401,11 +407,12 @@ myObjAll(x);
 
 
 %% Save the sceneGeometry and relative camera position
-for ss = 1:nScenes
-    sceneObjects{ss}.saveSceneGeometry(p.Results.outputFileSuffix);
-    sceneObjects{ss}.saveRelCameraPos(p.Results.outputFileSuffix);    
+if p.Results.saveFiles
+    for ss = 1:nScenes
+        sceneObjects{ss}.saveSceneGeometry(p.Results.outputFileSuffix);
+        sceneObjects{ss}.saveRelCameraPos(p.Results.outputFileSuffix);
+    end
 end
-
 
 %% Alert the user that we are done with the routine
 executionTime = toc(ticObject);

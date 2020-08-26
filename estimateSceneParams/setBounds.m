@@ -44,6 +44,12 @@ sets = model.strategy.(strategy).stages{stage};
 
 % Loop through the number of parameter sets that define this search
 for ii = 1:length(sets)
+
+    % An empty search set might be used if we are just validating the
+    % performance of the model at x0
+    if isempty(sets{ii})
+        continue
+    end
     
     % Each set entry specifies the field (e.g., "head" or "eye") and the
     % set name (e.g., "cameraPosition") in the form "field.set"
