@@ -214,13 +214,13 @@ model.strategy.synthFix.multiSceneNorm = 1;
 model.strategy.synthFix.TolMesh = 1e-2;
 
 
-% validateEye -- Used to simply report the performance of the x0 params
+% validateEye -- Used in the validation of gazeCal accuracy
 model.strategy.validate.stages = { ...
-    {},...
+    {'scene.moveInPlane'},...
      };
 model.strategy.validate.errorArgs = { ...
-    {'cameraTransBounds',[20;20;0],'errorReg',[1 1 10 0 0]} };
-model.strategy.validate.penaltyWeight = [1 1]; % [depth torsion]
+    {'cameraTransBounds',[5;5;0],'errorReg',[1 1 0 0 1]} };
+model.strategy.validate.penaltyWeight = [100 0]; % [depth torsion]
 model.strategy.validate.useFixForPrimaryPos = false;
 model.strategy.validate.multiSceneNorm = 1;
 model.strategy.validate.TolMesh = 1e-2;
