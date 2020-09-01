@@ -157,8 +157,9 @@ if ~isempty(fileListStruct)
             % Obtain the vector of good and bad time points for the
             % radius smoothed
             highRMSE = pupilData.radiusSmoothed.ellipses.RMSE > p.Results.rmseThreshold;
+            nanFit = isnan(pupilData.radiusSmoothed.ellipses.RMSE);
             fitAtBound = pupilData.radiusSmoothed.eyePoses.fitAtBound;
-            goodRadiusSmoothed = logical(~highRMSE .* ~fitAtBound .* ~noGlint);
+            goodRadiusSmoothed = logical(~highRMSE .* ~fitAtBound .* ~noGlint .* ~nanFit);
             
             % If there are fewer than 66% good points, skip this
             % acquisition
