@@ -73,10 +73,9 @@ function runVideoPipeline( pathParams, varargin )
 %                           videoTypeChoice set here. This is used in
 %                           concert with passing 'custom' to
 %                           videoTypeChoice.
-%  'customSceneGeometryFile' - When passed, this full path to a
-%                           sceneGeometry file is passed as input to stages
-%                           subsequent to estimateSceneParams. This
-%                           allows processing upon one acquisition to use
+%  'customSceneGeometryFile' - When passed, this file name is used as the
+%                           source of the sceneGeometry. This allows
+%                           processing upon one acquisition to use
 %                           the scene Geometry derived from a different
 %                           run.
 %  'catchErrors'          - Controls if the function calls take place 
@@ -195,7 +194,11 @@ relativeCameraPositionFileName = fullfile(pathParams.dataOutputDirFull, [pathPar
 
 % The sceneGeometryFileName is the name of the file passed to the
 % fitPupilPerimeter, smoothPupilRadius, and makeFitVideo routines.
-sceneGeometryFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sceneGeometry.mat']);
+if isempty(p.Results.customSceneGeometryFile)
+    sceneGeometryFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sceneGeometry.mat']);
+else
+    sceneGeometryFileName = fullfile(pathParams.dataOutputDirFull, [p.Results.customSceneGeometryFile '_sceneGeometry.mat']);
+end
 
 % videoStemNameIn and videoStemNameOut are used by the syncSceneGeometry
 % routine. The code supports passing a "customSceneGeometryFile" to serve
