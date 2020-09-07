@@ -197,7 +197,11 @@ relativeCameraPositionFileName = fullfile(pathParams.dataOutputDirFull, [pathPar
 if isempty(p.Results.customSceneGeometryFile)
     sceneGeometryFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sceneGeometry.mat']);
 else
-    sceneGeometryFileName = fullfile(pathParams.dataOutputDirFull, [p.Results.customSceneGeometryFile '_sceneGeometry.mat']);
+    if iscell(p.Results.customSceneGeometryFile)
+        sceneGeometryFileName = fullfile(pathParams.dataOutputDirFull, [p.Results.customSceneGeometryFile{1} '_sceneGeometry.mat']);
+    else
+        sceneGeometryFileName = fullfile(pathParams.dataOutputDirFull, [p.Results.customSceneGeometryFile '_sceneGeometry.mat']);
+    end
 end
 
 % videoStemNameIn and videoStemNameOut are used by the syncSceneGeometry
