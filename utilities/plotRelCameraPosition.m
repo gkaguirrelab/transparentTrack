@@ -47,6 +47,20 @@ function plotRelCameraPosition( dataRootDir, plotSaveDir, varargin )
     dataSaveDir=fullfile(dataRootDir,'pupilDataQAPlots_cameraTrans_MOVIE_July2020');
     plotRelCameraPosition( dataRootDir, dataSaveDir,'acquisitionStem','tfMRI_MOVIE','nColumns',4,'selectSubjects',{'3022'})
 %}
+%{
+    % Special for the subjects without gazeCalibration data
+    dropboxBaseDir=fullfile(getpref('eyeTrackTOMEAnalysis','dropboxBaseDir'));
+    dataRootDir=fullfile(dropboxBaseDir,'TOME_processing','session2_spatialStimuli');
+    dataSaveDir=fullfile(dataRootDir,'pupilDataQAPlots_cameraTrans_RETINO_July2020');
+    plotRelCameraPosition( dataRootDir, dataSaveDir,'acquisitionStem','tfMRI_RETINO','nColumns',4,'stagesToPlot',{'initial','radiusSmoothed'},'selectSubjects',{'3001','3002','3003','3005'})
+%}
+%{
+    % Special for the subjects without gazeCalibration data
+    dropboxBaseDir=fullfile(getpref('eyeTrackTOMEAnalysis','dropboxBaseDir'));
+    dataRootDir=fullfile(dropboxBaseDir,'TOME_processing','session2_spatialStimuli');
+    dataSaveDir=fullfile(dataRootDir,'pupilDataQAPlots_cameraTrans_MOVIE_July2020');
+    plotRelCameraPosition( dataRootDir, dataSaveDir,'acquisitionStem','tfMRI_MOVIE','nColumns',4,'stagesToPlot',{'initial','radiusSmoothed'},'selectSubjects',{'3001','3002','3003','3005'})
+%}
 
 %% input parser
 p = inputParser;
@@ -185,12 +199,6 @@ if ~isempty(fileListStruct)
             if ~isfield(relativeCameraPosition,lastField)
                 continue
             end
-
-            % Report the time-stamp of the estimateSceneParams field,
-            % because I need to go back and re-run those that were created
-            % prior to Aug 9, 6:18 PM EDT
-            str = sprintf([nameTags{ii} '_%02d_' relativeCameraPosition.estimateSceneParams.meta.p.timestamp ,'\n'],jj);
-            fprintf(str);
 
             % Obtain the vector of good and bad time points for last field
             highRMSE = pupilData.(lastField).ellipses.RMSE > p.Results.rmseThreshold;
