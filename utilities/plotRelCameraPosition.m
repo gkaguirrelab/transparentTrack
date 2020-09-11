@@ -252,7 +252,11 @@ if ~isempty(fileListStruct)
                     if isfield(pupilData,'radiusSmoothed')
                         title({fileNameStem,pupilData.radiusSmoothed.meta.timestamp},'Interpreter', 'none');
                     else
-                        title({fileNameStem,pupilData.sceneConstrained.meta.timestamp},'Interpreter', 'none');
+                        if isfield(pupilData,'radiusSmoothed')
+                            title({fileNameStem,pupilData.sceneConstrained.meta.timestamp},'Interpreter', 'none');
+                        else
+                            title(fileNameStem,'Interpreter', 'none');
+                        end
                     end
                 end
                 if kk ~= length(p.Results.stagesToPlot)
