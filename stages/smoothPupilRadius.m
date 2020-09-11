@@ -153,10 +153,11 @@ if ~isempty(p.Results.glintFileName)
     nGlintFrames = size(glintData.X,1);
     if nGlintFrames < size(perimeter.data,1)
         perimeter.data = perimeter.data(1:nGlintFrames);
-        endelse
-        glintData = [];
     end
+else
+    glintData = [];
 end
+
 
 % Load the relativeCameraPosition file if passed and it exists
 if ~isempty(p.Results.relativeCameraPositionFileName)
