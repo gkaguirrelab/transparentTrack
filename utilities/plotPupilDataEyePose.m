@@ -196,7 +196,7 @@ if ~isempty(fileListStruct)
                 else
                     highRMSE = pupilData.sceneConstrained.ellipses.RMSE > p.Results.rmseThreshold;
                     fitAtBound = pupilData.sceneConstrained.eyePoses.fitAtBound;
-                    goodSceneConstrained = logical(~highRMSE .* ~fitAtBound .* ~noGlint);
+                    goodSceneConstrained = logical(~highRMSE .* ~fitAtBound .* ~noGlint(1:length(fitAtBound)));
                     
                     lb_byParam(nn) = floor(min(pupilData.sceneConstrained.eyePoses.values(goodSceneConstrained,p.Results.eyePoseParamsToPlot(mm))) ./ p.Results.yRangeIncrement(mm)).*p.Results.yRangeIncrement(mm);
                     ub_byParam(nn) = ceil(max(pupilData.sceneConstrained.eyePoses.values(goodSceneConstrained,p.Results.eyePoseParamsToPlot(mm))) ./ p.Results.yRangeIncrement(mm)).*p.Results.yRangeIncrement(mm);
@@ -242,14 +242,14 @@ if ~isempty(fileListStruct)
             % sceneConstrained
             highRMSE = pupilData.sceneConstrained.ellipses.RMSE > p.Results.rmseThreshold;
             fitAtBound = pupilData.sceneConstrained.eyePoses.fitAtBound;
-            goodSceneConstrained = logical(~highRMSE .* ~fitAtBound .* ~noGlint);
+            goodSceneConstrained = logical(~highRMSE .* ~fitAtBound .* ~noGlint(1:length(fitAtBound)));
             
             % Obtain the vector of good and bad time points for the
             % radius smoothed, if that exists
             if isfield(pupilData,'radiusSmoothed')
                 highRMSE = pupilData.radiusSmoothed.ellipses.RMSE > p.Results.rmseThreshold;
                 fitAtBound = pupilData.radiusSmoothed.eyePoses.fitAtBound;
-                goodRadiusSmoothed = logical(~highRMSE .* ~fitAtBound .* ~noGlint);
+                goodRadiusSmoothed = logical(~highRMSE .* ~fitAtBound .* ~noGlint(1:length(fitAtBound)));
             end
             
             % Loop over the 3 eyePose parameters to be plotted
@@ -260,7 +260,7 @@ if ~isempty(fileListStruct)
                 
                 % Plot all values from the sceneConstrained time-series as
                 % a gray line
-                plot(timebase.values*msecToMin,pupilData.sceneConstrained.eyePoses.values(:,p.Results.eyePoseParamsToPlot(kk)),'-','Color',[0.95 0.95 0.95],'LineWidth',0.5);
+                plot(timebase.values(1:length(goodRadiusSmoothed))*msecToMin,pupilData.sceneConstrained.eyePoses.values(:,p.Results.eyePoseParamsToPlot(kk)),'-','Color',[0.95 0.95 0.95],'LineWidth',0.5);
                 hold on
                 
                 % Now just the "good" sceneConstrained values, plotted as
@@ -276,7 +276,7 @@ if ~isempty(fileListStruct)
                 if isfield(pupilData,'radiusSmoothed')
                     vec = pupilData.radiusSmoothed.eyePoses.values(:,p.Results.eyePoseParamsToPlot(kk));
                     vec(~goodRadiusSmoothed)=nan;
-                    hLineBlack = plot(timebase.values*msecToMin,vec,'-k','LineWidth',0.25);
+                    hLineBlack = plot(timebase.values(1:length(vec))*msecToMin,vec,'-k','LineWidth',0.25);
                     hLineBlack.Color(4) = 0.5;
                 end
                 
