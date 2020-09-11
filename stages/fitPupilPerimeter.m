@@ -159,8 +159,15 @@ end
 
 % Load the glint file if passed
 if ~isempty(p.Results.glintFileName)
-    % Load the sceneGeometry file
+    % Load the glintData file
     load(p.Results.glintFileName,'glintData');
+    % Sometimes the glint file has fewer frames than the perimeter data. If
+    % so, make sure that we discard any perimeter frames that do not have a
+    % corresponding glint
+    nGlintFrames = size(glintData.X,1);
+    if nGlintFrames < size(perimeter.data,1)
+        perimeter.data = perimeter.data(1:nGlintFrames);
+    end
 else
     glintData = [];
 end
