@@ -152,7 +152,12 @@ cameraOffsetPoint = [sceneGeometryIn.cameraIntrinsic.matrix(1,3), ...
 [fixIdxIn, ~, eyePoseFixationIn, rhoIn, thetaIn] = selectFrames.gazeCal(videoStemNameIn);
 
 % Load in the video image for this frame.
-videoFrameIn = makeMedianVideoImage([videoStemNameIn '_gray.avi'],'startFrame',fixIdxIn,'nFrames',1);
+videoFileNameIn = [videoStemNameIn '_gray.avi'];
+if isfile(videoFileNameIn)
+    videoFrameIn = makeMedianVideoImage(videoFileNameIn,'startFrame',fixIdxIn,'nFrames',1);
+else
+    videoFrameIn = [];
+end
 
 % Get the scene and eye parameters from the sceneGeometryIn
 model.eye.x0 = sceneGeometryIn.meta.estimateSceneParams.xEye;
@@ -296,6 +301,10 @@ end
 % Load in the video image for this frame.
 videoFrameOut = makeMedianVideoImage([videoStemNameOut '_gray.avi'],'startFrame',frameSet(1),'nFrames',1);
 
+% If the VideoFrameIn is empty, create a blank frame
+if isempty(videoFrameIn)
+    videoFrameIn = zeros(size(videoFrameOut));
+end
 
 %% Perform the synchronization search
 estimateSceneParams(videoStemNameOut, frameSet, gazeTargets, ...
