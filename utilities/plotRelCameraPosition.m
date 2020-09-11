@@ -44,6 +44,12 @@ function plotRelCameraPosition( dataRootDir, plotSaveDir, varargin )
 %{
     dropboxBaseDir=fullfile(getpref('eyeTrackTOMEAnalysis','dropboxBaseDir'));
     dataRootDir=fullfile(dropboxBaseDir,'TOME_processing','session2_spatialStimuli');
+    dataSaveDir=fullfile(dataRootDir,'pupilDataQAPlots_cameraTrans_FLASH_July2020');
+    plotRelCameraPosition( dataRootDir, dataSaveDir,'acquisitionStem','tfMRI_FLASH','nColumns',2,'stagesToPlot',{'initial','estimateSceneParams'})
+%}
+%{
+    dropboxBaseDir=fullfile(getpref('eyeTrackTOMEAnalysis','dropboxBaseDir'));
+    dataRootDir=fullfile(dropboxBaseDir,'TOME_processing','session2_spatialStimuli');
     dataSaveDir=fullfile(dataRootDir,'pupilDataQAPlots_cameraTrans_RETINO_July2020');
     plotRelCameraPosition( dataRootDir, dataSaveDir,'acquisitionStem','tfMRI_RETINO','nColumns',4)
 %}
