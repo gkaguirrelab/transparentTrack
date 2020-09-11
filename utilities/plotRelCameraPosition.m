@@ -37,6 +37,12 @@ function plotRelCameraPosition( dataRootDir, plotSaveDir, varargin )
 % Examples:
 %{
     dropboxBaseDir=fullfile(getpref('eyeTrackTOMEAnalysis','dropboxBaseDir'));
+    dataRootDir=fullfile(dropboxBaseDir,'TOME_processing','session1_restAndStructure');
+    dataSaveDir=fullfile(dataRootDir,'pupilDataQAPlots_cameraTrans_REST_July2020');
+    plotRelCameraPosition( dataRootDir, dataSaveDir,'acquisitionStem','rfMRI_REST','nColumns',4,'stagesToPlot',{'initial','estimateSceneParams'})
+%}
+%{
+    dropboxBaseDir=fullfile(getpref('eyeTrackTOMEAnalysis','dropboxBaseDir'));
     dataRootDir=fullfile(dropboxBaseDir,'TOME_processing','session2_spatialStimuli');
     dataSaveDir=fullfile(dataRootDir,'pupilDataQAPlots_cameraTrans_RETINO_July2020');
     plotRelCameraPosition( dataRootDir, dataSaveDir,'acquisitionStem','tfMRI_RETINO','nColumns',4)
@@ -201,9 +207,11 @@ if ~isempty(fileListStruct)
             end
 
             % Obtain the vector of good and bad time points for last field
-            highRMSE = pupilData.(lastField).ellipses.RMSE > p.Results.rmseThreshold;
-            fitAtBound = pupilData.(lastField).eyePoses.fitAtBound;
-            goodIdx = logical(~highRMSE .* ~fitAtBound .* ~noGlint);
+            if isfield(pupilData,lastField)
+                highRMSE = pupilData.(lastField).ellipses.RMSE > p.Results.rmseThreshold;
+                fitAtBound = pupilData.(lastField).eyePoses.fitAtBound;
+                goodIdx = logical(~highRMSE .* ~fitAtBound .* ~noGlint);
+            end
             
             % Loop over the fields to plot
             for kk=1:length(p.Results.stagesToPlot)
