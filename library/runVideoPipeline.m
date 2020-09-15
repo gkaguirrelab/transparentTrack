@@ -194,15 +194,7 @@ relativeCameraPositionFileName = fullfile(pathParams.dataOutputDirFull, [pathPar
 
 % The sceneGeometryFileName is the name of the file passed to the
 % fitPupilPerimeter, smoothPupilRadius, and makeFitVideo routines.
-if isempty(p.Results.customSceneGeometryFile)
-    sceneGeometryFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sceneGeometry.mat']);
-else
-    if iscell(p.Results.customSceneGeometryFile)
-        sceneGeometryFileName = fullfile(pathParams.dataOutputDirFull, [p.Results.customSceneGeometryFile{1} '_sceneGeometry.mat']);
-    else
-        sceneGeometryFileName = fullfile(pathParams.dataOutputDirFull, [p.Results.customSceneGeometryFile '_sceneGeometry.mat']);
-    end
-end
+sceneGeometryFileName = fullfile(pathParams.dataOutputDirFull, [pathParams.runName '_sceneGeometry.mat']);
 
 % videoStemNameIn and videoStemNameOut are used by the syncSceneGeometry
 % routine. The code supports passing a "customSceneGeometryFile" to serve
