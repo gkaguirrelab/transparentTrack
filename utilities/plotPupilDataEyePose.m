@@ -58,7 +58,10 @@ function plotPupilDataEyePose( dataRootDir, plotSaveDir, varargin )
 %
 % Examples:
 %{
-    plotPupilDataEyePose( '', 'pupilDataQAPlots_eyePose_FLASH_July2020','acquisitionStem','tfMRI_FLASH','nColumns',2)
+    dropboxBaseDir=fullfile(getpref('eyeTrackTOMEAnalysis','dropboxBaseDir'));
+    dataRootDir=fullfile(dropboxBaseDir,'TOME_processing','session2_spatialStimuli');
+    dataSaveDir=fullfile(dataRootDir,'pupilDataQAPlots_eyePose_FLASH_July2020');
+    plotPupilDataEyePose( dataRootDir, dataSaveDir,'acquisitionStem','tfMRI_FLASH','nColumns',2)
 %}
 %{
     dropboxBaseDir=fullfile(getpref('eyeTrackTOMEAnalysis','dropboxBaseDir'));
@@ -72,6 +75,13 @@ function plotPupilDataEyePose( dataRootDir, plotSaveDir, varargin )
     dataSaveDir=fullfile(dataRootDir,'pupilDataQAPlots_eyePose_RETINO_July2020');
     plotPupilDataEyePose( dataRootDir, dataSaveDir,'acquisitionStem','tfMRI_RETINO','nColumns',4,'selectSubjects',{'TOME_3011'})
 %}
+%{
+    dropboxBaseDir=fullfile(getpref('eyeTrackTOMEAnalysis','dropboxBaseDir'));
+    dataRootDir=fullfile(dropboxBaseDir,'TOME_processing','session1_restAndStructure');
+    dataSaveDir=fullfile(dataRootDir,'pupilDataQAPlots_eyePose_July2020');
+    plotPupilDataEyePose( dataRootDir, dataSaveDir,'acquisitionStem','rfMRI_REST','nColumns',4)
+%}
+
 
 %% input parser
 p = inputParser;
@@ -198,8 +208,14 @@ if ~isempty(fileListStruct)
                     fitAtBound = pupilData.sceneConstrained.eyePoses.fitAtBound;
                     goodSceneConstrained = logical(~highRMSE .* ~fitAtBound .* ~noGlint(1:length(fitAtBound)));
                     
-                    lb_byParam(nn) = floor(min(pupilData.sceneConstrained.eyePoses.values(goodSceneConstrained,p.Results.eyePoseParamsToPlot(mm))) ./ p.Results.yRangeIncrement(mm)).*p.Results.yRangeIncrement(mm);
-                    ub_byParam(nn) = ceil(max(pupilData.sceneConstrained.eyePoses.values(goodSceneConstrained,p.Results.eyePoseParamsToPlot(mm))) ./ p.Results.yRangeIncrement(mm)).*p.Results.yRangeIncrement(mm);
+                    % If there are no good data points, fill withn ans
+                    if sum(goodSceneConstrained)==0
+                        lb_byParam(nn) = nan;
+                        ub_byParam = nan;
+                    else
+                        lb_byParam(nn) = floor(min(pupilData.sceneConstrained.eyePoses.values(goodSceneConstrained,p.Results.eyePoseParamsToPlot(mm))) ./ p.Results.yRangeIncrement(mm)).*p.Results.yRangeIncrement(mm);
+                        ub_byParam(nn) = ceil(max(pupilData.sceneConstrained.eyePoses.values(goodSceneConstrained,p.Results.eyePoseParamsToPlot(mm))) ./ p.Results.yRangeIncrement(mm)).*p.Results.yRangeIncrement(mm);
+                    end
                 end
             end
             lb(mm) = nanmin(lb_byParam);
@@ -209,16 +225,16 @@ if ~isempty(fileListStruct)
         % Loop through the acquisitions
         for jj = 1: length(acqList)
             
-            % Obtain the path to this pupil data file 
+            % Obtain the path to this pupil data file
             pupilFullFileName = fullfile(fileListCell{2,acqList(jj)},fileListCell{1,acqList(jj)});
             load(pupilFullFileName,'pupilData');
-
+            
             % Grab just the filename for this pupil data, omitting the
             % path. We will use this to label the plot
             [pupilFilePath, pupilFileName] = fileparts(pupilFullFileName);
             fileNameStem = strsplit(pupilFileName,'_pupil');
             fileNameStem = fileNameStem{1};
-
+            
             % Load the glint
             timebaseFileName = fullfile(pupilFilePath,[fileNameStem,'_glint.mat']);
             load(timebaseFileName,'glintData');
@@ -265,51 +281,53 @@ if ~isempty(fileListStruct)
                 
                 % Now just the "good" sceneConstrained values, plotted as
                 % transparent red points.
-                hLineRed = plot(timebase.values(goodSceneConstrained)*msecToMin,pupilData.sceneConstrained.eyePoses.values(goodSceneConstrained,p.Results.eyePoseParamsToPlot(kk)),'o','MarkerSize',1);
-                drawnow
-                hMarkerRed = hLineRed.MarkerHandle;
-                hMarkerRed.FaceColorData = uint8(255*[1; 0; 0; 0.025]);
-                hMarkerRed.FaceColorType = 'truecoloralpha';
-                hMarkerRed.EdgeColorData = uint8([0; 0; 0; 0]);
-                
-                % Plot the radiusSmoothed time-series as a thin black line
-                if isfield(pupilData,'radiusSmoothed')
-                    vec = pupilData.radiusSmoothed.eyePoses.values(:,p.Results.eyePoseParamsToPlot(kk));
-                    vec(~goodRadiusSmoothed)=nan;
-                    hLineBlack = plot(timebase.values(1:length(vec))*msecToMin,vec,'-k','LineWidth',0.25);
-                    hLineBlack.Color(4) = 0.5;
-                end
-                
-                % Add markers for high RMSE plot points
-                lowY = lb(kk) + (ub(kk)-lb(kk))/20;
-                yPosition = repmat(lowY,size(timebase.values(highRMSE)));
-                hLineGray = plot(timebase.values(highRMSE)/1000/60,yPosition,'o','MarkerSize',0.75);
-                drawnow
-                if ~isempty(hLineGray)
-                    hMarkerGray = hLineGray.MarkerHandle;
-                    hMarkerGray.FaceColorData = uint8(255*[0; 0; 0; 0.75]);
-                    hMarkerGray.FaceColorType = 'truecoloralpha';
-                    hMarkerGray.EdgeColorData = uint8([0; 0; 0; 0]);
-                end
-                
-                % Add markers for at bound plot points
-                lowY = lb(kk) + (ub(kk)-lb(kk))/15;
-                yPosition = repmat(lowY,size(timebase.values(fitAtBound)));
-                if isfield(pupilData.sceneConstrained.eyePoses,'fitAtBound')
-                    hLineBlue = plot(timebase.values(fitAtBound)/1000/60,yPosition,'o','MarkerSize',0.75);
+                if sum(goodSceneConstrained)>0
+                    hLineRed = plot(timebase.values(goodSceneConstrained)*msecToMin,pupilData.sceneConstrained.eyePoses.values(goodSceneConstrained,p.Results.eyePoseParamsToPlot(kk)),'o','MarkerSize',1);
                     drawnow
-                    if ~isempty(hLineBlue)
-                        hMarkerBlue = hLineBlue.MarkerHandle;
-                        hMarkerBlue.FaceColorData = uint8(255*[0; 0; 0.75; 1]);
-                        hMarkerBlue.FaceColorType = 'truecoloralpha';
-                        hMarkerBlue.EdgeColorData = uint8([0; 0; 0; 0]);
+                    hMarkerRed = hLineRed.MarkerHandle;
+                    hMarkerRed.FaceColorData = uint8(255*[1; 0; 0; 0.025]);
+                    hMarkerRed.FaceColorType = 'truecoloralpha';
+                    hMarkerRed.EdgeColorData = uint8([0; 0; 0; 0]);
+                    
+                    % Plot the radiusSmoothed time-series as a thin black line
+                    if isfield(pupilData,'radiusSmoothed')
+                        vec = pupilData.radiusSmoothed.eyePoses.values(:,p.Results.eyePoseParamsToPlot(kk));
+                        vec(~goodRadiusSmoothed)=nan;
+                        hLineBlack = plot(timebase.values(1:length(vec))*msecToMin,vec,'-k','LineWidth',0.25);
+                        hLineBlack.Color(4) = 0.5;
                     end
+                    
+                    % Add markers for high RMSE plot points
+                    lowY = lb(kk) + (ub(kk)-lb(kk))/20;
+                    yPosition = repmat(lowY,size(timebase.values(highRMSE)));
+                    hLineGray = plot(timebase.values(highRMSE)/1000/60,yPosition,'o','MarkerSize',0.75);
+                    drawnow
+                    if ~isempty(hLineGray)
+                        hMarkerGray = hLineGray.MarkerHandle;
+                        hMarkerGray.FaceColorData = uint8(255*[0; 0; 0; 0.75]);
+                        hMarkerGray.FaceColorType = 'truecoloralpha';
+                        hMarkerGray.EdgeColorData = uint8([0; 0; 0; 0]);
+                    end
+                    
+                    % Add markers for at bound plot points
+                    lowY = lb(kk) + (ub(kk)-lb(kk))/15;
+                    yPosition = repmat(lowY,size(timebase.values(fitAtBound)));
+                    if isfield(pupilData.sceneConstrained.eyePoses,'fitAtBound')
+                        hLineBlue = plot(timebase.values(fitAtBound)/1000/60,yPosition,'o','MarkerSize',0.75);
+                        drawnow
+                        if ~isempty(hLineBlue)
+                            hMarkerBlue = hLineBlue.MarkerHandle;
+                            hMarkerBlue.FaceColorData = uint8(255*[0; 0; 0.75; 1]);
+                            hMarkerBlue.FaceColorType = 'truecoloralpha';
+                            hMarkerBlue.EdgeColorData = uint8([0; 0; 0; 0]);
+                        end
+                    end
+                    
+                    % Set the plot limits
+                    xlim(p.Results.xLim);
+                    xticks(fix(p.Results.xLim(1)):1:fix(p.Results.xLim(2)))
+                    ylim([lb(kk) ub(kk)]);
                 end
-                
-                % Set the plot limits
-                xlim(p.Results.xLim);
-                xticks(fix(p.Results.xLim(1)):1:fix(p.Results.xLim(2)))
-                ylim([lb(kk) ub(kk)]);
                 
                 % Remove the chart junk
                 if jj ~= 1
@@ -343,7 +361,7 @@ if ~isempty(fileListStruct)
         if ~isempty(plotSaveDir)
             plotFileName =fullfile(plotSaveDir,[nameTags{ii} '_eyePose.png']);
             print(gcf,plotFileName,'-dpng','-r600')
-            close(figHandle)           
+            close(figHandle)
             
         end
         
