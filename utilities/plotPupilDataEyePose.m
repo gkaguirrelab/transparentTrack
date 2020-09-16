@@ -79,7 +79,7 @@ function plotPupilDataEyePose( dataRootDir, plotSaveDir, varargin )
     dropboxBaseDir=fullfile(getpref('eyeTrackTOMEAnalysis','dropboxBaseDir'));
     dataRootDir=fullfile(dropboxBaseDir,'TOME_processing','session1_restAndStructure');
     dataSaveDir=fullfile(dataRootDir,'pupilDataQAPlots_eyePose_July2020');
-    plotPupilDataEyePose( dataRootDir, dataSaveDir,'acquisitionStem','rfMRI_REST','nColumns',4)
+    plotPupilDataEyePose( dataRootDir, dataSaveDir,'acquisitionStem','rfMRI_REST','nColumns',4,'selectSubjects',{'TOME_3001'})
 %}
 
 
