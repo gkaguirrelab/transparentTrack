@@ -144,6 +144,9 @@ classdef sceneObj < handle
             p.addRequired('meta',@isstruct);
             
             % Optional
+            p.addParameter('glintData',[],@(x)(isempty(x) || isstruct(x)));
+            p.addParameter('perimeter',[],@(x)(isempty(x) || isstruct(x)));
+            p.addParameter('relativeCameraPosition',[],@(x)(isempty(x) || isstruct(x)));
             p.addParameter('verbose',false,@islogical);
         
             % parse
@@ -171,13 +174,25 @@ classdef sceneObj < handle
             
             
             %% Load the materials
-            load([videoStemName '_correctedPerimeter.mat'],'perimeter');
-            load([videoStemName '_glint.mat'],'glintData');
-            if exist([videoStemName '_relativeCameraPosition.mat'], 'file') == 2
-                load([videoStemName '_relativeCameraPosition.mat'],'relativeCameraPosition');                
+            if isempty(p.Results.perimeter)
+                load([videoStemName '_correctedPerimeter.mat'],'perimeter');
             else
-                relativeCameraPosition.initial.values = zeros(3,max(frameSet));
-                relativeCameraPosition.currentField = 'initial';
+                perimeter = p.Results.perimeter;
+            end
+            if isempty(p.Results.glintData)
+                load([videoStemName '_glint.mat'],'glintData');
+            else
+                glintData = p.Results.glintData;
+            end
+            if isempty(p.Results.relativeCameraPosition)
+                if exist([videoStemName '_relativeCameraPosition.mat'], 'file') == 2
+                    load([videoStemName '_relativeCameraPosition.mat'],'relativeCameraPosition');
+                else
+                    relativeCameraPosition.initial.values = zeros(3,max(frameSet));
+                    relativeCameraPosition.currentField = 'initial';
+                end
+            else
+                relativeCameraPosition = p.Results.relativeCameraPosition;
             end
             
             % Extract data for the frames we want and store in the object

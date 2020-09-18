@@ -256,6 +256,12 @@ p.addParameter('model',[],@isstruct);
 p.addParameter('eyeArgs',{},@iscell);
 p.addParameter('sceneArgs',{},@iscell);
 p.addParameter('errorArgs',{},@iscell);
+p.addParameter('glintData',{},@iscell);
+p.addParameter('perimeter',{},@iscell);
+p.addParameter('relativeCameraPosition',{},@iscell);
+
+% Optional data input
+
 
 % parse
 p.parse(videoStemName, frameSet, gazeTargets, varargin{:})
@@ -292,10 +298,32 @@ else
     gazeTargets = {gazeTargets};
 end
 
-% Pull these out for code legibility
+% Define some constants
 strategy = p.Results.searchStrategy;
 verbose = p.Results.verbose;
 nScenes = length(videoStemName);
+
+% Set up empty cell arrays for the passed data if needed, and check that
+% the lengths are correct. If these are empty, then the data will be loaded
+% from files based upon the videoStemName
+if isempty(p.Results.glintData)
+    glintData = repmat({''},nScenes,1);
+else
+    glintData = p.Results.glintData;
+end
+if isempty(p.Results.perimeter)
+    perimeter = repmat({''},nScenes,1);
+else
+    perimeter = p.Results.perimeter;
+end
+if isempty(p.Results.relativeCameraPosition)
+    relativeCameraPosition = repmat({''},nScenes,1);
+else
+    relativeCameraPosition = p.Results.relativeCameraPosition;
+end
+if range([length(glintData),length(perimeter),length(relativeCameraPosition),nScenes])~=0
+    error('estimateSceneParams:inputTypeError','One or more of the passed data cells (glint, perim, camera position) is not the right length')
+end
 
 
 %% Define model params
@@ -304,7 +332,8 @@ nScenes = length(videoStemName);
 % This is typically done for x0 and bounds.
 model = defineModelParams(nScenes, p.Results.model, p.Results.cameraTorsion, p.Results.cameraDepth, p.Results.corneaTorsion);
 
-% Loop through the scenes and create scene objective functions
+
+%% Create the scene objective functions
 for ss = 1:nScenes
     
     % The arguments for createSceneGeometry for this video entry are a
@@ -318,7 +347,9 @@ for ss = 1:nScenes
     % Create the objective for this scene
     sceneObjects{ss} = sceneObj(...
         model, videoStemName{ss}, frameSet{ss}, gazeTargets{ss}, ...
-        setupArgs, p.Results, 'verbose', verbose);
+        setupArgs, p.Results, 'verbose', verbose, ...
+        'glintData',glintData{ss},'perimeter',perimeter{ss}, ...
+        'relativeCameraPosition',relativeCameraPosition{ss});
     
 end
 
