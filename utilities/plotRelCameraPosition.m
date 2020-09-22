@@ -216,7 +216,7 @@ if ~isempty(fileListStruct)
             if isfield(pupilData,lastField)
                 highRMSE = pupilData.(lastField).ellipses.RMSE > p.Results.rmseThreshold;
                 fitAtBound = pupilData.(lastField).eyePoses.fitAtBound;
-                goodIdx = logical(~highRMSE .* ~fitAtBound .* ~noGlint);
+                goodIdx = logical(~highRMSE .* ~fitAtBound .* ~noGlint(1:length(fitAtBound)));
             end
             
             % Loop over the fields to plot
@@ -231,7 +231,7 @@ if ~isempty(fileListStruct)
                     if strcmp(p.Results.stagesToPlot{kk},'radiusSmoothed')
                         vec(~goodIdx)=nan;
                     end
-                    plot(timebase.values*msecToMin,vec,'Color',p.Results.transDirColors{dd},'LineWidth',0.25);
+                    plot(timebase.values(1:length(fitAtBound))*msecToMin,vec(1:length(fitAtBound)),'Color',p.Results.transDirColors{dd},'LineWidth',0.25);
                     hold on
                 end
                 
