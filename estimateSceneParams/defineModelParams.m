@@ -135,8 +135,8 @@ model.eye.bounds = [5, 5, 5, 180, 5, 2.5, 0.25, 0.25, 30];
 model.eye.paramLabels = {'corneaAxialRadius','K1','K2','torsion','tilt','tip','joint','diff','commonDepth'};
 model.eye.units = {'mm','diopters','diopters','deg','deg','deg','proportion','proportion','mm'};
 model.eye.nParams = length(model.eye.paramLabels);
-model.eye.setLabels = {'corneaAxialRadius','kvals','rotationCenterScalers','commonDepth','all'};
-model.eye.setIdx = {1, 2:6, 7:8, 9, 1:9};
+model.eye.setLabels = {'corneaAxialRadius','k1k2','kvals','rotationCenterScalers','commonDepth','all'};
+model.eye.setIdx = {1, 2:3, 2:6, 7:8, 9, 1:9};
 model.eye.idxMap = @(idx) model.head.nParams+idx;
 model.eye.idxMultiScene = @(idx) idx;
 
@@ -198,7 +198,7 @@ model.strategy.sceneSync.TolMesh = 1e-2;
 
 
 % synthFix -- Similar to gazeCal, but the source frames were acquired
-% during a length fMRI scan. Therefore, we want to handle head translation
+% during a lengthy fMRI scan. Therefore, we want to handle head translation
 % during this time.
 model.strategy.synthFix.stages = { ...
     {'eye.rotationCenterScalers','eye.corneaAxialRadius','eye.commonDepth','scene.cameraPosition'},...
@@ -214,16 +214,16 @@ model.strategy.synthFix.multiSceneNorm = 1;
 model.strategy.synthFix.TolMesh = 1e-2;
 
 
-% validateEye -- Used in the validation of gazeCal accuracy
-model.strategy.validate.stages = { ...
-    {'scene.moveInPlane'},...
+% simulateBio -- Used in a test of the accuracy of recovered biometry
+model.strategy.simulateBio.stages = { ...
+    {'scene.moveInPlane','eye.k1k2','eye.rotationCenterScalers'},...
      };
-model.strategy.validate.errorArgs = { ...
-    {'cameraTransBounds',[5;5;0],'errorReg',[1 1 0 0 1]} };
-model.strategy.validate.penaltyWeight = [100 0]; % [depth torsion]
-model.strategy.validate.useFixForPrimaryPos = false;
-model.strategy.validate.multiSceneNorm = 1;
-model.strategy.validate.TolMesh = 1e-2;
+model.strategy.simulateBio.errorArgs = { ...
+    {'cameraTransBounds',[0;0;0],'errorReg',[1 1 10 0 0]} };
+model.strategy.simulateBio.penaltyWeight = [1 1]; % [depth torsion]
+model.strategy.simulateBio.useFixForPrimaryPos = false;
+model.strategy.simulateBio.multiSceneNorm = 1;
+model.strategy.simulateBio.TolMesh = 1e-2;
 
 
 
