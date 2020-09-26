@@ -59,20 +59,7 @@ function plotRelCameraPosition( dataRootDir, plotSaveDir, varargin )
     dataSaveDir=fullfile(dataRootDir,'pupilDataQAPlots_cameraTrans_MOVIE_July2020');
     plotRelCameraPosition( dataRootDir, dataSaveDir,'acquisitionStem','tfMRI_MOVIE','nColumns',4,'selectSubjects',{'3022'})
 %}
-%{
-    % Special for the subjects without gazeCalibration data
-    dropboxBaseDir=fullfile(getpref('eyeTrackTOMEAnalysis','dropboxBaseDir'));
-    dataRootDir=fullfile(dropboxBaseDir,'TOME_processing','session2_spatialStimuli');
-    dataSaveDir=fullfile(dataRootDir,'pupilDataQAPlots_cameraTrans_RETINO_July2020');
-    plotRelCameraPosition( dataRootDir, dataSaveDir,'acquisitionStem','tfMRI_RETINO','nColumns',4,'selectSubjects',{'3001','3002','3003','3005'})
-%}
-%{
-    % Special for the subjects without gazeCalibration data
-    dropboxBaseDir=fullfile(getpref('eyeTrackTOMEAnalysis','dropboxBaseDir'));
-    dataRootDir=fullfile(dropboxBaseDir,'TOME_processing','session2_spatialStimuli');
-    dataSaveDir=fullfile(dataRootDir,'pupilDataQAPlots_cameraTrans_MOVIE_July2020');
-    plotRelCameraPosition( dataRootDir, dataSaveDir,'acquisitionStem','tfMRI_MOVIE','nColumns',4,'stagesToPlot',{'initial','radiusSmoothed'},'selectSubjects',{'3001','3002','3003','3005'})
-%}
+
 
 %% input parser
 p = inputParser;
