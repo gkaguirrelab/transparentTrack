@@ -158,7 +158,7 @@ if ~isempty(fileListStruct)
             highRMSE = pupilData.radiusSmoothed.ellipses.RMSE > p.Results.rmseThreshold;
             nanFit = isnan(pupilData.radiusSmoothed.ellipses.RMSE);
             fitAtBound = pupilData.radiusSmoothed.eyePoses.fitAtBound;
-            goodRadiusSmoothed = logical(~highRMSE .* ~fitAtBound .* ~noGlint .* ~nanFit);
+            goodRadiusSmoothed = logical(~highRMSE(1:length(fitAtBound)) .* ~fitAtBound(1:length(fitAtBound)) .* ~noGlint(1:length(fitAtBound)) .* ~nanFit(1:length(fitAtBound)));
             
             % If there are fewer than 66% good points, skip this
             % acquisition
