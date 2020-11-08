@@ -31,6 +31,12 @@ function saveGazePostData( dataRootDir, dataSaveDir, varargin )
     dataSaveDir=fullfile(dataRootDir,'pupilDataQAPlots_eyePose_RETINO_July2020');
     saveGazePostData( dataRootDir, dataSaveDir,'acquisitionStem','tfMRI_RETINO')
 %}
+%{
+    dropboxBaseDir=fullfile(getpref('eyeTrackTOMEAnalysis','dropboxBaseDir'));
+    dataRootDir=fullfile(dropboxBaseDir,'TOME_processing','session2_spatialStimuli');
+    dataSaveDir=fullfile(dataRootDir,'pupilDataQAPlots_eyePose_FLASH_July2020');
+    saveGazePostData( dataRootDir, dataSaveDir,'acquisitionStem','tfMRI_FLASH')
+%}
 
 %% input parser
 p = inputParser;
