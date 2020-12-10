@@ -410,7 +410,7 @@ for ii = 1:nStages
     if p.Results.savePlots
         fileNameSuffix = sprintf([p.Results.outputFileSuffix '_stage%02d'],ii);
         for ss = 1:nScenes
-            sceneObjects{ss}.saveEyeModelMontage(fileNameSuffix);
+            sceneObjects{ss}.saveEyeModelMontage(fileNameSuffix,true,true);
             sceneObjects{ss}.saveModelFitPlot(fileNameSuffix);
             sceneObjects{ss}.saveRelCameraPosPlot(fileNameSuffix);
         end

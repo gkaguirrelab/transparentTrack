@@ -1,4 +1,4 @@
-function saveEyeModelMontage(obj,fileNameSuffix)
+function saveEyeModelMontage(obj,fileNameSuffix,showImageFeatures,showModelEye)
 % Saves a montage of video frames and the superimposed model eye
 %
 % Syntax:
@@ -17,6 +17,7 @@ function saveEyeModelMontage(obj,fileNameSuffix)
 % Outputs:
 %   none
 %
+
 
 
 %% Setup variables
@@ -122,18 +123,25 @@ for ii = 1:length(frameSet)
         sourceFrame = readFrame(videoInObj);
         curFrame = curFrame + 1;
     end
-    
+        sourceFrame(:)=100;
     % Display this frame and clean up the image
     imshow(sourceFrame,'Border', 'tight','Parent',hAxes);
     hold on
     axis off;
+
+    % Add image features if requested
+    if showImageFeatures
+        % Add the pupil perimeter points
+        plot(perimeter{ii}.Xp ,perimeter{ii}.Yp, '.w', 'MarkerSize', 1);
+        
+        % Add the observed glint
+        hold on
+        plot(glintDataX(ii), glintDataY(ii),'or');
+    end
     
-    % Add the pupil perimeter points
-    plot(perimeter{ii}.Xp ,perimeter{ii}.Yp, '.w', 'MarkerSize', 1);
-    
-    % Add the rendered eye model
+    % Add the rendered eye model if requested
     eyePose = modelEyePose(ii,:);
-    if ~any(isnan(eyePose))
+    if ~any(isnan(eyePose)) && showModelEye
         renderEyePose(eyePose, sceneGeometry, 'newFigure', false, ...
             'cameraTrans', modelCameraTrans(:,ii), ...
             'modelEyeLabelNames', {'retina' 'irisPerimeter' 'pupilEllipse' 'cornea' 'glint_01' 'glint_02' 'medialCanthus' 'lateralCanthus'}, ...
@@ -141,19 +149,18 @@ for ii = 1:length(frameSet)
             'modelEyeAlpha', [0.25 0.25 0.25 0.25 1 1 1 1],...
             'modelEyeSymbolSizeScaler',1.5,...
             'showAzimuthPlane',true);
+
     end
-    
-    % Add the observed glint
-    hold on
-    plot(glintDataX(ii), glintDataY(ii),'or');
-    
+        
     % Get the frame
     drawnow;
     thisFrame=getframe(figHandle);
     
     % Add a text label for the frame number
-    frameLabel = sprintf('frame: %d',idx);
-    thisFrame.cdata = insertText(thisFrame.cdata,[20 20],frameLabel,'FontSize',30);
+    if showImageFeatures
+        frameLabel = sprintf('frame: %d',idx);
+        thisFrame.cdata = insertText(thisFrame.cdata,[20 20],frameLabel,'FontSize',30);
+    end
     
     % Store the frame if it is a valid size. It might be invalid if there
     % was something wrong with the rendering, for example.

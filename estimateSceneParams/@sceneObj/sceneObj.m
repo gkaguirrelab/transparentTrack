@@ -216,7 +216,7 @@ classdef sceneObj < handle
         updateError(obj, varargin)
         fVal = returnError(obj, x, errorArgs)
         saveEyeModelMontage(obj,fileNameSuffix)
-        saveModelFitPlot(obj,fileNameSuffix)
+        saveModelFitPlot(obj,fileNameSuffix,showImageFeatures,showModelEye)
         saveSceneGeometry(obj,fileNameSuffix)
         saveRelCameraPos(obj,fileNameSuffix)
         saveRelCameraPosPlot(obj,fileNameSuffix)
