@@ -616,7 +616,7 @@ if (min(potentialIndices)-1) < 1 || (min(potentialIndices)-1) > length(p.Results
 end
 
 
-pupilCircleThresh = p.Results.potentialThreshValues(min(potentialIndices)-1);
+pupilCircleThresh = p.Results.potentialThreshValues(max([1 min(potentialIndices)-1]));
 initialParams.pupilCircleThresh = pupilCircleThresh;
 
 %% Figure out the maximum visible iris diameter
