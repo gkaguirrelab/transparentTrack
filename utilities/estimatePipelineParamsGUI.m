@@ -211,9 +211,6 @@ if strcmp(p.Results.approach, 'TOME')
     frameMaskValue = 220;
     numberOfGlints = 1;
     maskBox = [2 2];
-    intrinsicCameraMatrix = [2627.0 0 338.1; 0 2628.1 246.2; 0 0 1];
-    radialDistortionVector = [-0.3517 3.5353];
-    spectralDomain = 'nir';
     smallObjThresh = 400;
 elseif strcmp(p.Results.approach, 'SquintToPulse')
     ellipseTransparentUB = [1280, 720, 90000, 0.6, pi];
@@ -221,6 +218,14 @@ elseif strcmp(p.Results.approach, 'SquintToPulse')
     pupilGammaCorrection = 0.75;
     frameMaskValue = 220;
     numberOfGlints = 2;
+    maskBox = [1 1];
+    smallObjThresh = 2500;
+elseif strcmp(p.Results.approach, 'mtrpGlare')
+    ellipseTransparentUB = [640, 480, 90000, 0.8, pi];
+    ellipseTransparentLB = [0, 0, 1000, 0, 0];
+    pupilGammaCorrection = 0.75;
+    frameMaskValue = 220;
+    numberOfGlints = 1;
     maskBox = [1 1];
     smallObjThresh = 2500;
 end
