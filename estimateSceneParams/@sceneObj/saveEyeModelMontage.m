@@ -123,7 +123,7 @@ for ii = 1:length(frameSet)
         sourceFrame = readFrame(videoInObj);
         curFrame = curFrame + 1;
     end
-        sourceFrame(:)=100;
+    
     % Display this frame and clean up the image
     imshow(sourceFrame,'Border', 'tight','Parent',hAxes);
     hold on
