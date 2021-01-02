@@ -296,6 +296,7 @@ else
     videoStemName = {videoStemName};
     frameSet = {frameSet};
     gazeTargets = {gazeTargets};
+    sceneArgs = {p.Results.sceneArgs};
 end
 
 % Define some constants
@@ -341,7 +342,7 @@ for ss = 1:nScenes
     if isempty(p.Results.sceneArgs)
         setupArgs = p.Results.eyeArgs;
     else
-        setupArgs = [p.Results.eyeArgs,p.Results.sceneArgs{ss}];
+        setupArgs = [p.Results.eyeArgs,sceneArgs{ss}];
     end
     
     % Create the objective for this scene
@@ -410,7 +411,7 @@ for ii = 1:nStages
     if p.Results.savePlots
         fileNameSuffix = sprintf([p.Results.outputFileSuffix '_stage%02d'],ii);
         for ss = 1:nScenes
-            sceneObjects{ss}.saveEyeModelMontage(fileNameSuffix,true,true);
+            sceneObjects{ss}.saveEyeModelMontage(fileNameSuffix,true,true,true);
             sceneObjects{ss}.saveModelFitPlot(fileNameSuffix);
             sceneObjects{ss}.saveRelCameraPosPlot(fileNameSuffix);
         end
