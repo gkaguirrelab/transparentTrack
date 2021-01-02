@@ -122,7 +122,6 @@ if errorReg(5)==0 && all(cameraTransBounds==0)
     useGlintFlag = false;
 end
 
-
 % Allocate the loop and return variables
 modelEyePose = nan(nFrames,4);
 modelCameraTrans = nan(3,nFrames);
