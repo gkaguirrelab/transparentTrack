@@ -104,10 +104,12 @@ classdef sceneObj < handle
         x
         xLast
         xBest
+        xHist
         
         % The fVal for the current model, and the model performance
         fVal
         fValBest
+        fValHist
         
         % The set of model components returned by calcGlintGazeError
         modelEyePose
@@ -215,7 +217,7 @@ classdef sceneObj < handle
         updateHead(obj)
         updateError(obj, varargin)
         fVal = returnError(obj, x, errorArgs)
-        saveEyeModelMontage(obj,fileNameSuffix,showImageFeatures,showModelEye)
+        saveEyeModelMontage(obj,fileNameSuffix,showImageFeatures,showModelEye,showAllElements)
         saveModelFitPlot(obj,fileNameSuffix)
         saveSceneGeometry(obj,fileNameSuffix)
         saveRelCameraPos(obj,fileNameSuffix)

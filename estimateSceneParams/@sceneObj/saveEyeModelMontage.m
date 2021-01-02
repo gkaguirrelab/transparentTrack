@@ -1,4 +1,4 @@
-function saveEyeModelMontage(obj,fileNameSuffix,showImageFeatures,showModelEye)
+function saveEyeModelMontage(obj,fileNameSuffix,showImageFeatures,showModelEye,showAllElements)
 % Saves a montage of video frames and the superimposed model eye
 %
 % Syntax:
@@ -18,7 +18,10 @@ function saveEyeModelMontage(obj,fileNameSuffix,showImageFeatures,showModelEye)
 %   none
 %
 
-
+%% Deal with nargin
+if nargin == 4
+    showAllElements = true; 
+end
 
 %% Setup variables
 
@@ -139,14 +142,25 @@ for ii = 1:length(frameSet)
         plot(glintDataX(ii), glintDataY(ii),'or');
     end
     
+    % Determine what we will be rendering
+    if showAllElements
+            modelEyeLabelNames = {'retina' 'irisPerimeter' 'pupilEllipse' 'cornea' 'glint_01' 'glint_02' 'medialCanthus' 'lateralCanthus'};
+            modelEyePlotColors = {'.w' '.b' '-g' '.y' 'xr' 'xr' 'Qk' 'Qk'};
+            modelEyeAlpha = [0.25 0.25 0.25 0.25 1 1 1 1];       
+    else
+            modelEyeLabelNames = {'retina' 'pupilEllipse' 'cornea' 'glint_01' 'glint_02'};
+            modelEyePlotColors = {'.w' '-g' '.y' 'xr' 'xr'};
+            modelEyeAlpha = [0.25 0.25 0.25 1 1];       
+    end
+    
     % Add the rendered eye model if requested
     eyePose = modelEyePose(ii,:);
     if ~any(isnan(eyePose)) && showModelEye
         renderEyePose(eyePose, sceneGeometry, 'newFigure', false, ...
             'cameraTrans', modelCameraTrans(:,ii), ...
-            'modelEyeLabelNames', {'retina' 'irisPerimeter' 'pupilEllipse' 'cornea' 'glint_01' 'glint_02' 'medialCanthus' 'lateralCanthus'}, ...
-            'modelEyePlotColors', {'.w' '.b' '-g' '.y' 'xr' 'xr' 'Qk' 'Qk'}, ...
-            'modelEyeAlpha', [0.25 0.25 0.25 0.25 1 1 1 1],...
+            'modelEyeLabelNames', modelEyeLabelNames, ...
+            'modelEyePlotColors', modelEyePlotColors, ...
+            'modelEyeAlpha', modelEyeAlpha,...
             'modelEyeSymbolSizeScaler',1.5,...
             'showAzimuthPlane',true);
 
@@ -157,7 +171,7 @@ for ii = 1:length(frameSet)
     thisFrame=getframe(figHandle);
     
     % Add a text label for the frame number
-    if showImageFeatures
+    if showImageFeatures && showAllElements
         frameLabel = sprintf('frame: %d',idx);
         thisFrame.cdata = insertText(thisFrame.cdata,[20 20],frameLabel,'FontSize',30);
     end
@@ -179,17 +193,18 @@ close(figHandle);
 figHandle = figure('Visible','off');
 set(gcf,'PaperOrientation','landscape');
 set(figHandle, 'Units','inches')
-height = 6;
-width = 11;
 
 % The last two parameters of 'Position' define the figure size
-set(figHandle, 'Position',[25 5 width height],...
-    'PaperSize',[width height],...
-    'PaperPositionMode','auto',...
-    'Color','w');
+% set(figHandle, 'Position',[25 5 width height],...
+%     'PaperSize',[width height],...
+%     'PaperPositionMode','auto',...
+%     'Color','w');
+
+set(figHandle,'Color','w');
 
 % Create the montage
-montage(framesToMontage);
+m=montage(framesToMontage);
+imshow(m.CData,'Border','tight')
 
 % Save the montage
 saveas(figHandle,montageFileName)
