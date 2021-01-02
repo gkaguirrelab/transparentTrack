@@ -52,6 +52,10 @@ if obj.fVal < obj.fValBest
     obj.xBest = x;
 end
 
+% Update xHist and fValHist
+obj.xHist(end+1,:) = x;
+obj.fValHist(end+1) = obj.fVal;
+
 % Return the fVal
 fVal = obj.fVal;
 
