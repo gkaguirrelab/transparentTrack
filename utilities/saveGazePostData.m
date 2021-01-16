@@ -21,6 +21,12 @@ function saveGazePostData( dataRootDir, dataSaveDir, varargin )
 % Examples:
 %{
     dropboxBaseDir=fullfile(getpref('eyeTrackTOMEAnalysis','dropboxBaseDir'));
+    dataRootDir=fullfile(dropboxBaseDir,'TOME_processing','session1_restAndStructure');
+    dataSaveDir=fullfile(dataRootDir,'pupilDataQAPlots_eyePose_July2020');
+    saveGazePostData( dataRootDir, dataSaveDir,'acquisitionStem','rfMRI_REST')
+%}
+%{
+    dropboxBaseDir=fullfile(getpref('eyeTrackTOMEAnalysis','dropboxBaseDir'));
     dataRootDir=fullfile(dropboxBaseDir,'TOME_processing','session2_spatialStimuli');
     dataSaveDir=fullfile(dataRootDir,'pupilDataQAPlots_eyePose_MOVIE_July2020');
     saveGazePostData( dataRootDir, dataSaveDir,'acquisitionStem','tfMRI_MOVIE')
@@ -128,6 +134,7 @@ if ~isempty(fileListStruct)
             % Load the sceneGeometry
             sceneGeomFileName = fullfile(pupilFilePath,[fileNameStem,'_sceneGeometry.mat']);
             if ~isfile(sceneGeomFileName)
+                sceneGeomFileName
                 continue
             end
             load(sceneGeomFileName,'sceneGeometry');
@@ -156,6 +163,7 @@ if ~isempty(fileListStruct)
             % Check that there is a radiusSmoothed field; otherwise
             % continue
             if ~isfield(pupilData,'radiusSmoothed')
+                pupilFullFileName
                 continue
             end
             
@@ -168,9 +176,9 @@ if ~isempty(fileListStruct)
             
             % If there are fewer than 66% good points, skip this
             % acquisition
-            if sum(goodRadiusSmoothed)<(length(goodRadiusSmoothed)/1.5)
-                continue
-            end
+%            if sum(goodRadiusSmoothed)<(length(goodRadiusSmoothed)/1.5)
+%                continue
+%            end
             
             % Convert the eyePose to gaze position
             f = sceneGeometry.screenPosition.poseRegParams.R * [pupilData.radiusSmoothed.eyePoses.values(:,1), pupilData.radiusSmoothed.eyePoses.values(:,2)]' + sceneGeometry.screenPosition.poseRegParams.t;
