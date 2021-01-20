@@ -167,7 +167,7 @@ model.scene.idxMultiScene = @(idx) repmat((0:model.scene.nScenes-1)*model.scene.
 %% Strategy
 % Arrange the sets into search stages for different search strategy
 
-% gazeCal -- Used to derive the rotation center properties of the eye from
+% gazeCal -- Used to derive multiple biometric and scene parameters from
 % one or more gazeCal acquisitions.
 model.strategy.gazeCal.stages = { ...
     {'eye.rotationCenterScalers','eye.corneaAxialRadius','eye.commonDepth','scene.cameraPosition'},...
