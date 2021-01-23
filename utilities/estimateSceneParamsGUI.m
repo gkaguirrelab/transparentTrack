@@ -18,10 +18,11 @@ function [ x, candidateSceneGeometry ] = estimateSceneParamsGUI(sceneGeometryFil
 p = inputParser; p.KeepUnmatched = true;
 
 % Required
-p.addOptional('sceneGeometryFileName', [], @(x)(isempty(x) || ischar(x)));
+p.addRequired('sceneGeometryFileName', @ischar);
 
 % Optional
 p.addParameter('frameSet',[],@isnumeric);
+p.addParameter('cameraTransBounds',[5;5;0],@isnumeric);
 
 % parse
 p.parse(sceneGeometryFileName,varargin{:})
@@ -132,7 +133,7 @@ while notDoneFlag
     Yp = perimeter.data{frameIdx}.Yp;
     glintCoord = [glintData.X(frameIdx,:), glintData.Y(frameIdx,:)];
     
-    eyePose = eyePoseEllipseFit(Xp, Yp, glintCoord, adjustedSceneGeometry,'cameraTransBounds',[0;0;0]);
+    [eyePose, cameraTrans] = eyePoseEllipseFit(Xp, Yp, glintCoord, adjustedSceneGeometry,'cameraTransBounds',p.Results.cameraTransBounds);
     
     % Show this video frame
     thisFrame = sourceFrames(:,:,:,arrayIdx);
@@ -149,6 +150,7 @@ while notDoneFlag
     % Add the rendered eye model
     if ~any(isnan(eyePose))
         renderEyePose(eyePose, adjustedSceneGeometry, ...
+            'cameraTrans',cameraTrans,...
             'newFigure', false, 'visible', true, ...
             'showAzimuthPlane', true, ...
             'modelEyeLabelNames', {'retina' 'irisPerimeter' 'pupilEllipse' 'cornea' 'aziRotationCenter' 'medialCanthus' 'lateralCanthus'}, ...
