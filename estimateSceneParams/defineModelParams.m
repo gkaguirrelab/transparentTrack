@@ -197,16 +197,15 @@ model.strategy.sceneSync.multiSceneNorm = 1;
 model.strategy.sceneSync.TolMesh = 1e-2;
 
 
-% headSync -- Find the head rotation and phase that best matches an
-% MRI-derived measure of relative camera position to an acquisition
-model.strategy.headSync.stages = { ...
-    { 'head.phaseAndRotation' } };
-model.strategy.headSync.errorArgs = { ...
+% default -- Do not perform a search, and just save out the default
+% sceneGeometry implied by the x0 settings
+model.strategy.default.stages = { {} };
+model.strategy.default.errorArgs = { ...
     {'cameraTransBounds',[5;5;0],'errorReg',[1 1 0 0 1]} };
-model.strategy.headSync.penaltyWeight = [100 1]; % [depth torsion]
-model.strategy.headSync.useFixForPrimaryPos = false;
-model.strategy.headSync.multiSceneNorm = 1;
-model.strategy.headSync.TolMesh = 1e-2;
+model.strategy.default.penaltyWeight = [100 1]; % [depth torsion]
+model.strategy.default.useFixForPrimaryPos = false;
+model.strategy.default.multiSceneNorm = 1;
+model.strategy.default.TolMesh = 1e-2;
 
 
 % synthFix -- Similar to gazeCal, but the source frames were acquired
