@@ -197,6 +197,18 @@ model.strategy.sceneSync.multiSceneNorm = 1;
 model.strategy.sceneSync.TolMesh = 1e-2;
 
 
+% headSync -- Find the head rotation and phase that best matches an
+% MRI-derived measure of relative camera position to an acquisition
+model.strategy.headSync.stages = { ...
+    { 'head.phaseAndRotation' } };
+model.strategy.headSync.errorArgs = { ...
+    {'cameraTransBounds',[5;5;0],'errorReg',[1 1 0 0 1]} };
+model.strategy.headSync.penaltyWeight = [100 1]; % [depth torsion]
+model.strategy.headSync.useFixForPrimaryPos = false;
+model.strategy.headSync.multiSceneNorm = 1;
+model.strategy.headSync.TolMesh = 1e-2;
+
+
 % synthFix -- Similar to gazeCal, but the source frames were acquired
 % during a lengthy fMRI scan. Therefore, we want to handle head translation
 % during this time.
