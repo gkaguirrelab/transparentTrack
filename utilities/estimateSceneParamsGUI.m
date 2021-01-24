@@ -133,7 +133,7 @@ while notDoneFlag
     Yp = perimeter.data{frameIdx}.Yp;
     glintCoord = [glintData.X(frameIdx,:), glintData.Y(frameIdx,:)];
     
-    [eyePose, cameraTrans] = eyePoseEllipseFit(Xp, Yp, glintCoord, adjustedSceneGeometry,'cameraTransBounds',p.Results.cameraTransBounds);
+    [eyePose, cameraTrans] = eyePoseEllipseFit(Xp, Yp, glintCoord, adjustedSceneGeometry,'eyePoseUB',[89,89,0,5],'cameraTransBounds',p.Results.cameraTransBounds);
     
     % Show this video frame
     thisFrame = sourceFrames(:,:,:,arrayIdx);
