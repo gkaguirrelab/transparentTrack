@@ -54,7 +54,8 @@ p.addOptional('dataSaveDir',[],@(x)(isempty(x) || ischar(x)));
 % Optional
 p.addParameter('rmseThreshold',3,@isscalar);
 p.addParameter('acquisitionStem','rfMRI_REST',@ischar);
-
+p.addParameter('timestamp',char(datetime('now')),@ischar);
+p.addParameter('hostname',char(java.lang.System.getProperty('user.name')),@ischar);
 
 % parse
 p.parse(dataRootDir,dataSaveDir,varargin{:})
@@ -226,10 +227,14 @@ if ~isempty(fileListStruct)
                 
     end % loop over sessions
     
+    %% Add in meta data
+    gazeData.meta = p.Results;
+    
+    
+    %% Save the file
     dataFileName = fullfile(dataSaveDir,'gazeData.mat');
     save(dataFileName,'gazeData');
     
-
 end % we have at least one session
 
 end % saveGazePostData
