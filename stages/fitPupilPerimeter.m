@@ -386,7 +386,7 @@ pupilData.(fitLabel).meta = p.Results;
 save(p.Results.pupilFileName,'pupilData')
 
 % save the relativeCameraPosition
-if ~isempty(sceneGeometry)
+if ~isempty(sceneGeometry) && ~isempty(p.Results.relativeCameraPositionFileName)
     save(p.Results.relativeCameraPositionFileName,'relativeCameraPosition')
 end
 
