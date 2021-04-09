@@ -189,6 +189,10 @@ classdef sceneObj < handle
             if isempty(p.Results.relativeCameraPosition)
                 if exist([videoStemName '_relativeCameraPosition.mat'], 'file') == 2
                     load([videoStemName '_relativeCameraPosition.mat'],'relativeCameraPosition');
+                    if ~isfield(relativeCameraPosition,'initial')
+                        relativeCameraPosition.initial.values = zeros(3,max(frameSet));
+                        relativeCameraPosition.currentField = 'initial';
+                    end
                 else
                     relativeCameraPosition.initial.values = zeros(3,max(frameSet));
                     relativeCameraPosition.currentField = 'initial';
