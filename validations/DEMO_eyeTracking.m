@@ -51,7 +51,7 @@ end
 % We save a deployment snapshot. This variable is passed to the analysis
 % pipeline and then saved with every output file, thereby documenting the
 % system and software configuration at the time of execution.
-tbSnapshot=tbDeploymentSnapshot(tbConfigResult,'verbose',false);
+tbSnapshot=tbDeploymentSnapshot(tbConfigResult,[],'verbose',false);
 clear tbConfigResult
 
 
