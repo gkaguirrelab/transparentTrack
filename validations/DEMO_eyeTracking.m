@@ -62,7 +62,10 @@ pathParams.dataSourceDirFull = fullfile(pathParams.dataSourceDirRoot, pathParams
 pathParams.dataOutputDirFull = fullfile(pathParams.dataOutputDirRoot, pathParams.projectSubfolder, ...
     pathParams.subjectID, pathParams.sessionDate, pathParams.eyeTrackingDir);
 
-% Download the data if it is not already there
+% Download the data if it is not already there. If this automated download
+% approach does not work, you can download the file manually by pasting the
+% URL into a browser. Place the zip file into the sandboxDir and unzip
+% there.
 demoPackage = fullfile(sandboxDir,'eyeTrackingDEMO.zip');
 if ~exist (demoPackage,'file')
     url = 'https://ndownloader.figshare.com/files/9355459?private_link=011191afe46841d2c2f5';
