@@ -94,6 +94,11 @@ pupilRange = [34 51];
 pupilCircleThresh = 0.0179;
 pupilGammaCorrection = 0.75;
 
+% Create the timeBase
+rawVideoInFileName = fullfile(pathParams.dataSourceDirFull,[pathParams.runName '.mov']);
+timebaseFileName = fullfile(pathParams.dataOutputDirFull,[pathParams.runName '_timebase.mat']);
+makeTimebase(rawVideoInFileName, timebaseFileName);
+
 % Run the analysis pipeline
 % This call to the pipeline will produce the initial ellipse fit and a fit
 % video. It includes the stages:
@@ -167,17 +172,12 @@ cameraTorsionStruct.([eyeLaterality 'Eye' subjectDemographic]) = 4;
 %}
 cameraTorsion = cameraTorsionStruct.([eyeLaterality 'Eye' subjectDemographic]);
 
-% Because we have a good estimate of cameraDepth and cameraTorsion, we tell
-% the sceneGeometry search to lock these parameters, as well as the primary
-% position of the eye. We also limit the search over parameters of the eye,
-% including the corneal curvature and the "common camera depth" parameter.
-% If we had multiple gazeCal measurements, we could allow greater
-% flexibility for these.
-%
-% We are mostly allowing for a search over camera translation, the rotation
-% center of the eye, and a bit of the corneaAxialRadius.
-model.scene.bounds = [0 0 0 20 20 0];
-model.eye.bounds = [2, 0, 0, 0, 0, 0, 0.25, 0.25, 0];
+% Set the bounds on the search. The values below lock cameraTorsion, and
+% allow a little wiggle in cameraDepth. Large search ranges are allowed for
+% camera translation, the rotation centers of the eye, and the shape (but
+% not rotation) of the cornea.
+model.scene.bounds = [0 0 0 20 20 5];
+model.eye.bounds = [5, 5, 5, 180, 0, 0, 0.25, 0.25, 0];
 
 % The estimation of scene geometry is greatly aided by having the subject
 % fixate targets at known visual angle positions. The routine
@@ -186,13 +186,6 @@ model.eye.bounds = [2, 0, 0, 0, 0, 0, 0.25, 0.25, 0];
 % units of degrees corresponding to each of those video frames.
 gazeTargets = [ -7, 0, 7, 0, 0, 7, -7, 7, -7 ; 7, -7, 0, 0, 7, 7, 0, -7, -7];
 frameSet = [ 732, 896, 1023, 1167, 1261, 1383, 1542, 1646, 1808 ];
-
-% The routine estimateSceneGeometry performs multiple non-linear searches
-% from different x0 start points. Each search is time consuming (e.g., 30
-% minutes). They will run in parallel if multiple cores are available. We
-% will limit then number of searches to only 2 in this demo, but closer to
-% 10 searches yields improved results.
-nBADSsearches = 2;
 
 % Assemble the eye and scene properties
 eyeArgs = {'axialLength',axialLength,'sphericalAmetropia',sphericalAmetropia,'eyeLaterality',eyeLaterality,};
@@ -223,8 +216,8 @@ runVideoPipeline( pathParams, ...
 pupilFileName = fullfile(pathParams.dataOutputDirFull,[pathParams.runName '_pupil.mat']);
 load(pupilFileName,'pupilData');
 
-pupilFileName = fullfile(pathParams.dataOutputDirFull,[pathParams.runName '_timebase.mat']);
-load(pupilFileName,'timebase');
+timebaseFileName = fullfile(pathParams.dataOutputDirFull,[pathParams.runName '_timebase.mat']);
+load(timebaseFileName,'timebase');
 
 % Convert timebase from msecs to minutes
 timebase.values = timebase.values./1000./60;
