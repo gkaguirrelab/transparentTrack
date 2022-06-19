@@ -11,6 +11,13 @@
 % Run-time on an average computer is about 5 minutes for 500 frames.
 % Set nFrames to 'Inf' to process the entire video, which will take longer.
 %
+% We can conceptually break the analysis into two components:
+% - Initital processing to the stage of fitting an ellipse to the pupil
+%   perimeter
+% - Estimation of the sceneGeometry
+% - re-fitting of the pupil perimeter using scene constraints and empirical
+%   Bayesian temporal smoothing.
+%
 % Usage examples
 % ==============
 %
@@ -31,7 +38,6 @@ if ~exist(sandboxDir,'dir')
     mkdir(sandboxDir)
 end
 
-% define path parameters
 pathParams.dataSourceDirRoot = fullfile(sandboxDir,'TOME_data');
 pathParams.dataOutputDirRoot = fullfile(sandboxDir,'TOME_processing');
 pathParams.projectSubfolder = 'session2_spatialStimuli';
@@ -77,15 +83,6 @@ if ~exist (demoPackage,'file')
 end
 
 
-%% Prepare analysis parameters
-% We can conceptually break the analysis into two components:
-% - Initital processing to the stage of fitting an ellipse to the pupil
-%   perimeter
-% - Definition of the scene geometry and re-fitting of the pupil
-%   perimeter using scene constraints and empirical Bayesian temporal
-%   smoothing.
-
-
 %% Initial processing -- deinterlace to minimally constrained ellipse fitting
 % These parameters are used in the function findPupilPerimeter; definition
 % of the parameters may be found in the header comments for that routine.
@@ -97,8 +94,7 @@ pupilRange = [34 51];
 pupilCircleThresh = 0.0179;
 pupilGammaCorrection = 0.75;
 
-
-%% Run the analysis pipeline
+% Run the analysis pipeline
 % This call to the pipeline will produce the initial ellipse fit and a fit
 % video. It includes the stages:
 %   deinterlaceVideo
@@ -109,6 +105,8 @@ pupilGammaCorrection = 0.75;
 %   fitPupilPerimeter
 %   makeFitVideo
 %
+% Note that each stage could be called separately, instead of using the
+% pipeline command
 runVideoPipeline( pathParams, ...
     'nFrames',nFrames,'verbose', verbose, 'tbSnapshot',tbSnapshot, 'useParallel',true, ...
     'pupilFrameMask', [64 109 75 183], 'glintFrameMask', [157 148 173 192], ...
@@ -116,33 +114,15 @@ runVideoPipeline( pathParams, ...
     'overwriteControlFile', true, 'catchErrors', false,...
     'lastStageByNumber',6,'makeFitVideoByNumber',6);
 
-% Note that each stage could be called separately, instead of using the
-% pipeline command:
-%{
-    deinterlaceVideo(rawVideoFileName, deinterlacedVideoFileName);
-    findGlint(deinterlacedVideoFileName, glintFileName,'glintFrameMask', [157 148 173 192]);
-    findPupilPerimeter(deinterlacedVideoFileName, perimeterFileName, ...
-        'pupilFrameMask', [64 109 75 183], 'glintFrameMask', [157 148 173 192], ...
-        'pupilRange', [34 51], 'pupilCircleThresh', 0.0179, 'pupilGammaCorrection', 0.75);
-    makeControlFile(controlFileName,perimeterFileName,glintFileName,...
-        'useParallel',true);
-    applyControlFile(perimeterFileName,controlFileName,correctedPerimeterFileName);
-    fitPupilPerimeter(correctedPerimeterFileName,pupilFileName,...
-        'useParallel',true);
-    makeFitVideo(deinterlacedVideoFileName,fitVideoFileName,...
-        'glintFileName',glintFileName,...
-        'controlFileName',controlFileName,...
-        'perimeterFileName',correctedPerimeterFileName,...
-        'pupilFileName',pupilFileName)
-%}
-
-
-%% Secondary processing -- scene definition and constrained fitting
+    
+%% Estimate a sceneGeometry -- TIME CONSUMING
 % Improved fitting can be obtained by defining properties of the eye, the
 % camera, and their relationship. Parameters that define the camera and the
 % eye described in greater detail in the routine createSceneGeometry which
 % is found in the gkaModelEye (https://github.com/gkaguirrelab/gkaModelEye)
-% code repository.
+% code repository. Here, we search over possible parameters of the eye and
+% scene model to best fit the set of video images of the eye posed to gaze
+% at different targets.
 
 % Define camera parameters. These were obtained by an empirical measurement
 % (camera resectioning) of the IR camera used to record the demo data. Use
@@ -153,61 +133,59 @@ radialDistortionVector = [-0.3517 3.5353];
 sensorResolution = [640 480];
 spectralDomain = 'nir';
 
-% Define properties of the eye of the subject. The "maxIrisDiamPixels" is
-% the largest horizontal diameter of the iris that is seen in the video.
-% This valye is used to estimate the distance of the camera from the eye.
-% The spherical ametropia is the refractive error correction (in diopters)
-% of the eye of the subject. A negative value is the correction for a
-% myopic (near-sighted) person. The axial length would be obtained from an
-% ophthalmologic device such as the IOL Master, as would the
-% measuredCornealCurvature. If any of these last three values are
-% unavailable, leave these parameters undefined.
+% Define properties of the eye of the subject. The spherical ametropia is
+% the refractive error correction (in diopters) of the eye of the subject.
+% A negative value is the correction for a myopic (near-sighted) person. If
+% either of the last two values are unavailable, leave these parameters
+% undefined.
 eyeLaterality = 'right';
-maxIrisDiamPixels = 270;
 sphericalAmetropia = -1.5;
 axialLength = 25.35;
-measuredCornealCurvature = [41.36,41.67,25];
 
-% Estimate camera distance from the visible iris diameter in pixels.
-% Because biological variation in the size of the visible iris is known, we
-% can use the observed iris size in pixels to obtain a guess as to the
-% distance of the eye from the camera in mm.
-sceneGeometry = createSceneGeometry(...
-    'radialDistortionVector',radialDistortionVector, ...
-    'intrinsicCameraMatrix',intrinsicCameraMatrix);
-[cameraDepthMean, cameraDepthSD] = depthFromIrisDiameter( sceneGeometry, maxIrisDiamPixels );
-
-% Assemble the scene parameter bounds. These are in the order of:
-%   [torsion; x; y; z; eyeRotationScalarJoint; eyeRotationScalerDifferential]
-% where torsion specifies the torsion of the camera with respect to the eye
-% in degrees, [x y z] is the translation of the camera w.r.t. the eye in
-% mm, and the eyeRotationScalar variables are multipliers that act upon the
-% centers of rotation estimated for the eye. If the eye is markedly
-% off-center in the image, then the translation bounds should be increased.
-% The upper and lower bounds are fixed here so that the demo completes
-% rapidly.
-sceneParamsLB =  [3.60; -0.10; -0.70; 109.40; 0.84; 0.96];
-sceneParamsLBp = [3.60; -0.10; -0.70; 109.40; 0.84; 0.96];
-sceneParamsUBp = [3.60; -0.10; -0.70; 109.40; 0.84; 0.96];
-sceneParamsUB =  [3.60; -0.10; -0.70; 109.40; 0.84; 0.96];
-
-% To select good scene parameters for your video, use the interactive
-% routine estimateSceneParamsGUI.m, which is found in the Utilities
-% directory. You will first have to create a sceneGeometry file.
+% INTERACTIVE: Estimate camera distance from the visible iris diameter in
+% pixels. Because biological variation in the size of the visible iris is
+% known, we can use the observed iris size in pixels to obtain a guess as
+% to the distance of the eye from the camera in mm. The value is hard-coded
+% here, but you can run the commented function "estimateCameraDepth" to
+% obtain this value yourself
+grayVideoName = fullfile(pathParams.dataOutputDirFull,[pathParams.runName '_gray.avi']);
+cameraDepth = 110.22;
 %{
-    sceneGeometryFileName = fullfile(pathParams.dataOutputDirFull,[pathParams.runName '_sceneGeometry.mat']);
-    ellipseArrayList = [ 732, 896, 1023, 1167, 1261, 1383, 1542, 1646, 1808 ];
-    estimateSceneParamsGUI(sceneGeometryFileName,'ellipseArrayList',ellipseArrayList)
+    cameraDepth = estimateCameraDepth( grayVideoName );
 %}
+cameraTranslation = [0; 0; cameraDepth];
 
+% INTERACTIVE: Estimate camera torsion from medial and lateral canthii. The
+% angle between the medial and lateral canthus can guide as to the angle of
+% rotation of the camera with respect to the head. The value is hard-coded
+% here, but you can run the commented function "estimateCameraTorsion" to
+% obtain this value yourself
+subjectDemographic = 'Caucasian';
+cameraTorsionStruct.([eyeLaterality 'Eye' subjectDemographic]) = 4;
+%{
+    cameraTorsionStruct = estimateCameraTorsion( grayVideoName );
+%}
+cameraTorsion = cameraTorsionStruct.([eyeLaterality 'Eye' subjectDemographic]);
+
+% Because we have a good estimate of cameraDepth and cameraTorsion, we tell
+% the sceneGeometry search to lock these parameters, as well as the primary
+% position of the eye. We also limit the search over parameters of the eye,
+% including the corneal curvature and the "common camera depth" parameter.
+% If we had multiple gazeCal measurements, we could allow greater
+% flexibility for these.
+%
+% We are mostly allowing for a search over camera translation, the rotation
+% center of the eye, and a bit of the corneaAxialRadius.
+model.scene.bounds = [0 0 0 20 20 0];
+model.eye.bounds = [2, 0, 0, 0, 0, 0, 0.25, 0.25, 0];
 
 % The estimation of scene geometry is greatly aided by having the subject
 % fixate targets at known visual angle positions. The routine
 % estimateSceneParams accepts a list of frames of the video during which
 % the pupil is well visualized and a list of target positions (X,Y) in
 % units of degrees corresponding to each of those video frames.
-fixationTargetArray = [ -7, 0, 7, 0, 0, 7, -7, 7, -7 ; 7, -7, 0, 0, 7, 7, 0, -7, -7];
-ellipseArrayList = [ 732, 896, 1023, 1167, 1261, 1383, 1542, 1646, 1808 ];
+gazeTargets = [ -7, 0, 7, 0, 0, 7, -7, 7, -7 ; 7, -7, 0, 0, 7, 7, 0, -7, -7];
+frameSet = [ 732, 896, 1023, 1167, 1261, 1383, 1542, 1646, 1808 ];
 
 % The routine estimateSceneGeometry performs multiple non-linear searches
 % from different x0 start points. Each search is time consuming (e.g., 30
@@ -216,33 +194,31 @@ ellipseArrayList = [ 732, 896, 1023, 1167, 1261, 1383, 1542, 1646, 1808 ];
 % 10 searches yields improved results.
 nBADSsearches = 2;
 
+% Assemble the eye and scene properties
+eyeArgs = {'axialLength',axialLength,'sphericalAmetropia',sphericalAmetropia,'eyeLaterality',eyeLaterality,};
+sceneArgs = {'intrinsicCameraMatrix',intrinsicCameraMatrix,'radialDistortionVector',radialDistortionVector,...
+    'sensorResolution',sensorResolution,'spectralDomain',spectralDomain};
 
-%% Run the analysis pipeline
-% Run the video pipeline from the stage of estimation of scene geometry
-% through to the end. It includes the stages:
-%   estimateSceneParams
+% Run the search
+videoStemName = fullfile(pathParams.dataOutputDirFull,pathParams.runName);
+sceneObjects = estimateSceneParams(videoStemName, frameSet, gazeTargets,...
+    'cameraDepth',cameraDepth,'cameraTorsion',cameraTorsion,...
+    'model',model,...
+    'eyeArgs',eyeArgs,'sceneArgs',sceneArgs);
+
+
+%% Apply sceneGeometry to refine pupil boundaries
+% Run the second stage of the video pipeline:
 %   fitPupilPerimeter (now with scene geometry constraints)
-%   smoothPupilRadius
+%   smoothPupilRadius (which is a Bayesian temporal smoothing of pupil
+%          diameter)
 %   makeFitVideo
 %
 runVideoPipeline( pathParams, ...
     'nFrames',nFrames,'verbose', verbose, 'tbSnapshot',tbSnapshot, 'useParallel',true, ...
-    'intrinsicCameraMatrix',intrinsicCameraMatrix, ...
-    'radialDistortionVector',radialDistortionVector, ...
-    'sensorResolution',sensorResolution,...
-    'spectralDomain',spectralDomain, ...
-    'eyeLaterality',eyeLaterality,'sphericalAmetropia',sphericalAmetropia,...
-    'axialLength',axialLength,'measuredCornealCurvature',measuredCornealCurvature,...
-    'sceneParamsLB',sceneParamsLB,'sceneParamsUB',sceneParamsUB,...
-    'sceneParamsLBp',sceneParamsLBp,'sceneParamsUBp',sceneParamsUBp,...
-    'nBADSsearches',nBADSsearches,...
-    'catchErrors', false,...
-    'fixationTargetArray',fixationTargetArray,'ellipseArrayList', ellipseArrayList, ...
     'skipStageByNumber',1:6);
 
-
-
-
+                        
 %% Plot some fits
 pupilFileName = fullfile(pathParams.dataOutputDirFull,[pathParams.runName '_pupil.mat']);
 load(pupilFileName,'pupilData');
@@ -252,7 +228,6 @@ load(pupilFileName,'timebase');
 
 % Convert timebase from msecs to minutes
 timebase.values = timebase.values./1000./60;
-
 
 % Identify the time points with good fitting results
 rmseThreshold = 3;
