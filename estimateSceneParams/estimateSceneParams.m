@@ -273,7 +273,7 @@ p.parse(videoStemName, frameSet, gazeTargets, varargin{:})
 if iscell(videoStemName)
     % If the videoNameStem is a cell array, make sure that all inputs are cell
     % arrays
-    if ~iscell(frameSet) || ~iscell(frameSet)
+    if ~iscell(frameSet) || ~iscell(gazeTargets)
         error('estimateSceneParams:inputTypeError','If one required input is a cell array, they must all be cell arrays')
     end
     if ~isequal(length(videoStemName),length(frameSet),length(gazeTargets))
