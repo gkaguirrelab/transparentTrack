@@ -248,7 +248,6 @@ warnState = warning();
 
 
 %% Loop through the frames
-
 parfor (ii = startFrame:startFrame+nFrames-1, nWorkers)
 %     for ii = startFrame:startFrame+nFrames-1
     
