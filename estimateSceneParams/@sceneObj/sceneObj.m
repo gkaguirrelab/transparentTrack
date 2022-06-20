@@ -186,15 +186,25 @@ classdef sceneObj < handle
             else
                 glintData = p.Results.glintData;
             end
+
+            % Sanity check the intputs, derive the total number of frames
+            if length(perimeter.data) ~= length(glintData.X)
+                error('The perimeter and gint input data are unequal in length');
+            else
+                nFrames = length(perimeter.data);
+            end
+            if max(FrameSet)>nFrames
+                error('The FrameSet contains one or more indices that exceed the number of available frames');
+            end
             if isempty(p.Results.relativeCameraPosition)
                 if exist([videoStemName '_relativeCameraPosition.mat'], 'file') == 2
                     load([videoStemName '_relativeCameraPosition.mat'],'relativeCameraPosition');
                     if ~isfield(relativeCameraPosition,'initial')
-                        relativeCameraPosition.initial.values = zeros(3,max(frameSet));
+                        relativeCameraPosition.initial.values = zeros(3,nFrames);
                         relativeCameraPosition.currentField = 'initial';
                     end
                 else
-                    relativeCameraPosition.initial.values = zeros(3,max(frameSet));
+                    relativeCameraPosition.initial.values = zeros(3,nFrames);
                     relativeCameraPosition.currentField = 'initial';
                 end
             else
