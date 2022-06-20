@@ -193,7 +193,7 @@ classdef sceneObj < handle
             else
                 nFrames = length(perimeter.data);
             end
-            if max(FrameSet)>nFrames
+            if max(frameSet)>nFrames
                 error('The FrameSet contains one or more indices that exceed the number of available frames');
             end
             if isempty(p.Results.relativeCameraPosition)
