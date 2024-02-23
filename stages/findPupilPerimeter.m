@@ -70,9 +70,12 @@ function perimeter = findPupilPerimeter(grayVideoName, perimeterFileName, vararg
 %  'pupilCircleThresh'    - The threshold used to binarize the image.
 %                           Ranges from 0 to 1, with 0 corresponding to
 %                           black.
+%  'adaptivePupilRangeFlag' - Logical. If set to true, then the pupil range
+%                           is updated on each frame based upon the prior
+%                           frame.
 %  'pupilRange'           - Initial radius range in pixels for circle
 %                           fitting of the pupil (default [20 100]). This
-%                           value gets dynamically updated.
+%                           value may be dynamically updated.
 %  'imfindcirclesSensitivity' - A parameter (ranging from 0-1) that is used
 %                           in the call to the matlab function
 %                           imfindcircles as part of the key-value pair
@@ -125,9 +128,11 @@ p.addParameter('username',char(java.lang.System.getProperty('user.name')),@ischa
 p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional analysis params
+p.addParameter('adaptivePupilRangeFlag', true, @islogical);
 p.addParameter('pupilGammaCorrection', 0.75, @isnumeric);
 p.addParameter('pupilFrameMask', [], @isnumeric);
 p.addParameter('maskBox', [2 2], @isnumeric);
+p.addParameter('nOtsu', 2, @isnumeric);
 p.addParameter('frameMaskValue', 220, @isnumeric);
 p.addParameter('smallObjThresh', 400, @isnumeric);
 p.addParameter('expandPupilRange', true, @islogical);
@@ -159,6 +164,9 @@ end
 % get video dimensions
 videoSizeX = videoInObj.Width;
 videoSizeY = videoInObj.Height;
+
+% Get the number of regions into which the image should be segmented
+nOtsu = p.Results.nOtsu;
 
 % initialize variable to hold the perimeter data
 grayVideo = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
@@ -213,7 +221,6 @@ perimeter.data = cell(nFrames,1);
 pupilRange = p.Results.pupilRange;
 
 
-
 % loop through gray frames
 
 for ii = 1:(endFrame-startFrame+1)
@@ -250,7 +257,13 @@ for ii = 1:(endFrame-startFrame+1)
     
     % store the current pupilRange
     initialPupilRange = pupilRange;
-    
+
+    % If we are not using an adaptive pupil range search, just
+    % re-initialize with the passed parameter
+    if ~p.Results.adaptivePupilRangeFlag
+        pupilRange = p.Results.pupilRange;
+    end
+        
     % if provided with glintFileName, only look for perimeter if glints are in
     % the present frame. If no glints are present, this frame is a blink and
     % any frame would be a bad frame
@@ -366,13 +379,15 @@ for ii = 1:(endFrame-startFrame+1)
         warning('off','images:multithresh:degenerateInput');
         
         % perform the multi thresh
-        otsuThresh = multithresh(maskedPupilNaN,2);
+        otsuThresh = multithresh(maskedPupilNaN,nOtsu);
         
         % restore warning state
         warning(warningState);
         
         % Set the glint and iris to zero, and the pupil to unity
-        binP = imquantize(maskedPupil, otsuThresh, [0 0 1]);
+        vec = zeros(1,nOtsu+1);
+        vec(end)=1;
+        binP = imquantize(maskedPupil, otsuThresh, vec);
         
         % remove small objects
         binP = bwareaopen(binP, p.Results.smallObjThresh);

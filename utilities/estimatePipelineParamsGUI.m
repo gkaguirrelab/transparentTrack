@@ -228,6 +228,15 @@ elseif strcmp(p.Results.approach, 'mtrpGlare')
     numberOfGlints = 1;
     maskBox = [1 1];
     smallObjThresh = 2500;
+elseif strcmp(p.Results.approach, 'SminusMel')
+    ellipseTransparentUB = [640, 480, 1e7, 0.99, pi];
+    ellipseTransparentLB = [0, 0, 1000, 0, 0];
+    pupilGammaCorrection = 0.75;
+    frameMaskValue = 220;
+    numberOfGlints = 1;
+    maskBox = [1 1];
+    smallObjThresh = 2500;
+    
 end
 
 % allow ability to override defaultParams if necessary by passing key-value
