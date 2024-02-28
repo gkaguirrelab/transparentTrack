@@ -228,7 +228,7 @@ pupilRange = p.Results.pupilRange;
 
 % loop through gray frames
 
-for ii = 1:(endFrame-startFrame+1)
+for ii = 1:size(grayVideo,3)
     
     if p.Results.displayMode && strcmp(get(figureHandle,'currentchar'),' ')
         close(figureHandle)
