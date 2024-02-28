@@ -156,10 +156,15 @@ videoInObj = videoIOWrapper(grayVideoName,'ioAction','read');
 
 % get number of frames
 if p.Results.nFrames == Inf
-    nFrames = floor(videoInObj.Duration*videoInObj.FrameRate);
+    if isprop(videoInObj,'NumFrames')
+        nFrames = videoInObj.NumFrames;
+    else
+        nFrames = floor(videoInObj.Duration*videoInObj.FrameRate);
+    end
 else
     nFrames = p.Results.nFrames;
 end
+
 
 % get video dimensions
 videoSizeX = videoInObj.Width;
