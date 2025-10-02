@@ -20,7 +20,7 @@ function [pupilData] = fitPupilPerimeter(perimeterFileName, pupilFileName, varar
 %   the origin being the top left corner of the image. This is done to
 %   facilitate the handling of images in many of the built-in image
 %   processing functions. This routine outputs results in intrinsic
-%   coordinates. Additinal information regarding the MATLAB image
+%   coordinates. Additional information regarding the MATLAB image
 %   coordinate system may be found here:
 %       https://blogs.mathworks.com/steve/2013/08/28/introduction-to-spatial-referencing/
 %
@@ -121,6 +121,7 @@ p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,5],@isnumeric);
 p.addParameter('cameraTransBounds',[5; 5; 0],@isnumeric);
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) || ischar(x)));
+p.addParameter('confidenceThreshold',0.75,@isnumeric);
 p.addParameter('glintFileName',[],@(x)(isempty(x) || ischar(x)));
 p.addParameter('fitLabel',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('relativeCameraPositionFileName',[],@ischar);
@@ -234,6 +235,7 @@ ellipseTransparentUB = p.Results.ellipseTransparentUB;
 eyePoseLB = p.Results.eyePoseLB;
 eyePoseUB = p.Results.eyePoseUB;
 cameraTransBounds = p.Results.cameraTransBounds;
+confidenceThreshold = p.Results.confidenceThreshold;
 
 % Alert the user
 if p.Results.verbose
@@ -272,6 +274,19 @@ parfor (ii = startFrame:startFrame+nFrames-1, nWorkers)
     Xp = frameCellArray{ii-startFrame+1}.Xp;
     Yp = frameCellArray{ii-startFrame+1}.Yp;
     
+    % Check if we have a confidence field. If so, filter the points
+    if isfield(frameCellArray{ii},'confidence')
+        conf = frameCellArray{ii}.confidence;
+        goodIdx = conf > confidenceThreshold;
+        Xp = Xp(goodIdx);
+        Yp = Yp(goodIdx);
+    end
+
+    % Ensure that the perimeter points are a column vector
+    if ~iscolumn(Xp)
+        Xp = Xp'; Yp = Yp';
+    end
+
     % fit an ellipse to the boundary (if any points exist)
     if length(Xp) > 1 && length(Yp) > 1
         
