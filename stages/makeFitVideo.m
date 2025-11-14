@@ -249,6 +249,8 @@ end
 % be visible, processing is about 10x faster. This is a weird property of
 % how MATLAB handles frame buffering. 
 hFig = figure( 'Visible', 'on');
+set(hFig, 'Units', 'pixels');
+set(hFig, 'Position', [100, 100, videoInObj.Width, videoInObj.Height]);
 hAxes = gca();
 
 % Alert the user
@@ -405,7 +407,7 @@ for ii = startFrame:startFrame+nFrames-1
         
     % Get the frame
     drawnow;
-    thisFrame=getframe(hAxes);
+    thisFrame=getframe(hFig);
     
     % Write out this frame
     if p.Results.saveCompressedVideo
