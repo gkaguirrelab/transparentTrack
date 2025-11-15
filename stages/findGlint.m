@@ -113,6 +113,12 @@ function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 %                           of pixels), and a meta field with additional
 %                           analysis params and intermediate results.
 %
+% Examples:
+%{
+    videoInFileName = ('/Users/aguirre/Aguirre-Brainard Lab Dropbox/Geoffrey Aguirre/FLIC_analysis/lightLogger/scriptedIndoorOutdoor/FLIC_2004/gazeCalibration/temporalFrequency/FLIC_2004_gazeCalibration_tf_session1/P.avi');
+    glintFileName = ('/Users/aguirre/Aguirre-Brainard Lab Dropbox/Geoffrey Aguirre/FLIC_analysis/lightLogger/scriptedIndoorOutdoor/FLIC_2004/gazeCalibration/temporalFrequency/FLIC_2004_gazeCal_glint.mat');
+    findGlint(videoInFileName, glintFileName,'verbose',true,'startFrame',12000,'glintFrameMask',[125,150,200,150]);
+%}
 
 %% parse input and define variables
 p = inputParser; p.KeepUnmatched = true; p.PartialMatching = false;
@@ -138,7 +144,7 @@ p.addParameter('hostname',char(java.net.InetAddress.getLocalHost.getHostName),@i
 % Optional analysis params
 p.addParameter('numberOfGlints', 1, @isnumeric);
 p.addParameter('glintsMainDirection', 'y',@ischar);
-p.addParameter('glintGammaCorrection', 5, @isnumeric);
+p.addParameter('glintGammaCorrection', 1.5, @isnumeric);
 p.addParameter('glintThreshold', 0.8, @isnumeric);
 p.addParameter('glintFrameMask',[] , @isnumeric);
 p.addParameter('frameMaskValue', 30, @isnumeric);
@@ -167,34 +173,14 @@ else
     nFrames = p.Results.nFrames;
 end
 
-% get video dimensions
-videoSizeX = videoInObj.Width;
-videoSizeY = videoInObj.Height;
-
-% initialize variable to hold the perimeter data
-grayVideo = zeros(videoSizeY,videoSizeX,nFrames,'uint8');
-
-% read the video into memory, adjust gamma
-cc = 0;
-for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
-    cc = cc+1;
-    thisFrame = read(videoInObj,ii);
-    thisFrame = imadjust(thisFrame,[],[],p.Results.glintGammaCorrection);
-    grayVideo(:,:,cc) = rgb2gray (thisFrame);
-end
-
-% close the video object
-clear videoInObj
-
-
 %% Initialize variables
 % Initialize glint variables
-glintData_X = nan(p.Results.startFrame+nFrames-1,p.Results.numberOfGlints);
-glintData_Y = nan(p.Results.startFrame+nFrames-1,p.Results.numberOfGlints);
+glintData_X = nan(nFrames,p.Results.numberOfGlints);
+glintData_Y = nan(nFrames,p.Results.numberOfGlints);
 
 % initialize centroid variable according to the centroidsAllocation value
-centroidsByFrame_X = nan(p.Results.startFrame+nFrames-1,p.Results.centroidsAllocation);
-centroidsByFrame_Y = nan(p.Results.startFrame+nFrames-1,p.Results.centroidsAllocation);
+centroidsByFrame_X = nan(nFrames,p.Results.centroidsAllocation);
+centroidsByFrame_Y = nan(nFrames,p.Results.centroidsAllocation);
 
 
 %% Find all centroids
@@ -219,10 +205,8 @@ if p.Results.verbose
     fprintf('.\n');
 end
 
-
 % loop through frames
-counter = 1;
-for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
+for ii = 1:nFrames
     if p.Results.displayMode && strcmp(get(figureHandle,'currentchar'),' ')
         close(figureHandle)
         return
@@ -232,9 +216,18 @@ for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
     if p.Results.verbose && mod(ii,round(nFrames/50))==0
         fprintf('\b.\n');
     end
+
+    if ii<p.Results.startFrame
+        readFrame(videoInObj);
+        while videoInObj.last_frame_read<ii
+        end
+        continue
+    end
     
     % get the frame
-    thisFrame = squeeze(grayVideo(:,:,counter));
+    thisFrame = readFrame(videoInObj);
+    thisFrame = imadjust(thisFrame,[],[],p.Results.glintGammaCorrection);
+    thisFrame = rgb2gray (thisFrame);
     
     % apply a frame mask if required
     if ~isempty (p.Results.glintFrameMask)
@@ -254,7 +247,7 @@ for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
     end
     
     % binarize glint image according to glintThreshold
-    binG = im2bw(thisFrame, p.Results.glintThreshold);
+    binG = imbinarize(thisFrame, p.Results.glintThreshold);
     
     % get the weighted centroids for all the surviving bright spots in the
     % image. The "weight" is given by the actual gray value in the frame,
@@ -289,7 +282,7 @@ for ii = p.Results.startFrame:p.Results.startFrame+nFrames-1
     if p.Results.displayMode
         imshow(thisFrame,'Border', 'tight', 'InitialMagnification', 200)
     end
-    counter = counter + 1;
+
 end
 
 
