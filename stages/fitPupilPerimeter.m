@@ -122,7 +122,7 @@ p.addParameter('cameraTransBounds',[5; 5; 0],@isnumeric);
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) || ischar(x)));
 p.addParameter('confidenceThreshold',0.75,@isnumeric);
 p.addParameter('glintFileName',[],@(x)(isempty(x) || ischar(x)));
-p.addParameter('glintTol',5,@isnumeric);
+p.addParameter('glintTol',1,@isnumeric);
 p.addParameter('fitLabel',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('relativeCameraPositionFileName',[],@ischar);
 
@@ -248,7 +248,8 @@ warnState = warning();
 %% Loop through the frames
 parfor (ii = startFrame:nFrames, nWorkers)
 %for ii = startFrame:nFrames
-    
+%for ii = 16341:16345
+
     % Update progress
     if verbose
         if mod(ii,round((nFrames-startFrame)/50))==0
@@ -325,11 +326,6 @@ parfor (ii = startFrame:nFrames, nWorkers)
                 'cameraTransBounds',thisFrameCameraTransBounds,...
                 'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB);
 
-            [eyePose, cameraTrans, objectiveError, ellipseParamsTransparent, fitAtBound] = ...
-                eyePoseEllipseFit(Xp, Yp, glintCoord, sceneGeometry, ...
-                'glintTol',glintTol, 'cameraTransX0',cameraTransInitial,...
-                'cameraTransBounds',thisFrameCameraTransBounds,...
-                'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB, 'eyePoseX0', eyePose);
         end
         
         % Restore the warning state
