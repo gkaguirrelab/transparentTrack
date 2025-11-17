@@ -116,8 +116,9 @@ function [glintData] = findGlint(grayVideoName, glintFileName, varargin)
 % Examples:
 %{
     videoInFileName = ('/Users/aguirre/Aguirre-Brainard Lab Dropbox/Geoffrey Aguirre/FLIC_analysis/lightLogger/scriptedIndoorOutdoor/FLIC_2004/gazeCalibration/temporalFrequency/FLIC_2004_gazeCalibration_tf_session1/P.avi');
+    perimeterFileName = ('/Users/aguirre/Aguirre-Brainard Lab Dropbox/Geoffrey Aguirre/FLIC_analysis/lightLogger/scriptedIndoorOutdoor/FLIC_2004/gazeCalibration/temporalFrequency/FLIC_2004_gazeCal_perimeter.mat');
     glintFileName = ('/Users/aguirre/Aguirre-Brainard Lab Dropbox/Geoffrey Aguirre/FLIC_analysis/lightLogger/scriptedIndoorOutdoor/FLIC_2004/gazeCalibration/temporalFrequency/FLIC_2004_gazeCal_glint.mat');
-    findGlint(videoInFileName, glintFileName,'verbose',true,'startFrame',12000,'glintFrameMask',[125,150,200,150]);
+    findGlint(videoInFileName, glintFileName,'perimeterFileName',perimeterFileName,'verbose',true,'startFrame',12000,'glintFrameMask',[125,150,200,150]);
 %}
 
 %% parse input and define variables
@@ -151,6 +152,7 @@ p.addParameter('frameMaskValue', 30, @isnumeric);
 p.addParameter('centroidsAllocation', 5, @isnumeric);
 p.addParameter('threshold',[], @isnumeric);
 p.addParameter('medianGlintVector',[],@isnumeric);
+p.addParameter('perimeterFileName','',@ischar);
 p.addParameter('removeIsolatedGlints',false,@islogical);
 
 
@@ -405,28 +407,39 @@ framesWithMoreCentroids = find (centroidsInEachFrame>p.Results.numberOfGlints);
 if ~isempty(framesWithMoreCentroids)
     
     switch p.Results.numberOfGlints
-        case 1 % this case is simple and does not require clustering of the centroids
-            % get median position of the centroids
-            centroidMedian_X = nanmedian(centroidsByFrame_X(:));
-            centroidMedian_Y = nanmedian(centroidsByFrame_Y(:));
+        case 1
+            % If we have a perimeter, pick the glint that is closest to the
+            % center of the pupil. If not, we use the median position of
+            % the centroids.
+            if ~isempty(p.Results.perimeterFileName)
+                load(p.Results.perimeterFileName,'perimeter');
+                target_X = cellfun(@(x) mean(x.Xp),perimeter.data);
+                target_Y = cellfun(@(x) mean(x.Yp),perimeter.data);
+            else
+                target_X = repmat(nanmedian(centroidsByFrame_X(:)),1,nFrames);
+                target_Y = repmat(nanmedian(centroidsByFrame_Y(:)),1,nFrames);
+            end
             
             % loop through the frames with too many centroids and check
-            % which value is closer to the median.
+            % which value is closer to the target.
             for ii = 1:length(framesWithMoreCentroids)
-                % find the centroid closest to the median
-                [~,glintIDX] = min(sqrt((centroidsByFrame_X(framesWithMoreCentroids(ii),:) - centroidMedian_X).^2 + (centroidsByFrame_Y(framesWithMoreCentroids(ii),:)- centroidMedian_Y).^2));
+                % find the centroid closest to the target
+                [~,glintIDX] = min(sqrt(...
+                    (centroidsByFrame_X(framesWithMoreCentroids(ii),:) - target_X(framesWithMoreCentroids(ii))).^2 + ...
+                    (centroidsByFrame_Y(framesWithMoreCentroids(ii),:)- target_Y(framesWithMoreCentroids(ii))).^2));
                 % store values for that centroid as glint
-                glintData_X(framesWithMoreCentroids(ii)) = centroidsByFrame_X(framesWithMoreCentroids(ii),glintIDX);
-                glintData_Y(framesWithMoreCentroids(ii)) = centroidsByFrame_Y(framesWithMoreCentroids(ii),glintIDX);
+                if glintIDX>=1 && glintIDX<=p.Results.centroidsAllocation
+                    glintData_X(framesWithMoreCentroids(ii)) = centroidsByFrame_X(framesWithMoreCentroids(ii),glintIDX);
+                    glintData_Y(framesWithMoreCentroids(ii)) = centroidsByFrame_Y(framesWithMoreCentroids(ii),glintIDX);
+                end
             end
             
         case 2
             % loop through frames
-            for ii = 1:length(framesWithMoreCentroids)
-                
-                % get all possible combinations of glint vector main lenght,
-                % and select the couple of glints that generate a vector main
-                % lenght closest to the average.
+            for ii = 1:length(framesWithMoreCentroids)                
+                % get all possible combinations of glint vector main
+                % length, and select the couple of glints that generate a
+                % vector main length closest to the average.
                 switch p.Results.glintsMainDirection
                     case 'y'
                         theseCentroids = (centroidsByFrame_Y(framesWithMoreCentroids(ii),:));
