@@ -112,7 +112,6 @@ p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
 p.addParameter('tbSnapshot',[],@(x)(isempty(x) | isstruct(x)));
 p.addParameter('timestamp',char(datetime('now')),@ischar);
 p.addParameter('hostname',char(java.lang.System.getProperty('user.name')),@ischar);
-%p.addParameter('username',char(java.net.InetAddress.getLocalHost.getHostName),@ischar);
 
 % Optional analysis params
 p.addParameter('ellipseTransparentLB',[0,0,800,0,0],@(x)(isempty(x) || isnumeric(x)));
@@ -123,6 +122,7 @@ p.addParameter('cameraTransBounds',[5; 5; 0],@isnumeric);
 p.addParameter('sceneGeometryFileName',[],@(x)(isempty(x) || ischar(x)));
 p.addParameter('confidenceThreshold',0.75,@isnumeric);
 p.addParameter('glintFileName',[],@(x)(isempty(x) || ischar(x)));
+p.addParameter('glintTol',5,@isnumeric);
 p.addParameter('fitLabel',[],@(x)(isempty(x) | ischar(x)));
 p.addParameter('relativeCameraPositionFileName',[],@ischar);
 
@@ -159,6 +159,7 @@ else
 end
 
 % Load the glint file if passed
+glintTol = p.Results.glintTol;
 if ~isempty(p.Results.glintFileName)
     % Load the glintData file
     load(p.Results.glintFileName,'glintData');
@@ -190,15 +191,12 @@ if ~isempty(relativeCameraPosition)
     cameraTransVec = ...
         relativeCameraPosition.(relativeCameraPosition.currentField).values;
 else
-    cameraTransVec = zeros(nHeadTransParams,size(perimeter.data,1));
+    cameraTransVec = zeros(nHeadTransParams,size(perimeter.data,1)+1);
 end
 
 % determine how many frames we will process
-if p.Results.nFrames == Inf
-    nFrames=size(perimeter.data,1);
-else
-    nFrames = p.Results.nFrames;
-end
+startFrame = p.Results.startFrame;
+nFrames = size(perimeter.data,1);
 
 
 %% Establish a label for this analysis stage
@@ -225,8 +223,7 @@ end
 
 % Recast perimeter into a sliced cell array to reduce parfor broadcast
 % overhead
-startFrame = p.Results.startFrame;
-frameCellArray = perimeter.data(startFrame:startFrame+nFrames-1);
+frameCellArray = perimeter.data;
 
 % Set-up other variables to be non-broadcast
 verbose = p.Results.verbose;
@@ -248,14 +245,13 @@ end
 % Store the warning state
 warnState = warning();
 
-
 %% Loop through the frames
-parfor (ii = startFrame:startFrame+nFrames-1, nWorkers)
-%     for ii = startFrame:startFrame+nFrames-1
+parfor (ii = startFrame:nFrames, nWorkers)
+%for ii = startFrame:nFrames
     
     % Update progress
     if verbose
-        if mod(ii,round(nFrames/50))==0
+        if mod(ii,round((nFrames-startFrame)/50))==0
             fprintf('\b.\n');
         end
     end
@@ -271,8 +267,8 @@ parfor (ii = startFrame:startFrame+nFrames-1, nWorkers)
     cameraTransInitial = cameraTransVec(:,ii);
 
     % get the boundary points
-    Xp = frameCellArray{ii-startFrame+1}.Xp;
-    Yp = frameCellArray{ii-startFrame+1}.Yp;
+    Xp = frameCellArray{ii}.Xp;
+    Yp = frameCellArray{ii}.Yp;
     
     % Check if we have a confidence field. If so, filter the points
     if isfield(frameCellArray{ii},'confidence')
@@ -325,10 +321,15 @@ parfor (ii = startFrame:startFrame+nFrames-1, nWorkers)
             % perimeter. This can take a few seconds.
             [eyePose, cameraTrans, objectiveError, ellipseParamsTransparent, fitAtBound] = ...
                 eyePoseEllipseFit(Xp, Yp, glintCoord, sceneGeometry, ...
-                'cameraTransX0',cameraTransInitial,...
+                'glintTol',glintTol, 'cameraTransX0',cameraTransInitial,...
                 'cameraTransBounds',thisFrameCameraTransBounds,...
                 'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB);
 
+            [eyePose, cameraTrans, objectiveError, ellipseParamsTransparent, fitAtBound] = ...
+                eyePoseEllipseFit(Xp, Yp, glintCoord, sceneGeometry, ...
+                'glintTol',glintTol, 'cameraTransX0',cameraTransInitial,...
+                'cameraTransBounds',thisFrameCameraTransBounds,...
+                'eyePoseLB', eyePoseLB, 'eyePoseUB', eyePoseUB, 'eyePoseX0', eyePose);
         end
         
         % Restore the warning state
