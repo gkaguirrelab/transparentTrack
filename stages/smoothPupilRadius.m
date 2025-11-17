@@ -101,7 +101,7 @@ p.addRequired('sceneGeometryFileName',@ischar);
 p.addParameter('verbose',false,@islogical);
 
 % Optional flow control params
-p.addParameter('nFrames',Inf,@isnumeric);
+p.addParameter('startFrame',1,@isnumeric);
 p.addParameter('useParallel',false,@islogical);
 p.addParameter('nWorkers',[],@(x)(isempty(x) | isnumeric(x)));
 
@@ -116,6 +116,7 @@ p.addParameter('glintFileName',[],@(x)(isempty(x) || ischar(x)));
 p.addParameter('eyePoseLB',[-89,-89,0,0.1],@isnumeric);
 p.addParameter('eyePoseUB',[89,89,0,5],@isnumeric);
 p.addParameter('cameraTransBounds',[5; 5; 0],@isnumeric);
+p.addParameter('glintTol',5,@isnumeric);
 p.addParameter('exponentialTauParam',5,@isnumeric);
 p.addParameter('likelihoodErrorMultiplier',1.0,@isnumeric);
 p.addParameter('fixedPriorPupilRadius',[],@isnumeric);
@@ -145,6 +146,7 @@ sceneGeometry = dataLoad.sceneGeometry;
 clear dataLoad
 
 % Load the glint file if passed
+glintTol = p.Results.glintTol;
 if ~isempty(p.Results.glintFileName)
     load(p.Results.glintFileName,'glintData');
     % Sometimes the glint file has fewer frames than the perimeter data. If
@@ -180,11 +182,8 @@ else
 end
 
 % determine how many frames we will process
-if p.Results.nFrames == Inf
-    nFrames=size(perimeter.data,1);
-else
-    nFrames = p.Results.nFrames;
-end
+startFrame = p.Results.startFrame;
+nFrames=size(perimeter.data,1);
 
 
 %% Derive a fixed prior from a previous analysis of the data
@@ -240,7 +239,7 @@ nonUniformity = @(x) (sum(abs(x/sum(x)-mean(x/sum(x))))/2)/(1-1/length(x));
 
 % Loop over frames. Frames which have no perimeter points will be given a
 % distVal of NaN.
-for ii = 1:nFrames
+for ii = startFrame:nFrames
     
     % Obtain the center of this fitted ellipse
     centerX = pupilData.sceneConstrained.ellipses.values(ii,1);
@@ -280,7 +279,7 @@ end
 
 % Recast perimeter.data into a sliced cell array to reduce parfor
 % broadcast overhead
-frameCellArray = perimeter.data(1:nFrames);
+frameCellArray = perimeter.data;
 clear perimeter
 
 % Set-up other variables to be non-broadcast
@@ -304,12 +303,12 @@ end
 warnState = warning();
 
 % Loop through the frames
-parfor (ii = 1:nFrames, nWorkers)
+parfor (ii = startFrame:nFrames, nWorkers)
 %for ii = 1:nFrames
     
     % update progress
     if verbose
-        if mod(ii,round(nFrames/50))==0
+        if mod(ii,round((nFrames-startFrame)/50))==0
             fprintf('\b.\n');
         end
     end
@@ -442,8 +441,8 @@ parfor (ii = 1:nFrames, nWorkers)
         % Perform the fit
         [posteriorEyePose, posteriorCameraTrans, posteriorEyePoseObjectiveError, posteriorEllipseParams, fitAtBound] = ...
             eyePoseEllipseFit(Xp, Yp, glintCoord, sceneGeometry, ...
-            'cameraTransX0',cameraTrans,...
-            'cameraTransBounds',thisFrameCameraTransBounds,...
+            'glintTol',glintTol,'cameraTransX0',cameraTrans, ...
+            'cameraTransBounds',thisFrameCameraTransBounds, ...
             'eyePoseLB', lb_pin, 'eyePoseUB', ub_pin, 'eyePoseX0', x0);
         
         % Calculate the uniformity of the distribution of perimeter points
@@ -518,6 +517,8 @@ pupilData.currentField = 'radiusSmoothed';
 save(pupilFileName,'pupilData')
 
 % save the relativeCameraPosition
-save(p.Results.relativeCameraPositionFileName,'relativeCameraPosition')
+if ~isempty(p.Results.relativeCameraPositionFileName)
+    save(p.Results.relativeCameraPositionFileName,'relativeCameraPosition')
+end
 
 end % function
