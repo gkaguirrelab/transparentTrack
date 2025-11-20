@@ -2,11 +2,13 @@ function [pupilData, priorPupilRadius] = smoothPupilTime(perimeterFileName, pupi
 % Constrain eye pose using a smoothly varying pupil radius
 %
 % Syntax:
-%  [pupilData] = (newField)(perimeterFileName, pupilFileName, sceneGeometryFileName)
+%  [pupilData] = smoothPupilTime(perimeterFileName, pupilFileName, sceneGeometryFileName)
 %
 % Description:
 %   Re-fits the eyePose values based upon a temporally smoothed version of
-%   the prior estimate of pupil radius.
+%   the prior estimate of pupil radius. This can improve eye pose
+%   estimation by leveraging the slowly-changing size of the pupil through
+%   poorly measured periods of the pupil perimeter video.
 %
 % Notes:
 %   Parallel pool - Controlled by the key/value pair 'useParallel'. The
@@ -52,32 +54,48 @@ function [pupilData, priorPupilRadius] = smoothPupilTime(perimeterFileName, pupi
 %                           found to fit the pupil perimeter.
 %  'eyePoseLB'            - Lower bound on the eyePose
 %  'eyePoseUB'            - Upper bound on the eyePose
-%  'exponentialTauParam'  - The time constant (in video frames) of the
-%                           decaying exponential weighting function for
-%                           pupil radius.
-%  'likelihoodErrorMultiplier' - The SD of the parameters estimated for
-%                           each frame are computed as the product of the
-%                           RMSE of the ellipse fits to the pupil perimeter
-%                           points, the non-linear non-uniformity of the
-%                           distribution of the points in space, and by
-%                           this value. Typically set to ~4 to result in an
-%                           SD of 1 when the fit of the points is good.
-%                           Make this value larger to increase the
-%                           influence of the prior, and smaller to increase
-%                           the influence of the measurement.
-%  'fitLabel'             - Identifies the field in pupilData that contains
-%                           the ellipse fit params for which the search
-%                           will be conducted.
-%  'fixedPriorPupilRadius' - Scalar that provides the mean (in mm) of the
-%                           expected radius of the pupil aperture during
-%                           this acquisition. If set to empty (the default)
-%                           the routine derives this values from the
-%                           sceneConstrained fit results.
-%  'relativeCameraPositionFileName' - Char. This is the full path to a
-%                           relativeCameraPosition.mat file that provides
-%                           the relative position of the camera at each
-%                           video frame relative to the initial position of
-%                           the camera.
+%  'cameraTransBounds'    - 3x1 vector. Bounds on the search for movement
+%                           of the camera relative to the eye. Set to zero
+%                           by default, as we are not currently using a
+%                           glint in our fitting.
+%  'glintTol'             - Scalar. The tolerance (in pixels) allowed in
+%                           eye pose estimation between the observed and
+%                           modeled location of the glint.
+%  'priorPupilRadius'     - Numeric vector. The radius of the pupil that
+%                           will be used to fit the pupil perimater points
+%                           at each point in time. By default this is
+%                           empty, and the vector is generated using a
+%                           prior fitting result to the data.
+%  'priorPupilBound'      - Scalar in millimeters. The eye pose solution
+%                           for the pupil radius at each time point is
+%                           allowed to vary by no more than ± this ammount.
+%  'confidenceThreshold'  - Scalar. Pupil perimeter points with a
+%                           confidence score below this value will be
+%                           discarded in eye pose fitting.
+%  'pupilVarThresh'       - Scalar. In generating the pupil radius prior,
+%                           we examine the standard deviation of pupil
+%                           radius within a 250 ms moving window across the
+%                           time series. Periods of the time series that
+%                           contain a standard deviation that is greater
+%                           than this threshold will be considered "bad".
+%  'ellipseRMSEThresh'    - Scalar. In generating the pupil radius prior,
+%                           time points in which the rmse of the fit of the
+%                           ellipse to the pupil perimeter points is
+%                           greater than this threshold will be considered
+%                           "bad".
+%  'minPerimPoints'       - Scalar. Time points in which the pupil
+%                           perimeter is defined by fewer than this many
+%                           points above the confidence threshold will not
+%                           be fit.
+%  'justReturnPrior'      - Logical. If set to true, the pupil data will
+%                           not be refit and will be left unchanged; the
+%                           routine will return the calculated prior. This
+%                           option can be used to explore choices of the
+%                           analysis parameters before committing to
+%                           analyzing the data.
+%  'currField'            - Char vector. Specify a valid pupilData field to
+%                           over-ride the current field specified within
+%                           the pupilData structure.
 %
 % Outputs:
 %   pupilData             - A structure with multiple fields corresponding
