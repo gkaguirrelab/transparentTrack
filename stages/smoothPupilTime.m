@@ -1,4 +1,4 @@
-function [pupilData] = smoothPupilTime(perimeterFileName, pupilFileName, sceneGeometryFileName, varargin)
+function [pupilData, priorPupilRadius] = smoothPupilTime(perimeterFileName, pupilFileName, sceneGeometryFileName, varargin)
 % Constrain eye pose using a smoothly varying pupil radius
 %
 % Syntax:
@@ -117,8 +117,10 @@ p.addParameter('priorPupilRadius',[],@isnumeric);
 p.addParameter('priorPupilBound',0.125,@isnumeric);
 p.addParameter('confidenceThreshold',0.75,@isnumeric);
 p.addParameter('pupilVarThresh',0.05,@isnumeric);
-p.addParameter('ellipseRMSEThresh',3,@isnumeric);
+p.addParameter('ellipseRMSEThresh',1,@isnumeric);
 p.addParameter('minPerimPoints',5,@isnumeric);
+p.addParameter('justReturnPrior',false,@islogical);
+p.addParameter('currField','',@ischar);
 
 
 %% Parse and check the parameters
@@ -164,8 +166,11 @@ startFrame = p.Results.startFrame;
 nFrames=size(perimeter.data,1);
 
 % determine the current field of the pupilData structure
-currField = pupilData.currentField;
-
+if ~isempty(p.Results.currField)
+    currField = p.Results.currField;
+else
+    currField = pupilData.currentField;
+end
 
 %% Derive a smooth version of the pupil size from a previous analysis
 if isempty(p.Results.priorPupilRadius)
@@ -199,6 +204,11 @@ if isempty(p.Results.priorPupilRadius)
     priorPupilRadius = smoothdata(yMod,"loess",fps);
 else
     priorPupilRadius = p.Results.priorPupilRadius;
+end
+
+% Check if we just wanted to examine the prior for these settings
+if p.Results.justReturnPrior
+    return
 end
 
 % Derive a bound based upon the SD of the prior (if not otherwise defined)
