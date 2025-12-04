@@ -199,7 +199,8 @@ if isempty(p.Results.priorPupilRadius)
     pupilMovSD = movstd(y,fps/4,"omitnan");
 
     % Identify the "good" pupil size values
-    goodPupilTimeIdx = and(pupilMovSD < p.Results.pupilVarThresh,rmse < p.Results.ellipseRMSEThresh);
+    goodPupilTimeIdx = and(and(pupilMovSD < p.Results.pupilVarThresh,rmse < p.Results.ellipseRMSEThresh),...
+        and(y>p.Results.eyePoseLB(4),y<p.Results.eyePoseUB(4)));
 
     % A version of the pupil radius, with nans for the not-good values
     yMod = y; yMod(~goodPupilTimeIdx)=nan;
